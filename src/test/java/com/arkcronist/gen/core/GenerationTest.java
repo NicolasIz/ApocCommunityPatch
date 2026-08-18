@@ -1,0 +1,217 @@
+package com.arkcronist.gen.core;
+
+import com.arkcronist.gen.core.block.Blocks;
+import com.arkcronist.gen.core.terrain.BlockWriter;
+import com.arkcronist.gen.core.terrain.ChunkTerrain;
+import com.arkcronist.gen.core.terrain.Preset;
+import com.arkcronist.gen.core.terrain.TerrainEngine;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/** End to end block generation: bedrock, water, surfaces, caves and their invariants. */
+class GenerationTest {
+
+    static final int MIN_Y = -64;
+    static final int MAX_Y = 320;
+
+    /** Captures a whole chunk so assertions can inspect any block. */
+    static final class ChunkCapture implements BlockWriter {
+        final int[][][] blocks = new int[16][MAX_Y - MIN_Y][16];
+
+        @Override
+        public void set(int localX, int y, int localZ, int blockId) {
+            if (y >= MIN_Y && y < MAX_Y) {
+                blocks[localX][y - MIN_Y][localZ] = blockId;
+            }
+        }
+
+        @Override
+        public int minY() {
+            return MIN_Y;
+        }
+
+        @Override
+        public int maxY() {
+            return MAX_Y;
+        }
+
+        int at(int x, int y, int z) {
+            return blocks[x][y - MIN_Y][z];
+        }
+    }
+
+    private static ChunkCapture generate(TerrainEngine engine, int chunkX, int chunkZ) {
+        ChunkCapture capture = new ChunkCapture();
+        engine.generateChunk(chunkX, chunkZ, capture);
+        return capture;
+    }
+
+    @ParameterizedTest
+    @EnumSource(Preset.class)
+    @DisplayName("every chunk has a bedrock floor")
+    void bedrockFloor(Preset preset) {
+        TerrainEngine engine = new TerrainEngine(24680L, preset);
+        for (int cx = 0; cx < 3; cx++) {
+            for (int cz = 0; cz < 3; cz++) {
+                ChunkCapture chunk = generate(engine, cx, cz);
+                for (int x = 0; x < 16; x++) {
+                    for (int z = 0; z < 16; z++) {
+                        assertEquals(Blocks.BEDROCK, chunk.at(x, MIN_Y, z),
+                                "missing bedrock at the world floor");
+                    }
+                }
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(Preset.class)
+    @DisplayName("water fills every column whose ground lies below its water level")
+    void waterFillsBasins(Preset preset) {
+        TerrainEngine engine = new TerrainEngine(1357L, preset);
+        int checked = 0;
+        for (int cx = 0; cx < 4 && checked < 200; cx++) {
+            for (int cz = 0; cz < 4 && checked < 200; cz++) {
+                ChunkTerrain terrain = engine.terrain(cx, cz);
+                ChunkCapture chunk = generate(engine, cx, cz);
+                for (int x = 0; x < 16 && checked < 200; x++) {
+                    for (int z = 0; z < 16 && checked < 200; z++) {
+                        int index = ChunkTerrain.index(x, z);
+                        int surface = (int) Math.floor(terrain.height[index]);
+                        int water = (int) Math.floor(terrain.water[index]);
+                        if (surface >= water - 1) {
+                            continue;
+                        }
+                        checked++;
+                        // Sample the middle of the water column: it must be water, never air.
+                        int y = (surface + water) / 2;
+                        assertEquals(Blocks.WATER, chunk.at(x, y, z),
+                                preset + ": expected water at " + x + "," + y + "," + z);
+                    }
+                }
+            }
+        }
+        assertTrue(checked > 0, "no underwater columns were sampled");
+    }
+
+    @ParameterizedTest
+    @EnumSource(Preset.class)
+    @DisplayName("caves never break through the sea floor, so oceans cannot drain")
+    void cavesKeepTheSeaFloorSealed(Preset preset) {
+        TerrainEngine engine = new TerrainEngine(97531L, preset);
+        int clearance = engine.settings().surfaceCaveClearance;
+        for (int cx = 0; cx < 4; cx++) {
+            for (int cz = 0; cz < 4; cz++) {
+                ChunkTerrain terrain = engine.terrain(cx, cz);
+                ChunkCapture chunk = generate(engine, cx, cz);
+                for (int x = 0; x < 16; x++) {
+                    for (int z = 0; z < 16; z++) {
+                        int index = ChunkTerrain.index(x, z);
+                        int surface = (int) Math.floor(terrain.height[index]);
+                        if (terrain.height[index] >= terrain.water[index]) {
+                            continue;
+                        }
+                        for (int y = surface - clearance + 1; y <= surface; y++) {
+                            if (y <= MIN_Y || y >= MAX_Y) {
+                                continue;
+                            }
+                            int block = chunk.at(x, y, z);
+                            assertNotEquals(Blocks.AIR, block,
+                                    preset + ": cave opened the sea floor at " + x + "," + y + "," + z);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(Preset.class)
+    @DisplayName("dry land gets its biome surface block on top")
+    void surfaceMatchesBiome(Preset preset) {
+        TerrainEngine engine = new TerrainEngine(80808L, preset);
+        int checked = 0;
+        for (int cx = 0; cx < 5 && checked < 120; cx++) {
+            for (int cz = 0; cz < 5 && checked < 120; cz++) {
+                ChunkTerrain terrain = engine.terrain(cx, cz);
+                ChunkCapture chunk = generate(engine, cx, cz);
+                for (int x = 0; x < 16 && checked < 120; x++) {
+                    for (int z = 0; z < 16 && checked < 120; z++) {
+                        int index = ChunkTerrain.index(x, z);
+                        int surface = (int) Math.floor(terrain.height[index]);
+                        if (terrain.height[index] < terrain.water[index] + 2) {
+                            continue;
+                        }
+                        // Overhangs and arches can move the real surface a few blocks off the
+                        // heightmap, so walk down to the first solid block instead of assuming it.
+                        int top = -1;
+                        for (int y = Math.min(MAX_Y - 2, surface + 40); y > surface - 40 && y > MIN_Y; y--) {
+                            if (!Blocks.isAir(chunk.at(x, y, z))) {
+                                top = y;
+                                break;
+                            }
+                        }
+                        assertTrue(top > MIN_Y, "no solid block anywhere near the surface");
+                        int block = chunk.at(x, top, z);
+                        assertFalse(Blocks.isLiquid(block), "liquid found on dry land");
+                        assertEquals(Blocks.AIR, chunk.at(x, top + 1, z),
+                                "the block above the surface should be open");
+                        checked++;
+                    }
+                }
+            }
+        }
+        assertTrue(checked > 0, "no dry land was sampled");
+    }
+
+    @ParameterizedTest
+    @EnumSource(Preset.class)
+    @DisplayName("underground is carved, but not hollowed out")
+    void caveVolumeIsSane(Preset preset) {
+        TerrainEngine engine = new TerrainEngine(5566L, preset);
+        long air = 0;
+        long total = 0;
+        for (int cx = 0; cx < 3; cx++) {
+            for (int cz = 0; cz < 3; cz++) {
+                ChunkTerrain terrain = engine.terrain(cx * 4, cz * 4);
+                ChunkCapture chunk = generate(engine, cx * 4, cz * 4);
+                for (int x = 0; x < 16; x++) {
+                    for (int z = 0; z < 16; z++) {
+                        int surface = (int) Math.floor(terrain.heightAt(x, z));
+                        for (int y = MIN_Y + 8; y <= surface - 10; y++) {
+                            total++;
+                            if (chunk.at(x, y, z) == Blocks.AIR) {
+                                air++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        assertTrue(total > 1000, "not enough underground sampled");
+        double fraction = air / (double) total;
+        assertTrue(fraction > 0.01, preset + ": no caves at all (" + fraction + ")");
+        double limit = preset == Preset.INSANE ? 0.55 : preset == Preset.CHAOTIC ? 0.40 : 0.30;
+        assertTrue(fraction < limit,
+                preset + ": underground is " + (fraction * 100) + "% air, which is too hollow");
+    }
+
+    @ParameterizedTest
+    @EnumSource(Preset.class)
+    @DisplayName("generation is reproducible block for block")
+    void reproducibleBlocks(Preset preset) {
+        ChunkCapture first = generate(new TerrainEngine(4321L, preset), 12, -7);
+        ChunkCapture second = generate(new TerrainEngine(4321L, preset), 12, -7);
+        for (int x = 0; x < 16; x++) {
+            for (int z = 0; z < 16; z++) {
+                for (int y = MIN_Y; y < MAX_Y; y++) {
+                    assertEquals(first.at(x, y, z), second.at(x, y, z),
+                            "block differs at " + x + "," + y + "," + z);
+                }
+            }
+        }
+    }
+}

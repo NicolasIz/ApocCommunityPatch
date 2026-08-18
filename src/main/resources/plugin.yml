@@ -1,0 +1,23 @@
+name: ArkcronistGenerator
+version: '${project.version}'
+main: com.arkcronist.gen.bukkit.ArkcronistPlugin
+api-version: '1.21'
+description: Advanced procedural world generator - continents, deep oceans, mountains, canyons, caves, structures and minibosses.
+author: Arkcronist
+website: https://github.com/NicolasIz/ApocCommunityPatch
+folia-supported: false
+
+commands:
+  ag:
+    description: ArkcronistGenerator control command.
+    usage: /ag help
+    aliases: [arkgen, arkcronist]
+    permission: arkcronist.command
+
+permissions:
+  arkcronist.command:
+    description: Use /ag and its informational subcommands.
+    default: op
+  arkcronist.admin:
+    description: Reload the configuration.
+    default: op

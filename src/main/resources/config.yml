@@ -1,0 +1,151 @@
+# ---------------------------------------------------------------------------
+#  ArkcronistGenerator
+# ---------------------------------------------------------------------------
+#  Create a world with:
+#     -g ArkcronistGenerator            (uses default-preset below)
+#     -g ArkcronistGenerator:BASE
+#     -g ArkcronistGenerator:CHAOTIC
+#     -g ArkcronistGenerator:INSANE
+#
+#  Everything under 'terrain:' overrides ALL presets.
+#  Everything under 'presets.<name>:' overrides only that preset.
+#  Any key you delete simply keeps the preset's own value, so this file is
+#  safe to trim down to just the handful of things you want to change.
+#
+#  Changes apply to chunks generated AFTER a reload; already generated
+#  terrain is never rewritten.
+# ---------------------------------------------------------------------------
+
+default-preset: BASE
+
+world:
+  # Let vanilla place its natural animal/mob groups during generation.
+  vanilla-mob-generation: true
+
+performance:
+  # Chunks of cached 2D terrain data per world. Roughly 12 KB each.
+  terrain-cache-chunks: 512
+  # Allow Paper to generate chunks on several threads at once.
+  parallel-generation: true
+
+structures:
+  fill-loot: true
+
+minibosses:
+  enabled: true
+  health-multiplier: 4.0
+  damage-multiplier: 2.0
+  glowing: true
+  # Display names per structure role. Rename freely.
+  names:
+    tower_captain: "Capitán de la Torre"
+    battle_champion: "Campeón de la Torre de Combate"
+    castle_lord: "Señor del Castillo"
+    city_warden: "Guardián de la Ciudad"
+    fortress_marshal: "Mariscal de la Fortaleza"
+    temple_guardian: "Guardián del Templo"
+    dungeon_master: "Amo de la Mazmorra"
+    ruin_wraith: "Espectro de las Ruinas"
+    deep_leviathan: "Leviatán de las Profundidades"
+    sky_sentinel: "Centinela del Cielo"
+    camp_chief: "Jefe del Campamento"
+    cave_horror: "Horror de las Cavernas"
+
+# ---------------------------------------------------------------------------
+#  Terrain overrides applied to every preset.
+#  Uncomment only what you want to change.
+# ---------------------------------------------------------------------------
+terrain:
+  # sea-level: 63
+  # lava-level: -54
+
+  # --- continents -------------------------------------------------------
+  # Lower frequency = bigger landmasses.
+  # continent-frequency: 0.00030
+  # continent-warp: 320.0
+  # ocean-cutoff: -0.04        # continentalness below this is ocean
+  # coast-width: 0.075         # width of the shore transition
+  # coast-roughness: 0.55      # bays, inlets and peninsulas
+
+  # --- oceans -----------------------------------------------------------
+  # shelf-depth: 16.0          # depth at the outer edge of the shelf
+  # shelf-extent: 0.20         # share of the ocean occupied by the shelf
+  # slope-depth: 52.0          # depth at the foot of the continental slope
+  # slope-extent: 0.48
+  # abyss-depth: 82.0          # depth of the abyssal plain
+  # abyss-roughness: 9.0
+  # trench-depth: 38.0         # extra depth inside a trench
+  # trench-threshold: 0.86     # lower = more trenches
+  # seamount-amplitude: 46.0   # height of underwater mountains
+  # ocean-island-strength: 0.35
+
+  # --- land -------------------------------------------------------------
+  # base-height: 74.0
+  # relief-amplitude: 24.0
+  # mountain-amplitude: 115.0
+  # mountain-mask-threshold: 0.10   # lower = more mountain range area
+  # ridge-sharpness: 0.45
+  # plateau-strength: 0.30
+  # canyon-strength: 0.18
+  # canyon-depth: 34.0
+  # cliff-sharpness: 0.25
+
+  # --- erosion ----------------------------------------------------------
+  # erosion-passes: 2          # 0-3
+  # erosion-talus: 1.35        # higher = steeper slopes survive
+  # erosion-strength: 0.42
+  # deposition-strength: 0.22
+
+  # --- rivers and lakes -------------------------------------------------
+  # rivers: true
+  # river-width: 0.030
+  # river-depth: 9.0
+  # lakes: true
+  # lake-chance: 0.10
+  # lake-depth: 8.0
+
+  # --- 3D terrain -------------------------------------------------------
+  # overhang-strength: 0.08    # ledges and undercut cliffs
+  # arch-strength: 0.0         # natural arches and windows
+  # floating-island-density: 0.0
+  # floating-island-min-y: 150
+  # floating-island-max-y: 290
+
+  # --- caves ------------------------------------------------------------
+  # caves: true
+  # cave-cheese-threshold: 0.62   # lower = more open caves
+  # tunnel-threshold: 0.055
+  # cavern-density: 0.30
+  # mega-cave-density: 0.04
+  # surface-cave-clearance: 5     # rock kept under the surface, keeps oceans from draining
+
+  # --- strata and ores --------------------------------------------------
+  # strata-thickness: 9.0
+  # strata-warp: 12.0
+  # ore-multiplier: 1.0
+
+  # --- biomes -----------------------------------------------------------
+  # climate-frequency: 0.00085   # higher = smaller biomes
+  # biome-fragmentation: 0.0
+  # temperature-bias: 0.0
+  # humidity-bias: 0.0
+
+  # --- decoration and structures ---------------------------------------
+  # tree-density: 1.0
+  # decoration-density: 1.0
+  # structures: true
+  # structure-density: 1.0
+  # structure-grid-size: 448     # smaller = structures closer together
+
+# ---------------------------------------------------------------------------
+#  Per preset overrides
+# ---------------------------------------------------------------------------
+presets:
+  base:
+    # structure-density: 1.0
+  chaotic:
+    # mountain-amplitude: 178.0
+    # canyon-strength: 0.65
+  insane:
+    # floating-island-density: 0.55
+    # mega-cave-density: 0.70
