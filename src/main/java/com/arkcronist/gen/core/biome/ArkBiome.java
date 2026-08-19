@@ -1,7 +1,6 @@
 package com.arkcronist.gen.core.biome;
 
 import com.arkcronist.gen.core.block.Palette;
-import com.arkcronist.gen.core.tree.TreeSpecies;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,13 +45,13 @@ public final class ArkBiome {
     public final double surfaceRoughness;
 
     // Vegetation
-    public final TreeSpecies[] trees;
+    /** Species tags handed to the prefab registry; see {@link com.arkcronist.gen.core.prefab.TreeKind}. */
+    public final String[] trees;
     public final double[] treeWeights;
     public final double treeDensity;
+    /** How often this biome reaches for the largest prefab it can find. */
     public final double giantTreeChance;
-    public final double leaningTreeChance;
-    public final double fallenTreeChance;
-    public final double stumpChance;
+    /** How often this biome asks for a bare, leafless tree instead of its usual species. */
     public final double deadTreeChance;
 
     public final DecorationProfile decoration;
@@ -93,16 +92,13 @@ public final class ArkBiome {
         this.stone = builder.stone;
         this.surfaceDepth = builder.surfaceDepth;
         this.surfaceRoughness = builder.surfaceRoughness;
-        this.trees = builder.trees.toArray(new TreeSpecies[0]);
+        this.trees = builder.trees.toArray(new String[0]);
         this.treeWeights = new double[builder.treeWeights.size()];
         for (int i = 0; i < treeWeights.length; i++) {
             this.treeWeights[i] = builder.treeWeights.get(i);
         }
         this.treeDensity = builder.treeDensity;
         this.giantTreeChance = builder.giantTreeChance;
-        this.leaningTreeChance = builder.leaningTreeChance;
-        this.fallenTreeChance = builder.fallenTreeChance;
-        this.stumpChance = builder.stumpChance;
         this.deadTreeChance = builder.deadTreeChance;
         this.decoration = builder.decoration;
         this.coalBonus = builder.coalBonus;
@@ -120,8 +116,8 @@ public final class ArkBiome {
         return category.oceanic();
     }
 
-    /** Picks a species for one tree from the biome's weighted list. */
-    public TreeSpecies pickTree(double random01) {
+    /** Picks a species tag for one tree from the biome's weighted list. */
+    public String pickTree(double random01) {
         if (trees.length == 0) {
             return null;
         }
@@ -169,13 +165,10 @@ public final class ArkBiome {
         private Palette stone = Palette.single(com.arkcronist.gen.core.block.Blocks.STONE);
         private int surfaceDepth = 4;
         private double surfaceRoughness = 1.0;
-        private final List<TreeSpecies> trees = new ArrayList<>();
+        private final List<String> trees = new ArrayList<>();
         private final List<Double> treeWeights = new ArrayList<>();
         private double treeDensity = 0.0;
         private double giantTreeChance = 0.02;
-        private double leaningTreeChance = 0.12;
-        private double fallenTreeChance = 0.05;
-        private double stumpChance = 0.04;
         private double deadTreeChance = 0.03;
         private DecorationProfile decoration = new DecorationProfile();
         private double coalBonus = 1.0;
@@ -273,7 +266,7 @@ public final class ArkBiome {
             return this;
         }
 
-        public Builder tree(TreeSpecies species, double weight) {
+        public Builder tree(String species, double weight) {
             this.trees.add(species);
             this.treeWeights.add(weight);
             return this;
@@ -284,11 +277,12 @@ public final class ArkBiome {
             return this;
         }
 
-        public Builder treeVariants(double giant, double leaning, double fallen, double stump, double dead) {
+        /**
+         * @param giant chance a tree here reaches for the biggest prefab available
+         * @param dead  chance a tree here is a bare, leafless one instead of the usual species
+         */
+        public Builder treeVariants(double giant, double dead) {
             this.giantTreeChance = giant;
-            this.leaningTreeChance = leaning;
-            this.fallenTreeChance = fallen;
-            this.stumpChance = stump;
             this.deadTreeChance = dead;
             return this;
         }

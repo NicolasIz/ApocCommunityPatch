@@ -2,7 +2,7 @@
 
 ArkcronistGenerator es un proyecto propio, escrito desde cero. No es un fork ni un
 renombrado de ningún generador existente. Su arquitectura, su motor de ruido, su
-canalización de terreno, su tabla de biomas, su sistema de árboles, su catálogo de
+canalización de terreno, su tabla de biomas, su catálogo de
 estructuras y su capa Bukkit son código original de este repositorio.
 
 Durante el desarrollo se estudiaron dos proyectos de código abierto, ambos con
@@ -41,6 +41,20 @@ Ideas estudiadas y adaptadas de forma independiente:
   bioma vanilla.
 - Poblar cada chunk consultando también a sus vecinos para que ningún elemento
   quede cortado en el borde.
+
+## Schematics incluidas
+
+Los archivos `.schem` que viajan dentro del JAR bajo `prefabs/` — 33 árboles, cinco
+navíos y una ciudadela — los aportó el propietario del servidor para este proyecto.
+No proceden de Terra ni de TerraformGenerator, ni de ningún otro plugin.
+
+Los 33 árboles se obtuvieron dividiendo un único archivo `large_tree_bundle.schem`
+que contenía todos los diseños dispuestos sobre una misma plataforma. El script que
+hace esa división está en `tools/split_schem_bundle.py` y reproduce los archivos
+publicados byte a byte.
+
+El lector de NBT y de schematics Sponge (`core/prefab/`) es código original de este
+repositorio; no se ha usado ninguna librería de terceros para leerlos.
 
 ## Software de terceros
 

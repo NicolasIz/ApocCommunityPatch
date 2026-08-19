@@ -45,7 +45,7 @@ public final class WorldRegistry {
     private ArkWorld create(String name, long seed, Preset preset, int minY, int maxY) {
         TerrainSettings settings = plugin.arkConfig().settingsFor(preset, minY, maxY);
         ArkWorld world = new ArkWorld(name, seed, preset, settings, plugin.arkConfig().cacheSize(),
-                plugin.arkConfig().disabledStructures());
+                plugin.arkConfig().disabledStructures(), plugin.prefabs());
         plugin.getLogger().info("Prepared world '" + name + "' with preset " + preset
                 + " (seed " + seed + ", y " + minY + ".." + maxY + ")"
                 + (plugin.arkConfig().vanillaStructures()

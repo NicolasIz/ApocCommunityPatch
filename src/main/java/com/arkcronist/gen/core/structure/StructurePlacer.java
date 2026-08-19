@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 public final class StructurePlacer {
 
-    private static final int MAX_RADIUS = 64;
+    private static final int BASE_MAX_RADIUS = 64;
     private static final long LARGE_SALT = 0x1A26E_5A17L;
     private static final long SMALL_SALT = 0x5A11_5A17L;
     private static final long DEEP_SALT = 0xDEEB_5A17L;
@@ -50,16 +50,23 @@ public final class StructurePlacer {
     private static final int SITE_CACHE_LIMIT = 1024;
 
     private final java.util.Set<String> disabled;
+    /** Widest structure registered; drives how far a chunk looks for structures reaching into it. */
+    private final int maxRadius;
 
     public StructurePlacer(TerrainEngine engine) {
         this(engine, java.util.Set.of());
+    }
+
+    public StructurePlacer(TerrainEngine engine, java.util.Set<String> disabled) {
+        this(engine, disabled, com.arkcronist.gen.core.prefab.PrefabRegistry.empty());
     }
 
     /**
      * @param disabled structure ids that must not generate, by id. Used to step aside for the
      *                 server's own vanilla structures when those are enabled.
      */
-    public StructurePlacer(TerrainEngine engine, java.util.Set<String> disabled) {
+    public StructurePlacer(TerrainEngine engine, java.util.Set<String> disabled,
+                           com.arkcronist.gen.core.prefab.PrefabRegistry prefabs) {
         this.disabled = disabled;
         this.engine = engine;
         // Settlements and landmarks
@@ -99,6 +106,20 @@ public final class StructurePlacer {
         register(new TrialChamberStructure());
         register(new GeodeStructure());
         register(new FossilStructure());
+        // Schematic backed families. They register themselves out of existence when the prefab
+        // folder holds nothing for them, so an empty install behaves exactly as it did before.
+        if (prefabs.has("ships")) {
+            register(new ShipPrefabStructure(prefabs));
+        }
+        if (prefabs.has("ruins")) {
+            register(new PrefabRuinStructure(prefabs));
+        }
+
+        int widest = BASE_MAX_RADIUS;
+        for (Structure structure : structures()) {
+            widest = Math.max(widest, structure.radius());
+        }
+        this.maxRadius = widest;
     }
 
     private void register(Structure structure) {
@@ -141,10 +162,10 @@ public final class StructurePlacer {
                       int grid, long salt, List<Structure> pool) {
         int blockX = chunkX << 4;
         int blockZ = chunkZ << 4;
-        int minCellX = Math.floorDiv(blockX - MAX_RADIUS, grid);
-        int maxCellX = Math.floorDiv(blockX + 15 + MAX_RADIUS, grid);
-        int minCellZ = Math.floorDiv(blockZ - MAX_RADIUS, grid);
-        int maxCellZ = Math.floorDiv(blockZ + 15 + MAX_RADIUS, grid);
+        int minCellX = Math.floorDiv(blockX - maxRadius, grid);
+        int maxCellX = Math.floorDiv(blockX + 15 + maxRadius, grid);
+        int minCellZ = Math.floorDiv(blockZ - maxRadius, grid);
+        int maxCellZ = Math.floorDiv(blockZ + 15 + maxRadius, grid);
 
         for (int cellX = minCellX; cellX <= maxCellX; cellX++) {
             for (int cellZ = minCellZ; cellZ <= maxCellZ; cellZ++) {
@@ -247,8 +268,20 @@ public final class StructurePlacer {
         return built.isEmpty() ? null : built;
     }
 
-    /** A resolved site: which structure a cell holds and exactly where it stands. */
-    private record Site(Structure structure, int x, int z, FastRandom random) {
+    /**
+     * A resolved site: which structure a cell holds, exactly where it stands, and the seed its build
+     * runs from.
+     *
+     * <p>The seed is stored rather than a live random, because a site is cached and read from several
+     * places - {@code /ag locate}, the site check, the build itself. Handing out a mutable generator
+     * would mean that merely asking where a castle is changed what got built there.</p>
+     */
+    private record Site(Structure structure, int x, int z, long buildSeed) {
+    }
+
+    /** A fresh, identical context for a site, however many times it is asked for. */
+    private StructureContext contextFor(Site site) {
+        return new StructureContext(engine, site.x(), site.z(), new FastRandom(site.buildSeed()));
     }
 
     /**
@@ -285,7 +318,7 @@ public final class StructurePlacer {
             return null;
         }
 
-        int padding = Math.min(grid / 4, MAX_RADIUS + 8);
+        int padding = Math.min(grid / 4, maxRadius + 8);
         int x = cellX * grid + random.nextInt(padding, grid - padding);
         int z = cellZ * grid + random.nextInt(padding, grid - padding);
 
@@ -305,7 +338,10 @@ public final class StructurePlacer {
                 return null;
             }
         }
-        return new Site(chosen, x, z, random);
+        // Run the terrain check here, once, so that locating a structure and building it can never
+        // disagree about whether it exists.
+        Site site = new Site(chosen, x, z, random.nextLong());
+        return chosen.canPlace(contextFor(site)) ? site : null;
     }
 
     private StructureBuffer build(int cellX, int cellZ, int grid, long key, List<Structure> pool) {
@@ -314,12 +350,7 @@ public final class StructurePlacer {
         if (site == null) {
             return buffer;
         }
-        StructureContext context = new StructureContext(engine, site.x(), site.z(),
-                site.random().fork(0x5EEDL));
-        if (!site.structure().canPlace(context)) {
-            return buffer;
-        }
-        site.structure().build(context, buffer);
+        site.structure().build(contextFor(site), buffer);
         return buffer;
     }
 
@@ -417,11 +448,6 @@ public final class StructurePlacer {
                 }
                 Site site = resolveSite(originCellX + dx, originCellZ + dz, grid, salt, pool);
                 if (site == null || (tag != null && site.structure().tag() != tag)) {
-                    continue;
-                }
-                StructureContext context = new StructureContext(engine, site.x(), site.z(),
-                        site.random().fork(0x5EEDL));
-                if (!site.structure().canPlace(context)) {
                     continue;
                 }
                 return new int[]{site.x(), engine.surfaceHeight(site.x(), site.z()), site.z()};

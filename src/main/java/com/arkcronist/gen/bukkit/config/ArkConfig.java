@@ -58,6 +58,16 @@ public final class ArkConfig {
      * <p>They are placed by the server itself from the game's own definitions, so they are the real
      * thing rather than an imitation, and they follow the vanilla biome keys this generator reports.</p>
      */
+    /**
+     * Whether the jar's bundled schematics are unpacked into {@code plugins/.../prefabs} on start-up.
+     *
+     * <p>Turn it off once the folder has been curated by hand; existing files are never overwritten
+     * either way, so leaving it on only ever adds back something that was deleted.</p>
+     */
+    public boolean extractBundledPrefabs() {
+        return config.getBoolean("prefabs.extract-bundled", true);
+    }
+
     public boolean vanillaStructures() {
         return config.getBoolean("structures.vanilla-structures", true);
     }

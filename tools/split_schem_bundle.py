@@ -1,0 +1,132 @@
+"""
+Splits a WorldEdit "bundle" schematic - many builds exported side by side on one grass
+platform - into one .schem per build, ready to drop into prefabs/trees/.
+
+Each connected clump of blocks above the platform becomes its own file, named after what
+it is made of, because the file name is what the generator reads to decide where a prefab
+belongs:
+
+    <size>_<family>_<species>_<nn>.schem
+
+Usage:
+    python3 tools/split_schem_bundle.py <bundle.schem> <output-dir>
+
+The generator never runs this. It exists so that the 33 bundled trees can be regenerated,
+and so that a new bundle can be turned into prefabs the same way.
+"""
+
+import sys, os, hashlib
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _schem import decode
+from _write_nbt import save, varints
+from collections import deque, Counter
+
+if len(sys.argv) != 3:
+    raise SystemExit(__doc__)
+BUNDLE = sys.argv[1]
+OUT = sys.argv[2]
+os.makedirs(OUT, exist_ok=True)
+
+def emit(path, w,h,l, order, data, dataversion=3120):
+    d={
+      'Version': (3, 2),
+      'DataVersion': (3, dataversion),
+      'Width': (2, w), 'Height': (2, h), 'Length': (2, l),
+      'Offset': (11, [0,0,0]),
+      'PaletteMax': (3, len(order)),
+      'Palette': (10, {n:(3,i) for i,n in enumerate(order)}),
+      'BlockData': (7, varints(data)),
+    }
+    save(path, 'Schematic', d)
+
+v,W,H,L,inv,out = decode(BUNDLE)
+AIR=next(i for i,n in inv.items() if n=='minecraft:air')
+occ=bytearray(W*L)
+for y in range(1,H):
+    base=y*W*L
+    for i in range(W*L):
+        if out[base+i]!=AIR: occ[i]=1
+seen=bytearray(W*L); comps=[]
+for z in range(L):
+  for x in range(W):
+    i=z*W+x
+    if occ[i] and not seen[i]:
+        q=deque([(x,z)]); seen[i]=1; cells=[]
+        while q:
+            cx,cz=q.popleft(); cells.append((cx,cz))
+            for dz in (-1,0,1):
+              for dx in (-1,0,1):
+                nx,nz=cx+dx,cz+dz
+                if 0<=nx<W and 0<=nz<L:
+                    j=nz*W+nx
+                    if occ[j] and not seen[j]: seen[j]=1; q.append((nx,nz))
+        comps.append(cells)
+
+KINDS=('dark_oak','pale_oak','oak','birch','spruce','jungle','acacia','mangrove','cherry','azalea')
+
+def classify(names):
+    """Sorts a tree into a family and gives it the species tags a biome can ask for."""
+    leaf=Counter(); wood=Counter(); other=Counter()
+    for n,cnt in names.items():
+        base=n.split('[')[0].replace('minecraft:','')
+        if base.endswith('leaves'):
+            kind=None
+            for k in KINDS:
+                if base.startswith(k+'_'): kind=k; break
+            if 'azalea' in base: kind='azalea'
+            leaf[kind or base]+=cnt
+        elif base.endswith(('_log','_wood','_stem','_hyphae')):
+            for k in KINDS:
+                if base.startswith(k+'_'): wood[k]+=cnt; break
+        else:
+            other[base]+=cnt
+    glass=sum(c for b,c in other.items() if 'stained_glass' in b)
+    amethyst=sum(c for b,c in other.items() if 'amethyst' in b)
+    if not leaf:
+        if amethyst>200: return ['crystal','amethyst']
+        if glass>300: return ['autumn'] + [w for w,_ in wood.most_common(1)]
+        return ['dead'] + [w for w,_ in wood.most_common(1)]
+    top=leaf.most_common(2)
+    tags=[k for k,c in top if c > top[0][1]*0.3]
+    return tags
+
+def size_class(w,h,l):
+    spread=max(w,l)
+    if spread>=26: return 'giant'
+    if spread>=18: return 'large'
+    if spread>=10: return 'medium'
+    return 'small'
+
+records=[]
+for cells in comps:
+    xs=[p[0] for p in cells]; zs=[p[1] for p in cells]
+    x0,x1,z0,z1=min(xs),max(xs),min(zs),max(zs)
+    cellset=set(cells)
+    ys=[y for y in range(1,H) if any(out[y*W*L+z*W+x]!=AIR for (x,z) in cells)]
+    y0,y1=min(ys),max(ys)
+    w,h,l = x1-x0+1, y1-y0+1, z1-z0+1
+    names=Counter(); localpal={}; order=[]
+    data=[0]*(w*h*l)
+    for y in range(y0,y1+1):
+        for z in range(z0,z1+1):
+            for x in range(x0,x1+1):
+                b = out[y*W*L+z*W+x] if (x,z) in cellset else AIR
+                n = inv[b]
+                if n not in localpal: localpal[n]=len(order); order.append(n)
+                data[(y-y0)*w*l + (z-z0)*w + (x-x0)] = localpal[n]
+                if b!=AIR: names[n]+=1
+    digest=hashlib.sha1((','.join(order)+'|'+','.join(map(str,data))).encode()).hexdigest()[:12]
+    records.append(dict(w=w,h=h,l=l,nonair=sum(names.values()),tags=classify(names),
+                        order=order,data=data,digest=digest))
+
+uniq={}
+for r in records: uniq.setdefault(r['digest'], r)
+recs=sorted(uniq.values(), key=lambda r:(-r['nonair']))
+
+counts=Counter()
+for r in recs:
+    key='_'.join([size_class(r['w'],r['h'],r['l'])] + r['tags'])
+    counts[key]+=1
+    name='%s_%02d'%(key, counts[key])
+    emit(os.path.join(OUT, name+'.schem'), r['w'],r['h'],r['l'], r['order'], r['data'])
+    print('tree  %-32s %3dx%3dx%3d %5d'%(name,r['w'],r['h'],r['l'],r['nonair']))

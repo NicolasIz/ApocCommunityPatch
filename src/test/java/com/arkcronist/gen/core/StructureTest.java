@@ -34,7 +34,7 @@ class StructureTest {
         @Override
         public void set(int x, int y, int z, int blockId) {
             if (contains(x, y, z)) {
-                blocks.put(TreeTest.key(x, y, z), blockId);
+                blocks.put(BlockKey.key(x, y, z), blockId);
             }
         }
 

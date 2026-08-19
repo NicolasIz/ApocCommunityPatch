@@ -3,6 +3,7 @@ package com.arkcronist.gen.bukkit;
 import com.arkcronist.gen.bukkit.mobs.MobQueue;
 import com.arkcronist.gen.core.decorate.DecorationPlacer;
 import com.arkcronist.gen.core.decorate.FeaturePlacer;
+import com.arkcronist.gen.core.prefab.PrefabRegistry;
 import com.arkcronist.gen.core.structure.StructurePlacer;
 import com.arkcronist.gen.core.terrain.Preset;
 import com.arkcronist.gen.core.terrain.TerrainEngine;
@@ -21,18 +22,18 @@ public final class ArkWorld {
     private final MobQueue mobQueue = new MobQueue();
 
     public ArkWorld(String name, long seed, Preset preset, TerrainSettings settings, int cacheSize) {
-        this(name, seed, preset, settings, cacheSize, java.util.Set.of());
+        this(name, seed, preset, settings, cacheSize, java.util.Set.of(), PrefabRegistry.empty());
     }
 
     public ArkWorld(String name, long seed, Preset preset, TerrainSettings settings, int cacheSize,
-                    java.util.Set<String> disabledStructures) {
+                    java.util.Set<String> disabledStructures, PrefabRegistry prefabs) {
         this.name = name;
         this.seed = seed;
         this.preset = preset;
         this.engine = new TerrainEngine(seed, preset, settings, cacheSize);
-        this.features = new FeaturePlacer(engine);
+        this.features = new FeaturePlacer(engine, prefabs);
         this.decoration = new DecorationPlacer(engine);
-        this.structures = new StructurePlacer(engine, disabledStructures);
+        this.structures = new StructurePlacer(engine, disabledStructures, prefabs);
     }
 
     public String name() {

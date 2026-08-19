@@ -2,7 +2,7 @@ package com.arkcronist.gen.core.biome;
 
 import com.arkcronist.gen.core.block.Blocks;
 import com.arkcronist.gen.core.block.Palette;
-import com.arkcronist.gen.core.tree.TreeSpecies;
+import com.arkcronist.gen.core.prefab.TreeKind;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -81,7 +81,7 @@ public final class BiomeRegistry {
                     d.kelp = 0.04;
                     d.sponges = 0.01;
                 }))
-                .structures(UNDERWATER, RUINS, SHIPWRECK));
+                .structures(UNDERWATER, RUINS, SHIPWRECK, SHIP));
 
         register(ArkBiome.builder("temperate_shelf")
                 .vanilla("minecraft:ocean").category(BiomeCategory.OCEAN_SHELF)
@@ -92,7 +92,7 @@ public final class BiomeRegistry {
                     d.seagrass = 0.26;
                     d.kelp = 0.14;
                 }))
-                .structures(UNDERWATER, RUINS, SHIPWRECK));
+                .structures(UNDERWATER, RUINS, SHIPWRECK, SHIP));
 
         register(ArkBiome.builder("kelp_forest")
                 .vanilla("minecraft:cold_ocean").category(BiomeCategory.OCEAN)
@@ -104,7 +104,7 @@ public final class BiomeRegistry {
                     d.seagrass = 0.22;
                     d.sponges = 0.01;
                 }))
-                .structures(UNDERWATER, SHIPWRECK));
+                .structures(UNDERWATER, SHIPWRECK, SHIP));
 
         register(ArkBiome.builder("open_ocean")
                 .vanilla("minecraft:deep_ocean").category(BiomeCategory.OCEAN)
@@ -114,7 +114,7 @@ public final class BiomeRegistry {
                     d.seagrass = 0.10;
                     d.kelp = 0.05;
                 }))
-                .structures(UNDERWATER, RUINS, SHIPWRECK, MONUMENT));
+                .structures(UNDERWATER, RUINS, SHIPWRECK, MONUMENT, SHIP));
 
         register(ArkBiome.builder("frozen_ocean")
                 .vanilla("minecraft:frozen_ocean").category(BiomeCategory.OCEAN)
@@ -124,7 +124,7 @@ public final class BiomeRegistry {
                     d.iceSheet = 0.85;
                     d.seagrass = 0.04;
                 }))
-                .structures(UNDERWATER, SHIPWRECK));
+                .structures(UNDERWATER, SHIPWRECK, SHIP));
 
         register(ArkBiome.builder("abyssal_plain")
                 .vanilla("minecraft:deep_ocean").category(BiomeCategory.OCEAN_DEEP)
@@ -137,7 +137,7 @@ public final class BiomeRegistry {
                     d.magmaVents = 0.02;
                 }))
                 .ores(1.0, 1.2, 1.4, 1.0, 1.2, 1.0, 1.1, 1.0)
-                .structures(UNDERWATER, RUINS, MONUMENT));
+                .structures(UNDERWATER, RUINS, MONUMENT, SHIP));
 
         register(ArkBiome.builder("ocean_trench")
                 .vanilla("minecraft:deep_ocean").category(BiomeCategory.OCEAN_TRENCH)
@@ -152,7 +152,7 @@ public final class BiomeRegistry {
                     d.dripstone = 0.03;
                 }))
                 .ores(1.0, 1.3, 1.6, 1.4, 1.5, 1.3, 1.8, 1.2)
-                .structures(UNDERWATER, RUINS, MONUMENT));
+                .structures(UNDERWATER, RUINS, MONUMENT, SHIP));
 
         register(ArkBiome.builder("seamount_ridge")
                 .vanilla("minecraft:deep_ocean").category(BiomeCategory.OCEAN_DEEP)
@@ -165,7 +165,7 @@ public final class BiomeRegistry {
                     d.coral = 0.03;
                 }))
                 .ores(1.0, 1.4, 1.8, 1.5, 1.0, 1.0, 1.2, 1.4)
-                .structures(UNDERWATER, RUINS, MONUMENT));
+                .structures(UNDERWATER, RUINS, MONUMENT, SHIP));
     }
 
     // ------------------------------------------------------------------ coasts
@@ -182,7 +182,7 @@ public final class BiomeRegistry {
                     d.sugarCane = 0.03;
                     d.seagrass = 0.05;
                 }))
-                .structures(CAMP, RUINS, SHIPWRECK, TREASURE, RUINED_PORTAL));
+                .structures(CAMP, RUINS, SHIPWRECK, TREASURE, RUINED_PORTAL, SHIP));
 
         register(ArkBiome.builder("snowy_beach")
                 .vanilla("minecraft:snowy_beach").category(BiomeCategory.BEACH)
@@ -193,7 +193,7 @@ public final class BiomeRegistry {
                     d.snowLayer = 0.85;
                     d.iceSheet = 0.25;
                 }))
-                .structures(CAMP, IGLOO, SHIPWRECK, TREASURE));
+                .structures(CAMP, IGLOO, SHIPWRECK, TREASURE, SHIP));
 
         register(ArkBiome.builder("rocky_shore")
                 .vanilla("minecraft:stony_shore").category(BiomeCategory.BEACH)
@@ -205,7 +205,7 @@ public final class BiomeRegistry {
                     d.grass = 0.03;
                     d.glowLichen = 0.01;
                 }))
-                .structures(TOWER, RUINS, SHIPWRECK, RUINED_PORTAL));
+                .structures(TOWER, RUINS, SHIPWRECK, RUINED_PORTAL, SHIP));
 
         register(ArkBiome.builder("volcanic_shore")
                 .vanilla("minecraft:stony_shore").category(BiomeCategory.BEACH)
@@ -225,9 +225,9 @@ public final class BiomeRegistry {
                 .climate(0.6, 0.85).land(0.4, 0.8).height(-4.0, 10.0)
                 .surface(Palette.of(Blocks.MUD, 6.0, Blocks.GRASS_BLOCK, 2.0, Blocks.CLAY, 2.0))
                 .subsurface(Palette.of(Blocks.MUD, 4.0, Blocks.CLAY, 3.0))
-                .tree(TreeSpecies.MANGROVE, 1.0)
+                .tree(TreeKind.MANGROVE, 1.0)
                 .treeDensity(0.012)
-                .treeVariants(0.02, 0.25, 0.08, 0.06, 0.02)
+                .treeVariants(0.02, 0.02)
                 .decoration(deco(d -> {
                     d.grass = 0.18;
                     d.lilyPads = 0.06;
@@ -272,7 +272,7 @@ public final class BiomeRegistry {
                 .climate(0.25, 0.15).land(0.7, 1.0).mountain(0.0, 0.30).height(2.0, 90.0)
                 .surface(Palette.of(Blocks.GRASS_BLOCK, 1.0))
                 .subsurface(Palette.of(Blocks.DIRT, 6.0, Blocks.COARSE_DIRT, 1.0))
-                .tree(TreeSpecies.OAK, 6.0).tree(TreeSpecies.BIG_OAK, 1.0)
+                .tree(TreeKind.OAK, 6.0).tree(TreeKind.BIG_OAK, 1.0)
                 .treeDensity(0.0018)
                 .decoration(deco(d -> {
                     d.grass = 0.45;
@@ -281,14 +281,14 @@ public final class BiomeRegistry {
                     d.pumpkinPatch = 0.002;
                     d.boulders = 0.002;
                 }))
-                .structures(VILLAGE, CITY, CAMP, TOWER, RUINS, BATTLE_TOWER, OUTPOST, TRAIL_RUINS, RUINED_PORTAL));
+                .structures(VILLAGE, CITY, CAMP, TOWER, RUINS, BATTLE_TOWER, OUTPOST, TRAIL_RUINS, RUINED_PORTAL, PREFAB_RUIN));
 
         register(ArkBiome.builder("flower_meadow")
                 .vanilla("minecraft:meadow").category(BiomeCategory.PLAINS)
                 .climate(0.3, 0.45).land(0.7, 1.0).mountain(0.0, 0.35).height(8.0, 110.0)
                 .weird(0.55, 0.5)
                 .surface(Palette.single(Blocks.GRASS_BLOCK))
-                .tree(TreeSpecies.OAK, 1.0).tree(TreeSpecies.CHERRY, 2.0)
+                .tree(TreeKind.OAK, 1.0).tree(TreeKind.CHERRY, 2.0)
                 .treeDensity(0.0008)
                 .decoration(deco(d -> {
                     d.grass = 0.55;
@@ -302,9 +302,9 @@ public final class BiomeRegistry {
                 .climate(0.2, 0.55).land(0.7, 1.0).mountain(0.0, 0.40).height(2.0, 105.0)
                 .surface(Palette.of(Blocks.GRASS_BLOCK, 12.0, Blocks.COARSE_DIRT, 1.0))
                 .subsurface(Palette.of(Blocks.DIRT, 8.0, Blocks.ROOTED_DIRT, 1.0))
-                .tree(TreeSpecies.OAK, 5.0).tree(TreeSpecies.BIRCH, 3.0).tree(TreeSpecies.BIG_OAK, 2.0)
+                .tree(TreeKind.OAK, 5.0).tree(TreeKind.BIRCH, 3.0).tree(TreeKind.BIG_OAK, 2.0)
                 .treeDensity(0.016)
-                .treeVariants(0.05, 0.14, 0.07, 0.05, 0.04)
+                .treeVariants(0.05, 0.04)
                 .decoration(deco(d -> {
                     d.grass = 0.35;
                     d.tallGrass = 0.08;
@@ -319,7 +319,7 @@ public final class BiomeRegistry {
                 .vanilla("minecraft:birch_forest").category(BiomeCategory.FOREST)
                 .climate(0.1, 0.6).land(0.7, 1.0).mountain(0.0, 0.35).height(2.0, 100.0)
                 .weird(0.4, 0.5)
-                .tree(TreeSpecies.BIRCH, 9.0).tree(TreeSpecies.OAK, 1.0)
+                .tree(TreeKind.BIRCH, 9.0).tree(TreeKind.OAK, 1.0)
                 .treeDensity(0.017)
                 .decoration(deco(d -> {
                     d.grass = 0.40;
@@ -334,23 +334,23 @@ public final class BiomeRegistry {
                 .climate(0.05, 0.75).land(0.75, 1.0).mountain(0.0, 0.35).height(2.0, 95.0)
                 .weird(-0.5, 0.5)
                 .surface(Palette.of(Blocks.GRASS_BLOCK, 8.0, Blocks.PODZOL, 3.0, Blocks.COARSE_DIRT, 1.0))
-                .tree(TreeSpecies.DARK_OAK, 7.0).tree(TreeSpecies.OAK, 2.0).tree(TreeSpecies.BIG_OAK, 1.0)
+                .tree(TreeKind.DARK_OAK, 7.0).tree(TreeKind.OAK, 2.0).tree(TreeKind.BIG_OAK, 1.0)
                 .treeDensity(0.022)
-                .treeVariants(0.06, 0.10, 0.10, 0.08, 0.05)
+                .treeVariants(0.06, 0.05)
                 .decoration(deco(d -> {
                     d.grass = 0.22;
                     d.mushrooms = 0.09;
                     d.deadLogs = 0.010;
                     d.mossPatches = 0.05;
                 }))
-                .structures(CASTLE, RUINS, BATTLE_TOWER, TOWER, MANSION));
+                .structures(CASTLE, RUINS, BATTLE_TOWER, TOWER, MANSION, PREFAB_RUIN));
 
         register(ArkBiome.builder("pale_grove")
                 .vanilla("minecraft:pale_garden").category(BiomeCategory.FOREST)
                 .climate(-0.05, 0.65).land(0.78, 1.0).mountain(0.0, 0.3).height(4.0, 90.0)
                 .weird(-0.85, 0.75)
                 .surface(Palette.of(Blocks.GRASS_BLOCK, 6.0, Blocks.PODZOL, 2.0))
-                .tree(TreeSpecies.PALE_OAK, 8.0).tree(TreeSpecies.OAK, 1.0)
+                .tree(TreeKind.PALE_OAK, 8.0).tree(TreeKind.OAK, 1.0)
                 .treeDensity(0.020)
                 .decoration(deco(d -> {
                     d.grass = 0.18;
@@ -365,9 +365,9 @@ public final class BiomeRegistry {
                 .climate(0.35, 0.9).land(0.65, 1.0).mountain(0.0, 0.18).height(-2.0, 22.0)
                 .surface(Palette.of(Blocks.GRASS_BLOCK, 5.0, Blocks.MUD, 4.0, Blocks.CLAY, 1.0))
                 .subsurface(Palette.of(Blocks.MUD, 4.0, Blocks.CLAY, 3.0, Blocks.DIRT, 2.0))
-                .tree(TreeSpecies.OAK, 6.0).tree(TreeSpecies.MANGROVE, 2.0)
+                .tree(TreeKind.OAK, 6.0).tree(TreeKind.MANGROVE, 2.0)
                 .treeDensity(0.011)
-                .treeVariants(0.03, 0.30, 0.14, 0.10, 0.10)
+                .treeVariants(0.03, 0.10)
                 .decoration(deco(d -> {
                     d.grass = 0.30;
                     d.lilyPads = 0.10;
@@ -384,16 +384,16 @@ public final class BiomeRegistry {
                 .weird(-0.35, 0.45)
                 .surface(Palette.of(Blocks.GRASS_BLOCK, 6.0, Blocks.COARSE_DIRT, 3.0, Blocks.PODZOL, 1.0))
                 .subsurface(Palette.of(Blocks.DIRT, 5.0, Blocks.GRAVEL, 2.0))
-                .tree(TreeSpecies.OAK, 2.0).tree(TreeSpecies.SPRUCE, 1.0).tree(TreeSpecies.DEAD, 1.0)
+                .tree(TreeKind.OAK, 2.0).tree(TreeKind.SPRUCE, 1.0).tree(TreeKind.DEAD, 1.0)
                 .treeDensity(0.003)
-                .treeVariants(0.02, 0.30, 0.12, 0.12, 0.25)
+                .treeVariants(0.02, 0.25)
                 .decoration(deco(d -> {
                     d.grass = 0.30;
                     d.fern = 0.10;
                     d.boulders = 0.008;
                     d.deadBush = 0.03;
                 }))
-                .structures(RUINS, CAMP, TOWER, FORTRESS, OUTPOST));
+                .structures(RUINS, CAMP, TOWER, FORTRESS, OUTPOST, PREFAB_RUIN));
     }
 
     // ------------------------------------------------------------------ warm lands
@@ -413,7 +413,7 @@ public final class BiomeRegistry {
                     d.boulders = 0.001;
                 }))
                 .ores(0.8, 1.0, 1.1, 1.5, 0.9, 1.0, 1.0, 0.6)
-                .structures(PYRAMID, VILLAGE, RUINS, CAMP, TOWER, TRAIL_RUINS, RUINED_PORTAL));
+                .structures(PYRAMID, VILLAGE, RUINS, CAMP, TOWER, TRAIL_RUINS, RUINED_PORTAL, PREFAB_RUIN));
 
         register(ArkBiome.builder("red_desert")
                 .vanilla("minecraft:desert").category(BiomeCategory.DESERT)
@@ -433,9 +433,9 @@ public final class BiomeRegistry {
                 .vanilla("minecraft:savanna").category(BiomeCategory.SAVANNA)
                 .climate(0.75, -0.25).land(0.72, 1.0).mountain(0.0, 0.35).height(2.0, 110.0)
                 .surface(Palette.of(Blocks.GRASS_BLOCK, 10.0, Blocks.COARSE_DIRT, 3.0))
-                .tree(TreeSpecies.ACACIA, 9.0).tree(TreeSpecies.OAK, 1.0)
+                .tree(TreeKind.ACACIA, 9.0).tree(TreeKind.OAK, 1.0)
                 .treeDensity(0.005)
-                .treeVariants(0.04, 0.22, 0.06, 0.05, 0.06)
+                .treeVariants(0.04, 0.06)
                 .decoration(deco(d -> {
                     d.grass = 0.42;
                     d.tallGrass = 0.05;
@@ -452,7 +452,7 @@ public final class BiomeRegistry {
                 .stone(Palette.of(Blocks.TERRACOTTA, 3.0, Blocks.STONE, 4.0, Blocks.RED_SANDSTONE, 2.0))
                 .surfaceDepth(6)
                 .roughness(1.6)
-                .tree(TreeSpecies.DEAD, 1.0)
+                .tree(TreeKind.DEAD, 1.0)
                 .treeDensity(0.0008)
                 .decoration(deco(d -> {
                     d.deadBush = 0.07;
@@ -466,9 +466,9 @@ public final class BiomeRegistry {
                 .vanilla("minecraft:jungle").category(BiomeCategory.JUNGLE)
                 .climate(0.8, 0.9).land(0.72, 1.0).mountain(0.0, 0.45).height(2.0, 110.0)
                 .surface(Palette.of(Blocks.GRASS_BLOCK, 10.0, Blocks.PODZOL, 2.0, Blocks.MOSS_BLOCK, 1.0))
-                .tree(TreeSpecies.JUNGLE, 7.0).tree(TreeSpecies.GIANT_JUNGLE, 2.0).tree(TreeSpecies.OAK, 1.0)
+                .tree(TreeKind.JUNGLE, 7.0).tree(TreeKind.GIANT_JUNGLE, 2.0).tree(TreeKind.OAK, 1.0)
                 .treeDensity(0.026)
-                .treeVariants(0.12, 0.16, 0.08, 0.05, 0.03)
+                .treeVariants(0.12, 0.03)
                 .decoration(deco(d -> {
                     d.grass = 0.55;
                     d.tallGrass = 0.12;
@@ -477,14 +477,14 @@ public final class BiomeRegistry {
                     d.mushrooms = 0.03;
                     d.mossPatches = 0.10;
                 }))
-                .structures(JUNGLE_TEMPLE, RUINS, BRIDGE, TOWER, TRAIL_RUINS));
+                .structures(JUNGLE_TEMPLE, RUINS, BRIDGE, TOWER, TRAIL_RUINS, PREFAB_RUIN));
 
         register(ArkBiome.builder("bamboo_jungle")
                 .vanilla("minecraft:bamboo_jungle").category(BiomeCategory.JUNGLE)
                 .climate(0.7, 0.95).land(0.75, 1.0).mountain(0.0, 0.35).height(2.0, 95.0)
                 .weird(0.7, 0.6)
                 .surface(Palette.of(Blocks.GRASS_BLOCK, 8.0, Blocks.PODZOL, 3.0))
-                .tree(TreeSpecies.JUNGLE, 3.0)
+                .tree(TreeKind.JUNGLE, 3.0)
                 .treeDensity(0.011)
                 .decoration(deco(d -> {
                     d.bamboo = 0.35;
@@ -502,9 +502,9 @@ public final class BiomeRegistry {
                 .vanilla("minecraft:taiga").category(BiomeCategory.TAIGA)
                 .climate(-0.45, 0.6).land(0.7, 1.0).mountain(0.0, 0.45).height(4.0, 130.0)
                 .surface(Palette.of(Blocks.GRASS_BLOCK, 8.0, Blocks.PODZOL, 4.0, Blocks.COARSE_DIRT, 1.0))
-                .tree(TreeSpecies.SPRUCE, 8.0).tree(TreeSpecies.GIANT_SPRUCE, 2.0)
+                .tree(TreeKind.SPRUCE, 8.0).tree(TreeKind.GIANT_SPRUCE, 2.0)
                 .treeDensity(0.018)
-                .treeVariants(0.08, 0.10, 0.09, 0.07, 0.06)
+                .treeVariants(0.08, 0.06)
                 .decoration(deco(d -> {
                     d.grass = 0.20;
                     d.fern = 0.22;
@@ -518,7 +518,7 @@ public final class BiomeRegistry {
                 .vanilla("minecraft:snowy_taiga").category(BiomeCategory.TAIGA)
                 .climate(-0.8, 0.55).land(0.7, 1.0).mountain(0.0, 0.5).height(6.0, 150.0)
                 .surface(Palette.of(Blocks.GRASS_BLOCK, 5.0, Blocks.PODZOL, 3.0, Blocks.SNOW_BLOCK, 2.0))
-                .tree(TreeSpecies.SPRUCE, 9.0).tree(TreeSpecies.GIANT_SPRUCE, 1.0)
+                .tree(TreeKind.SPRUCE, 9.0).tree(TreeKind.GIANT_SPRUCE, 1.0)
                 .treeDensity(0.015)
                 .decoration(deco(d -> {
                     d.snowLayer = 0.95;
@@ -533,7 +533,7 @@ public final class BiomeRegistry {
                 .climate(-0.9, -0.1).land(0.7, 1.0).mountain(0.0, 0.35).height(4.0, 120.0)
                 .surface(Palette.of(Blocks.SNOW_BLOCK, 6.0, Blocks.GRASS_BLOCK, 3.0, Blocks.PACKED_ICE, 1.0))
                 .subsurface(Palette.of(Blocks.DIRT, 5.0, Blocks.GRAVEL, 2.0))
-                .tree(TreeSpecies.SPRUCE, 1.0).tree(TreeSpecies.DEAD, 1.0)
+                .tree(TreeKind.SPRUCE, 1.0).tree(TreeKind.DEAD, 1.0)
                 .treeDensity(0.0015)
                 .decoration(deco(d -> {
                     d.snowLayer = 1.0;
@@ -563,20 +563,20 @@ public final class BiomeRegistry {
                 .vanilla("minecraft:meadow").category(BiomeCategory.HIGHLAND)
                 .climate(0.05, 0.35).land(0.75, 1.0).mountain(0.22, 0.62).height(60.0, 165.0)
                 .surface(Palette.of(Blocks.GRASS_BLOCK, 9.0, Blocks.COARSE_DIRT, 2.0, Blocks.STONE, 1.0))
-                .tree(TreeSpecies.SPRUCE, 3.0).tree(TreeSpecies.OAK, 2.0)
+                .tree(TreeKind.SPRUCE, 3.0).tree(TreeKind.OAK, 2.0)
                 .treeDensity(0.007)
                 .decoration(deco(d -> {
                     d.grass = 0.35;
                     d.flowers = 0.10;
                     d.boulders = 0.010;
                 }))
-                .structures(CASTLE, FORTRESS, TOWER, RUINS, CAMP, BRIDGE, BATTLE_TOWER, OUTPOST));
+                .structures(CASTLE, FORTRESS, TOWER, RUINS, CAMP, BRIDGE, BATTLE_TOWER, OUTPOST, PREFAB_RUIN));
 
         register(ArkBiome.builder("alpine_forest")
                 .vanilla("minecraft:grove").category(BiomeCategory.HIGHLAND)
                 .climate(-0.5, 0.55).land(0.75, 1.0).mountain(0.28, 0.7).height(80.0, 190.0)
                 .surface(Palette.of(Blocks.GRASS_BLOCK, 5.0, Blocks.SNOW_BLOCK, 4.0, Blocks.PODZOL, 2.0))
-                .tree(TreeSpecies.SPRUCE, 8.0).tree(TreeSpecies.GIANT_SPRUCE, 3.0)
+                .tree(TreeKind.SPRUCE, 8.0).tree(TreeKind.GIANT_SPRUCE, 3.0)
                 .treeDensity(0.014)
                 .decoration(deco(d -> {
                     d.snowLayer = 0.7;
@@ -594,7 +594,7 @@ public final class BiomeRegistry {
                 .stone(Palette.of(Blocks.STONE, 6.0, Blocks.ANDESITE, 2.0, Blocks.GRANITE, 2.0, Blocks.TUFF, 1.0))
                 .surfaceDepth(3)
                 .roughness(1.5)
-                .tree(TreeSpecies.SPRUCE, 1.0).tree(TreeSpecies.DEAD, 1.0)
+                .tree(TreeKind.SPRUCE, 1.0).tree(TreeKind.DEAD, 1.0)
                 .treeDensity(0.003)
                 .decoration(deco(d -> {
                     d.boulders = 0.020;
@@ -602,7 +602,7 @@ public final class BiomeRegistry {
                     d.glowLichen = 0.02;
                 }))
                 .ores(1.2, 1.5, 1.3, 1.1, 1.2, 1.1, 1.2, 2.5)
-                .structures(FORTRESS, TOWER, RUINS, BRIDGE, BATTLE_TOWER, CASTLE));
+                .structures(FORTRESS, TOWER, RUINS, BRIDGE, BATTLE_TOWER, CASTLE, PREFAB_RUIN));
 
         register(ArkBiome.builder("snowy_peaks")
                 .vanilla("minecraft:snowy_slopes").category(BiomeCategory.PEAK)
@@ -664,7 +664,7 @@ public final class BiomeRegistry {
                     d.cactus = 0.003;
                 }))
                 .ores(1.1, 1.2, 1.3, 2.0, 1.1, 1.0, 1.2, 1.1)
-                .structures(TEMPLE, PYRAMID, RUINS, BRIDGE, TOWER, BATTLE_TOWER, TRAIL_RUINS));
+                .structures(TEMPLE, PYRAMID, RUINS, BRIDGE, TOWER, BATTLE_TOWER, TRAIL_RUINS, PREFAB_RUIN));
     }
 
     // ------------------------------------------------------------------ exotic
@@ -675,7 +675,7 @@ public final class BiomeRegistry {
                 .climate(0.35, 0.5).land(0.75, 1.0).mountain(0.1, 0.5).height(40.0, 150.0)
                 .weird(0.9, 0.75)
                 .surface(Palette.of(Blocks.GRASS_BLOCK, 10.0, Blocks.MOSS_BLOCK, 1.0))
-                .tree(TreeSpecies.CHERRY, 9.0).tree(TreeSpecies.OAK, 1.0)
+                .tree(TreeKind.CHERRY, 9.0).tree(TreeKind.OAK, 1.0)
                 .treeDensity(0.015)
                 .decoration(deco(d -> {
                     d.grass = 0.40;
@@ -702,7 +702,7 @@ public final class BiomeRegistry {
                 .climate(0.5, 0.95).land(0.75, 1.0).mountain(0.0, 0.4).height(4.0, 100.0)
                 .weird(0.25, 0.4)
                 .surface(Palette.of(Blocks.GRASS_BLOCK, 8.0, Blocks.MOSS_BLOCK, 4.0))
-                .tree(TreeSpecies.AZALEA, 4.0).tree(TreeSpecies.OAK, 3.0).tree(TreeSpecies.BIG_OAK, 2.0)
+                .tree(TreeKind.AZALEA, 4.0).tree(TreeKind.OAK, 3.0).tree(TreeKind.BIG_OAK, 2.0)
                 .treeDensity(0.017)
                 .decoration(deco(d -> {
                     d.grass = 0.50;
@@ -720,7 +720,7 @@ public final class BiomeRegistry {
                 .surface(Palette.of(Blocks.GRASS_BLOCK, 8.0, Blocks.MOSS_BLOCK, 2.0))
                 .subsurface(Palette.of(Blocks.DIRT, 6.0, Blocks.ROOTED_DIRT, 2.0))
                 .stone(Palette.of(Blocks.STONE, 5.0, Blocks.CALCITE, 2.0, Blocks.AMETHYST_BLOCK, 1.0))
-                .tree(TreeSpecies.AZALEA, 2.0).tree(TreeSpecies.OAK, 1.0)
+                .tree(TreeKind.AZALEA, 2.0).tree(TreeKind.OAK, 1.0)
                 .treeDensity(0.011)
                 .decoration(deco(d -> {
                     d.grass = 0.35;

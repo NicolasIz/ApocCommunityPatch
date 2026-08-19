@@ -3,7 +3,6 @@ package com.arkcronist.gen.bukkit.populator;
 import com.arkcronist.gen.bukkit.ArkWorld;
 import com.arkcronist.gen.bukkit.ArkcronistPlugin;
 import com.arkcronist.gen.bukkit.writer.ChunkClippedWriter;
-import com.arkcronist.gen.core.decorate.FeaturePlacer;
 import com.arkcronist.gen.core.terrain.Preset;
 import org.bukkit.generator.BlockPopulator;
 import org.bukkit.generator.LimitedRegion;
@@ -40,7 +39,7 @@ public final class FeaturePopulator extends BlockPopulator {
 
         world.decoration().decorate(chunkX, chunkZ, writer);
 
-        int radius = FeaturePlacer.chunkRadius();
+        int radius = world.features().chunkRadius();
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {
                 world.features().place(chunkX + dx, chunkZ + dz, writer);

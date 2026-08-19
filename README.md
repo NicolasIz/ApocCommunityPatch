@@ -85,31 +85,71 @@ controla color de hierba, niebla y spawns naturales; el resto lo decide Arkcroni
 Bajo tierra el proveedor de biomas cambia a biomas de cueva por regiones, así que el subsuelo tiene
 ambiente propio.
 
-### Árboles
+### Árboles (.schem)
 
-Cada especie tiene una silueta propia, no un radio distinto:
+**Todo árbol grande del mundo es un archivo `.schem`.** El generador procedural de troncos y copas ya
+no existe: lo que hay en `plugins/ArkcronistGenerator/prefabs/trees/` es exactamente lo que crece. La
+vegetación pequeña — hierba, flores, arbustos, setas, plantas de cueva — sigue siendo procedural.
 
-| Silueta | Especies | Cómo se ve |
+El JAR trae **33 árboles** repartidos en seis familias:
+
+| Familia | Ejemplo | Cómo se ve |
 |---|---|---|
-| `PAGODA` | pícea, pícea gigante | Discos apilados con hueco entre ellos y falda que se ensancha hacia abajo. |
-| `SPIRE` | abedul | Tronco alto y limpio con copa estrecha. |
-| `ROUND` | roble joven, cerezo, azalea | Bola sobre un tallo. |
-| `BROAD` | roble grande, jungla | Tronco grueso, varias ramas y una copa fundida con lóbulos. |
-| `MEGA` | roble oscuro, roble pálido, jungla gigante | Tronco de 3 de ancho y copa ancha, plana y pesada. |
-| `PLATE` | acacia | El tronco se abre en ramas inclinadas rematadas por plataformas planas. |
-| `WILLOW` | mangle | Copa ancha con hebras colgando del borde y raíces zanco. |
+| Jungla / mangle | `giant_jungle_mangrove_01` (31×45×31) | Tronco grueso con ramas largas, copa doble de hoja de jungla y mangle, enredaderas colgando. |
+| Azalea / abedul | `giant_azalea_birch_01` (31×37×31) | Copa clara y ancha, hoja florida mezclada con abedul. |
+| Acacia / roble | `giant_acacia_oak_01` (31×37×31) | Copa en plataformas escalonadas sobre ramas inclinadas. |
+| Pícea / abedul | `medium_spruce_birch_02` (15×55×15) | Conífera estrecha y muy alta, faldón de ramas hasta abajo. |
+| Muertos (`dead`) | `large_dead_dark_oak_01` (21×39×21) | Ramaje desnudo, sin una sola hoja. |
+| Cristal y otoño | `giant_crystal_amethyst_01`, `giant_autumn_birch_01` | Copas de amatista y de vidrio tintado: solo en CHAOTIC e INSANE. |
 
+**Añadir árboles no requiere recompilar.** Basta dejar el `.schem` en la carpeta y reiniciar. El
+nombre del archivo es la ficha técnica: `giant_cherry_01.schem` se registra como tamaño `giant`,
+especie `cherry`, y a partir de ahí los bosques de cerezos lo usan. Si un bioma pide una especie que
+nadie ha aportado, el registro cae al pariente más cercano (cerezo → azalea o abedul) en vez de dejar
+el suelo pelado. Las familias `dead`, `crystal` y `autumn` son *opt-in*: no aparecen en un robledal
+normal por mucho que su nombre de archivo contenga «oak».
 
-
-Árboles procedurales completos: **tronco (con estrechamiento), ramas orientadas, raíces, copa**, y
-variantes por semilla: gigantes, inclinados, caídos, tocones y árboles muertos. Catorce especies
-repartidas por región (roble, abedul, pícea, pícea gigante, jungla, jungla gigante, acacia, roble
-oscuro, roble pálido, mangle, cerezo, azalea, muerto…).
+Cada árbol se elige por **bioma, especie, tamaño, preset y semilla**, y se coloca con una de cuatro
+rotaciones (los estados de bloque rotan con él: escaleras, troncos con eje, vallas, raíles, carteles).
+La separación entre árboles se deriva del ancho del propio prefab, así que meter un árbol colosal da
+un bosque de árboles colosales bien espaciados y no un techo continuo de hojas.
 
 **Ningún árbol se corta en el borde de un chunk.** Cada árbol se dibuja entero y el escritor recorta;
 cada chunk recalcula además los árboles de sus vecinos y coloca la parte que le corresponde. Hay una
-prueba automatizada que compara el árbol dibujado entero contra el mismo árbol ensamblado desde una
+prueba automatizada que compara el prefab dibujado entero contra el mismo prefab ensamblado desde una
 rejilla de chunks: deben ser idénticos bloque a bloque.
+
+### Barcos (.schem)
+
+Cinco navíos de vela en `prefabs/ships/`: **cúter** (28×28×13), **goleta** (39×39×14), **bergantín**
+(50×50×26), **fragata** (68×55×27) y **navío de primera clase** (85×77×32).
+
+El mar decide qué es cada sitio:
+
+- **Océano profundo** (14+ bloques de agua): el casco flota en la superficie y sus bodegas se
+  vacían. El aire que se escribe es solo el que el casco encierra — calculado con un relleno por
+  inundación desde fuera al cargar el prefab — así que un barco flotando no abre un agujero
+  rectangular en el mar.
+- **Plataforma continental y costa**: el mismo `.schem` cae al fondo, se hunde unos bloques en él,
+  queda abierto al agua y se deteriora de los mástiles hacia abajo. El deterioro es determinista por
+  semilla: el mismo pecio sale igual siempre.
+
+Los cofres del barco se registran como botín, así que abordar uno tiene sentido.
+
+| Preset | Flota |
+|---|---|
+| BASE | Un cúter o una goleta, poco frecuentes, casi siempre pecios. |
+| CHAOTIC | Cascos más grandes, más a menudo; a veces dos anclados juntos. |
+| INSANE | Navíos de primera clase en alta mar y escuadras de hasta tres. |
+
+### Monumentos .schem
+
+`prefabs/ruins/citadel_bashna.schem` — una ciudadela en ruinas de 38×98×38 en piedra musgosa. Exige
+terreno realmente llano, hunde su base y tiende una capa de cimentación bajo su huella para que los
+muros lleguen al suelo en vez de flotar sobre él. Trae guarnición y un jefe.
+
+Cualquier carpeta nueva dentro de `prefabs/` se convierte en una categoría; `prefabs/castles/`
+funciona igual que las tres que vienen de fábrica.
 
 ### Estructuras
 
@@ -155,7 +195,7 @@ principal cuando el chunk se carga (y solo una vez, marcado en el *persistent da
 
 ## 2. Instalación y uso
 
-1. Copia `ArkcronistGenerator-1.2.0.jar` en `plugins/`.
+1. Copia `ArkcronistGenerator-1.3.0.jar` en `plugins/`.
 2. Arranca el servidor una vez para que se genere `plugins/ArkcronistGenerator/config.yml`.
 3. Crea el mundo con tu gestor de mundos (ArkcronistWorlds, Multiverse, etc.):
 
@@ -188,6 +228,7 @@ NMS: todo se hace con la API de Paper, así que no hay nada que actualizar entre
 | `/ag biome [x z]` | Bioma del generador en una posición. |
 | `/ag locate [tipo]` | Busca la estructura más cercana (asíncrono). |
 | `/ag structures` | Catálogo de estructuras. |
+| `/ag prefabs` | Lista los `.schem` cargados: árboles, barcos y monumentos, con tamaño y número de bloques. |
 | `/ag presets` | Lista BASE, CHAOTIC e INSANE. |
 | `/ag stats` | Memoria, tamaño de caché, tasa de aciertos, colas de mobs. |
 | `/ag bench [preset] [chunks]` | Benchmark de generación en un hilo aparte. |
@@ -241,12 +282,13 @@ com.arkcronist.gen
 │   ├── terrain/           muestreador de columnas, rejilla + erosión, cuevas, densidad 3D,
 │   │                      estratos, menas, caché, motor
 │   ├── biome/             tabla de biomas, perfiles de decoración, selector
-│   ├── tree/              especies, variantes, constructor procedural
-│   ├── decorate/          colocación de árboles/rocas y decoración por columna
-│   ├── structure/         búfer, kit de construcción, colocador, 14 estructuras
+│   ├── prefab/            lector NBT+gzip propio, schematics Sponge v2/v3, rotación de
+│   │                      estados de bloque, registro de prefabs por carpeta
+│   ├── decorate/          colocación de árboles .schem/rocas y decoración por columna
+│   ├── structure/         búfer, kit de construcción, colocador, 33 estructuras
 │   └── bench/             benchmark ejecutable
 └── bukkit/                ← capa fina sobre la API de Paper
-    ├── ArkChunkGenerator, ArkBiomeProvider, BlockBridge, WorldRegistry
+    ├── ArkChunkGenerator, ArkBiomeProvider, BlockBridge, WorldRegistry, PrefabInstaller
     ├── populator/         features + estructuras
     ├── mobs/              cola de spawns, fábrica de minibosses, listener
     ├── loot/              relleno de cofres
@@ -257,6 +299,11 @@ com.arkcronist.gen
 El núcleo escribe **enteros**, no `BlockData`. La traducción a bloques reales ocurre una sola vez al
 arrancar. Eso hace que todo el terreno se pueda probar en JUnit sin servidor y que la generación no
 toque nunca el parser de estados de bloque.
+
+Los `.schem` entran por la misma puerta: al cargarlos, cada entrada de su paleta se registra como un
+entero más — una vez por cada una de las cuatro rotaciones — de modo que colocar un prefab cuesta lo
+mismo que colocar terreno. El lector de NBT y gzip es propio y no añade ninguna dependencia: el
+plugin sigue siendo **un solo JAR sin librerías empaquetadas**.
 
 ### Rendimiento
 
@@ -287,27 +334,35 @@ Optimizaciones concretas hechas durante el desarrollo, con su medida:
 | Descarte por caja envolvente de los árboles de vecinos | 1,5 ms/chunk | 1,0 ms/chunk |
 | La pasada de bloques publica la superficie sólida en vez de recalcular los campos 3D | 2,3 ms/chunk (features) | 1,3 ms/chunk |
 | Rejilla de cuevas a 4x6 en vez de 4x4 | 7,9 ms/chunk | 7,7 ms/chunk |
+| La comprobación de emplazamiento se hace una sola vez, al resolver la celda | 10,7 ms/chunk | 8,4 ms/chunk |
 
-Medición actual (un solo hilo, contenedor de desarrollo, 96 chunks por preset):
+Sobre lo último: `/ag locate` y la construcción usaban cada uno su propia comprobación de terreno, y
+la de `locate` además consumía el generador aleatorio compartido del emplazamiento — es decir, mirar
+dónde estaba un castillo cambiaba el castillo que se construía. Ahora la celda guarda una semilla y
+la comprobación se hace una vez: sale más barato **y** deja de ser una fuente de indeterminismo.
+
+Los prefabs no aparecen como una línea aparte en la tabla porque no la necesitan: un `.schem` se
+coloca escribiendo enteros ya resueltos, en mosaicos de 16×16 que se descartan enteros cuando el
+chunk actual no los toca. Sustituir el constructor procedural de árboles por prefabs bajó la fase de
+*features* de ~2,3 a ~1,8 ms/chunk.
+
+Medición actual (un solo hilo, contenedor de desarrollo, 256 chunks por preset, 39 prefabs cargados):
 
 ```
-BASE:    ~10,7 ms/chunk  (~93 chunks/s/hilo)
-CHAOTIC: ~10,1 ms/chunk  (~99 chunks/s/hilo)
-INSANE:  ~11,8 ms/chunk  (~85 chunks/s/hilo)
+BASE:    ~8,4 ms/chunk  (~120 chunks/s/hilo)
+CHAOTIC: ~8,3 ms/chunk  (~121 chunks/s/hilo)
+INSANE:  ~9,1 ms/chunk  (~110 chunks/s/hilo)
 ```
 
-De esos, ~2 ms son la búsqueda de terreno plano de las estructuras (con caché de emplazamiento por
-celda) y el resto el subsuelo vivo. Sigue siendo generación en paralelo: Paper reparte los chunks
-entre varios hilos.
-
-El coste subió respecto de la 1.0 porque el subsuelo pasó de estar vacío a tener biomas de cueva,
-acuíferos y decoración, y porque el catálogo de estructuras es el doble de grande. A cambio:
+Reparto por fase en BASE: 6,0 ms bloques, 1,8 ms features (árboles y rocas), 0,5 ms estructuras,
+0,004 ms mapa de alturas (99% de aciertos de caché). Sigue siendo generación en paralelo: Paper
+reparte los chunks entre varios hilos.
 
 Reproducible con:
 
 ```bash
 mvn -q package -DskipTests
-java -cp target/ArkcronistGenerator-1.2.0.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
+java -cp target/ArkcronistGenerator-1.3.0.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
 ```
 
 o dentro del juego con `/ag bench INSANE 256`.
@@ -316,7 +371,7 @@ o dentro del juego con `/ag bench INSANE 256`.
 
 ## 6. Pruebas
 
-109 pruebas JUnit 5, todas sin servidor:
+106 pruebas JUnit 5, todas sin servidor:
 
 ```bash
 mvn test
@@ -333,7 +388,9 @@ Cubren, entre otras cosas:
 - Bedrock, llenado de agua, capas de superficie y reproducibilidad bloque a bloque.
 - **Las cuevas nunca abren el fondo marino** (los océanos no se vacían).
 - Volumen de cueva dentro de límites por preset (ni macizo ni hueco).
-- **Árboles nunca cortados en el borde de chunk**, para las catorce especies.
+- **Prefabs nunca cortados en el borde de chunk**: el árbol, el barco y la ciudadela
+  dibujados enteros se comparan bloque a bloque contra los mismos ensamblados desde una rejilla de
+  chunks.
 - Volcado de estructuras sin pérdidas ni solapes, colocación determinista, botín y minibosses.
 - Caché acotada, tasa de aciertos y benchmark.
 
@@ -357,12 +414,30 @@ Pruebas añadidas en la 1.2:
 - **Las estructuras de superficie caen en terreno plano**, comprobado sobre los emplazamientos que
   devuelve `/ag locate` — que ahora es literalmente el mismo cálculo que usa la construcción.
 
+Pruebas añadidas en la 1.3, para el sistema de prefabs:
+
+- Las 39 schematics del JAR cargan sin un solo error, con sus dimensiones, anclajes y tamaños.
+- **Las cuatro rotaciones escriben exactamente los mismos bloques** y giran el pie de la huella; los
+  estados de bloque (escaleras, ejes de tronco, vallas, raíles, carteles) rotan con ellas.
+- Colocar un prefab dos veces da el mismo resultado, y el deterioro de un pecio es determinista.
+- **El aire que se escribe es solo el que el casco encierra**: un barco a flote conserva sus bodegas
+  secas sin abrir un hueco rectangular en el mar.
+- Los cofres se registran en las coordenadas donde realmente se escribieron, en las cuatro rotaciones.
+- Un `.schem` corrupto o vacío se rechaza con un error legible en vez de tumbar el arranque.
+- La selección por especie acierta la familia, y `dead`, `crystal` y `autumn` no aparecen si no se
+  piden por su nombre — ni siquiera se cruzan entre ellas.
+- Los bosques se plantan en los tres presets, **BASE nunca produce árboles de cristal u otoño y
+  INSANE sí**, y la misma semilla da el mismo bosque dos veces.
+- Los barcos se colocan sobre agua en los tres presets y llevan botín; el monumento `.schem` se
+  levanta sobre terreno llano y con guarnición.
+- Una carpeta de prefabs vacía degrada en silencio en vez de fallar.
+
 ---
 
 ## 7. Compilar
 
 ```bash
-mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.2.0.jar
+mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.3.0.jar
 ```
 
 Requiere JDK 21 y la Paper API 1.21.8 (`repo.papermc.io`, ya declarado en el `pom.xml`).
@@ -371,10 +446,14 @@ Requiere JDK 21 y la Paper API 1.21.8 (`repo.papermc.io`, ya declarado en el `po
 
 ## 8. Estado y siguientes pasos
 
-Esta es la primera versión completa y funcional, pensada para probarla en el servidor real y afinarla
-con lo que se vea in situ. Lo que ya está listo para iterar:
+La 1.3 sustituye por completo el generador procedural de árboles por el sistema de prefabs `.schem`.
+Lo que queda por delante:
 
+- **Más árboles.** El paquete que viene de fábrica son 33 diseños y casi todos son grandes. Añadir
+  copas medianas y pequeñas es cuestión de dejar los `.schem` en `prefabs/trees/`: el registro los
+  recoge solos y la separación entre árboles se recalcula a partir de su ancho.
+- Más categorías de prefab. `prefabs/castles/`, `prefabs/villages/` o `prefabs/temples/` ya funcionan
+  como carpetas; falta escribirles la regla de emplazamiento que tienen barcos y monumentos.
+- Evitar solapes entre las estructuras propias y las vanilla, que hoy se ignoran mutuamente.
 - Ajuste fino de densidad de estructuras y de botín con datos de juego real.
 - Habilidades activas de minibosses (ahora tienen estadísticas, equipo y efectos).
-- Más variantes por bioma de las estructuras existentes.
-- Decoración de cuevas (estalactitas, musgo, lagos subterráneos) más allá de lo actual.

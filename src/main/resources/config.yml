@@ -28,6 +28,51 @@ performance:
   # Allow Paper to generate chunks on several threads at once.
   parallel-generation: true
 
+# ---------------------------------------------------------------------------
+#  Prefabs (.schem)
+# ---------------------------------------------------------------------------
+#  Every large tree, every ship and every schematic landmark in the world comes
+#  from a Sponge .schem file under:
+#
+#     plugins/ArkcronistGenerator/prefabs/trees/
+#     plugins/ArkcronistGenerator/prefabs/ships/
+#     plugins/ArkcronistGenerator/prefabs/ruins/
+#
+#  Drop a new .schem into one of those folders and restart: there is nothing to
+#  register and nothing to recompile. New folders work too - a directory named
+#  'castles' simply becomes a category called castles.
+#
+#  The file NAME is the metadata. Words in it become tags, and the generator
+#  matches them against what a biome asks for:
+#
+#     giant_jungle_mangrove_01.schem  -> size 'giant', species jungle/mangrove
+#     medium_spruce_birch_02.schem    -> size 'medium', species spruce/birch
+#     large_dead_dark_oak_01.schem    -> a bare, leafless dark oak
+#
+#  Sizes: small, medium, large, giant. Leave the size out and it is worked out
+#  from the schematic's own footprint.
+#
+#  Species the biomes ask for: oak, big_oak, birch, spruce, giant_spruce,
+#  jungle, giant_jungle, acacia, dark_oak, pale_oak, mangrove, cherry, azalea.
+#  A species nobody supplied a file for falls back to the closest relative, so
+#  a missing cherry tree becomes an azalea or birch rather than bare ground.
+#
+#  Three families are opt-in and never turn up unless asked for by name:
+#     dead     - bare trunks and snags, used by a biome's dead-tree share
+#     crystal  - amethyst trees, CHAOTIC and INSANE only
+#     autumn   - stained glass canopies, CHAOTIC and INSANE only
+#
+#  Optional: a file named <prefab>.properties beside a .schem overrides the
+#  values guessed from the name:
+#     size=giant        weight=2.0        anchor=center|base
+#     waterline=11      tags=galleon,pirate
+# ---------------------------------------------------------------------------
+prefabs:
+  # Unpack the schematics bundled in the jar on start-up. Existing files are
+  # never overwritten, so this only ever restores something that was deleted.
+  # Turn it off once you have curated the folder by hand.
+  extract-bundled: true
+
 structures:
   fill-loot: true
 
@@ -42,7 +87,8 @@ structures:
   # world does not get two ocean monuments on the same spot. List ids here to force one of
   # them back on, or add ids to 'disabled' to switch any structure off entirely.
   # Built-in ids: village, city, castle, fortress, tower, battle_tower, camp, ruins, bridge,
-  #   temple, dungeon, vault, geode, fossil, sky_sanctuary, underwater
+  #   temple, dungeon, vault, geode, fossil, sky_sanctuary, underwater,
+  #   prefab_ship (schematic vessels), prefab_ruin (schematic landmarks)
   force-enabled: []
   disabled: []
 

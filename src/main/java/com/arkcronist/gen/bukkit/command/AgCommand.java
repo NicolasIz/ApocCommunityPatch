@@ -6,6 +6,8 @@ import com.arkcronist.gen.bukkit.BlockBridge;
 import com.arkcronist.gen.core.bench.TerrainBenchmark;
 import com.arkcronist.gen.core.biome.ArkBiome;
 import com.arkcronist.gen.core.biome.StructureTag;
+import com.arkcronist.gen.core.prefab.Prefab;
+import com.arkcronist.gen.core.prefab.PrefabRegistry;
 import com.arkcronist.gen.core.structure.Structure;
 import com.arkcronist.gen.core.terrain.Preset;
 import com.arkcronist.gen.core.terrain.TerrainCache;
@@ -49,6 +51,7 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
             case "biome" -> biome(sender, args);
             case "locate" -> locate(sender, args);
             case "structures" -> structures(sender);
+            case "prefabs" -> prefabs(sender);
             case "stats" -> stats(sender);
             case "bench" -> bench(sender, args);
             case "top" -> top(sender);
@@ -67,6 +70,7 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§8 - §f/ag biome [x z] §7names the generator biome at a position");
         sender.sendMessage("§8 - §f/ag locate [structure] §7finds the nearest structure");
         sender.sendMessage("§8 - §f/ag structures §7lists the structure catalogue");
+        sender.sendMessage("§8 - §f/ag prefabs §7lists the .schem trees, ships and landmarks loaded");
         sender.sendMessage("§8 - §f/ag presets §7lists BASE, CHAOTIC and INSANE");
         sender.sendMessage("§8 - §f/ag stats §7cache and memory diagnostics");
         sender.sendMessage("§8 - §f/ag bench [preset] [chunks] §7runs a generation benchmark");
@@ -159,6 +163,24 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    private void prefabs(CommandSender sender) {
+        PrefabRegistry registry = plugin.prefabs();
+        if (registry.size() == 0) {
+            sender.sendMessage(PREFIX + "§cNo prefabs are loaded. Put .schem files in "
+                    + plugin.getDataFolder().getName() + "/prefabs/<trees|ships|ruins>/ and restart.");
+            return;
+        }
+        sender.sendMessage(PREFIX + registry.size() + " prefabs loaded:");
+        for (String category : registry.categories()) {
+            List<Prefab> prefabs = registry.category(category);
+            sender.sendMessage("§8 " + category + " §7(" + prefabs.size() + ")");
+            for (Prefab prefab : prefabs) {
+                sender.sendMessage("§8  - §f" + prefab.id + " §7" + prefab.width + "x" + prefab.height
+                        + "x" + prefab.length + ", " + prefab.sizeClass + ", " + prefab.solidCount + " blocks");
+            }
+        }
+    }
+
     private void locate(CommandSender sender, String[] args) {
         ArkWorld world = worldOf(sender);
         if (world == null) {
@@ -226,7 +248,8 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
         final int total = chunks;
         sender.sendMessage(PREFIX + "Benchmarking " + preset + " over " + total + " chunks…");
         plugin.getServer().getAsyncScheduler().runNow(plugin, task -> {
-            TerrainBenchmark.Result result = TerrainBenchmark.run(seed, preset, total, 100000, 100000);
+            TerrainBenchmark.Result result = TerrainBenchmark.run(seed, preset, total, 100000, 100000,
+                    plugin.prefabs());
             plugin.getServer().getScheduler().runTask(plugin, () ->
                     sender.sendMessage(PREFIX + "§f" + result.describe()));
         });
@@ -261,8 +284,8 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
                                       @NotNull String alias, String @NotNull [] args) {
         List<String> options = new ArrayList<>();
         if (args.length == 1) {
-            options.addAll(List.of("help", "info", "biome", "locate", "structures", "presets",
-                    "stats", "bench", "top", "reload", "version"));
+            options.addAll(List.of("help", "info", "biome", "locate", "structures", "prefabs",
+                    "presets", "stats", "bench", "top", "reload", "version"));
         } else if (args.length == 2 && args[0].equalsIgnoreCase("bench")) {
             for (Preset preset : Preset.values()) {
                 options.add(preset.name());

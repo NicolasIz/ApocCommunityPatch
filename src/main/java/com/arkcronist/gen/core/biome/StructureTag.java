@@ -28,6 +28,8 @@ public enum StructureTag {
     MONUMENT,
     SHIPWRECK,
     TREASURE,
+    /** Schematic vessels: floating fleets in deep water, wrecks on shelves and beaches. */
+    SHIP,
     // Air
     SKY,
     BRIDGE,
@@ -40,5 +42,7 @@ public enum StructureTag {
     TRIAL_CHAMBER,
     GEODE,
     // Forest specialities
-    MANSION
+    MANSION,
+    /** Schematic landmarks loaded from {@code prefabs/ruins/}. */
+    PREFAB_RUIN
 }

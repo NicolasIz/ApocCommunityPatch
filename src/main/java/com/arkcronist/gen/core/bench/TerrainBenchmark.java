@@ -2,6 +2,7 @@ package com.arkcronist.gen.core.bench;
 
 import com.arkcronist.gen.core.decorate.DecorationPlacer;
 import com.arkcronist.gen.core.decorate.FeaturePlacer;
+import com.arkcronist.gen.core.prefab.PrefabRegistry;
 import com.arkcronist.gen.core.structure.LootMarker;
 import com.arkcronist.gen.core.structure.MobSpawn;
 import com.arkcronist.gen.core.structure.SpawnerMarker;
@@ -44,10 +45,16 @@ public final class TerrainBenchmark {
     }
 
     public static Result run(long seed, Preset preset, int chunks, int originX, int originZ) {
+        return run(seed, preset, chunks, originX, originZ, PrefabRegistry.discover());
+    }
+
+    /** Same benchmark against a specific prefab set, so the server can measure what it actually has. */
+    public static Result run(long seed, Preset preset, int chunks, int originX, int originZ,
+                             PrefabRegistry prefabs) {
         TerrainEngine engine = new TerrainEngine(seed, preset);
-        FeaturePlacer features = new FeaturePlacer(engine);
+        FeaturePlacer features = new FeaturePlacer(engine, prefabs);
         DecorationPlacer decoration = new DecorationPlacer(engine);
-        StructurePlacer structures = new StructurePlacer(engine);
+        StructurePlacer structures = new StructurePlacer(engine, java.util.Set.of(), prefabs);
         int minY = engine.settings().minY;
         int maxY = engine.settings().maxY;
 
@@ -80,7 +87,7 @@ public final class TerrainBenchmark {
 
                 CountingWriter featureWriter = new CountingWriter(minY, maxY, chunkX, chunkZ);
                 decoration.decorate(chunkX, chunkZ, featureWriter);
-                int radius = FeaturePlacer.chunkRadius();
+                int radius = features.chunkRadius();
                 for (int dx = -radius; dx <= radius; dx++) {
                     for (int dz = -radius; dz <= radius; dz++) {
                         features.place(chunkX + dx, chunkZ + dz, featureWriter);

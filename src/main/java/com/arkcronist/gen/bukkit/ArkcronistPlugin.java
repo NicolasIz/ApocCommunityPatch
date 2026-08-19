@@ -3,6 +3,7 @@ package com.arkcronist.gen.bukkit;
 import com.arkcronist.gen.bukkit.command.AgCommand;
 import com.arkcronist.gen.bukkit.config.ArkConfig;
 import com.arkcronist.gen.bukkit.mobs.ChunkSpawnListener;
+import com.arkcronist.gen.core.prefab.PrefabRegistry;
 import com.arkcronist.gen.core.terrain.Preset;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.generator.BiomeProvider;
@@ -22,6 +23,7 @@ public final class ArkcronistPlugin extends JavaPlugin {
 
     private ArkConfig arkConfig;
     private WorldRegistry worlds;
+    private PrefabRegistry prefabs;
 
     @Override
     public void onEnable() {
@@ -29,6 +31,10 @@ public final class ArkcronistPlugin extends JavaPlugin {
         this.arkConfig = new ArkConfig(getConfig());
         this.worlds = new WorldRegistry(this);
 
+        // Prefabs first: loading them registers every block state they use, and the bridge below
+        // resolves the whole table in one pass.
+        this.prefabs = PrefabInstaller.install(getDataFolder().toPath(), getLogger(),
+                arkConfig.extractBundledPrefabs());
         BlockBridge.initialize(getLogger());
         getServer().getPluginManager().registerEvents(new ChunkSpawnListener(this), this);
 
@@ -40,6 +46,7 @@ public final class ArkcronistPlugin extends JavaPlugin {
         }
 
         getLogger().info("ArkcronistGenerator " + getPluginMeta().getVersion() + " ready"
+                + " - " + prefabs.size() + " prefabs"
                 + " - default preset " + arkConfig.defaultPreset()
                 + ", use -g ArkcronistGenerator:<BASE|CHAOTIC|INSANE>");
     }
@@ -57,6 +64,11 @@ public final class ArkcronistPlugin extends JavaPlugin {
 
     public WorldRegistry worlds() {
         return worlds;
+    }
+
+    /** The schematics available to this server; shared by every world. */
+    public PrefabRegistry prefabs() {
+        return prefabs;
     }
 
     /** Re-reads config.yml. Existing worlds keep their engines; caches are dropped. */

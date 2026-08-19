@@ -68,6 +68,20 @@ public final class StructureBuffer {
         }
     }
 
+    /**
+     * Reads a position back.
+     *
+     * @return the block id written there, or -1 when this structure does not touch the position
+     */
+    public int get(int x, int y, int z) {
+        short[] section = sections.get(sectionKey(x >> 4, y >> 4, z >> 4));
+        if (section == null) {
+            return -1;
+        }
+        short value = section[((y & 15) << 8) | ((z & 15) << 4) | (x & 15)];
+        return value == 0 ? -1 : value - 1;
+    }
+
     public void addSpawn(MobSpawn spawn) {
         spawns.add(spawn);
     }

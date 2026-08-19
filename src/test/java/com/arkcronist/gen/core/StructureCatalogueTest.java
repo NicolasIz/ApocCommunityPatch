@@ -3,6 +3,7 @@ package com.arkcronist.gen.core;
 import com.arkcronist.gen.core.biome.StructureTag;
 import com.arkcronist.gen.core.block.Blocks;
 import com.arkcronist.gen.core.math.FastRandom;
+import com.arkcronist.gen.core.prefab.PrefabRegistry;
 import com.arkcronist.gen.core.structure.*;
 import com.arkcronist.gen.core.terrain.Preset;
 import com.arkcronist.gen.core.terrain.TerrainEngine;
@@ -32,7 +33,7 @@ class StructureCatalogueTest {
 
         @Override
         public void set(int x, int y, int z, int blockId) {
-            blocks.put(TreeTest.key(x, y, z), blockId);
+            blocks.put(BlockKey.key(x, y, z), blockId);
         }
 
         @Override
@@ -64,7 +65,10 @@ class StructureCatalogueTest {
     @DisplayName("every structure builds, places blocks and is not a dark empty box")
     void everyStructureBuilds() {
         TerrainEngine engine = new TerrainEngine(1234567L, Preset.CHAOTIC);
-        StructurePlacer placer = new StructurePlacer(engine);
+        PrefabRegistry prefabs = PrefabRegistry.fromDirectory(java.nio.file.Path.of("src/main/resources/prefabs"),
+                message -> {
+                });
+        StructurePlacer placer = new StructurePlacer(engine, java.util.Set.of(), prefabs);
         List<Structure> catalogue = placer.structures();
         assertTrue(catalogue.size() >= 28, "expected the full vanilla-equivalent catalogue, found " + catalogue.size());
 
@@ -106,7 +110,9 @@ class StructureCatalogueTest {
             if (!built) {
                 silent.add(structure.id());
             } else if (!lit && !structure.id().equals("buried_treasure") && !structure.id().equals("fossil")
-                    && !structure.id().equals("trail_ruins") && !structure.id().equals("ancient_city")) {
+                    && !structure.id().equals("trail_ruins") && !structure.id().equals("ancient_city")
+                    // A wreck on the sea floor is meant to be dark; a floating ship is lit by the placer.
+                    && !structure.id().equals("prefab_ship")) {
                 dark.add(structure.id());
             }
         }
@@ -119,8 +125,12 @@ class StructureCatalogueTest {
     void everyFamilyIsReachable() {
         Set<StructureTag> found = new HashSet<>();
         List<StructurePlacer> placers = new ArrayList<>();
+        // With the prefab folder loaded, so that the schematic families exist to be found at all.
+        PrefabRegistry prefabs = PrefabRegistry.fromDirectory(java.nio.file.Path.of("src/main/resources/prefabs"),
+                message -> {
+                });
         for (Preset preset : Preset.values()) {
-            placers.add(new StructurePlacer(new TerrainEngine(2468013L, preset)));
+            placers.add(new StructurePlacer(new TerrainEngine(2468013L, preset), java.util.Set.of(), prefabs));
         }
         // Stop as soon as a tag turns up: most are found in the first preset, and searching all
         // three for all of them made this the slowest test in the suite by an order of magnitude.
