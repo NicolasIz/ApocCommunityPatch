@@ -52,6 +52,7 @@ public final class TerrainSampler {
     private final FractalNoise river;
     private final CellularNoise lakeCells;
 
+    private final DomainWarp biomeWarp;
     private final FractalNoise temperature;
     private final FractalNoise humidity;
     private final FractalNoise weirdness;
@@ -85,6 +86,7 @@ public final class TerrainSampler {
         this.river = FractalNoise.fbm(seed, "river", 3, settings.riverFrequency);
         this.lakeCells = new CellularNoise(seed, "lakes", settings.lakeFrequency, 0.85);
 
+        this.biomeWarp = new DomainWarp(seed, "biomeEdge", 0.011, 7.0);
         this.temperature = FractalNoise.fbm(seed, "temperature", 4, settings.climateFrequency);
         this.humidity = FractalNoise.fbm(seed, "humidity", 4, settings.climateFrequency * 1.23);
         this.weirdness = FractalNoise.fbm(seed, "weirdness", 4, settings.climateFrequency * 2.11);
@@ -222,9 +224,12 @@ public final class TerrainSampler {
             out.plateauFactor = plateau;
         }
 
-        // Cliff banding: light terracing everywhere gives ledges and steps on steep ground.
-        if (settings.cliffSharpness > 0.0) {
-            height = MathUtil.terrace(height, settings.cliffSteps, settings.cliffSharpness * (1.0 - erosion) * 0.8);
+        // Cliff banding: benches and ledges, but only where the ground is steep enough to have them.
+        // Applying this everywhere flattened gentle country into contour lines.
+        if (settings.cliffSharpness > 0.0 && out.mountainFactor > 0.15) {
+            double steepness = MathUtil.smoothStep(MathUtil.normalize(out.mountainFactor, 0.15, 0.75));
+            height = MathUtil.terrace(height, settings.cliffSteps,
+                    settings.cliffSharpness * steepness * (1.0 - erosion * 0.5));
         }
 
         // Canyons: narrow, deep, vertical walled subtraction following a warped ridge network.
@@ -325,6 +330,15 @@ public final class TerrainSampler {
         out.temperature = t;
         out.humidity = h;
         out.weirdness = w;
+    }
+
+    /** Small warp applied to biome lookups so region borders wander instead of following the grid. */
+    public double biomeWarpX(int x, int z) {
+        return biomeWarp.warpedX(x, z);
+    }
+
+    public double biomeWarpZ(int x, int z) {
+        return biomeWarp.warpedZ(x, z);
     }
 
     /** Land height ignoring rivers and lakes; used to anchor lake surfaces and structure foundations. */

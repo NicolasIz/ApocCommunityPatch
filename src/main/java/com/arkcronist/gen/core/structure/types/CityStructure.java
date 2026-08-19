@@ -122,7 +122,7 @@ public final class CityStructure implements Structure {
             BuildKit.box(buffer, x - halfX + 1, y, z - halfZ + 1, x + halfX - 1, y, z + halfZ - 1,
                     floor == 0 ? materials.floor : materials.plank);
             if (floor < floors) {
-                buffer.set(x, y + floorHeight - 1, z, materials.hangingLight);
+                BuildKit.hangingLantern(buffer, x, y + floorHeight - 1, z, materials.floor);
                 buffer.set(x + halfX, y + 2, z, materials.glass);
                 buffer.set(x - halfX, y + 2, z, materials.glass);
                 BuildKit.ladder(buffer, x + halfX - 1, y + 1, y + floorHeight, z + halfZ - 1, Blocks.LADDER_SOUTH);

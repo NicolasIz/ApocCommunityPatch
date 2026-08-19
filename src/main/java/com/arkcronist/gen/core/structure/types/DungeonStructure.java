@@ -14,6 +14,11 @@ import com.arkcronist.gen.core.structure.*;
 public final class DungeonStructure implements Structure {
 
     @Override
+    public Placement placement() {
+        return Placement.UNDERGROUND;
+    }
+
+    @Override
     public String id() {
         return "dungeon";
     }
@@ -71,7 +76,7 @@ public final class DungeonStructure implements Structure {
                     materials.wall, Blocks.AIR);
             BuildKit.box(buffer, rx - halfX + 1, floorY, rz - halfZ + 1, rx + halfX - 1, floorY, rz + halfZ - 1,
                     materials.floor);
-            buffer.set(rx, floorY + height - 1, rz, materials.hangingLight);
+            BuildKit.hangingLantern(buffer, rx, floorY + height - 1, rz, materials.floor);
 
             corridor(buffer, materials, previousX, previousZ, rx, rz, floorY);
             previousX = rx;

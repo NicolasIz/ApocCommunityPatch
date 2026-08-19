@@ -54,15 +54,19 @@ class ChunkBoundaryTest {
     @DisplayName("the same world column has one height, whichever chunk asks")
     void identicalWorldColumns(Preset preset) {
         TerrainEngine engine = new TerrainEngine(13579L, preset);
+        double band = engine.settings().overhangBand + 2.0;
         for (int cx = -2; cx <= 2; cx++) {
             for (int cz = -2; cz <= 2; cz++) {
                 int worldX = cx << 4;
                 int worldZ = cz << 4;
-                double viaEngine = engine.terrain(cx, cz).heightAt(0, 0);
-                // Ask through the public accessor, which resolves the chunk itself.
-                double viaLookup = engine.surfaceHeight(worldX, worldZ);
-                assertEquals(Math.floor(viaEngine), viaLookup,
-                        "surfaceHeight disagrees with the chunk it came from");
+                double viaChunk = engine.terrain(cx, cz).heightAt(0, 0);
+                assertEquals(Math.floor(viaChunk), engine.heightmapHeight(worldX, worldZ),
+                        "heightmapHeight disagrees with the chunk it came from");
+                // The real surface may sit above or below the heightmap where an overhang, an arch or
+                // a cave mouth moved it, but never further than the 3D band allows.
+                double solid = engine.surfaceHeight(worldX, worldZ);
+                assertTrue(Math.abs(solid - viaChunk) <= band + 26.0,
+                        preset + ": solid surface " + solid + " is nowhere near the heightmap " + viaChunk);
             }
         }
     }

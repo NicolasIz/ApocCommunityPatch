@@ -110,6 +110,16 @@ public final class RuinsStructure implements Structure {
             }
         }
 
+        // A ruin still needs something to find it by at night: a fallen brazier by the columns.
+        if (!sunken) {
+            int fireX = x + random.nextInt(-halfX + 1, halfX - 1);
+            int fireZ = z + random.nextInt(-halfZ + 1, halfZ - 1);
+            buffer.set(fireX, base + 1, fireZ, Blocks.CAMPFIRE);
+            buffer.set(x - halfX + 1, base + 2, z, materials.light);
+        } else {
+            buffer.set(x, base + 1, z, Blocks.SEA_LANTERN);
+        }
+
         int rubbleBlock = sunken ? Blocks.GRAVEL : materials.wallAccent;
         BuildKit.rubble(context, buffer, random, x, z, Math.max(halfX, halfZ) + 4, rubbleBlock, 0.22);
         if (!sunken && random.chance(0.5)) {

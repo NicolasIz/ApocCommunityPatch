@@ -39,6 +39,10 @@ minibosses:
   # Display names per structure role. Rename freely.
   names:
     tower_captain: "Capitán de la Torre"
+    outpost_captain: "Capitán de la Avanzada"
+    mansion_master: "Señor de la Mansión"
+    witch_matron: "Matrona de la Ciénaga"
+    trial_warden: "Guardián de la Prueba"
     battle_champion: "Campeón de la Torre de Combate"
     castle_lord: "Señor del Castillo"
     city_warden: "Guardián de la Ciudad"

@@ -33,43 +33,69 @@ public final class StructurePlacer {
     private static final int MAX_RADIUS = 64;
     private static final long LARGE_SALT = 0x1A26E_5A17L;
     private static final long SMALL_SALT = 0x5A11_5A17L;
-    private static final int CACHE_LIMIT = 24;
+    private static final long DEEP_SALT = 0xDEEB_5A17L;
+    private static final int CACHE_LIMIT = 32;
 
     private final TerrainEngine engine;
     private final List<Structure> large = new ArrayList<>();
     private final List<Structure> small = new ArrayList<>();
+    private final List<Structure> underground = new ArrayList<>();
     private final ConcurrentHashMap<Long, StructureBuffer> cache = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<Long> cacheOrder = new ConcurrentLinkedQueue<>();
 
     public StructurePlacer(TerrainEngine engine) {
         this.engine = engine;
+        // Settlements and landmarks
         register(new VillageStructure());
         register(new CityStructure());
         register(new CastleStructure());
         register(new FortressStructure());
+        register(new WoodlandMansionStructure());
+        register(new PillagerOutpostStructure());
+        // Temples and towers
         register(new TempleStructure());
-        register(new DungeonStructure());
+        register(new DesertPyramidStructure());
+        register(new JungleTempleStructure());
         register(new TowerStructure());
         register(new BattleTowerStructure());
+        // Small finds
         register(new CampStructure());
         register(new RuinsStructure());
+        register(new TrailRuinsStructure());
+        register(new RuinedPortalStructure());
+        register(new IglooStructure());
+        register(new WitchHutStructure());
         register(new BridgeStructure());
+        // Water
         register(new UnderwaterStructure());
+        register(new OceanMonumentStructure());
+        register(new ShipwreckStructure());
+        register(new BuriedTreasureStructure());
+        // Sky
         register(new SkyStructure());
+        // Underground
+        register(new DungeonStructure());
         register(new UndergroundStructure());
+        register(new MineshaftStructure());
+        register(new StrongholdStructure());
+        register(new AncientCityStructure());
+        register(new TrialChamberStructure());
+        register(new GeodeStructure());
+        register(new FossilStructure());
     }
 
     private void register(Structure structure) {
-        if (structure.radius() > 24) {
-            large.add(structure);
-        } else {
-            small.add(structure);
+        switch (structure.placement()) {
+            case UNDERGROUND -> underground.add(structure);
+            case SURFACE_LARGE -> large.add(structure);
+            case SURFACE_SMALL -> small.add(structure);
         }
     }
 
     public List<Structure> structures() {
         List<Structure> all = new ArrayList<>(large);
         all.addAll(small);
+        all.addAll(underground);
         return all;
     }
 
@@ -84,8 +110,10 @@ public final class StructurePlacer {
         }
         int gridLarge = Math.max(128, engine.settings().structureGridSize);
         int gridSmall = Math.max(64, gridLarge / 3);
+        int gridDeep = Math.max(80, gridLarge / 2);
         scan(chunkX, chunkZ, writer, spawnsOut, lootOut, spawnersOut, gridLarge, LARGE_SALT, large);
         scan(chunkX, chunkZ, writer, spawnsOut, lootOut, spawnersOut, gridSmall, SMALL_SALT, small);
+        scan(chunkX, chunkZ, writer, spawnsOut, lootOut, spawnersOut, gridDeep, DEEP_SALT, underground);
     }
 
     private void scan(int chunkX, int chunkZ, RegionWriter writer, List<MobSpawn> spawnsOut,
@@ -181,9 +209,13 @@ public final class StructurePlacer {
      * than to any surface biome, and buried vaults sit far below whatever happens to be overhead.</p>
      */
     private boolean allows(ArkBiome biome, Structure structure) {
+        if (structure.placement() == Structure.Placement.UNDERGROUND) {
+            // Depth decides these, not the biome overhead.
+            return true;
+        }
         return switch (structure.tag()) {
             case SKY -> engine.density().floatingIslandsEnabled();
-            case UNDERGROUND -> true;
+            case RUINED_PORTAL -> true;
             default -> biome.structures.contains(structure.tag());
         };
     }
@@ -226,12 +258,17 @@ public final class StructurePlacer {
     public int[] locate(int startX, int startZ, StructureTag tag, int maxCellRadius) {
         int gridLarge = Math.max(128, engine.settings().structureGridSize);
         int gridSmall = Math.max(64, gridLarge / 3);
+        int gridDeep = Math.max(80, gridLarge / 2);
         for (int ring = 0; ring <= maxCellRadius; ring++) {
             int[] found = searchRing(startX, startZ, tag, ring, gridLarge, LARGE_SALT, large);
             if (found != null) {
                 return found;
             }
             found = searchRing(startX, startZ, tag, ring, gridSmall, SMALL_SALT, small);
+            if (found != null) {
+                return found;
+            }
+            found = searchRing(startX, startZ, tag, ring, gridDeep, DEEP_SALT, underground);
             if (found != null) {
                 return found;
             }

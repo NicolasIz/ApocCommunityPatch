@@ -1,5 +1,6 @@
 package com.arkcronist.gen.core.structure;
 
+import com.arkcronist.gen.core.block.BlockShapes;
 import com.arkcronist.gen.core.block.Blocks;
 import com.arkcronist.gen.core.math.FastRandom;
 
@@ -173,6 +174,175 @@ public final class BuildKit {
         }
     }
 
+    /**
+     * Hangs a lantern under a ceiling.
+     *
+     * <p>The ceiling block is written first and the lantern goes in the air below it. Writing the
+     * lantern into the ceiling position - which is what the first version of every builder here did -
+     * left the light with nothing to hang from and punched a hole in the roof.</p>
+     */
+    public static void hangingLantern(StructureBuffer buffer, int x, int ceilingY, int z, int ceilingBlock) {
+        buffer.set(x, ceilingY, z, ceilingBlock);
+        buffer.set(x, ceilingY - 1, z, Blocks.HANGING_LANTERN);
+    }
+
+    /** Chain plus lantern, for high ceilings. */
+    public static void chandelier(StructureBuffer buffer, int x, int ceilingY, int z, int ceilingBlock, int drop) {
+        buffer.set(x, ceilingY, z, ceilingBlock);
+        for (int i = 1; i <= drop; i++) {
+            buffer.set(x, ceilingY - i, z, Blocks.CHAIN);
+        }
+        buffer.set(x, ceilingY - drop - 1, z, Blocks.HANGING_LANTERN);
+    }
+
+    /**
+     * Puts a torch on a wall.
+     *
+     * @param wallX,wallZ the solid block the torch is mounted on
+     * @param dx,dz       direction from the wall into the open air
+     */
+    public static void wallTorch(StructureBuffer buffer, int wallX, int y, int wallZ, int dx, int dz,
+                                 boolean soul) {
+        int facing = BlockShapes.facingFrom(dx, dz);
+        int torch = soul ? BlockShapes.soulWallTorch(facing) : BlockShapes.wallTorch(facing);
+        buffer.set(wallX + dx, y, wallZ + dz, torch);
+    }
+
+    /** Lantern standing on a post, the classic street light. */
+    public static void lampPost(StructureBuffer buffer, int x, int groundY, int z, int postBlock, int height) {
+        for (int i = 1; i <= height; i++) {
+            buffer.set(x, groundY + i, z, postBlock);
+        }
+        buffer.set(x, groundY + height + 1, z, Blocks.LANTERN);
+    }
+
+    /** A window: frame of the wall material with panes in the middle. */
+    public static void window(StructureBuffer buffer, int x, int y, int z, int width, int height,
+                              boolean alongX, int pane) {
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                buffer.set(x + (alongX ? i : 0), y + j, z + (alongX ? 0 : i), pane);
+            }
+        }
+    }
+
+    /**
+     * Trim course: a ring of upside-down stairs just under a roof or over a plinth. This one detail
+     * does more for a building's silhouette than any amount of extra height.
+     */
+    public static void stairTrim(StructureBuffer buffer, int x0, int y, int z0, int x1, int z1,
+                                 String family, boolean upsideDown) {
+        for (int x = x0; x <= x1; x++) {
+            buffer.set(x, y, z0 - 1, BlockShapes.stairs(family, 0, upsideDown));
+            buffer.set(x, y, z1 + 1, BlockShapes.stairs(family, 2, upsideDown));
+        }
+        for (int z = z0; z <= z1; z++) {
+            buffer.set(x0 - 1, y, z, BlockShapes.stairs(family, 3, upsideDown));
+            buffer.set(x1 + 1, y, z, BlockShapes.stairs(family, 1, upsideDown));
+        }
+        buffer.set(x0 - 1, y, z0 - 1, BlockShapes.slab(family, upsideDown));
+        buffer.set(x1 + 1, y, z0 - 1, BlockShapes.slab(family, upsideDown));
+        buffer.set(x0 - 1, y, z1 + 1, BlockShapes.slab(family, upsideDown));
+        buffer.set(x1 + 1, y, z1 + 1, BlockShapes.slab(family, upsideDown));
+    }
+
+    /** Pitched roof built from stairs, ridged with slabs. */
+    public static void stairRoof(StructureBuffer buffer, int x0, int y, int z0, int x1, int z1,
+                                 String family, int fill) {
+        int layers = (z1 - z0) / 2 + 1;
+        for (int i = 0; i <= layers; i++) {
+            int zNorth = z0 + i;
+            int zSouth = z1 - i;
+            if (zNorth > zSouth) {
+                break;
+            }
+            for (int x = x0 - 1; x <= x1 + 1; x++) {
+                buffer.set(x, y + i, zNorth, BlockShapes.stairs(family, 0, false));
+                buffer.set(x, y + i, zSouth, BlockShapes.stairs(family, 2, false));
+                for (int z = zNorth + 1; z < zSouth; z++) {
+                    if (i > 0) {
+                        buffer.set(x, y + i - 1, z, fill);
+                    }
+                }
+            }
+            if (zNorth == zSouth || zNorth + 1 == zSouth) {
+                for (int x = x0 - 1; x <= x1 + 1; x++) {
+                    buffer.set(x, y + i + 1, zNorth, BlockShapes.slab(family, false));
+                    buffer.set(x, y + i + 1, zSouth, BlockShapes.slab(family, false));
+                }
+                break;
+            }
+        }
+    }
+
+    /** Doorway with an arch of stairs above it. */
+    public static void archway(StructureBuffer buffer, int x, int y, int z, int width, int height,
+                               boolean alongX, String family) {
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                buffer.set(x + (alongX ? i : 0), y + j, z + (alongX ? 0 : i), Blocks.AIR);
+            }
+        }
+        int left = alongX ? 3 : 0;
+        int right = alongX ? 1 : 2;
+        buffer.set(x - (alongX ? 1 : 0), y + height, z - (alongX ? 0 : 1),
+                BlockShapes.stairs(family, right, true));
+        buffer.set(x + (alongX ? width : 0), y + height, z + (alongX ? 0 : width),
+                BlockShapes.stairs(family, left, true));
+    }
+
+    /** Column with a base and a capital, both made of stairs. */
+    public static void column(StructureBuffer buffer, int x, int y0, int z, int height,
+                              int shaft, String family) {
+        for (int i = 0; i < height; i++) {
+            buffer.set(x, y0 + i, z, shaft);
+        }
+        for (int f = 0; f < 4; f++) {
+            int dx = f == 1 ? 1 : f == 3 ? -1 : 0;
+            int dz = f == 2 ? 1 : f == 0 ? -1 : 0;
+            buffer.set(x + dx, y0, z + dz, BlockShapes.stairs(family, BlockShapes.opposite(f), false));
+            buffer.set(x + dx, y0 + height - 1, z + dz, BlockShapes.stairs(family, BlockShapes.opposite(f), true));
+        }
+    }
+
+    /** Staircase from one level to another, cut into the ground. */
+    public static void staircase(StructureBuffer buffer, int x, int y, int z, int steps,
+                                 int dx, int dz, int width, String family) {
+        int facing = BlockShapes.facingFrom(dx, dz);
+        for (int i = 0; i < steps; i++) {
+            int sx = x + dx * i;
+            int sz = z + dz * i;
+            for (int w = -width; w <= width; w++) {
+                int wx = sx + (dz != 0 ? w : 0);
+                int wz = sz + (dx != 0 ? w : 0);
+                buffer.set(wx, y - i, wz, BlockShapes.stairs(family, facing, false));
+                buffer.set(wx, y - i - 1, wz, BlockShapes.doubleSlab(family));
+                for (int j = 1; j <= 3; j++) {
+                    buffer.set(wx, y - i + j, wz, Blocks.AIR);
+                }
+            }
+        }
+    }
+
+    /** Garden bed: tilled look with crops and a fence border. */
+    public static void gardenBed(StructureBuffer buffer, FastRandom random, int x, int y, int z,
+                                 int halfX, int halfZ, int soil, int border) {
+        for (int ox = -halfX; ox <= halfX; ox++) {
+            for (int oz = -halfZ; oz <= halfZ; oz++) {
+                boolean edge = Math.abs(ox) == halfX || Math.abs(oz) == halfZ;
+                if (edge) {
+                    buffer.set(x + ox, y, z + oz, border);
+                } else {
+                    buffer.set(x + ox, y, z + oz, soil);
+                    if (random.chance(0.7)) {
+                        buffer.set(x + ox, y + 1, z + oz, random.chance(0.5)
+                                ? Blocks.SHORT_GRASS : Blocks.POPPY);
+                    }
+                }
+            }
+        }
+    }
+
     public static void chest(StructureBuffer buffer, int x, int y, int z, int tier, String theme) {
         buffer.set(x, y, z, Blocks.CHEST);
         buffer.addLoot(new LootMarker(x, y, z, tier, theme));
@@ -204,7 +374,14 @@ public final class BuildKit {
             }
             int x = centreX + random.nextInt(-radius, radius);
             int z = centreZ + random.nextInt(-radius, radius);
-            int y = context.height(x, z) + 1;
+            int ground = context.height(x, z);
+            // Rubble sits on the ground, and only where the ground is dry. Dropping it at the
+            // heightmap regardless left single blocks hanging in the water off every sunken ruin.
+            if (context.submerged(x, z)) {
+                buffer.set(x, ground, z, block);
+                continue;
+            }
+            int y = ground + 1;
             buffer.set(x, y, z, block);
             if (random.chance(0.3)) {
                 buffer.set(x, y + 1, z, block);

@@ -59,12 +59,12 @@ public final class FeaturePlacer {
 
             int x = (chunkX << 4) + localX;
             int z = (chunkZ << 4) + localZ;
-            double height = terrain.height[index];
             double water = terrain.water[index];
-            if (height < water - 0.2) {
+            // The real surface, not the heightmap: overhangs, arches and cave mouths move it.
+            int groundY = engine.surfaceHeight(x, z);
+            if (groundY < water - 0.2) {
                 continue;
             }
-            int groundY = (int) Math.floor(height);
             if (groundY + 8 >= writer.maxY()) {
                 continue;
             }
@@ -138,13 +138,12 @@ public final class FeaturePlacer {
             if (!random.chance(chance)) {
                 continue;
             }
-            double height = terrain.height[index];
-            if (height < terrain.water[index]) {
-                continue;
-            }
             int x = (chunkX << 4) + localX;
             int z = (chunkZ << 4) + localZ;
-            int y = (int) Math.floor(height);
+            int y = engine.surfaceHeight(x, z);
+            if (y < terrain.water[index]) {
+                continue;
+            }
             int radius = random.nextInt(1, 3);
             if (!writer.intersectsColumn(x - radius - 1, z - radius - 1, x + radius + 1, z + radius + 1)) {
                 continue;

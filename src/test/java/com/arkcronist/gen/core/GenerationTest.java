@@ -201,6 +201,127 @@ class GenerationTest {
 
     @ParameterizedTest
     @EnumSource(Preset.class)
+    @DisplayName("the surface a feature is told to stand on is really solid")
+    void solidSurfaceIsSolid(Preset preset) {
+        // This is the regression guard for trees and structures hovering in the air or sinking into
+        // rock: the placement surface must be the block the generator actually wrote.
+        TerrainEngine engine = new TerrainEngine(60606L, preset);
+        int checked = 0;
+        int wrong = 0;
+        for (int cx = 0; cx < 3; cx++) {
+            for (int cz = 0; cz < 3; cz++) {
+                ChunkCapture chunk = generate(engine, cx * 5, cz * 5);
+                ChunkTerrain terrain = engine.terrain(cx * 5, cz * 5);
+                for (int x = 0; x < 16; x++) {
+                    for (int z = 0; z < 16; z++) {
+                        int worldX = ((cx * 5) << 4) + x;
+                        int worldZ = ((cz * 5) << 4) + z;
+                        int surface = engine.surfaceHeight(worldX, worldZ);
+                        if (surface <= MIN_Y || surface >= MAX_Y - 1) {
+                            continue;
+                        }
+                        if (terrain.heightAt(x, z) < terrain.waterAt(x, z)) {
+                            continue;
+                        }
+                        checked++;
+                        int here = chunk.at(x, surface, z);
+                        int above = chunk.at(x, surface + 1, z);
+                        if (Blocks.isAir(here) || (!Blocks.isAir(above) && !Blocks.isLiquid(above))) {
+                            wrong++;
+                        }
+                    }
+                }
+            }
+        }
+        assertTrue(checked > 100, "not enough columns sampled");
+        assertTrue(wrong <= checked * 0.02,
+                preset + ": " + wrong + " of " + checked + " placement surfaces were not solid ground");
+    }
+
+    @ParameterizedTest
+    @EnumSource(Preset.class)
+    @DisplayName("caves are furnished, not empty holes")
+    void cavesAreDecorated(Preset preset) {
+        TerrainEngine engine = new TerrainEngine(70707L, preset);
+        long decoration = 0;
+        long water = 0;
+        long lava = 0;
+        long carved = 0;
+        for (int cx = 0; cx < 3; cx++) {
+            for (int cz = 0; cz < 3; cz++) {
+                ChunkTerrain terrain = engine.terrain(cx * 4, cz * 4);
+                ChunkCapture chunk = generate(engine, cx * 4, cz * 4);
+                for (int x = 0; x < 16; x++) {
+                    for (int z = 0; z < 16; z++) {
+                        int surface = (int) Math.floor(terrain.heightAt(x, z));
+                        for (int y = MIN_Y + 6; y <= surface - 10; y++) {
+                            int block = chunk.at(x, y, z);
+                            if (Blocks.isAir(block)) {
+                                carved++;
+                                continue;
+                            }
+                            if (block == Blocks.WATER) {
+                                water++;
+                                carved++;
+                            } else if (block == Blocks.LAVA) {
+                                lava++;
+                                carved++;
+                            } else {
+                                String key = Blocks.REGISTRY.key(block);
+                                if (key.contains("moss") || key.contains("dripstone") || key.contains("sculk")
+                                        || key.contains("cave_vines") || key.contains("amethyst")
+                                        || key.contains("lichen") || key.contains("mushroom")
+                                        || key.contains("ice") || key.contains("azalea")) {
+                                    decoration++;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        assertTrue(carved > 500, "no caves were carved at all");
+        assertTrue(decoration > carved * 0.05,
+                preset + ": caves are bare (" + decoration + " decoration blocks for " + carved + " carved)");
+        // Flooded caves are regional, so a nine chunk sample can legitimately miss them; the wider
+        // check lives in caveWaterExists().
+        // The lava sea regression: lava must be pools near bedrock, not an ocean under the world.
+        assertTrue(lava < carved * 0.25,
+                preset + ": " + lava + " of " + carved + " carved blocks are lava, that is a lava sea");
+    }
+
+    @ParameterizedTest
+    @EnumSource(Preset.class)
+    @DisplayName("some caves are flooded and lava stays near the bedrock")
+    void caveWaterExists(Preset preset) {
+        TerrainEngine engine = new TerrainEngine(80808L, preset);
+        long water = 0;
+        long lavaHigh = 0;
+        for (int cx = 0; cx < 6; cx++) {
+            for (int cz = 0; cz < 6; cz++) {
+                ChunkTerrain terrain = engine.terrain(cx * 9, cz * 9);
+                ChunkCapture chunk = generate(engine, cx * 9, cz * 9);
+                for (int x = 0; x < 16; x += 2) {
+                    for (int z = 0; z < 16; z += 2) {
+                        int surface = (int) Math.floor(terrain.heightAt(x, z));
+                        for (int y = MIN_Y + 6; y <= surface - 10; y++) {
+                            int block = chunk.at(x, y, z);
+                            if (block == Blocks.WATER) {
+                                water++;
+                            } else if (block == Blocks.LAVA && y > MIN_Y + 30) {
+                                lavaHigh++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        assertTrue(water > 0, preset + ": not one flooded cave in 36 chunks");
+        assertTrue(lavaHigh < 400, preset + ": lava is pooling far above the bedrock (" + lavaHigh + ")");
+    }
+
+    @ParameterizedTest
+    @EnumSource(Preset.class)
     @DisplayName("generation is reproducible block for block")
     void reproducibleBlocks(Preset preset) {
         ChunkCapture first = generate(new TerrainEngine(4321L, preset), 12, -7);

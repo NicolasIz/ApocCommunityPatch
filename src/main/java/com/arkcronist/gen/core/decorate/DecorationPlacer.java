@@ -36,12 +36,14 @@ public final class DecorationPlacer {
                 int index = ChunkTerrain.index(localX, localZ);
                 int x = (chunkX << 4) + localX;
                 int z = (chunkZ << 4) + localZ;
-                double height = terrain.height[index];
                 double water = terrain.water[index];
                 ArkBiome biome = engine.biomes().byId(terrain.biome[index]);
                 DecorationProfile profile = biome.decoration;
 
-                int groundY = (int) Math.floor(height);
+                // Decoration follows the block that is really there, so nothing hovers over an
+                // overhang or sinks into a ledge.
+                int groundY = engine.surfaceHeight(x, z);
+                double height = groundY;
                 if (groundY + 2 >= maxY) {
                     continue;
                 }

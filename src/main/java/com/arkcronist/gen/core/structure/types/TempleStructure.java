@@ -82,7 +82,7 @@ public final class TempleStructure implements Structure {
         BuildKit.box(buffer, x - shrineHalf, shrineY + 6, z - shrineHalf, x + shrineHalf, shrineY + 6,
                 z + shrineHalf, materials.roof);
         buffer.set(x, shrineY + 1, z, Blocks.LODESTONE);
-        buffer.set(x, shrineY + 5, z, materials.hangingLight);
+        BuildKit.hangingLantern(buffer, x, shrineY + 5, z, materials.floor);
         BuildKit.chest(buffer, x + 1, shrineY + 1, z, 2, "temple");
 
         // Vault below, reachable only by breaking in from the shrine floor.

@@ -24,6 +24,8 @@ public final class CaveCarver {
     private final FractalNoise cavern;
     private final FractalNoise mega;
     private final CellularNoise megaCells;
+    private final FractalNoise cavernCentre;
+    private final FractalNoise megaCentre;
 
     public CaveCarver(long seed, TerrainSettings settings) {
         this.settings = settings;
@@ -33,6 +35,8 @@ public final class CaveCarver {
         this.cavern = FractalNoise.fbm(seed, "cavern", 3, settings.cavernFrequency);
         this.mega = FractalNoise.fbm(seed, "megaCave", 2, settings.megaCaveFrequency);
         this.megaCells = new CellularNoise(seed, "megaCaveCells", settings.megaCaveFrequency * 0.6, 0.9);
+        this.cavernCentre = FractalNoise.fbm(seed, "cavernCentre", 2, settings.cavernFrequency * 0.45);
+        this.megaCentre = FractalNoise.fbm(seed, "megaCentre", 2, settings.megaCaveFrequency * 0.5);
     }
 
     /** Position only openness. Positive means the world would be carved away here. */
@@ -51,19 +55,26 @@ public final class CaveCarver {
         double b = Math.abs(tunnelB.noise3(x + 517.0, y * 0.85, z - 311.0));
         best = Math.max(best, Math.min(settings.tunnelThreshold - a, settings.tunnelThreshold - b));
 
-        // Caverns: open halls big enough to build inside.
+        // Caverns: open halls big enough to build inside. Each one sits on its own level rather than
+        // spanning the whole underground, which is what keeps them halls instead of voids.
         if (settings.cavernDensity > 0.0 && y >= settings.cavernMinY && y <= settings.cavernMaxY) {
-            double band = verticalBand(y, settings.cavernMinY, settings.cavernMaxY);
-            double threshold = 1.0 - settings.cavernDensity * 0.75;
-            best = Math.max(best, (cavern.unsigned3(x, y * 2.1, z) - threshold) * band * 0.6);
+            double centre = MathUtil.lerp(cavernCentre.unsigned2(x, z), settings.cavernMinY + 10,
+                    settings.cavernMaxY - 10);
+            double band = layer(y, centre, 13.0);
+            if (band > 0.0) {
+                double threshold = 1.0 - settings.cavernDensity * 0.55;
+                best = Math.max(best, (cavern.unsigned3(x, y * 2.1, z) - threshold) * band * 0.6);
+            }
         }
 
-        // Mega caves: preset gated and cell clustered, tall enough to hold an underground structure.
+        // Mega caves: preset gated and cell clustered, tall enough to hold an underground structure -
+        // but still a room with a floor and a roof, never a hollowed out world.
         if (settings.megaCaveDensity > 0.0 && megaCells.cellValue(x, z) < settings.megaCaveDensity) {
-            int top = Math.min(settings.seaLevel - 10, 48);
-            double band = verticalBand(y, settings.minY + 8, top);
+            int top = Math.min(settings.seaLevel - 14, 40);
+            double centre = MathUtil.lerp(megaCentre.unsigned2(x, z), settings.minY + 22, top);
+            double band = layer(y, centre, 20.0);
             if (band > 0.0) {
-                best = Math.max(best, (mega.unsigned3(x, y * 1.25, z) - 0.60) * band * 1.1);
+                best = Math.max(best, (mega.unsigned3(x, y * 1.25, z) - 0.55) * band * 0.9);
             }
         }
         return best;
@@ -85,17 +96,23 @@ public final class CaveCarver {
         return roofFade * floorFade;
     }
 
-    /** 1 in the middle of the band, tapering to 0 at both ends. */
-    private static double verticalBand(int y, int min, int max) {
-        if (y <= min || y >= max) {
+    /** 1 at the centre of a layer, fading to 0 at {@code halfHeight} blocks away. */
+    private static double layer(int y, double centre, double halfHeight) {
+        double distance = Math.abs(y - centre);
+        if (distance >= halfHeight) {
             return 0.0;
         }
-        double t = (y - min) / (double) (max - min);
-        return MathUtil.smoothStep(Math.min(t, 1.0 - t) * 2.0);
+        return MathUtil.smoothStep(1.0 - distance / halfHeight);
     }
 
-    /** Builds the per chunk interpolation grid for the cave field. */
+    /**
+     * Builds the per chunk interpolation grid for the cave field.
+     *
+     * <p>Four blocks horizontally, six vertically: caves are wider than they are tall at this scale,
+     * and the coarser vertical step cuts a third of the noise work out of the hottest loop in the
+     * generator without visibly rounding tunnels off.</p>
+     */
     public ScalarField3D field(int blockX, int blockZ, int minY, int maxY) {
-        return ScalarField3D.build(blockX, minY, blockZ, maxY, 4, 4, this::rawOpenness);
+        return ScalarField3D.build(blockX, minY, blockZ, maxY, 4, 6, this::rawOpenness);
     }
 }

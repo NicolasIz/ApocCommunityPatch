@@ -11,6 +11,21 @@ import com.arkcronist.gen.core.biome.StructureTag;
  */
 public interface Structure {
 
+    /** Which grid a structure is placed on, and what its site check means. */
+    enum Placement {
+        /** Landmarks: cities, castles, villages, monuments. Rare, far apart. */
+        SURFACE_LARGE,
+        /** Finds: towers, camps, ruins, wrecks. Common, close together. */
+        SURFACE_SMALL,
+        /** Placed by depth rather than by biome: mines, strongholds, vaults, geodes. */
+        UNDERGROUND
+    }
+
+    /** Defaults by size; underground structures override it. */
+    default Placement placement() {
+        return radius() > 24 ? Placement.SURFACE_LARGE : Placement.SURFACE_SMALL;
+    }
+
     String id();
 
     StructureTag tag();

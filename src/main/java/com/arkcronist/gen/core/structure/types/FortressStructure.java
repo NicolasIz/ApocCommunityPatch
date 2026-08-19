@@ -73,7 +73,7 @@ public final class FortressStructure implements Structure {
                 materials.slab);
         for (int i = -hallHalf + 2; i <= hallHalf - 2; i += 3) {
             buffer.set(x + i, base + 1, z + 3, Blocks.HAY_BLOCK);
-            buffer.set(x + i, base + 5, z + 4, materials.hangingLight);
+            BuildKit.hangingLantern(buffer, x + i, base + 5, z + 4, materials.floor);
             buffer.addSpawn(MobSpawn.mob(x + i, base + 1, z + 4, garrison(random), 2));
         }
         BuildKit.chest(buffer, x - hallHalf + 1, base + 1, z + half - 3, 2, "fortress");

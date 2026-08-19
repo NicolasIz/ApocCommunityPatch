@@ -69,7 +69,7 @@ public final class SkyStructure implements Structure {
                 buffer.set(px, base + y, pz, materials.pillar);
             }
             buffer.set(px, base + 7, pz, materials.slab);
-            buffer.set(px, base + 6, pz, materials.hangingLight);
+            BuildKit.hangingLantern(buffer, px, base + 6, pz, materials.floor);
         }
         BuildKit.cylinder(buffer, x, base + 8, z, radius - 2, 1, materials.roof, false);
 

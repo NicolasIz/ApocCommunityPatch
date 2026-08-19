@@ -44,6 +44,12 @@ public final class ChunkTerrain {
     public int minSurface;
     public int maxSurface;
 
+    /**
+     * Topmost solid block per column once overhangs, arches and cave carving are taken into account.
+     * Filled lazily: the heightmap alone is not where a tree or a foundation should sit.
+     */
+    public volatile short[] solidSurface;
+
     private ChunkTerrain(int chunkX, int chunkZ) {
         this.chunkX = chunkX;
         this.chunkZ = chunkZ;
@@ -89,6 +95,7 @@ public final class ChunkTerrain {
         float[] gridHumidity = new float[GRID * GRID];
         float[] gridWeirdness = new float[GRID * GRID];
         float[] gridCanyon = new float[GRID * GRID];
+        int[] gridBiome = new int[GRID * GRID];
 
         ColumnData column = new ColumnData();
         int baseCellX = chunkX * (16 / CELL) - PAD;
@@ -117,9 +124,50 @@ public final class ChunkTerrain {
 
         gridHeight = ErosionFilter.apply(gridHeight, gridErosion, GRID, settings);
 
+        // Biomes are decided on the grid, from a smoothed landform. Selecting per block against the
+        // raw height made two nearly tied biomes flip back and forth with the fine detail noise and
+        // speckled the ground with patches; a region should be decided by the landscape, not by a
+        // three block bump.
+        ColumnData node = new ColumnData();
+        for (int gz = 1; gz < GRID - 1; gz++) {
+            for (int gx = 1; gx < GRID - 1; gx++) {
+                int i = gz * GRID + gx;
+                double heightSum = 0.0;
+                double mountainSum = 0.0;
+                for (int oz = -1; oz <= 1; oz++) {
+                    for (int ox = -1; ox <= 1; ox++) {
+                        int j = i + oz * GRID + ox;
+                        heightSum += gridHeight[j];
+                        mountainSum += gridMountain[j];
+                    }
+                }
+                node.reset(settings.seaLevel);
+                node.height = heightSum / 9.0;
+                node.waterLevel = gridWater[i];
+                node.land = gridLand[i];
+                node.oceanT = gridOcean[i];
+                node.mountainFactor = mountainSum / 9.0;
+                node.riverStrength = gridRiver[i];
+                node.lakeStrength = gridLake[i];
+                node.erosion = gridErosion[i];
+                node.temperature = gridTemperature[i];
+                node.humidity = gridHumidity[i];
+                node.weirdness = gridWeirdness[i];
+                gridBiome[i] = selector.select(node);
+            }
+        }
+        for (int gz = 0; gz < GRID; gz++) {
+            for (int gx = 0; gx < GRID; gx++) {
+                if (gz == 0 || gx == 0 || gz == GRID - 1 || gx == GRID - 1) {
+                    int clampedX = MathUtil.clamp(gx, 1, GRID - 2);
+                    int clampedZ = MathUtil.clamp(gz, 1, GRID - 2);
+                    gridBiome[gz * GRID + gx] = gridBiome[clampedZ * GRID + clampedX];
+                }
+            }
+        }
+
         int minSurface = Integer.MAX_VALUE;
         int maxSurface = Integer.MIN_VALUE;
-        ColumnData lookup = new ColumnData();
 
         for (int localZ = 0; localZ < 16; localZ++) {
             double gz = PAD + localZ / (double) CELL;
@@ -146,19 +194,17 @@ public final class ChunkTerrain {
                 terrain.humidity[i] = (float) bilinear(gridHumidity, cx, cz, tx, tz);
                 terrain.canyon[i] = (float) bilinear(gridCanyon, cx, cz, tx, tz);
 
-                lookup.reset(settings.seaLevel);
-                lookup.height = h;
-                lookup.waterLevel = terrain.water[i];
-                lookup.land = terrain.land[i];
-                lookup.oceanT = terrain.oceanT[i];
-                lookup.mountainFactor = terrain.mountain[i];
-                lookup.riverStrength = terrain.river[i];
-                lookup.lakeStrength = terrain.lake[i];
-                lookup.erosion = terrain.erosion[i];
-                lookup.temperature = terrain.temperature[i];
-                lookup.humidity = terrain.humidity[i];
-                lookup.weirdness = bilinear(gridWeirdness, cx, cz, tx, tz);
-                terrain.biome[i] = selector.select(lookup);
+                // Nearest grid node, looked up through a small warp: coherent regions with organic
+                // borders instead of a visible 4 block grid.
+                int worldX = (chunkX << 4) + localX;
+                int worldZ = (chunkZ << 4) + localZ;
+                double warpedX = sampler.biomeWarpX(worldX, worldZ);
+                double warpedZ = sampler.biomeWarpZ(worldX, worldZ);
+                int nodeX = MathUtil.clamp((int) Math.round(PAD + (warpedX - (chunkX << 4)) / (double) CELL),
+                        0, GRID - 1);
+                int nodeZ = MathUtil.clamp((int) Math.round(PAD + (warpedZ - (chunkZ << 4)) / (double) CELL),
+                        0, GRID - 1);
+                terrain.biome[i] = gridBiome[nodeZ * GRID + nodeX];
 
                 int surface = (int) Math.floor(h);
                 if (surface < minSurface) {

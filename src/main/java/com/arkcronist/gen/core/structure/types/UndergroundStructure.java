@@ -14,6 +14,11 @@ import com.arkcronist.gen.core.structure.*;
 public final class UndergroundStructure implements Structure {
 
     @Override
+    public Placement placement() {
+        return Placement.UNDERGROUND;
+    }
+
+    @Override
     public String id() {
         return "vault";
     }

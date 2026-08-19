@@ -44,6 +44,10 @@ public final class ScalarField3D {
      * Builds a field covering {@code [blockX, blockX+16)} x {@code [minY, maxY]} x {@code [blockZ, blockZ+16)}.
      */
     public static ScalarField3D build(int blockX, int minY, int blockZ, int maxY, int stepXZ, int stepY, Source source) {
+        // Snap the base to the global lattice. Two fields built over different y ranges must agree on
+        // their shared nodes, otherwise the block pass and the surface lookup interpolate different
+        // values and features end up hovering or buried.
+        minY = Math.floorDiv(minY, stepY) * stepY;
         int nx = 16 / stepXZ + 1;
         int nz = 16 / stepXZ + 1;
         int span = Math.max(stepY, maxY - minY);

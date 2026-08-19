@@ -28,6 +28,10 @@ public final class StructureContext {
         this.preset = engine.preset();
     }
 
+    public TerrainEngine engine() {
+        return engine;
+    }
+
     public int height(int x, int z) {
         return engine.surfaceHeight(x, z);
     }

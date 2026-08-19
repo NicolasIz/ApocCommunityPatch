@@ -75,7 +75,9 @@ public final class TreeBuilder {
 
     private static void buildTrunk(TreeSpecies species, int x, int groundY, int z, int height,
                                    int radius, double leanX, double leanZ, RegionWriter writer) {
-        for (int i = 0; i <= height; i++) {
+        // The trunk starts one block above the ground: writing into the ground block itself left every
+        // tree looking half sunk and replaced the biome's own surface material.
+        for (int i = 1; i <= height; i++) {
             int y = groundY + i;
             int cx = x + (int) Math.round(leanX * i);
             int cz = z + (int) Math.round(leanZ * i);

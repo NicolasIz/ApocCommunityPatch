@@ -58,20 +58,20 @@ public final class TerrainSettings {
     public double mountainMaskThreshold = 0.10;
     public double ridgeSharpness = 0.45;
     public double hillFrequency = 0.010;
-    public double hillAmplitude = 7.0;
-    public double detailFrequency = 0.045;
-    public double detailAmplitude = 2.0;
+    public double hillAmplitude = 9.5;
+    public double detailFrequency = 0.055;
+    public double detailAmplitude = 3.6;
 
     // ---------------------------------------------------------------- plateaus, canyons, cliffs
-    public double plateauStrength = 0.30;
+    public double plateauStrength = 0.45;
     public double plateauFrequency = 0.0011;
-    public double plateauSteps = 0.055;
+    public double plateauSteps = 0.14;
     public double canyonStrength = 0.0;
     public double canyonFrequency = 0.00095;
     public double canyonWidth = 0.045;
     public double canyonDepth = 46.0;
     public double cliffSharpness = 0.25;
-    public double cliffSteps = 0.09;
+    public double cliffSteps = 0.20;
 
     // ---------------------------------------------------------------- erosion
     public int erosionPasses = 2;
@@ -103,11 +103,11 @@ public final class TerrainSettings {
 
     // ---------------------------------------------------------------- caves
     public boolean caves = true;
-    public double caveCheeseThreshold = 0.56;
+    public double caveCheeseThreshold = 0.48;
     public double caveCheeseFrequency = 0.0128;
-    public double tunnelThreshold = 0.055;
+    public double tunnelThreshold = 0.064;
     public double tunnelFrequency = 0.0092;
-    public double cavernDensity = 0.30;
+    public double cavernDensity = 0.45;
     public double cavernFrequency = 0.0042;
     public int cavernMinY = -58;
     public int cavernMaxY = 40;
@@ -254,7 +254,7 @@ public final class TerrainSettings {
                 s.canyonStrength = 0.18;
                 s.canyonDepth = 34.0;
                 s.overhangStrength = 0.08;
-                s.megaCaveDensity = 0.04;
+                s.megaCaveDensity = 0.10;
                 s.trenchThreshold = 0.86;
             }
             case CHAOTIC -> {
@@ -279,7 +279,7 @@ public final class TerrainSettings {
                 s.ridgeSharpness = 0.65;
                 s.hillAmplitude = 12.0;
 
-                s.plateauStrength = 0.55;
+                s.plateauStrength = 0.70;
                 s.canyonStrength = 0.65;
                 s.canyonDepth = 70.0;
                 s.canyonWidth = 0.06;
@@ -297,12 +297,12 @@ public final class TerrainSettings {
                 s.archStrength = 0.25;
                 s.floatingIslandDensity = 0.10;
 
-                s.cavernDensity = 0.45;
-                s.megaCaveDensity = 0.18;
-                s.caveCheeseThreshold = 0.52;
+                s.cavernDensity = 0.60;
+                s.megaCaveDensity = 0.30;
+                s.caveCheeseThreshold = 0.42;
 
                 s.biomeFragmentation = 0.55;
-                s.climateFrequency = 0.00135;
+                s.climateFrequency = 0.00100;
                 s.climateWarp = 420.0;
                 s.biomeBlend = 16.0;
 
@@ -338,13 +338,13 @@ public final class TerrainSettings {
                 s.hillAmplitude = 16.0;
                 s.detailAmplitude = 3.5;
 
-                s.plateauStrength = 0.75;
-                s.plateauSteps = 0.045;
+                s.plateauStrength = 0.90;
+                s.plateauSteps = 0.12;
                 s.canyonStrength = 1.0;
                 s.canyonDepth = 118.0;
                 s.canyonWidth = 0.075;
                 s.cliffSharpness = 0.80;
-                s.cliffSteps = 0.06;
+                s.cliffSteps = 0.16;
 
                 s.erosionPasses = 3;
                 s.erosionStrength = 0.22;
@@ -364,16 +364,16 @@ public final class TerrainSettings {
                 s.floatingIslandMinY = 140;
                 s.floatingIslandMaxY = 310;
 
-                s.caveCheeseThreshold = 0.46;
-                s.cavernDensity = 0.60;
-                s.megaCaveDensity = 0.45;
+                s.caveCheeseThreshold = 0.36;
+                s.cavernDensity = 0.78;
+                s.megaCaveDensity = 0.55;
                 s.megaCaveFrequency = 0.0013;
 
                 s.strataThickness = 6.5;
                 s.strataWarp = 22.0;
                 s.oreMultiplier = 1.35;
 
-                s.climateFrequency = 0.0016;
+                s.climateFrequency = 0.00112;
                 s.climateWarp = 640.0;
                 s.biomeFragmentation = 0.9;
                 s.biomeBlend = 12.0;

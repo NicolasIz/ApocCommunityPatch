@@ -42,7 +42,8 @@ sentido, estructuras que se adaptan al relieve y minibosses. Ver [NOTICE.md](NOT
 | Estratos geológicos | Bandas horizontales deformadas por ruido, con "provincias" que comparten secuencia de roca. |
 | Salientes y arcos | Campo 3D alrededor de la superficie: repisas, cornisas y arcos naturales. |
 | Islas flotantes | Masas lenticulares agrupadas por ruido celular (CHAOTIC e INSANE). |
-| Cuevas | Cuatro sistemas: túneles espagueti, cuevas *cheese*, cavernas y megacuevas. |
+| Cuevas | Cuatro sistemas de excavación (túneles, cuevas *cheese*, cavernas y megacuevas) más biomas de cueva, acuíferos y decoración. |
+| Acuíferos | Cada región tiene su propia capa freática: hay cuevas inundadas, lagos subterráneos y cuevas secas. La lava se queda en pozas junto a la bedrock, no en un océano. |
 | Menas | Campo 3D de vetas + hash por bloque: depósitos con forma, sesgados por bioma. |
 
 Los océanos son obligatoriamente reales: **costa → plataforma → talud → llanura abisal → fosa**, con
@@ -53,6 +54,22 @@ montañas submarinas encima. Medido sobre 30.000 columnas por preset:
 | BASE | ~55 bloques | ~104 bloques bajo el mar | y ≈ 180 |
 | CHAOTIC | ~70 bloques | ~113 bloques bajo el mar | y ≈ 244 |
 | INSANE | ~90 bloques | ~121 bloques bajo el mar | y ≈ 306 |
+
+### Cuevas
+
+El subsuelo no es un agujero vacío. Cada cavidad pertenece a un **bioma de cueva** que decide de qué es el suelo, qué cuelga del techo y qué la ilumina:
+
+| Bioma de cueva | Qué encuentras |
+|---|---|
+| Frondosa (lush) | Musgo, azaleas, enredaderas con bayas luminosas, flores de espora, hojas de gotera, arcilla y agua. |
+| Dripstone | Bosques de estalactitas y estalagmitas con base, tronco y punta reales, bloques de dripstone. |
+| Deep dark | Sculk, catalizadores, sensores, chillones. Sin luz natural. Aquí vive la **ancient city**. |
+| Hielo | Hielo compacto y azul, capas de nieve, techos helados. Bajo regiones frías. |
+| Champiñones | Champiñones gigantes, shroomlight, micelio y podzol. |
+| Cristal | Geodas de amatista, calcita, basalto liso, paredes en gemación. |
+| Magma | Basalto, blackstone, bloques de magma y fuego de almas, cerca de la bedrock. |
+
+Medido sobre 36 chunks por preset: **10% del subsuelo hueco en BASE, 13,8% en CHAOTIC, 18,8% en INSANE**, de lo cual ~27% está inundado. La lava ocupa el 0,1% (pozas), no el 12-24% de la primera versión.
 
 ### Biomas
 
@@ -82,15 +99,19 @@ rejilla de chunks: deben ser idénticos bloque a bloque.
 
 ### Estructuras
 
-Catorce familias, todas procedurales y adaptadas al terreno (nivelan su plataforma, hunden cimientos
-en la pendiente y despejan el espacio superior):
+**31 familias**, todas procedurales y adaptadas al terreno (nivelan su plataforma, hunden cimientos en la pendiente, despejan el espacio superior y se iluminan por dentro). Incluye el equivalente completo del set vanilla, mejorado:
 
-`village` · `city` · `castle` · `fortress` · `tower` · `battle_tower` · `temple` · `ruins` · `camp` ·
-`bridge` · `underwater` · `sky_sanctuary` · `vault` · `dungeon`
+| Grupo | Estructuras |
+|---|---|
+| Asentamientos | `village` (casas amuebladas y con luz, camas, taller, chimenea, huertos, pozo techado, campana, farolas), `city` (murallas, torres, calles, mercado), `castle` (muralla con adarve, torres de esquina, casa-puerta con arco, patio con jardines y pozo, torreón con sala del trono), `fortress`, `outpost` (avanzada pillager con empalizada y jaula), `camp` |
+| Templos y torres | `tower` (torre escalonada con arcos, ventanas, hiedra y almenas), `battle_tower`, `temple`, `desert_pyramid` (con la sala trampa y su TNT), `jungle_temple` (con palancas y cable trampa) |
+| Ruinas | `ruins`, `trail_ruins` (calzada enterrada con grava sospechosa y vasijas), `ruined_portal`, `fossil` |
+| Frío y ciénaga | `igloo` (con laboratorio en el sótano), `witch_hut` (sobre pilotes) |
+| Agua | `underwater`, `monument` (monumento oceánico con guardián anciano), `shipwreck`, `buried_treasure` |
+| Aire | `sky_sanctuary`, `bridge` |
+| Subsuelo | `mineshaft` (galerías en dos niveles, raíles, soportes, nido de arañas), `stronghold` (biblioteca, celdas, fuente y sala del portal), `ancient_city` (sculk, columnata, marco de deepslate reforzado), `trial_chamber` (arenas de cobre y tuff con trial spawners y vaults), `dungeon`, `vault`, `geode` (geoda de amatista) |
 
-Se colocan sobre dos rejillas deterministas (una gruesa para ciudades, castillos y aldeas; otra fina
-para torres, campamentos, ruinas y criptas), se construyen una sola vez en un búfer y se vuelcan por
-chunk, de modo que una ciudad de 128 bloques cruza decenas de chunks sin costuras.
+Las de superficie se colocan en dos rejillas (una gruesa para ciudades y castillos, otra fina para torres y ruinas); las subterráneas van en su propia rejilla y se sitúan por profundidad, no por bioma.
 
 ### Minibosses
 
@@ -108,7 +129,7 @@ principal cuando el chunk se carga (y solo una vez, marcado en el *persistent da
 
 ## 2. Instalación y uso
 
-1. Copia `ArkcronistGenerator-1.0.0.jar` en `plugins/`.
+1. Copia `ArkcronistGenerator-1.1.0.jar` en `plugins/`.
 2. Arranca el servidor una vez para que se genere `plugins/ArkcronistGenerator/config.yml`.
 3. Crea el mundo con tu gestor de mundos (ArkcronistWorlds, Multiverse, etc.):
 
@@ -238,20 +259,25 @@ Optimizaciones concretas hechas durante el desarrollo, con su medida:
 | Sacar el ruido de estratos del bucle interno (por columna, no por bloque) + rejilla de moteado | 5,9 ms/chunk | 2,8 ms/chunk |
 | Hash barato antes de consultar el campo de vetas de menas | — | incluido arriba |
 | Descarte por caja envolvente de los árboles de vecinos | 1,5 ms/chunk | 1,0 ms/chunk |
+| La pasada de bloques publica la superficie sólida en vez de recalcular los campos 3D | 2,3 ms/chunk (features) | 1,3 ms/chunk |
+| Rejilla de cuevas a 4x6 en vez de 4x4 | 7,9 ms/chunk | 7,7 ms/chunk |
 
 Medición actual (un solo hilo, contenedor de desarrollo, 96 chunks por preset):
 
 ```
-BASE:    ~4,5 ms/chunk   (~220 chunks/s/hilo)
-CHAOTIC: ~4,4 ms/chunk   (~226 chunks/s/hilo)
-INSANE:  ~6,0 ms/chunk   (~166 chunks/s/hilo)
+BASE:    ~7,4 ms/chunk   (~135 chunks/s/hilo)
+CHAOTIC: ~7,7 ms/chunk   (~130 chunks/s/hilo)
+INSANE:  ~8,8 ms/chunk   (~114 chunks/s/hilo)
 ```
+
+El coste subió respecto de la 1.0 porque el subsuelo pasó de estar vacío a tener biomas de cueva,
+acuíferos y decoración, y porque el catálogo de estructuras es el doble de grande. A cambio:
 
 Reproducible con:
 
 ```bash
 mvn -q package -DskipTests
-java -cp target/ArkcronistGenerator-1.0.0.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
+java -cp target/ArkcronistGenerator-1.1.0.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
 ```
 
 o dentro del juego con `/ag bench INSANE 256`.
@@ -260,7 +286,7 @@ o dentro del juego con `/ag bench INSANE 256`.
 
 ## 6. Pruebas
 
-93 pruebas JUnit 5, todas sin servidor:
+105 pruebas JUnit 5, todas sin servidor:
 
 ```bash
 mvn test
@@ -281,16 +307,25 @@ Cubren, entre otras cosas:
 - Volcado de estructuras sin pérdidas ni solapes, colocación determinista, botín y minibosses.
 - Caché acotada, tasa de aciertos y benchmark.
 
-Las tres pruebas que fallaron durante el desarrollo (superficie bajo terreno con salientes, volumen
-de cuevas, estructuras de cielo y criptas inalcanzables) se corrigieron y quedaron cubiertas para
-evitar regresiones.
+Pruebas añadidas en la 1.1 a raíz de los fallos vistos en el servidor real:
+
+- **La superficie donde se planta un árbol o se apoya una estructura es sólida de verdad** (era el
+  origen de los árboles flotando y medio enterrados: los campos 3D del paso de bloques y los de la
+  búsqueda de superficie no compartían la misma rejilla en Y).
+- **Las cuevas están decoradas y no son agujeros vacíos** (≥5% de bloques de vegetación/cristal por
+  volumen excavado).
+- **Hay cuevas inundadas y la lava se queda junto a la bedrock** (regresión del mar de lava).
+- **Todas las estructuras construyen algo y tienen alguna fuente de luz** (regresión de los
+  interiores a oscuras).
+- **Todas las familias de estructuras son alcanzables en el mundo** (regresión de las estructuras
+  con etiqueta que ningún bioma aceptaba).
 
 ---
 
 ## 7. Compilar
 
 ```bash
-mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.0.0.jar
+mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.1.0.jar
 ```
 
 Requiere JDK 21 y la Paper API 1.21.8 (`repo.papermc.io`, ya declarado en el `pom.xml`).
