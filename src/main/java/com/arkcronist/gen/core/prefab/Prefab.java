@@ -37,6 +37,10 @@ public final class Prefab {
     /** Water surface height inside the prefab, in local Y. Meaningful for vessels. */
     public final int waterline;
     public final int solidCount;
+    /** True when the schematic already contains a bed, so a village need not add one. */
+    public final boolean hasBed;
+    /** True when the schematic already lights itself. */
+    public final boolean hasLight;
 
     /** palette index -> block registry id, for each of the four rotations. */
     private final int[][] palettes;
@@ -58,7 +62,7 @@ public final class Prefab {
            int width, int height, int length, int waterline,
            int[][] palettes, boolean[] paletteAir, char[] blocks, long[] interiorAir,
            int anchorX, int anchorZ, int solidCount, int[] containers, int[] spawners,
-           long[] footprint) {
+           long[] footprint, boolean hasBed, boolean hasLight) {
         this.id = id;
         this.category = category;
         this.tags = tags;
@@ -78,6 +82,8 @@ public final class Prefab {
         this.containers = containers;
         this.spawners = spawners;
         this.footprint = footprint;
+        this.hasBed = hasBed;
+        this.hasLight = hasLight;
     }
 
     /**

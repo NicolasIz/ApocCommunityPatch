@@ -24,6 +24,10 @@ public final class SchematicReader {
     private static final Set<String> CONTAINERS = Set.of(
             "minecraft:chest", "minecraft:trapped_chest", "minecraft:barrel");
     private static final Set<String> SPAWNERS = Set.of("minecraft:spawner", "minecraft:trial_spawner");
+    /** Words that mean "this block gives off light", checked against the palette at load time. */
+    private static final String[] LIGHT_WORDS = {
+            "torch", "lantern", "campfire", "glowstone", "sea_lantern", "shroomlight", "candle",
+            "froglight", "end_rod", "copper_bulb", "magma_block", "lava", "fire", "beacon"};
 
     private static final Set<String> AIR_NAMES = Set.of(
             "minecraft:air", "minecraft:cave_air", "minecraft:void_air", "minecraft:structure_void");
@@ -111,13 +115,16 @@ public final class SchematicReader {
         int[] containers = cellsMatching(blocks, names, CONTAINERS);
         int[] spawners = cellsMatching(blocks, names, SPAWNERS);
 
+        boolean hasBed = anyPaletteEntry(names, name -> name.contains("_bed["));
+        boolean hasLight = anyPaletteEntry(names, SchematicReader::isLightSource);
+
         Set<String> tags = tagsFor(id, settings);
         String sizeClass = settings.getProperty("size", sizeClassFor(tags, width, height, length));
         double weight = parseDouble(settings.getProperty("weight"), 1.0);
 
         return new Prefab(id, category, tags, sizeClass, weight, width, height, length, waterline,
                 palettes, paletteAir, blocks, interior, anchor[0], anchor[1], solidCount,
-                containers, spawners, footprint);
+                containers, spawners, footprint, hasBed, hasLight);
     }
 
     private static String defaultAnchor(String category) {
@@ -359,6 +366,24 @@ public final class SchematicReader {
             }
         }
         return interior;
+    }
+
+    private static boolean anyPaletteEntry(String[] names, java.util.function.Predicate<String> test) {
+        for (String name : names) {
+            if (test.test(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isLightSource(String state) {
+        for (String word : LIGHT_WORDS) {
+            if (state.contains(word)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** One bit per XZ column: does any layer of the prefab put a block there? */

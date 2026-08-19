@@ -7,6 +7,7 @@ import com.arkcronist.gen.core.prefab.Prefab;
 import com.arkcronist.gen.core.prefab.PrefabRegistry;
 import com.arkcronist.gen.core.structure.BufferWriter;
 import com.arkcronist.gen.core.structure.LootMarker;
+import com.arkcronist.gen.core.structure.PrefabFurnisher;
 import com.arkcronist.gen.core.structure.MobSpawn;
 import com.arkcronist.gen.core.structure.Structure;
 import com.arkcronist.gen.core.structure.StructureBuffer;
@@ -125,6 +126,7 @@ public final class PrefabVillageStructure implements Structure {
             house.blit(writer, x, baseY, z, rotation, Prefab.BlitOptions.solid(Blocks.AIR));
             house.forEachContainer(x, baseY, z, rotation, (cx, cy, cz) ->
                     buffer.addLoot(new LootMarker(cx, cy, cz, 1, "village")));
+            furnish(buffer, house, x, baseY, z, rotation, random);
             populate(buffer, random, x, z, baseY);
             placed.add(new int[]{x, z, footprint, baseY});
         }
@@ -208,6 +210,34 @@ public final class PrefabVillageStructure implements Structure {
                 }
             }
         }
+    }
+
+    /**
+     * Puts in whatever a house needs to be lived in and the builder left out.
+     *
+     * <p>Most schematics people share are exteriors: walls, a roof, shutters, maybe a chest. A
+     * villager needs a bed to claim the house as a home, a job block to have a trade, and a light or
+     * mobs spawn in the front room. Rather than editing anybody's file, the placer reads the house
+     * back out of the buffer, finds a floor with headroom inside it and furnishes only what the
+     * schematic did not already provide.</p>
+     */
+    /**
+     * Gives a house a bed, a light and a trade block, unless its author already did.
+     *
+     * <p>Without a bed a villager never claims the house as a home, so the settlement never becomes
+     * a village in the game's eyes: no trades, no breeding, no golems.</p>
+     */
+    private void furnish(StructureBuffer buffer, Prefab house, int x, int baseY, int z,
+                         int rotation, FastRandom random) {
+        List<int[]> spots = PrefabFurnisher.interiorSpots(buffer, house, x, baseY, z, rotation, 12);
+        int cursor = 0;
+        if (!house.hasBed) {
+            cursor = PrefabFurnisher.bed(buffer, spots, cursor);
+        }
+        if (!house.hasLight) {
+            cursor = PrefabFurnisher.light(buffer, spots, cursor, 1);
+        }
+        PrefabFurnisher.workstation(buffer, spots, cursor, random);
     }
 
     /** A worn path from each door back to the green. */

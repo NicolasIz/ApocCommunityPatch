@@ -190,6 +190,29 @@ ellas puede ser el tamaño (`small`, `medium`, `large`, `giant`). El tamaño dec
 el preset — BASE tira de los medianos, INSANE de los gigantes. `giant_viking_longhouse_01.schem`,
 `large_watchtower_02.schem`, `medium_stone_keep_01.schem`.
 
+### El paquete medieval que viene incluido
+
+El JAR trae **53 construcciones medievales** ya repartidas por carpetas, así que un mundo nuevo genera
+aldeas de entramado sin que tengas que hacer nada:
+
+| Carpeta | Qué trae |
+|---|---|
+| `houses/` | **47 casas** de entramado de madera, entre 11×9×11 y 23×20×20. Cuatro variantes de material de cada diseño: yeso de arenisca o de lana blanca, tejado de teja o de roble. |
+| `temples/` | Una **iglesia** de 19×27×35 con vidriera y tres agujas. |
+| `castles/` | Un **torreón** de 24×25×24 con torres de esquina. |
+| `towers/` | Una **casa-puerta** de 9×24×25 con arco, una torre almenada y dos torretas. |
+
+Como `houses/`, `temples/`, `castles/` y `towers/` traen archivos, **las versiones procedurales de
+aldea, templo, castillo y torre se apagan solas**. La torre de combate, la fortaleza, la ciudad y las
+demás siguen siendo procedurales.
+
+**Lo que el generador les añade.** Estas schematics son exteriores: tienen puertas, contraventanas y
+algún cofre, pero ni camas ni una sola fuente de luz. Sin cama un aldeano no reclama la casa, y sin
+cama no hay comercio, ni crianza, ni gólems; sin luz aparecen mobs dentro. Así que el emplazamiento
+lee el edificio de vuelta después de colocarlo, busca un suelo con altura libre dentro y **añade solo
+lo que falta**: cama, linterna y un bloque de oficio por casa, y linternas repartidas en la iglesia,
+el torreón y las torres. Si tu schematic ya trae cama o luz, no toca nada.
+
 **Monumento incluido.** `prefabs/ruins/citadel_bashna.schem` — una ciudadela en ruinas de 38×98×38 en
 piedra musgosa, con guarnición y jefe.
 
@@ -237,7 +260,7 @@ principal cuando el chunk se carga (y solo una vez, marcado en el *persistent da
 
 ## 2. Instalación y uso
 
-1. Copia `ArkcronistGenerator-1.3.1.jar` en `plugins/`.
+1. Copia `ArkcronistGenerator-1.4.0.jar` en `plugins/`.
 2. Arranca el servidor una vez para que se genere `plugins/ArkcronistGenerator/config.yml`.
 3. Crea el mundo con tu gestor de mundos (ArkcronistWorlds, Multiverse, etc.):
 
@@ -388,15 +411,15 @@ coloca escribiendo enteros ya resueltos, en mosaicos de 16×16 que se descartan 
 chunk actual no los toca. Sustituir el constructor procedural de árboles por prefabs bajó la fase de
 *features* de ~2,3 a ~1,8 ms/chunk.
 
-Medición actual (un solo hilo, contenedor de desarrollo, 256 chunks por preset, 39 prefabs cargados):
+Medición actual (un solo hilo, contenedor de desarrollo, 256 chunks por preset, 92 prefabs cargados):
 
 ```
-BASE:    ~8,7 ms/chunk  (~114 chunks/s/hilo)
-CHAOTIC: ~8,7 ms/chunk  (~115 chunks/s/hilo)
-INSANE:  ~9,2 ms/chunk  (~109 chunks/s/hilo)
+BASE:    ~8,0 ms/chunk  (~125 chunks/s/hilo)
+CHAOTIC: ~8,1 ms/chunk  (~124 chunks/s/hilo)
+INSANE:  ~8,5 ms/chunk  (~118 chunks/s/hilo)
 ```
 
-Reparto por fase en BASE: 6,4 ms bloques, 1,8 ms features (árboles y rocas), 0,5 ms estructuras,
+Reparto por fase en BASE: 5,4 ms bloques, 1,8 ms features (árboles y rocas), 0,8 ms estructuras,
 0,004 ms mapa de alturas (99% de aciertos de caché). Sigue siendo generación en paralelo: Paper
 reparte los chunks entre varios hilos.
 
@@ -404,7 +427,7 @@ Reproducible con:
 
 ```bash
 mvn -q package -DskipTests
-java -cp target/ArkcronistGenerator-1.3.1.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
+java -cp target/ArkcronistGenerator-1.4.0.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
 ```
 
 o dentro del juego con `/ag bench INSANE 256`.
@@ -493,7 +516,7 @@ cubren gzip, NBT, el flujo de varints y el cargador de carpetas):
 ## 7. Compilar
 
 ```bash
-mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.3.1.jar
+mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.4.0.jar
 ```
 
 Requiere JDK 21 y la Paper API 1.21.8 (`repo.papermc.io`, ya declarado en el `pom.xml`).
@@ -508,6 +531,8 @@ Lo que queda por delante:
 - **Más árboles.** El paquete que viene de fábrica son 33 diseños y casi todos son grandes. Añadir
   copas medianas y pequeñas es cuestión de dejar los `.schem` en `prefabs/trees/`: el registro los
   recoge solos y la separación entre árboles se recalcula a partir de su ancho.
+- Los interiores de las casas medievales son el exterior más lo que el generador les mete (cama, luz,
+  bloque de oficio). Amueblarlas de verdad requiere schematics con interior.
 - Evitar solapes entre las estructuras propias y las vanilla, que hoy se ignoran mutuamente.
 - Ajuste fino de densidad de estructuras y de botín con datos de juego real.
 - Habilidades activas de minibosses (ahora tienen estadísticas, equipo y efectos).

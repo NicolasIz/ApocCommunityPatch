@@ -1,18 +1,24 @@
 """
 Splits a WorldEdit "bundle" schematic - many builds exported side by side on one grass
-platform - into one .schem per build, ready to drop into prefabs/trees/.
+platform - into one .schem per build, ready to drop into prefabs/.
 
 Each connected clump of blocks above the platform becomes its own file, named after what
 it is made of, because the file name is what the generator reads to decide where a prefab
 belongs:
 
-    <size>_<family>_<species>_<nn>.schem
+    <size>_<family>_<detail>_<nn>.schem
 
 Usage:
-    python3 tools/split_schem_bundle.py <bundle.schem> <output-dir>
+    python3 tools/split_schem_bundle.py trees     <bundle.schem> <output-dir>
+    python3 tools/split_schem_bundle.py buildings <bundle.schem> <output-root>
 
-The generator never runs this. It exists so that the 33 bundled trees can be regenerated,
-and so that a new bundle can be turned into prefabs the same way.
+In 'trees' mode every clump lands in one folder, sorted into families by its leaves.
+In 'buildings' mode the clumps are sorted by what they are built of and written into the
+prefab folder each one belongs in - houses/, castles/, towers/, temples/ - which is the
+same folder layout the plugin reads at run time.
+
+The generator never runs this. It exists so the bundled prefabs can be regenerated, and so
+a new bundle can be turned into prefabs the same way.
 """
 
 import sys, os, hashlib
@@ -21,10 +27,11 @@ from _schem import decode
 from _write_nbt import save, varints
 from collections import deque, Counter
 
-if len(sys.argv) != 3:
+if len(sys.argv) != 4 or sys.argv[1] not in ("trees", "buildings"):
     raise SystemExit(__doc__)
-BUNDLE = sys.argv[1]
-OUT = sys.argv[2]
+MODE = sys.argv[1]
+BUNDLE = sys.argv[2]
+OUT = sys.argv[3]
 os.makedirs(OUT, exist_ok=True)
 
 def emit(path, w,h,l, order, data, dataversion=3120):
@@ -117,16 +124,55 @@ for cells in comps:
                 if b!=AIR: names[n]+=1
     digest=hashlib.sha1((','.join(order)+'|'+','.join(map(str,data))).encode()).hexdigest()[:12]
     records.append(dict(w=w,h=h,l=l,nonair=sum(names.values()),tags=classify(names),
-                        order=order,data=data,digest=digest))
+                        names=names,order=order,data=data,digest=digest))
 
 uniq={}
 for r in records: uniq.setdefault(r['digest'], r)
 recs=sorted(uniq.values(), key=lambda r:(-r['nonair']))
 
-counts=Counter()
+PLASTER = ('smooth_sandstone', 'white_wool', 'white_terracotta', 'bone_block')
+MASONRY = ('stone', 'andesite', 'stone_bricks', 'cobblestone', 'bricks', 'deepslate',
+           'polished_andesite', 'diorite', 'granite')
+
+def building_kind(names, w, h, l):
+    """Sorts a building by what it is made of, which is what a builder's style comes down to."""
+    tally = Counter()
+    for n, c in names.items():
+        base = n.split('[')[0].replace('minecraft:', '')
+        for group, members in (('plaster', PLASTER), ('masonry', MASONRY)):
+            if any(base == m or base.startswith(m + '_') for m in members):
+                tally[group] += c
+        if 'stained_glass' in base:
+            tally['glass'] += c
+        if base.endswith(('_planks', '_wood', '_log', '_stairs', '_slab')) and 'stone' not in base \
+                and 'brick' not in base and 'andesite' not in base:
+            tally['timber'] += c
+
+    # A tall building with a stained glass window is a church, whatever else it is made of.
+    if tally['glass'] > 30 and h >= 24:
+        return 'temples', 'church'
+    # Plaster panels between timber: the half-timbered house this pack is mostly made of.
+    if tally['plaster'] > 0:
+        return 'houses', 'house'
+    if tally['masonry'] > tally['timber']:
+        # Bare masonry. A keep is chunky in both directions; anything long and thin is a
+        # gatehouse or a turret, so it goes with the towers.
+        return ('castles', 'keep') if min(w, l) >= 16 else ('towers', 'tower')
+    return 'houses', 'house'
+
+counts = Counter()
 for r in recs:
-    key='_'.join([size_class(r['w'],r['h'],r['l'])] + r['tags'])
-    counts[key]+=1
-    name='%s_%02d'%(key, counts[key])
-    emit(os.path.join(OUT, name+'.schem'), r['w'],r['h'],r['l'], r['order'], r['data'])
-    print('tree  %-32s %3dx%3dx%3d %5d'%(name,r['w'],r['h'],r['l'],r['nonair']))
+    size = size_class(r['w'], r['h'], r['l'])
+    if MODE == 'trees':
+        folder = ''
+        key = '_'.join([size] + r['tags'])
+    else:
+        folder, detail = building_kind(r['names'], r['w'], r['h'], r['l'])
+        key = '%s_medieval_%s' % (size, detail)
+    counts[key] += 1
+    name = '%s_%02d' % (key, counts[key])
+    directory = os.path.join(OUT, folder) if folder else OUT
+    os.makedirs(directory, exist_ok=True)
+    emit(os.path.join(directory, name + '.schem'), r['w'], r['h'], r['l'], r['order'], r['data'])
+    print('%-12s %-34s %3dx%3dx%3d %6d' % (folder or 'trees', name, r['w'], r['h'], r['l'], r['nonair']))
+print(dict(counts))

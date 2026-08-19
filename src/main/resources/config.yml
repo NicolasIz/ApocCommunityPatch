@@ -68,6 +68,13 @@ performance:
 #  the real ground, cuts back the hillside above the floor it chose, rotates the
 #  building, garrisons it, and registers the chests inside it as loot.
 #
+#  It also furnishes what a shared schematic almost never has. Most are exteriors:
+#  walls, a roof, shutters, maybe a chest, and no light and nothing to sleep on.
+#  So after placing a building the generator reads it back, finds a floor with
+#  headroom inside, and adds ONLY what is missing - a bed, a lantern and a job
+#  block per house, lanterns spread through a church or a keep. A schematic that
+#  already has a bed or a light is left exactly as its author built it.
+#
 #  The file NAME is the metadata. Words in it become tags, and the generator
 #  matches them against what a biome asks for:
 #

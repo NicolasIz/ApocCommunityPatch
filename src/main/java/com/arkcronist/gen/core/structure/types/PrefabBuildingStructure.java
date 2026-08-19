@@ -8,6 +8,7 @@ import com.arkcronist.gen.core.prefab.PrefabRegistry;
 import com.arkcronist.gen.core.structure.BufferWriter;
 import com.arkcronist.gen.core.structure.LootMarker;
 import com.arkcronist.gen.core.structure.MobSpawn;
+import com.arkcronist.gen.core.structure.PrefabFurnisher;
 import com.arkcronist.gen.core.structure.SpawnerMarker;
 import com.arkcronist.gen.core.structure.Structure;
 import com.arkcronist.gen.core.structure.StructureBuffer;
@@ -129,6 +130,12 @@ public final class PrefabBuildingStructure implements Structure {
         BufferWriter writer = new BufferWriter(buffer, context.engine.settings().minY, context.maxY());
         level(context, writer, prefab, x, z, baseY, rotation);
         prefab.blit(writer, x, baseY, z, rotation, Prefab.BlitOptions.solid(Blocks.AIR));
+
+        // Most shared schematics carry no light at all; a dark hundred block citadel is a mob farm.
+        if (!prefab.hasLight) {
+            List<int[]> spots = PrefabFurnisher.interiorSpots(buffer, prefab, x, baseY, z, rotation, 24);
+            PrefabFurnisher.light(buffer, spots, 0, landmark ? 6 : 3);
+        }
 
         int tier = landmark ? 2 : 1;
         prefab.forEachContainer(x, baseY, z, rotation, (cx, cy, cz) ->
