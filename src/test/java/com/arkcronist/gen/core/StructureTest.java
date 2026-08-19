@@ -64,6 +64,45 @@ class StructureTest {
     }
 
     @Test
+    @DisplayName("a marker just outside a structure's blocks is still delivered to its chunk")
+    void markersOutsideTheBlockFootprintSurvive() {
+        // A garrison mob standing in a doorway, or a chest recorded a block past the wall, lands in
+        // a chunk the structure writes nothing to. Chunks only ask structures that concern them for
+        // their markers, so if reach were measured by blocks alone those markers would vanish.
+        StructureBuffer buffer = new StructureBuffer();
+        BuildKit.box(buffer, 0, 60, 0, 15, 66, 15, 1);
+        buffer.addSpawn(MobSpawn.mob(20, 61, 20, "ZOMBIE", 1));
+        buffer.addLoot(new LootMarker(-4, 61, -4, 1, "test"));
+
+        assertTrue(buffer.touchesChunk(1, 1), "the chunk holding the mob is not considered touched");
+        assertTrue(buffer.touchesChunk(-1, -1), "the chunk holding the chest is not considered touched");
+        assertFalse(buffer.writesToChunk(1, 1), "no blocks belong in the mob's chunk");
+
+        List<MobSpawn> spawns = new ArrayList<>();
+        List<LootMarker> loot = new ArrayList<>();
+        for (int cx = -2; cx <= 2; cx++) {
+            for (int cz = -2; cz <= 2; cz++) {
+                ChunkWriter writer = new ChunkWriter(cx, cz);
+                buffer.blitChunk(cx, cz, writer);
+                int x0 = cx << 4;
+                int z0 = cz << 4;
+                for (MobSpawn spawn : buffer.spawns()) {
+                    if (spawn.x() >= x0 && spawn.x() <= x0 + 15 && spawn.z() >= z0 && spawn.z() <= z0 + 15) {
+                        spawns.add(spawn);
+                    }
+                }
+                for (LootMarker chest : buffer.loot()) {
+                    if (chest.x() >= x0 && chest.x() <= x0 + 15 && chest.z() >= z0 && chest.z() <= z0 + 15) {
+                        loot.add(chest);
+                    }
+                }
+            }
+        }
+        assertEquals(1, spawns.size(), "the mob outside the walls was lost");
+        assertEquals(1, loot.size(), "the chest outside the walls was lost");
+    }
+
+    @Test
     @DisplayName("a structure buffer blits into chunks without losing or duplicating blocks")
     void blitCoversEveryBlock() {
         StructureBuffer buffer = new StructureBuffer();

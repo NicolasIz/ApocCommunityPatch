@@ -142,14 +142,56 @@ Los cofres del barco se registran como botín, así que abordar uno tiene sentid
 | CHAOTIC | Cascos más grandes, más a menudo; a veces dos anclados juntos. |
 | INSANE | Navíos de primera clase en alta mar y escuadras de hasta tres. |
 
-### Monumentos .schem
+### Tus propias estructuras .schem
 
-`prefabs/ruins/citadel_bashna.schem` — una ciudadela en ruinas de 38×98×38 en piedra musgosa. Exige
-terreno realmente llano, hunde su base y tiende una capa de cimentación bajo su huella para que los
-muros lleguen al suelo en vez de flotar sobre él. Trae guarnición y un jefe.
+Cualquier carpeta dentro de `prefabs/` es una categoría, y **el nombre de la carpeta decide qué es
+la estructura**: en qué biomas aparece, en qué rejilla se coloca y a qué estructura procedural
+sustituye. No hay nada que registrar ni que recompilar.
 
-Cualquier carpeta nueva dentro de `prefabs/` se convierte en una categoría; `prefabs/castles/`
-funciona igual que las tres que vienen de fábrica.
+| Carpeta | Familia | Sustituye a |
+|---|---|---|
+| `houses/` | `VILLAGE` | `village` — cada archivo es **una casa**; el generador monta la aldea |
+| `villages/` | `VILLAGE` | `village` — cada archivo es una aldea entera |
+| `castles/` | `CASTLE` | `castle` |
+| `cities/` | `CITY` | `city` |
+| `fortresses/` | `FORTRESS` | `fortress` |
+| `outposts/` | `OUTPOST` | `outpost` |
+| `towers/` | `TOWER` | `tower` |
+| `battle_towers/` | `BATTLE_TOWER` | `battle_tower` |
+| `temples/` | `TEMPLE` | `temple` |
+| `camps/` | `CAMP` | `camp` |
+| `mansions/` | `MANSION` | `mansion` |
+| `ruins/` | `PREFAB_RUIN` | nada: se suman como monumentos |
+| `ships/` | `SHIP` | nada: reglas marítimas propias |
+| `trees/` | — | todos los árboles grandes |
+
+**En cuanto una carpeta tiene archivos, la versión procedural de esa familia se apaga.** Si pones
+castillos en `castles/`, el mundo genera tus castillos y no los míos; las familias para las que no
+aportes nada siguen siendo procedurales. Una carpeta que no esté en la tabla (`statues/`, por
+ejemplo) se carga igual pero no se coloca sola.
+
+**Aldeas a partir de casas sueltas.** `houses/` es el caso especial y el más útil: cada `.schem` es
+una casa, y el generador decide cuántas hay, dónde y mirando hacia dónde. Las coloca en anillo
+alrededor de una plaza, orientadas hacia el centro, con caminos de tierra pisada entre ellas y
+aldeanos dentro (más un gólem de hierro de vez en cuando). Cada casa **nivela su propia parcela**, así
+que una aldea en cuesta sale con menos casas en vez de con casas colgando de un barranco. Cuántas
+casas depende del preset: 5–8 en BASE, 6–11 en CHAOTIC, 9–15 en INSANE.
+
+**Qué hace el generador que la schematic no trae.** Un archivo exportado desde una parcela plana no
+sabe lo que es una ladera, así que el emplazamiento nivela el suelo por los dos lados: pone cimientos
+hasta donde el terreno se hunde y recorta lo que sobresale por encima del suelo elegido. Ambas cosas
+solo en las columnas que el edificio ocupa de verdad, así que una torre se hace su terraza en la
+pendiente en lugar de afeitar un rectángulo del paisaje. Además reparte guarnición, registra los
+cofres del archivo como botín y los spawners como spawners, y a los edificios grandes o muy altos
+les pone un jefe.
+
+**Cómo nombrar los archivos.** Igual que los árboles: las palabras del nombre son etiquetas y una de
+ellas puede ser el tamaño (`small`, `medium`, `large`, `giant`). El tamaño decide cuál se elige según
+el preset — BASE tira de los medianos, INSANE de los gigantes. `giant_viking_longhouse_01.schem`,
+`large_watchtower_02.schem`, `medium_stone_keep_01.schem`.
+
+**Monumento incluido.** `prefabs/ruins/citadel_bashna.schem` — una ciudadela en ruinas de 38×98×38 en
+piedra musgosa, con guarnición y jefe.
 
 ### Estructuras
 
@@ -195,7 +237,7 @@ principal cuando el chunk se carga (y solo una vez, marcado en el *persistent da
 
 ## 2. Instalación y uso
 
-1. Copia `ArkcronistGenerator-1.3.0.jar` en `plugins/`.
+1. Copia `ArkcronistGenerator-1.3.1.jar` en `plugins/`.
 2. Arranca el servidor una vez para que se genere `plugins/ArkcronistGenerator/config.yml`.
 3. Crea el mundo con tu gestor de mundos (ArkcronistWorlds, Multiverse, etc.):
 
@@ -349,12 +391,12 @@ chunk actual no los toca. Sustituir el constructor procedural de árboles por pr
 Medición actual (un solo hilo, contenedor de desarrollo, 256 chunks por preset, 39 prefabs cargados):
 
 ```
-BASE:    ~8,4 ms/chunk  (~120 chunks/s/hilo)
-CHAOTIC: ~8,3 ms/chunk  (~121 chunks/s/hilo)
-INSANE:  ~9,1 ms/chunk  (~110 chunks/s/hilo)
+BASE:    ~8,7 ms/chunk  (~114 chunks/s/hilo)
+CHAOTIC: ~8,7 ms/chunk  (~115 chunks/s/hilo)
+INSANE:  ~9,2 ms/chunk  (~109 chunks/s/hilo)
 ```
 
-Reparto por fase en BASE: 6,0 ms bloques, 1,8 ms features (árboles y rocas), 0,5 ms estructuras,
+Reparto por fase en BASE: 6,4 ms bloques, 1,8 ms features (árboles y rocas), 0,5 ms estructuras,
 0,004 ms mapa de alturas (99% de aciertos de caché). Sigue siendo generación en paralelo: Paper
 reparte los chunks entre varios hilos.
 
@@ -362,7 +404,7 @@ Reproducible con:
 
 ```bash
 mvn -q package -DskipTests
-java -cp target/ArkcronistGenerator-1.3.0.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
+java -cp target/ArkcronistGenerator-1.3.1.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
 ```
 
 o dentro del juego con `/ag bench INSANE 256`.
@@ -371,7 +413,7 @@ o dentro del juego con `/ag bench INSANE 256`.
 
 ## 6. Pruebas
 
-106 pruebas JUnit 5, todas sin servidor:
+114 pruebas JUnit 5, todas sin servidor:
 
 ```bash
 mvn test
@@ -432,12 +474,26 @@ Pruebas añadidas en la 1.3, para el sistema de prefabs:
   levanta sobre terreno llano y con guarnición.
 - Una carpeta de prefabs vacía degrada en silencio en vez de fallar.
 
+Pruebas de las categorías de prefab (con schematics sintéticas escritas y leídas en disco, así que
+cubren gzip, NBT, el flujo de varints y el cargador de carpetas):
+
+- Una carpeta cualquiera se convierte en categoría, con su tamaño y sus etiquetas leídos del nombre.
+- **Poner archivos en `castles/`, `towers/`, `battle_towers/` o `houses/` apaga la estructura
+  procedural equivalente**, y las familias sin archivos siguen intactas.
+- Las sustitutas conservan la etiqueta de familia, así que aparecen en los mismos biomas.
+- Los edificios prefab se encuentran en el mundo, construyen, se iluminan y llevan guarnición.
+- Una aldea se monta con varias casas y tiene aldeanos y cofres dentro.
+- **Ninguna columna de un edificio empieza en el aire**: el cimiento llega hasta el terreno real.
+- Una carpeta desconocida se carga pero nunca se coloca sola.
+- **Un marcador de mob o de cofre que cae fuera de los bloques de su estructura sigue llegando a su
+  chunk** — antes se perdía en silencio, y afectaba también a las estructuras procedurales.
+
 ---
 
 ## 7. Compilar
 
 ```bash
-mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.3.0.jar
+mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.3.1.jar
 ```
 
 Requiere JDK 21 y la Paper API 1.21.8 (`repo.papermc.io`, ya declarado en el `pom.xml`).
@@ -452,8 +508,6 @@ Lo que queda por delante:
 - **Más árboles.** El paquete que viene de fábrica son 33 diseños y casi todos son grandes. Añadir
   copas medianas y pequeñas es cuestión de dejar los `.schem` en `prefabs/trees/`: el registro los
   recoge solos y la separación entre árboles se recalcula a partir de su ancho.
-- Más categorías de prefab. `prefabs/castles/`, `prefabs/villages/` o `prefabs/temples/` ya funcionan
-  como carpetas; falta escribirles la regla de emplazamiento que tienen barcos y monumentos.
 - Evitar solapes entre las estructuras propias y las vanilla, que hoy se ignoran mutuamente.
 - Ajuste fino de densidad de estructuras y de botín con datos de juego real.
 - Habilidades activas de minibosses (ahora tienen estadísticas, equipo y efectos).

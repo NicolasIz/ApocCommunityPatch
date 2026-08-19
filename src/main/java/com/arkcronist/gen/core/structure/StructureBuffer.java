@@ -33,6 +33,15 @@ public final class StructureBuffer {
     private int maxZ = Integer.MIN_VALUE;
     private int blockCount;
 
+    // Markers are tracked separately from blocks. A garrison mob standing in a doorway, or a chest
+    // recorded a block outside the wall, can fall in a chunk the structure places nothing in - and a
+    // chunk that a structure does not write to never asks for its markers. Widening the reach used
+    // to decide "does this structure concern chunk (x,z)" is what stops those being lost silently.
+    private int markerMinX = Integer.MAX_VALUE;
+    private int markerMinZ = Integer.MAX_VALUE;
+    private int markerMaxX = Integer.MIN_VALUE;
+    private int markerMaxZ = Integer.MIN_VALUE;
+
     private static long sectionKey(int sx, int sy, int sz) {
         return ((long) (sx & 0x3FFFFF) << 42) | ((long) (sy & 0xFFFFF) << 22) | (sz & 0x3FFFFFL);
     }
@@ -84,10 +93,27 @@ public final class StructureBuffer {
 
     public void addSpawn(MobSpawn spawn) {
         spawns.add(spawn);
+        noteMarker(spawn.x(), spawn.z());
+    }
+
+    private void noteMarker(int x, int z) {
+        if (x < markerMinX) {
+            markerMinX = x;
+        }
+        if (z < markerMinZ) {
+            markerMinZ = z;
+        }
+        if (x > markerMaxX) {
+            markerMaxX = x;
+        }
+        if (z > markerMaxZ) {
+            markerMaxZ = z;
+        }
     }
 
     public void addLoot(LootMarker marker) {
         loot.add(marker);
+        noteMarker(marker.x(), marker.z());
     }
 
     public List<MobSpawn> spawns() {
@@ -100,6 +126,7 @@ public final class StructureBuffer {
 
     public void addSpawner(SpawnerMarker marker) {
         spawners.add(marker);
+        noteMarker(marker.x(), marker.z());
     }
 
     public List<SpawnerMarker> spawners() {
@@ -111,7 +138,7 @@ public final class StructureBuffer {
     }
 
     public boolean isEmpty() {
-        return blockCount == 0;
+        return blockCount == 0 && spawns.isEmpty() && loot.isEmpty() && spawners.isEmpty();
     }
 
     public int minX() {
@@ -138,19 +165,32 @@ public final class StructureBuffer {
         return maxY;
     }
 
-    /** True when this structure has any block inside the given chunk. */
+    /** True when this structure has any block <em>or marker</em> inside the given chunk. */
     public boolean touchesChunk(int chunkX, int chunkZ) {
         if (isEmpty()) {
             return false;
         }
         int x0 = chunkX << 4;
         int z0 = chunkZ << 4;
-        return maxX >= x0 && minX <= x0 + 15 && maxZ >= z0 && minZ <= z0 + 15;
+        return overlaps(Math.min(minX, markerMinX), Math.max(maxX, markerMaxX),
+                Math.min(minZ, markerMinZ), Math.max(maxZ, markerMaxZ), x0, z0);
+    }
+
+    /** True when this structure writes blocks into the given chunk. */
+    public boolean writesToChunk(int chunkX, int chunkZ) {
+        if (blockCount == 0) {
+            return false;
+        }
+        return overlaps(minX, maxX, minZ, maxZ, chunkX << 4, chunkZ << 4);
+    }
+
+    private static boolean overlaps(int lowX, int highX, int lowZ, int highZ, int x0, int z0) {
+        return highX >= x0 && lowX <= x0 + 15 && highZ >= z0 && lowZ <= z0 + 15;
     }
 
     /** Writes the part of this structure that belongs to one chunk. */
     public void blitChunk(int chunkX, int chunkZ, RegionWriter writer) {
-        if (!touchesChunk(chunkX, chunkZ)) {
+        if (!writesToChunk(chunkX, chunkZ)) {
             return;
         }
         int sectionMinY = minY >> 4;

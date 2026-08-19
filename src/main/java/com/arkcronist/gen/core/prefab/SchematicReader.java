@@ -106,6 +106,7 @@ public final class SchematicReader {
                 : deriveWaterline(blocks, paletteAir, width, height, length);
 
         long[] interior = interiorAir(blocks, paletteAir, width, height, length);
+        long[] footprint = footprint(blocks, paletteAir, width, height, length);
 
         int[] containers = cellsMatching(blocks, names, CONTAINERS);
         int[] spawners = cellsMatching(blocks, names, SPAWNERS);
@@ -116,7 +117,7 @@ public final class SchematicReader {
 
         return new Prefab(id, category, tags, sizeClass, weight, width, height, length, waterline,
                 palettes, paletteAir, blocks, interior, anchor[0], anchor[1], solidCount,
-                containers, spawners);
+                containers, spawners, footprint);
     }
 
     private static String defaultAnchor(String category) {
@@ -358,6 +359,20 @@ public final class SchematicReader {
             }
         }
         return interior;
+    }
+
+    /** One bit per XZ column: does any layer of the prefab put a block there? */
+    private static long[] footprint(char[] blocks, boolean[] air, int width, int height, int length) {
+        long[] mask = new long[((width * length) + 63) >>> 6];
+        for (int y = 0; y < height; y++) {
+            int layer = y * width * length;
+            for (int column = 0; column < width * length; column++) {
+                if (!air[blocks[layer + column]]) {
+                    mask[column >>> 6] |= 1L << (column & 63);
+                }
+            }
+        }
+        return mask;
     }
 
     /** Tags come from the file name so that dropping in a new prefab needs no code and no config. */

@@ -39,8 +39,34 @@ performance:
 #     plugins/ArkcronistGenerator/prefabs/ruins/
 #
 #  Drop a new .schem into one of those folders and restart: there is nothing to
-#  register and nothing to recompile. New folders work too - a directory named
-#  'castles' simply becomes a category called castles.
+#  register and nothing to recompile.
+#
+#  THE FOLDER NAME DECIDES WHAT THE STRUCTURE IS - which biomes it appears in,
+#  which grid it is placed on, and which procedural structure it replaces:
+#
+#     houses/         one file = ONE HOUSE; the generator assembles the village
+#     villages/       one file = a whole village
+#     castles/        replaces the built-in castle
+#     cities/         replaces city
+#     fortresses/     replaces fortress
+#     outposts/       replaces outpost
+#     towers/         replaces tower
+#     battle_towers/  replaces battle_tower
+#     temples/        replaces temple
+#     camps/          replaces camp
+#     mansions/       replaces mansion
+#     ruins/          landmarks; replaces nothing, they are added
+#     ships/          vessels, with their own rules for deep water and coast
+#     trees/          every large tree in the world
+#
+#  As soon as a folder has files in it, the procedural version of that family
+#  stands down, so a world never gets two competing kinds of castle. Families
+#  you supply nothing for stay procedural. A folder that is not on the list
+#  (say 'statues/') still loads but is never placed on its own.
+#
+#  The generator does the part the schematic cannot: it lays foundations down to
+#  the real ground, cuts back the hillside above the floor it chose, rotates the
+#  building, garrisons it, and registers the chests inside it as loot.
 #
 #  The file NAME is the metadata. Words in it become tags, and the generator
 #  matches them against what a biome asks for:
@@ -50,7 +76,8 @@ performance:
 #     large_dead_dark_oak_01.schem    -> a bare, leafless dark oak
 #
 #  Sizes: small, medium, large, giant. Leave the size out and it is worked out
-#  from the schematic's own footprint.
+#  from the schematic's own footprint. Size also decides which file a preset
+#  reaches for: BASE prefers the medium ones, INSANE the giant ones.
 #
 #  Species the biomes ask for: oak, big_oak, birch, spruce, giant_spruce,
 #  jungle, giant_jungle, acacia, dark_oak, pale_oak, mangrove, cherry, azalea.
@@ -88,7 +115,8 @@ structures:
   # them back on, or add ids to 'disabled' to switch any structure off entirely.
   # Built-in ids: village, city, castle, fortress, tower, battle_tower, camp, ruins, bridge,
   #   temple, dungeon, vault, geode, fossil, sky_sanctuary, underwater,
-  #   prefab_ship (schematic vessels), prefab_ruin (schematic landmarks)
+  #   prefab_ship (schematic vessels), prefab_village (aldea de casas .schem),
+  #   y un prefab_<carpeta> por cada carpeta de prefabs con regla propia
   force-enabled: []
   disabled: []
 

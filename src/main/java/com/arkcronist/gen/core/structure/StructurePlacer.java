@@ -50,6 +50,8 @@ public final class StructurePlacer {
     private static final int SITE_CACHE_LIMIT = 1024;
 
     private final java.util.Set<String> disabled;
+    /** Built-in ids that stand aside because a prefab folder now supplies that family. */
+    private final java.util.Set<String> supplanted = new java.util.HashSet<>();
     /** Widest structure registered; drives how far a chunk looks for structures reaching into it. */
     private final int maxRadius;
 
@@ -69,6 +71,20 @@ public final class StructurePlacer {
                            com.arkcronist.gen.core.prefab.PrefabRegistry prefabs) {
         this.disabled = disabled;
         this.engine = engine;
+
+        // Work out first which families the prefab folders take over, so the procedural versions
+        // never register at all. A server that drops in its own castles gets those castles, not a
+        // world where two kinds of castle compete for the same grid cells.
+        for (com.arkcronist.gen.core.prefab.PrefabCategories.Rule rule
+                : com.arkcronist.gen.core.prefab.PrefabCategories.rules()) {
+            if (rule.replaces() != null && prefabs.has(rule.folder())) {
+                supplanted.add(rule.replaces());
+            }
+        }
+        if (prefabs.has(com.arkcronist.gen.core.prefab.PrefabCategories.HOUSES)) {
+            supplanted.add("village");
+        }
+
         // Settlements and landmarks
         register(new VillageStructure());
         register(new CityStructure());
@@ -106,13 +122,21 @@ public final class StructurePlacer {
         register(new TrialChamberStructure());
         register(new GeodeStructure());
         register(new FossilStructure());
-        // Schematic backed families. They register themselves out of existence when the prefab
-        // folder holds nothing for them, so an empty install behaves exactly as it did before.
+        // Schematic backed families. Each one exists only when its folder has files in it, so an
+        // install with an empty prefabs folder behaves exactly as it did before there were any.
         if (prefabs.has("ships")) {
             register(new ShipPrefabStructure(prefabs));
         }
-        if (prefabs.has("ruins")) {
-            register(new PrefabRuinStructure(prefabs));
+        if (prefabs.has(com.arkcronist.gen.core.prefab.PrefabCategories.HOUSES)) {
+            register(new PrefabVillageStructure(prefabs));
+        }
+        for (com.arkcronist.gen.core.prefab.PrefabCategories.Rule rule
+                : com.arkcronist.gen.core.prefab.PrefabCategories.rules()) {
+            if (prefabs.has(rule.folder())) {
+                register(new PrefabBuildingStructure(prefabs, rule.folder(),
+                        com.arkcronist.gen.core.prefab.PrefabCategories.structureId(rule.folder()),
+                        rule.tag(), rule.weight()));
+            }
         }
 
         int widest = BASE_MAX_RADIUS;
@@ -123,7 +147,7 @@ public final class StructurePlacer {
     }
 
     private void register(Structure structure) {
-        if (disabled.contains(structure.id())) {
+        if (disabled.contains(structure.id()) || supplanted.contains(structure.id())) {
             return;
         }
         switch (structure.placement()) {

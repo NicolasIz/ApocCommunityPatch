@@ -42,6 +42,7 @@ public final class Blocks {
     public static final int GRASS_BLOCK = id("minecraft:grass_block");
     public static final int DIRT = id("minecraft:dirt");
     public static final int COARSE_DIRT = id("minecraft:coarse_dirt");
+    public static final int DIRT_PATH = id("minecraft:dirt_path");
     public static final int ROOTED_DIRT = id("minecraft:rooted_dirt");
     public static final int PODZOL = id("minecraft:podzol");
     public static final int MYCELIUM = id("minecraft:mycelium");

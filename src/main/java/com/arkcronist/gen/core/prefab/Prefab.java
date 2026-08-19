@@ -51,11 +51,14 @@ public final class Prefab {
     /** Cell indices of chests, barrels and spawners, so a prefab's containers can be filled. */
     private final int[] containers;
     private final int[] spawners;
+    /** One bit per XZ column: does this prefab put anything at all in it? */
+    private final long[] footprint;
 
     Prefab(String id, String category, Set<String> tags, String sizeClass, double weight,
            int width, int height, int length, int waterline,
            int[][] palettes, boolean[] paletteAir, char[] blocks, long[] interiorAir,
-           int anchorX, int anchorZ, int solidCount, int[] containers, int[] spawners) {
+           int anchorX, int anchorZ, int solidCount, int[] containers, int[] spawners,
+           long[] footprint) {
         this.id = id;
         this.category = category;
         this.tags = tags;
@@ -74,6 +77,43 @@ public final class Prefab {
         this.solidCount = solidCount;
         this.containers = containers;
         this.spawners = spawners;
+        this.footprint = footprint;
+    }
+
+    /**
+     * Whether the prefab occupies a column, given in the rotated frame the caller sees.
+     *
+     * <p>Used when a building has to make room for itself: only the columns it actually stands in
+     * are levelled, so a keep cuts its own terrace out of a slope instead of shaving a rectangle out
+     * of the landscape around it.</p>
+     */
+    public boolean occupies(int rotation, int outX, int outZ) {
+        int turns = rotation & 3;
+        int sourceX;
+        int sourceZ;
+        switch (turns) {
+            case 1 -> {
+                sourceX = outZ;
+                sourceZ = length - 1 - outX;
+            }
+            case 2 -> {
+                sourceX = width - 1 - outX;
+                sourceZ = length - 1 - outZ;
+            }
+            case 3 -> {
+                sourceX = width - 1 - outZ;
+                sourceZ = outX;
+            }
+            default -> {
+                sourceX = outX;
+                sourceZ = outZ;
+            }
+        }
+        if (sourceX < 0 || sourceZ < 0 || sourceX >= width || sourceZ >= length) {
+            return false;
+        }
+        int column = sourceZ * width + sourceX;
+        return (footprint[column >>> 6] & (1L << (column & 63))) != 0L;
     }
 
     public boolean hasTag(String tag) {
