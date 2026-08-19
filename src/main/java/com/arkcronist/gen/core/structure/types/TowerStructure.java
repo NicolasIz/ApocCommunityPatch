@@ -39,7 +39,7 @@ public final class TowerStructure implements Structure {
     public boolean canPlace(StructureContext context) {
         return !context.submerged(context.originX, context.originZ)
                 && context.groundY > context.seaLevel() - 2
-                && context.relief(context.originX, context.originZ, 7) < 16;
+                && context.relief(context.originX, context.originZ, 7) < 9;
     }
 
     @Override

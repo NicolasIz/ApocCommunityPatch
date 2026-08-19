@@ -51,6 +51,39 @@ public final class ArkConfig {
         return config.getBoolean("structures.fill-loot", true);
     }
 
+    /**
+     * Whether the server places its own vanilla structures (monument, stronghold, ancient city,
+     * mansion, mineshaft, desert pyramid and the rest) into this world.
+     *
+     * <p>They are placed by the server itself from the game's own definitions, so they are the real
+     * thing rather than an imitation, and they follow the vanilla biome keys this generator reports.</p>
+     */
+    public boolean vanillaStructures() {
+        return config.getBoolean("structures.vanilla-structures", true);
+    }
+
+    /**
+     * Structure ids this generator must not place.
+     *
+     * <p>When vanilla structures are on, the built-in equivalents step aside automatically so a
+     * world does not end up with two ocean monuments on top of each other.</p>
+     */
+    public java.util.Set<String> disabledStructures() {
+        java.util.Set<String> disabled = new java.util.HashSet<>(
+                config.getStringList("structures.disabled"));
+        if (vanillaStructures()) {
+            disabled.addAll(VANILLA_EQUIVALENTS);
+        }
+        disabled.removeAll(config.getStringList("structures.force-enabled"));
+        return disabled;
+    }
+
+    /** Built-in structures that duplicate something the vanilla generator already provides. */
+    private static final java.util.Set<String> VANILLA_EQUIVALENTS = java.util.Set.of(
+            "monument", "ancient_city", "stronghold", "mineshaft", "mansion", "desert_pyramid",
+            "jungle_temple", "igloo", "witch_hut", "shipwreck", "buried_treasure", "ruined_portal",
+            "trail_ruins", "outpost", "trial_chamber");
+
     public boolean vanillaMobs() {
         return config.getBoolean("world.vanilla-mob-generation", true);
     }

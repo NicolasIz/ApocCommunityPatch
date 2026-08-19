@@ -44,7 +44,12 @@ public final class StructureContext {
         return engine.surfaceHeight(x, z) < engine.waterLevel(x, z) - 1;
     }
 
-    /** Largest height difference found on a ring around a position: the terrain's roughness. */
+    /**
+     * Largest height difference found on a ring around a position: the terrain's roughness.
+     *
+     * <p>Uses the heightmap, which only needs the cached 2D chunk data - site checks run far more
+     * often than builds do.</p>
+     */
     public int relief(int x, int z, int radius) {
         int min = Integer.MAX_VALUE;
         int max = Integer.MIN_VALUE;
@@ -52,7 +57,7 @@ public final class StructureContext {
             double angle = i * Math.PI / 4.0;
             int px = x + (int) Math.round(Math.cos(angle) * radius);
             int pz = z + (int) Math.round(Math.sin(angle) * radius);
-            int h = height(px, pz);
+            int h = engine.heightmapHeight(px, pz);
             min = Math.min(min, h);
             max = Math.max(max, h);
         }

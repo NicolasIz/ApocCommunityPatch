@@ -35,7 +35,7 @@ public final class CityStructure implements Structure {
     public boolean canPlace(StructureContext context) {
         return !context.submerged(context.originX, context.originZ)
                 && context.groundY > context.seaLevel() + 1
-                && context.relief(context.originX, context.originZ, 24) < 20;
+                && context.relief(context.originX, context.originZ, 24) < 12;
     }
 
     @Override

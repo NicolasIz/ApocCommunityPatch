@@ -118,7 +118,10 @@ public final class ArkChunkGenerator extends ChunkGenerator {
 
     @Override
     public boolean shouldGenerateStructures() {
-        return false;
+        // Let the server place its own structures. They come from the game's own definitions, so an
+        // ocean monument really is an ocean monument, and they follow the vanilla biome keys the
+        // biome provider reports. The built-in equivalents step aside in config.
+        return plugin.arkConfig().vanillaStructures();
     }
 
     @Override

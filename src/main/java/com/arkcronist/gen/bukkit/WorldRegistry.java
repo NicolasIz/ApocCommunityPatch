@@ -44,9 +44,13 @@ public final class WorldRegistry {
 
     private ArkWorld create(String name, long seed, Preset preset, int minY, int maxY) {
         TerrainSettings settings = plugin.arkConfig().settingsFor(preset, minY, maxY);
-        ArkWorld world = new ArkWorld(name, seed, preset, settings, plugin.arkConfig().cacheSize());
+        ArkWorld world = new ArkWorld(name, seed, preset, settings, plugin.arkConfig().cacheSize(),
+                plugin.arkConfig().disabledStructures());
         plugin.getLogger().info("Prepared world '" + name + "' with preset " + preset
-                + " (seed " + seed + ", y " + minY + ".." + maxY + ")");
+                + " (seed " + seed + ", y " + minY + ".." + maxY + ")"
+                + (plugin.arkConfig().vanillaStructures()
+                ? ", vanilla structures on (monument, stronghold, ancient city, mansion, mineshaft, temples)"
+                : ", vanilla structures off"));
         return world;
     }
 

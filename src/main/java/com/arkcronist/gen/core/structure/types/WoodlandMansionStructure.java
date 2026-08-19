@@ -36,7 +36,7 @@ public final class WoodlandMansionStructure implements Structure {
     public boolean canPlace(StructureContext context) {
         return !context.submerged(context.originX, context.originZ)
                 && context.groundY > context.seaLevel() + 2
-                && context.relief(context.originX, context.originZ, 16) < 14;
+                && context.relief(context.originX, context.originZ, 16) < 9;
     }
 
     @Override

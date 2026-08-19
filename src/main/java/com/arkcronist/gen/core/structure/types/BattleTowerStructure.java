@@ -35,7 +35,7 @@ public final class BattleTowerStructure implements Structure {
     public boolean canPlace(StructureContext context) {
         return !context.submerged(context.originX, context.originZ)
                 && context.groundY > context.seaLevel()
-                && context.relief(context.originX, context.originZ, 8) < 18;
+                && context.relief(context.originX, context.originZ, 8) < 10;
     }
 
     @Override

@@ -118,12 +118,17 @@ class StructureCatalogueTest {
     @DisplayName("every structure family can be found in a world")
     void everyFamilyIsReachable() {
         Set<StructureTag> found = new HashSet<>();
+        List<StructurePlacer> placers = new ArrayList<>();
         for (Preset preset : Preset.values()) {
-            TerrainEngine engine = new TerrainEngine(2468013L, preset);
-            StructurePlacer placer = new StructurePlacer(engine);
-            for (StructureTag tag : StructureTag.values()) {
+            placers.add(new StructurePlacer(new TerrainEngine(2468013L, preset)));
+        }
+        // Stop as soon as a tag turns up: most are found in the first preset, and searching all
+        // three for all of them made this the slowest test in the suite by an order of magnitude.
+        for (StructureTag tag : StructureTag.values()) {
+            for (StructurePlacer placer : placers) {
                 if (placer.locate(0, 0, tag, 14) != null) {
                     found.add(tag);
+                    break;
                 }
             }
         }
@@ -136,6 +141,41 @@ class StructureCatalogueTest {
         // TREASURE hides on beaches, which are narrow: allow it to be missed near the origin.
         missing.remove(StructureTag.TREASURE);
         assertTrue(missing.isEmpty(), "no biome or grid ever produces these: " + missing);
+    }
+
+    @Test
+    @DisplayName("surface structures end up on flat ground, not halfway up a hill")
+    void surfaceStructuresLandOnFlatGround() {
+        // The complaint from the server: castles, villages and towers were being swallowed by
+        // hillsides. Placement now searches its cell for the flattest site it can reach.
+        for (Preset preset : Preset.values()) {
+            TerrainEngine engine = new TerrainEngine(515151L, preset);
+            StructurePlacer placer = new StructurePlacer(engine);
+            int checked = 0;
+            int steep = 0;
+            for (StructureTag tag : new StructureTag[]{StructureTag.CASTLE, StructureTag.VILLAGE,
+                    StructureTag.TOWER, StructureTag.BATTLE_TOWER, StructureTag.CITY}) {
+                int[] site = placer.locate(0, 0, tag, 12);
+                if (site == null) {
+                    continue;
+                }
+                checked++;
+                int min = Integer.MAX_VALUE;
+                int max = Integer.MIN_VALUE;
+                for (int i = 0; i < 9; i++) {
+                    int height = engine.surfaceHeight(site[0] + (i % 3 - 1) * 12,
+                            site[2] + (i / 3 - 1) * 12);
+                    min = Math.min(min, height);
+                    max = Math.max(max, height);
+                }
+                if (max - min > 20) {
+                    steep++;
+                }
+            }
+            assertTrue(checked > 0, preset + ": no landmark structures found to check");
+            assertEquals(0, steep, preset + ": " + steep + " of " + checked
+                    + " landmark structures sit on steep ground");
+        }
     }
 
     @Test

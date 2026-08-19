@@ -31,6 +31,21 @@ performance:
 structures:
   fill-loot: true
 
+  # Let the server generate its own vanilla structures in this world: ocean monument,
+  # stronghold, ancient city, woodland mansion, mineshaft, desert pyramid, jungle temple,
+  # igloo, swamp hut, shipwreck, buried treasure, ruined portal, trail ruins, trial
+  # chambers and pillager outposts. They come from the game's own definitions, so they are
+  # the real thing, and they follow the vanilla biome keys this generator reports.
+  vanilla-structures: true
+
+  # While vanilla structures are on, the built-in equivalents stand down automatically so a
+  # world does not get two ocean monuments on the same spot. List ids here to force one of
+  # them back on, or add ids to 'disabled' to switch any structure off entirely.
+  # Built-in ids: village, city, castle, fortress, tower, battle_tower, camp, ruins, bridge,
+  #   temple, dungeon, vault, geode, fossil, sky_sanctuary, underwater
+  force-enabled: []
+  disabled: []
+
 minibosses:
   enabled: true
   health-multiplier: 4.0

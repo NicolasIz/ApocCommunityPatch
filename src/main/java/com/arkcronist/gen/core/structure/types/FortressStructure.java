@@ -34,7 +34,7 @@ public final class FortressStructure implements Structure {
     @Override
     public boolean canPlace(StructureContext context) {
         return !context.submerged(context.originX, context.originZ)
-                && context.relief(context.originX, context.originZ, 12) < 30;
+                && context.relief(context.originX, context.originZ, 12) < 16;
     }
 
     @Override

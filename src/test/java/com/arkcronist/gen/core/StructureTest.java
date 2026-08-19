@@ -21,12 +21,12 @@ class StructureTest {
     private static final int MIN_Y = -64;
     private static final int MAX_Y = 320;
 
-    static final class ChunkWriter implements RegionWriter {
+    static class ChunkWriter implements RegionWriter {
         final Map<Long, Integer> blocks = new HashMap<>();
         private final int chunkX;
         private final int chunkZ;
 
-        ChunkWriter(int chunkX, int chunkZ) {
+        public ChunkWriter(int chunkX, int chunkZ) {
             this.chunkX = chunkX;
             this.chunkZ = chunkZ;
         }

@@ -42,8 +42,25 @@ public final class StructurePlacer {
     private final List<Structure> underground = new ArrayList<>();
     private final ConcurrentHashMap<Long, StructureBuffer> cache = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<Long> cacheOrder = new ConcurrentLinkedQueue<>();
+    // Site resolution is far cheaper to keep than a whole built structure, and it is what the flat
+    // ground search costs. Keeping it separately means evicting a buffer never repeats that search.
+    private final ConcurrentHashMap<Long, Object> siteCache = new ConcurrentHashMap<>();
+    private final ConcurrentLinkedQueue<Long> siteOrder = new ConcurrentLinkedQueue<>();
+    private static final Object NO_SITE = new Object();
+    private static final int SITE_CACHE_LIMIT = 1024;
+
+    private final java.util.Set<String> disabled;
 
     public StructurePlacer(TerrainEngine engine) {
+        this(engine, java.util.Set.of());
+    }
+
+    /**
+     * @param disabled structure ids that must not generate, by id. Used to step aside for the
+     *                 server's own vanilla structures when those are enabled.
+     */
+    public StructurePlacer(TerrainEngine engine, java.util.Set<String> disabled) {
+        this.disabled = disabled;
         this.engine = engine;
         // Settlements and landmarks
         register(new VillageStructure());
@@ -85,6 +102,9 @@ public final class StructurePlacer {
     }
 
     private void register(Structure structure) {
+        if (disabled.contains(structure.id())) {
+            return;
+        }
         switch (structure.placement()) {
             case UNDERGROUND -> underground.add(structure);
             case SURFACE_LARGE -> large.add(structure);
@@ -159,6 +179,58 @@ public final class StructurePlacer {
         }
     }
 
+    /**
+     * Finds the flattest buildable spot near a position.
+     *
+     * <p>Sampled on a ring pattern around the original point; the winner is the one whose footprint
+     * has the smallest height spread, with a bias towards staying near where the grid pointed.</p>
+     */
+    private int[] flattestSite(int x, int z, int radius, int searchRadius) {
+        int bestX = x;
+        int bestZ = z;
+        double bestScore = Double.MAX_VALUE;
+        int footprint = Math.max(6, Math.min(radius, 24));
+
+        for (int ring = 0; ring <= 2; ring++) {
+            int distance = ring * searchRadius / 2;
+            int samples = ring == 0 ? 1 : 6;
+            for (int i = 0; i < samples; i++) {
+                double angle = i * Math.PI * 2.0 / samples;
+                int px = x + (int) Math.round(Math.cos(angle) * distance);
+                int pz = z + (int) Math.round(Math.sin(angle) * distance);
+                double relief = footprintRelief(px, pz, footprint);
+                // Prefer flat, but do not wander to the far side of the cell for a marginal gain.
+                double score = relief + ring * 1.5;
+                if (score < bestScore) {
+                    bestScore = score;
+                    bestX = px;
+                    bestZ = pz;
+                }
+            }
+        }
+        return new int[]{bestX, bestZ};
+    }
+
+    /**
+     * Height spread over a structure's footprint.
+     *
+     * <p>Deliberately measured on the heightmap rather than the exact solid surface: this runs for
+     * every candidate site on every grid cell, and the heightmap answer needs only the cached 2D
+     * chunk data instead of building the 3D fields.</p>
+     */
+    private double footprintRelief(int x, int z, int radius) {
+        int min = Integer.MAX_VALUE;
+        int max = Integer.MIN_VALUE;
+        for (int i = 0; i < 5; i++) {
+            int ox = i == 1 ? -radius : i == 2 ? radius : 0;
+            int oz = i == 3 ? -radius : i == 4 ? radius : 0;
+            int height = engine.heightmapHeight(x + ox, z + oz);
+            min = Math.min(min, height);
+            max = Math.max(max, height);
+        }
+        return max - min;
+    }
+
     /** Resolves (and caches) the structure for one grid cell, or null when the cell is empty. */
     private StructureBuffer structureAt(int cellX, int cellZ, int grid, long salt, List<Structure> pool) {
         long key = Hashing.hash3(engine.seed() ^ salt, cellX, grid, cellZ);
@@ -175,13 +247,42 @@ public final class StructurePlacer {
         return built.isEmpty() ? null : built;
     }
 
-    private StructureBuffer build(int cellX, int cellZ, int grid, long key, List<Structure> pool) {
-        StructureBuffer buffer = new StructureBuffer();
+    /** A resolved site: which structure a cell holds and exactly where it stands. */
+    private record Site(Structure structure, int x, int z, FastRandom random) {
+    }
+
+    /**
+     * Works out what a grid cell holds, if anything.
+     *
+     * <p>Building and {@code /ag locate} both go through here, so the coordinates the command reports
+     * are the coordinates the structure is actually built at - including the flat-site search.</p>
+     */
+    private Site resolveSite(int cellX, int cellZ, int grid, long salt, List<Structure> pool) {
+        long cacheKey = Hashing.hash3(engine.seed() ^ salt ^ 0x51E7L, cellX, grid, cellZ);
+        Object cached = siteCache.get(cacheKey);
+        if (cached != null) {
+            return cached == NO_SITE ? null : (Site) cached;
+        }
+        Site resolved = computeSite(cellX, cellZ, grid, salt, pool);
+        siteCache.put(cacheKey, resolved == null ? NO_SITE : resolved);
+        siteOrder.add(cacheKey);
+        while (siteCache.size() > SITE_CACHE_LIMIT) {
+            Long oldest = siteOrder.poll();
+            if (oldest == null) {
+                break;
+            }
+            siteCache.remove(oldest);
+        }
+        return resolved;
+    }
+
+    private Site computeSite(int cellX, int cellZ, int grid, long salt, List<Structure> pool) {
+        long key = Hashing.hash3(engine.seed() ^ salt, cellX, grid, cellZ);
         FastRandom random = new FastRandom(key);
 
         double chance = MathUtil.clamp(0.55 * engine.settings().structureDensity, 0.0, 1.0);
         if (!random.chance(chance)) {
-            return buffer;
+            return null;
         }
 
         int padding = Math.min(grid / 4, MAX_RADIUS + 8);
@@ -191,15 +292,44 @@ public final class StructurePlacer {
         ArkBiome biome = engine.biomeAt(x, z);
         Structure chosen = pick(pool, biome, random);
         if (chosen == null) {
-            return buffer;
+            return null;
         }
 
-        StructureContext context = new StructureContext(engine, x, z, random.fork(0x5EEDL));
-        if (!chosen.canPlace(context)) {
+        if (chosen.placement() != Structure.Placement.UNDERGROUND) {
+            // Look around the cell for the flattest ground within reach. A castle half swallowed by a
+            // hillside is worse than a castle fifty blocks from where the grid first pointed.
+            int[] site = flattestSite(x, z, chosen.radius(), Math.min(grid / 4, 48));
+            x = site[0];
+            z = site[1];
+            if (!allows(engine.biomeAt(x, z), chosen)) {
+                return null;
+            }
+        }
+        return new Site(chosen, x, z, random);
+    }
+
+    private StructureBuffer build(int cellX, int cellZ, int grid, long key, List<Structure> pool) {
+        StructureBuffer buffer = new StructureBuffer();
+        Site site = resolveSite(cellX, cellZ, grid, cellSalt(grid), pool);
+        if (site == null) {
             return buffer;
         }
-        chosen.build(context, buffer);
+        StructureContext context = new StructureContext(engine, site.x(), site.z(),
+                site.random().fork(0x5EEDL));
+        if (!site.structure().canPlace(context)) {
+            return buffer;
+        }
+        site.structure().build(context, buffer);
         return buffer;
+    }
+
+    /** Recovers the salt a grid was scanned with, so the cached key and the site agree. */
+    private long cellSalt(int grid) {
+        int gridLarge = Math.max(128, engine.settings().structureGridSize);
+        if (grid == gridLarge) {
+            return LARGE_SALT;
+        }
+        return grid == Math.max(80, gridLarge / 2) ? DEEP_SALT : SMALL_SALT;
     }
 
     /**
@@ -285,27 +415,16 @@ public final class StructurePlacer {
                 if (Math.max(Math.abs(dx), Math.abs(dz)) != ring) {
                     continue;
                 }
-                int cellX = originCellX + dx;
-                int cellZ = originCellZ + dz;
-                long key = Hashing.hash3(engine.seed() ^ salt, cellX, grid, cellZ);
-                FastRandom random = new FastRandom(key);
-                double chance = MathUtil.clamp(0.55 * engine.settings().structureDensity, 0.0, 1.0);
-                if (!random.chance(chance)) {
+                Site site = resolveSite(originCellX + dx, originCellZ + dz, grid, salt, pool);
+                if (site == null || (tag != null && site.structure().tag() != tag)) {
                     continue;
                 }
-                int padding = Math.min(grid / 4, MAX_RADIUS + 8);
-                int x = cellX * grid + random.nextInt(padding, grid - padding);
-                int z = cellZ * grid + random.nextInt(padding, grid - padding);
-                ArkBiome biome = engine.biomeAt(x, z);
-                Structure chosen = pick(pool, biome, random);
-                if (chosen == null || (tag != null && chosen.tag() != tag)) {
+                StructureContext context = new StructureContext(engine, site.x(), site.z(),
+                        site.random().fork(0x5EEDL));
+                if (!site.structure().canPlace(context)) {
                     continue;
                 }
-                StructureContext context = new StructureContext(engine, x, z, random.fork(0x5EEDL));
-                if (!chosen.canPlace(context)) {
-                    continue;
-                }
-                return new int[]{x, engine.surfaceHeight(x, z), z};
+                return new int[]{site.x(), engine.surfaceHeight(site.x(), site.z()), site.z()};
             }
         }
         return null;

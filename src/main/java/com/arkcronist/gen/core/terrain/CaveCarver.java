@@ -87,7 +87,12 @@ public final class CaveCarver {
      * very bottom of the world.</p>
      */
     public double gate(int y, double surface) {
-        double roofClearance = surface - settings.surfaceCaveClearance - y;
+        return gate(y, surface, settings.surfaceCaveClearance);
+    }
+
+    /** Gate with an explicit roof thickness, so sea floors can demand a thicker one. */
+    public double gate(int y, double surface, int clearance) {
+        double roofClearance = surface - clearance - y;
         if (roofClearance < 0.0) {
             return 0.0;
         }

@@ -33,7 +33,7 @@ public final class PillagerOutpostStructure implements Structure {
     public boolean canPlace(StructureContext context) {
         return !context.submerged(context.originX, context.originZ)
                 && context.groundY > context.seaLevel()
-                && context.relief(context.originX, context.originZ, 9) < 12;
+                && context.relief(context.originX, context.originZ, 9) < 9;
     }
 
     @Override

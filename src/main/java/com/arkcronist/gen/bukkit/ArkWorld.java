@@ -21,13 +21,18 @@ public final class ArkWorld {
     private final MobQueue mobQueue = new MobQueue();
 
     public ArkWorld(String name, long seed, Preset preset, TerrainSettings settings, int cacheSize) {
+        this(name, seed, preset, settings, cacheSize, java.util.Set.of());
+    }
+
+    public ArkWorld(String name, long seed, Preset preset, TerrainSettings settings, int cacheSize,
+                    java.util.Set<String> disabledStructures) {
         this.name = name;
         this.seed = seed;
         this.preset = preset;
         this.engine = new TerrainEngine(seed, preset, settings, cacheSize);
         this.features = new FeaturePlacer(engine);
         this.decoration = new DecorationPlacer(engine);
-        this.structures = new StructurePlacer(engine);
+        this.structures = new StructurePlacer(engine, disabledStructures);
     }
 
     public String name() {

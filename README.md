@@ -87,6 +87,20 @@ ambiente propio.
 
 ### Árboles
 
+Cada especie tiene una silueta propia, no un radio distinto:
+
+| Silueta | Especies | Cómo se ve |
+|---|---|---|
+| `PAGODA` | pícea, pícea gigante | Discos apilados con hueco entre ellos y falda que se ensancha hacia abajo. |
+| `SPIRE` | abedul | Tronco alto y limpio con copa estrecha. |
+| `ROUND` | roble joven, cerezo, azalea | Bola sobre un tallo. |
+| `BROAD` | roble grande, jungla | Tronco grueso, varias ramas y una copa fundida con lóbulos. |
+| `MEGA` | roble oscuro, roble pálido, jungla gigante | Tronco de 3 de ancho y copa ancha, plana y pesada. |
+| `PLATE` | acacia | El tronco se abre en ramas inclinadas rematadas por plataformas planas. |
+| `WILLOW` | mangle | Copa ancha con hebras colgando del borde y raíces zanco. |
+
+
+
 Árboles procedurales completos: **tronco (con estrechamiento), ramas orientadas, raíces, copa**, y
 variantes por semilla: gigantes, inclinados, caídos, tocones y árboles muertos. Catorce especies
 repartidas por región (roble, abedul, pícea, pícea gigante, jungla, jungla gigante, acacia, roble
@@ -111,7 +125,19 @@ rejilla de chunks: deben ser idénticos bloque a bloque.
 | Aire | `sky_sanctuary`, `bridge` |
 | Subsuelo | `mineshaft` (galerías en dos niveles, raíles, soportes, nido de arañas), `stronghold` (biblioteca, celdas, fuente y sala del portal), `ancient_city` (sculk, columnata, marco de deepslate reforzado), `trial_chamber` (arenas de cobre y tuff con trial spawners y vaults), `dungeon`, `vault`, `geode` (geoda de amatista) |
 
-Las de superficie se colocan en dos rejillas (una gruesa para ciudades y castillos, otra fina para torres y ruinas); las subterráneas van en su propia rejilla y se sitúan por profundidad, no por bioma.
+**Estructuras vanilla auténticas.** Con `structures.vanilla-structures: true` (por defecto) el servidor genera
+sus propias estructuras en el mundo — monumento oceánico, stronghold, ancient city, mansión, mina, pirámide
+del desierto, templo de jungla, iglú, cabaña de bruja, naufragio, tesoro, portal en ruinas, trail ruins,
+trial chambers y avanzada pillager — tal cual vienen en el juego, siguiendo las claves de bioma vanilla que
+reporta este generador. Las equivalentes propias se apartan solas para no duplicarlas; se controla en
+`config.yml` con `force-enabled` y `disabled`.
+
+Lo que sigue siendo propio: `castle`, `city`, `village`, `fortress`, `tower`, `battle_tower`, `camp`,
+`ruins`, `bridge`, `temple`, `dungeon`, `vault`, `geode`, `fossil`, `sky_sanctuary`, `underwater`.
+
+Las de superficie se colocan en dos rejillas (una gruesa para ciudades y castillos, otra fina para torres y
+ruinas) y **buscan el terreno más plano de su celda** antes de construir; las subterráneas van en su propia
+rejilla y se sitúan por profundidad, no por bioma.
 
 ### Minibosses
 
@@ -129,7 +155,7 @@ principal cuando el chunk se carga (y solo una vez, marcado en el *persistent da
 
 ## 2. Instalación y uso
 
-1. Copia `ArkcronistGenerator-1.1.0.jar` en `plugins/`.
+1. Copia `ArkcronistGenerator-1.2.0.jar` en `plugins/`.
 2. Arranca el servidor una vez para que se genere `plugins/ArkcronistGenerator/config.yml`.
 3. Crea el mundo con tu gestor de mundos (ArkcronistWorlds, Multiverse, etc.):
 
@@ -265,10 +291,14 @@ Optimizaciones concretas hechas durante el desarrollo, con su medida:
 Medición actual (un solo hilo, contenedor de desarrollo, 96 chunks por preset):
 
 ```
-BASE:    ~7,4 ms/chunk   (~135 chunks/s/hilo)
-CHAOTIC: ~7,7 ms/chunk   (~130 chunks/s/hilo)
-INSANE:  ~8,8 ms/chunk   (~114 chunks/s/hilo)
+BASE:    ~10,7 ms/chunk  (~93 chunks/s/hilo)
+CHAOTIC: ~10,1 ms/chunk  (~99 chunks/s/hilo)
+INSANE:  ~11,8 ms/chunk  (~85 chunks/s/hilo)
 ```
+
+De esos, ~2 ms son la búsqueda de terreno plano de las estructuras (con caché de emplazamiento por
+celda) y el resto el subsuelo vivo. Sigue siendo generación en paralelo: Paper reparte los chunks
+entre varios hilos.
 
 El coste subió respecto de la 1.0 porque el subsuelo pasó de estar vacío a tener biomas de cueva,
 acuíferos y decoración, y porque el catálogo de estructuras es el doble de grande. A cambio:
@@ -277,7 +307,7 @@ Reproducible con:
 
 ```bash
 mvn -q package -DskipTests
-java -cp target/ArkcronistGenerator-1.1.0.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
+java -cp target/ArkcronistGenerator-1.2.0.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
 ```
 
 o dentro del juego con `/ag bench INSANE 256`.
@@ -286,7 +316,7 @@ o dentro del juego con `/ag bench INSANE 256`.
 
 ## 6. Pruebas
 
-105 pruebas JUnit 5, todas sin servidor:
+109 pruebas JUnit 5, todas sin servidor:
 
 ```bash
 mvn test
@@ -320,12 +350,19 @@ Pruebas añadidas en la 1.1 a raíz de los fallos vistos en el servidor real:
 - **Todas las familias de estructuras son alcanzables en el mundo** (regresión de las estructuras
   con etiqueta que ningún bioma aceptaba).
 
+Pruebas añadidas en la 1.2:
+
+- **Bajo el fondo marino no queda ni un bloque de aire seco** (el fallo de la cueva que se inundaba
+  al entrar).
+- **Las estructuras de superficie caen en terreno plano**, comprobado sobre los emplazamientos que
+  devuelve `/ag locate` — que ahora es literalmente el mismo cálculo que usa la construcción.
+
 ---
 
 ## 7. Compilar
 
 ```bash
-mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.1.0.jar
+mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.2.0.jar
 ```
 
 Requiere JDK 21 y la Paper API 1.21.8 (`repo.papermc.io`, ya declarado en el `pom.xml`).

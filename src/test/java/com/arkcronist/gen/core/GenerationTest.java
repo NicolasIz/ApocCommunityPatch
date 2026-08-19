@@ -183,7 +183,10 @@ class GenerationTest {
                         int surface = (int) Math.floor(terrain.heightAt(x, z));
                         for (int y = MIN_Y + 8; y <= surface - 10; y++) {
                             total++;
-                            if (chunk.at(x, y, z) == Blocks.AIR) {
+                            int block = chunk.at(x, y, z);
+                            // Flooded caves are still caves: under the sea every cavity is water
+                            // filled by design, so counting only air would call an ocean solid rock.
+                            if (block == Blocks.AIR || block == Blocks.WATER || block == Blocks.LAVA) {
                                 air++;
                             }
                         }
@@ -318,6 +321,41 @@ class GenerationTest {
         }
         assertTrue(water > 0, preset + ": not one flooded cave in 36 chunks");
         assertTrue(lavaHigh < 400, preset + ": lava is pooling far above the bedrock (" + lavaHigh + ")");
+    }
+
+    @ParameterizedTest
+    @EnumSource(Preset.class)
+    @DisplayName("nothing under the sea floor is dry air")
+    void noDryPocketsUnderTheSea(Preset preset) {
+        // The reported failure: a cave a few blocks under the ocean held dry air, and the whole
+        // system flooded the moment a player swam into it. Under water, cavities are water from the
+        // start and the roof of rock above them is thick.
+        TerrainEngine engine = new TerrainEngine(41414L, preset);
+        int dry = 0;
+        int seabedColumns = 0;
+        for (int cx = 0; cx < 4; cx++) {
+            for (int cz = 0; cz < 4; cz++) {
+                ChunkTerrain terrain = engine.terrain(cx * 3, cz * 3);
+                ChunkCapture chunk = generate(engine, cx * 3, cz * 3);
+                for (int x = 0; x < 16; x++) {
+                    for (int z = 0; z < 16; z++) {
+                        int index = ChunkTerrain.index(x, z);
+                        int surface = (int) Math.floor(terrain.height[index]);
+                        if (terrain.height[index] >= terrain.water[index] - 1) {
+                            continue;
+                        }
+                        seabedColumns++;
+                        for (int y = MIN_Y + 2; y < surface; y++) {
+                            if (chunk.at(x, y, z) == Blocks.AIR) {
+                                dry++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        assertTrue(seabedColumns > 50, "no ocean was sampled");
+        assertEquals(0, dry, preset + ": " + dry + " dry air blocks sit under the sea floor");
     }
 
     @ParameterizedTest

@@ -272,7 +272,12 @@ public final class TerrainEngine {
         int depth = -1;
         boolean caveAirAbove = false;
         boolean runUnderground = false;
-        double surfaceCutoff = height - settings.surfaceCaveClearance;
+        // Under water the roof of rock is kept much thicker, and any cavity below it is flooded from
+        // the start. An air pocket a few blocks under the sea floor is the thing that made a cave
+        // "flood the moment you swim into it": it was dry air sitting directly beneath an ocean.
+        boolean seabed = height < water - 0.5;
+        int clearance = seabed ? settings.surfaceCaveClearance + 9 : settings.surfaceCaveClearance;
+        double surfaceCutoff = height - clearance;
         // Hoisted out of the inner loop: both are functions of the column, not of y.
         double strataWarp = strata.columnWarp(x, z);
         double deepslateLevel = strata.deepslateLevel(x, z);
@@ -281,6 +286,11 @@ public final class TerrainEngine {
         // being either bone dry or one continuous lava ocean.
         int lavaTable = aquifers.lavaTable(x, z);
         int waterTable = aquifers.waterTable(x, z, height);
+        if (seabed) {
+            // Everything hollow under the sea floor belongs to the sea.
+            int seaFill = (int) Math.floor(water);
+            waterTable = waterTable == AquiferSampler.NO_WATER ? seaFill : Math.max(waterTable, seaFill);
+        }
         // Cave region sampled once per column instead of once per cavity.
         double caveRoll = caveBiomes.regionRoll(x, z);
         double caveBlend = caveBiomes.regionBlend(x, z);
@@ -301,8 +311,13 @@ public final class TerrainEngine {
             boolean carved = false;
 
             if (solid && caveField != null && y < surfaceCutoff) {
-                double gate = caves.gate(y, height);
-                if (gate > 0.0 && caveField.get(x, y, z) > 0.0) {
+                double gate = caves.gate(y, height, clearance);
+                // Submarine caves exist, but they are pockets, not the same cave network the surface
+                // has: only the strongest part of the field carves under the sea.
+                // The openness field peaks around 0.15, so this cut keeps only the strongest third
+                // of it under the sea: pockets and short tunnels instead of the full network.
+                double threshold = seabed ? 0.022 : 0.0;
+                if (gate > 0.0 && caveField.get(x, y, z) > threshold) {
                     solid = false;
                     carved = true;
                 }
