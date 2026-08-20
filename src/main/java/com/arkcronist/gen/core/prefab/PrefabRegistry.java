@@ -246,7 +246,9 @@ public final class PrefabRegistry {
             }
             boolean wantedExotic = OPT_IN.contains(wanted);
             if (exotic != wantedExotic || (exotic && !prefab.hasTag(wanted))) {
-                score *= 0.02;
+                // Zero, not merely small: "BASE never grows a crystal tree" has to be a promise,
+                // and a long tail of unlikely draws is not a promise.
+                score = 0.0;
             }
             if (sizeClass != null) {
                 score *= prefab.sizeClass.equals(sizeClass) ? 3.0 : 0.6;
@@ -256,7 +258,23 @@ public final class PrefabRegistry {
             total += score;
         }
         if (total <= 0.0) {
-            return pool.get(random.nextInt(pool.size()));
+            // Nothing scored. Still avoid the opt-in families, which are the one thing a caller
+            // that did not ask for them must never be handed.
+            List<Prefab> ordinary = new ArrayList<>();
+            for (Prefab prefab : pool) {
+                boolean exotic = false;
+                for (String family : OPT_IN) {
+                    if (prefab.hasTag(family)) {
+                        exotic = true;
+                        break;
+                    }
+                }
+                if (exotic == OPT_IN.contains(wanted)) {
+                    ordinary.add(prefab);
+                }
+            }
+            List<Prefab> fallback = ordinary.isEmpty() ? pool : ordinary;
+            return fallback.get(random.nextInt(fallback.size()));
         }
         double target = random.nextDouble() * total;
         double running = 0.0;

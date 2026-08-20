@@ -117,7 +117,8 @@ public final class PrefabVillageStructure implements Structure {
             }
             // Face the green, so the village reads as a village rather than as scattered huts.
             int rotation = facing(x - greenX, z - greenZ);
-            int baseY = plotHeight(context, x, z, house) - 1;
+            int baseY = plotHeight(context, x, z, house) - 1
+                    + context.engine.settings().prefabBuildingLift;
             if (baseY + house.height >= context.maxY()) {
                 continue;
             }
@@ -126,7 +127,9 @@ public final class PrefabVillageStructure implements Structure {
             house.blit(writer, x, baseY, z, rotation, Prefab.BlitOptions.solid(Blocks.AIR));
             house.forEachContainer(x, baseY, z, rotation, (cx, cy, cz) ->
                     buffer.addLoot(new LootMarker(cx, cy, cz, 1, "village")));
-            furnish(buffer, house, x, baseY, z, rotation, random);
+            if (context.engine.settings().prefabFurnish) {
+                furnish(buffer, house, x, baseY, z, rotation, random);
+            }
             populate(buffer, random, x, z, baseY);
             placed.add(new int[]{x, z, footprint, baseY});
         }

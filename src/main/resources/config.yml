@@ -68,12 +68,8 @@ performance:
 #  the real ground, cuts back the hillside above the floor it chose, rotates the
 #  building, garrisons it, and registers the chests inside it as loot.
 #
-#  It also furnishes what a shared schematic almost never has. Most are exteriors:
-#  walls, a roof, shutters, maybe a chest, and no light and nothing to sleep on.
-#  So after placing a building the generator reads it back, finds a floor with
-#  headroom inside, and adds ONLY what is missing - a bed, a lantern and a job
-#  block per house, lanterns spread through a church or a keep. A schematic that
-#  already has a bed or a light is left exactly as its author built it.
+#  It does NOT change what is inside them. A prefab is placed exactly as its
+#  author built it - see 'furnish' below if you want that to change.
 #
 #  The file NAME is the metadata. Words in it become tags, and the generator
 #  matches them against what a biome asks for:
@@ -106,6 +102,29 @@ prefabs:
   # never overwritten, so this only ever restores something that was deleted.
   # Turn it off once you have curated the folder by hand.
   extract-bundled: true
+
+  # How far to raise a prefab above the ground the placer measured.
+  #
+  # A schematic's own Y=0 is wherever its author started the selection, which is
+  # usually a course or two below the visible floor, so set down on the exact
+  # surface height a building reads as sunk into the hill. Raise these if your
+  # buildings still look buried, lower them if they hover.
+  #
+  # Ships are separate because their waterline is guessed from the shape of the
+  # hull, and that guess lands low - without the lift a ship floats with its deck
+  # awash and only the masts above water.
+  lift:
+    buildings: 3
+    ships: 6
+
+  # Add a bed, a lantern and a job block to prefabs that have none, and light the
+  # inside of dark buildings.
+  #
+  # Off by default: what you put in the folder is what gets built, untouched.
+  # Worth knowing before you leave it off - a villager needs a BED to claim a
+  # house as a home, and without a claimed home there are no trades, no breeding
+  # and no iron golems. Most schematics shared online have no bed and no light.
+  furnish: false
 
 structures:
   fill-loot: true

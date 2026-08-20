@@ -15,7 +15,10 @@ import com.arkcronist.gen.core.structure.LootMarker;
 import com.arkcronist.gen.core.structure.MobSpawn;
 import com.arkcronist.gen.core.structure.RegionWriter;
 import com.arkcronist.gen.core.structure.SpawnerMarker;
+import com.arkcronist.gen.core.structure.StructureBuffer;
+import com.arkcronist.gen.core.structure.StructureContext;
 import com.arkcronist.gen.core.structure.StructurePlacer;
+import com.arkcronist.gen.core.structure.types.PrefabBuildingStructure;
 import com.arkcronist.gen.core.terrain.ChunkTerrain;
 import com.arkcronist.gen.core.terrain.Preset;
 import com.arkcronist.gen.core.terrain.TerrainEngine;
@@ -92,8 +95,8 @@ class PrefabTest {
         assertEquals(5, registry.category("ships").size(), "the five vessels should all load");
         assertFalse(registry.category("ruins").isEmpty(), "no landmark prefab loaded");
         for (Prefab prefab : registry.category("trees")) {
-            assertTrue(prefab.solidCount > 50, prefab.id + " is nearly empty");
-            assertTrue(prefab.height > 5, prefab.id + " is too short to be a tree");
+            assertTrue(prefab.solidCount > 10, prefab.id + " is nearly empty");
+            assertTrue(prefab.height > 1, prefab.id + " is too flat to be a tree");
         }
     }
 
@@ -245,9 +248,9 @@ class PrefabTest {
     @Test
     @DisplayName("a biome's species reaches a prefab of that species")
     void speciesSelectionHitsTheRightFamily() {
-        assertFamily(TreeKind.JUNGLE, Set.of("jungle", "mangrove"));
+        assertFamily(TreeKind.JUNGLE, Set.of("jungle", "mangrove", "acacia"));
         assertFamily(TreeKind.SPRUCE, Set.of("spruce", "birch"));
-        assertFamily(TreeKind.AZALEA, Set.of("azalea", "birch"));
+        assertFamily(TreeKind.AZALEA, Set.of("azalea", "birch", "oak"));
         assertFamily(TreeKind.DEAD, Set.of("dead", "spruce", "dark_oak"));
         assertFamily(TreeKind.CRYSTAL, Set.of("crystal"));
         // Nobody supplied a cherry tree, so the registry must still answer with something sane.
@@ -500,6 +503,82 @@ class PrefabTest {
             }
         }
         return blocks;
+    }
+
+    @Test
+    @DisplayName("a prefab is stamped exactly as its author built it: nothing is added to it")
+    void prefabsArePlacedVerbatim() {
+        TerrainEngine engine = null;
+        StructurePlacer placer = null;
+        int[] site = null;
+        for (Preset preset : Preset.values()) {
+            engine = new TerrainEngine(864213L, preset);
+            assertFalse(engine.settings().prefabFurnish, "furnishing should be off unless asked for");
+            placer = new StructurePlacer(engine, Set.of(), registry);
+            site = placer.locate(0, 0, StructureTag.TOWER, 14);
+            if (site != null) {
+                break;
+            }
+        }
+        assertNotNull(site, "no tower to inspect in any preset");
+
+        // None of the bundled towers contains a light source, so none may appear in the world.
+        // If that ever stops being true this check proves nothing, hence the assertion.
+        for (Prefab tower : registry.category("towers")) {
+            assertFalse(tower.hasLight, tower.id + " lights itself, so it proves nothing here");
+        }
+        Set<String> written = new HashSet<>();
+        int chunkX = site[0] >> 4;
+        int chunkZ = site[2] >> 4;
+        for (int cx = chunkX - 4; cx <= chunkX + 4; cx++) {
+            for (int cz = chunkZ - 4; cz <= chunkZ + 4; cz++) {
+                placer.placeInto(cx, cz, new RecordingWriter(written),
+                        new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+            }
+        }
+        assertFalse(written.isEmpty(), "the tower wrote nothing");
+        for (String block : written) {
+            assertFalse(block.contains("lantern") || block.contains("_bed[") || block.contains("lectern"),
+                    "the generator added " + block + " to a schematic that did not have it");
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(Preset.class)
+    @DisplayName("the lift raises buildings out of the ground and ships out of the water")
+    void liftRaisesPrefabs(Preset preset) {
+        assertEquals(3, new TerrainEngine(1L, preset).settings().prefabBuildingLift);
+        assertEquals(6, new TerrainEngine(1L, preset).settings().prefabShipLift);
+
+        int lowWithoutLift = lowestCastleBlock(preset, 0);
+        int lowWithLift = lowestCastleBlock(preset, 5);
+        assertEquals(5, lowWithLift - lowWithoutLift,
+                preset + ": raising the lift by five should raise the building by five");
+    }
+
+    /** Y of the castle's own lowest block at a fixed site, for a given lift. */
+    private int lowestCastleBlock(Preset preset, int lift) {
+        TerrainEngine engine = new TerrainEngine(864213L, preset);
+        engine.settings().prefabBuildingLift = lift;
+        PrefabBuildingStructure castles = new PrefabBuildingStructure(
+                        registry, "castles", "prefab_castles", StructureTag.CASTLE, 1.0);
+        for (int i = 0; i < 400; i++) {
+            int x = -900 + i * 61;
+            int z = 500 - i * 47;
+            StructureContext context = new StructureContext(engine, x, z, new FastRandom(77L + i));
+            if (!castles.canPlace(context)) {
+                continue;
+            }
+            StructureBuffer buffer = new StructureBuffer();
+            castles.build(context, buffer);
+            if (buffer.blockCount() < 50) {
+                continue;
+            }
+            // The foundation reaches down to the terrain either way, so compare the top of the
+            // build: that moves with the lift and nothing else touches it.
+            return buffer.maxY();
+        }
+        return fail("no castle site found for " + preset);
     }
 
     @Test

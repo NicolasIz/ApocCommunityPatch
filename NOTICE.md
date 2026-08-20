@@ -44,14 +44,20 @@ Ideas estudiadas y adaptadas de forma independiente:
 
 ## Schematics incluidas
 
-Los archivos `.schem` que viajan dentro del JAR bajo `prefabs/` — 33 árboles, cinco
-navíos y una ciudadela — los aportó el propietario del servidor para este proyecto.
-No proceden de Terra ni de TerraformGenerator, ni de ningún otro plugin.
+Los archivos `.schem` que viajan dentro del JAR bajo `prefabs/` — 66 árboles, 89
+construcciones, cinco navíos y una ciudadela — los aportó el propietario del servidor
+para este proyecto. No proceden de Terra ni de TerraformGenerator, ni de ningún otro
+plugin.
 
-Los 33 árboles se obtuvieron dividiendo un único archivo `large_tree_bundle.schem`
-que contenía todos los diseños dispuestos sobre una misma plataforma. El script que
-hace esa división está en `tools/split_schem_bundle.py` y reproduce los archivos
-publicados byte a byte.
+Los árboles y las construcciones se obtuvieron dividiendo paquetes que traían todos
+los diseños sobre una misma plataforma. Las herramientas que hacen ese trabajo están
+en `tools/` y reproducen los archivos publicados byte a byte:
+
+- `split_schem_bundle.py` separa un paquete en un prefab por construcción, en modo
+  `trees` o `buildings`.
+- `read_anvil.py` y `world_to_schem.py` hacen lo mismo cuando el paquete llega como
+  un mundo de Minecraft entero en vez de como schematic: leen los archivos de región
+  `.mca` y exportan la zona construida como schematic.
 
 El lector de NBT y de schematics Sponge (`core/prefab/`) es código original de este
 repositorio; no se ha usado ninguna librería de terceros para leerlos.

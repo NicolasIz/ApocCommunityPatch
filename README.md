@@ -91,7 +91,8 @@ ambiente propio.
 no existe: lo que hay en `plugins/ArkcronistGenerator/prefabs/trees/` es exactamente lo que crece. La
 vegetación pequeña — hierba, flores, arbustos, setas, plantas de cueva — sigue siendo procedural.
 
-El JAR trae **33 árboles** repartidos en seis familias:
+El JAR trae **66 árboles**, de arbustos de 3×2×3 hasta gigantes de 31×45×31, repartidos en
+familias:
 
 | Familia | Ejemplo | Cómo se ve |
 |---|---|---|
@@ -101,6 +102,9 @@ El JAR trae **33 árboles** repartidos en seis familias:
 | Pícea / abedul | `medium_spruce_birch_02` (15×55×15) | Conífera estrecha y muy alta, faldón de ramas hasta abajo. |
 | Muertos (`dead`) | `large_dead_dark_oak_01` (21×39×21) | Ramaje desnudo, sin una sola hoja. |
 | Cristal y otoño | `giant_crystal_amethyst_01`, `giant_autumn_birch_01` | Copas de amatista y de vidrio tintado: solo en CHAOTIC e INSANE. |
+
+Los tamaños se mezclan solos: un bosque sale sobre todo de sotobosque y árboles jóvenes con algún
+gigante viejo, no una plantación de copas idénticas.
 
 **Añadir árboles no requiere recompilar.** Basta dejar el `.schem` en la carpeta y reiniciar. El
 nombre del archivo es la ficha técnica: `giant_cherry_01.schem` se registra como tamaño `giant`,
@@ -190,10 +194,19 @@ ellas puede ser el tamaño (`small`, `medium`, `large`, `giant`). El tamaño dec
 el preset — BASE tira de los medianos, INSANE de los gigantes. `giant_viking_longhouse_01.schem`,
 `large_watchtower_02.schem`, `medium_stone_keep_01.schem`.
 
-### El paquete medieval que viene incluido
+### Los paquetes de construcciones que vienen incluidos
 
-El JAR trae **53 construcciones medievales** ya repartidas por carpetas, así que un mundo nuevo genera
-aldeas de entramado sin que tengas que hacer nada:
+El JAR trae **89 construcciones** ya repartidas por carpetas, así que un mundo nuevo genera aldeas
+sin que tengas que hacer nada:
+
+| Estilo | Qué trae |
+|---|---|
+| Medieval de entramado | 47 casas, iglesia, torreón, casa-puerta y tres torres |
+| Vikingo | 25 casas de tejado a dos aguas y 2 torres |
+| Fantasía | 6 casas altas y una mansión de 41×44×37 con torre |
+| Piedra | Un castillo de 25×37×25 con torre del homenaje |
+
+El desglose del paquete medieval:
 
 | Carpeta | Qué trae |
 |---|---|
@@ -206,12 +219,21 @@ Como `houses/`, `temples/`, `castles/` y `towers/` traen archivos, **las version
 aldea, templo, castillo y torre se apagan solas**. La torre de combate, la fortaleza, la ciudad y las
 demás siguen siendo procedurales.
 
-**Lo que el generador les añade.** Estas schematics son exteriores: tienen puertas, contraventanas y
-algún cofre, pero ni camas ni una sola fuente de luz. Sin cama un aldeano no reclama la casa, y sin
-cama no hay comercio, ni crianza, ni gólems; sin luz aparecen mobs dentro. Así que el emplazamiento
-lee el edificio de vuelta después de colocarlo, busca un suelo con altura libre dentro y **añade solo
-lo que falta**: cama, linterna y un bloque de oficio por casa, y linternas repartidas en la iglesia,
-el torreón y las torres. Si tu schematic ya trae cama o luz, no toca nada.
+**Se colocan tal cual.** El generador no toca el interior: lo que hay en el archivo es lo que se
+construye. Lo único que hace es el emplazamiento — nivelar la parcela, poner cimientos, rotar el
+edificio y registrar sus cofres como botín.
+
+Merece la pena saberlo antes de dejarlo así: casi ninguna schematic compartida trae cama ni luz, y
+**un aldeano necesita una cama para reclamar la casa**; sin casa reclamada no hay comercio, ni
+crianza, ni gólems de hierro. Si prefieres que el generador rellene lo que falte, pon
+`prefabs.furnish: true` en `config.yml` y añadirá cama, linterna y bloque de oficio solo donde no
+los haya.
+
+**Altura de colocación.** El Y=0 de una schematic suele estar un par de hiladas por debajo del suelo
+visible, así que apoyarla en la altura exacta del terreno la deja enterrada. `prefabs.lift.buildings`
+la sube (3 por defecto) y `prefabs.lift.ships` hace lo propio con los barcos (6 por defecto, porque
+la línea de flotación se deduce del casco y se queda corta: sin subirlos flotan con la cubierta
+sumergida y solo asoman los mástiles).
 
 **Monumento incluido.** `prefabs/ruins/citadel_bashna.schem` — una ciudadela en ruinas de 38×98×38 en
 piedra musgosa, con guarnición y jefe.
@@ -260,7 +282,7 @@ principal cuando el chunk se carga (y solo una vez, marcado en el *persistent da
 
 ## 2. Instalación y uso
 
-1. Copia `ArkcronistGenerator-1.4.0.jar` en `plugins/`.
+1. Copia `ArkcronistGenerator-1.5.0.jar` en `plugins/`.
 2. Arranca el servidor una vez para que se genere `plugins/ArkcronistGenerator/config.yml`.
 3. Crea el mundo con tu gestor de mundos (ArkcronistWorlds, Multiverse, etc.):
 
@@ -411,15 +433,15 @@ coloca escribiendo enteros ya resueltos, en mosaicos de 16×16 que se descartan 
 chunk actual no los toca. Sustituir el constructor procedural de árboles por prefabs bajó la fase de
 *features* de ~2,3 a ~1,8 ms/chunk.
 
-Medición actual (un solo hilo, contenedor de desarrollo, 256 chunks por preset, 92 prefabs cargados):
+Medición actual (un solo hilo, contenedor de desarrollo, 256 chunks por preset, 160 prefabs cargados):
 
 ```
-BASE:    ~8,0 ms/chunk  (~125 chunks/s/hilo)
-CHAOTIC: ~8,1 ms/chunk  (~124 chunks/s/hilo)
-INSANE:  ~8,5 ms/chunk  (~118 chunks/s/hilo)
+BASE:    ~9,6 ms/chunk  (~104 chunks/s/hilo)
+CHAOTIC: ~9,5 ms/chunk  (~105 chunks/s/hilo)
+INSANE:  ~9,9 ms/chunk  (~101 chunks/s/hilo)
 ```
 
-Reparto por fase en BASE: 5,4 ms bloques, 1,8 ms features (árboles y rocas), 0,8 ms estructuras,
+Reparto por fase en BASE: 6,7 ms bloques, 2,0 ms features (árboles y rocas), 0,8 ms estructuras,
 0,004 ms mapa de alturas (99% de aciertos de caché). Sigue siendo generación en paralelo: Paper
 reparte los chunks entre varios hilos.
 
@@ -427,7 +449,7 @@ Reproducible con:
 
 ```bash
 mvn -q package -DskipTests
-java -cp target/ArkcronistGenerator-1.4.0.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
+java -cp target/ArkcronistGenerator-1.5.0.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
 ```
 
 o dentro del juego con `/ag bench INSANE 256`.
@@ -436,7 +458,7 @@ o dentro del juego con `/ag bench INSANE 256`.
 
 ## 6. Pruebas
 
-114 pruebas JUnit 5, todas sin servidor:
+118 pruebas JUnit 5, todas sin servidor:
 
 ```bash
 mvn test
@@ -516,7 +538,7 @@ cubren gzip, NBT, el flujo de varints y el cargador de carpetas):
 ## 7. Compilar
 
 ```bash
-mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.4.0.jar
+mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.5.0.jar
 ```
 
 Requiere JDK 21 y la Paper API 1.21.8 (`repo.papermc.io`, ya declarado en el `pom.xml`).
@@ -528,11 +550,8 @@ Requiere JDK 21 y la Paper API 1.21.8 (`repo.papermc.io`, ya declarado en el `po
 La 1.3 sustituye por completo el generador procedural de árboles por el sistema de prefabs `.schem`.
 Lo que queda por delante:
 
-- **Más árboles.** El paquete que viene de fábrica son 33 diseños y casi todos son grandes. Añadir
-  copas medianas y pequeñas es cuestión de dejar los `.schem` en `prefabs/trees/`: el registro los
-  recoge solos y la separación entre árboles se recalcula a partir de su ancho.
-- Los interiores de las casas medievales son el exterior más lo que el generador les mete (cama, luz,
-  bloque de oficio). Amueblarlas de verdad requiere schematics con interior.
+- Los paquetes incluidos son exteriores: sin camas, sin luz y sin muebles. Se colocan tal cual
+  (ver `prefabs.furnish` si quieres que el generador rellene lo mínimo).
 - Evitar solapes entre las estructuras propias y las vanilla, que hoy se ignoran mutuamente.
 - Ajuste fino de densidad de estructuras y de botín con datos de juego real.
 - Habilidades activas de minibosses (ahora tienen estadísticas, equipo y efectos).

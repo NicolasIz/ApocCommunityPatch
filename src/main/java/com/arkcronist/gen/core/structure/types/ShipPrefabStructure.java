@@ -118,8 +118,9 @@ public final class ShipPrefabStructure implements Structure {
         int baseY;
         Prefab.BlitOptions options;
         if (afloat) {
-            // Sit the hull on the water rather than on the bottom, and keep the holds dry.
-            baseY = water - ship.waterline;
+            // Sit the hull on the water rather than on the bottom, and keep the holds dry. The
+            // lift corrects the waterline guess, which reads low and would leave a ship awash.
+            baseY = water - ship.waterline + context.engine.settings().prefabShipLift;
             options = Prefab.BlitOptions.solid(Blocks.AIR);
         } else {
             // Aground: bed the keel into the bottom and let the sea take the rigging.
@@ -133,7 +134,7 @@ public final class ShipPrefabStructure implements Structure {
         ship.blit(new BufferWriter(buffer, context.engine.settings().minY, context.maxY()),
                 x, baseY, z, rotation, options);
 
-        if (afloat) {
+        if (afloat && context.engine.settings().prefabFurnish) {
             hangDeckLanterns(buffer, ship, x, baseY, z, rotation, random);
         }
 

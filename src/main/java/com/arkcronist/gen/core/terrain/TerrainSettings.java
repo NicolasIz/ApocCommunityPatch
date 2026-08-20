@@ -135,6 +135,27 @@ public final class TerrainSettings {
     public double structureDensity = 1.0;
     public int structureGridSize = 448;
     public boolean structures = true;
+
+    /**
+     * Blocks to raise a schematic building above the ground the placer picked.
+     *
+     * <p>A schematic's own Y=0 is wherever its author started the selection, which is usually a
+     * course or two below the visible floor - foundations, a plinth, the layer the walls sit on. Set
+     * the building down on the exact surface height and it reads as sunk into the hill. This lifts
+     * every prefab building by the same amount; the foundation pass fills whatever gap that opens.
+     */
+    public int prefabBuildingLift = 3;
+
+    /**
+     * Blocks to raise a floating vessel above the waterline worked out from its hull.
+     *
+     * <p>The waterline is guessed from where a hull stops being dense, which lands low: a ship set
+     * there floats with its deck awash and only the masts showing.
+     */
+    public int prefabShipLift = 6;
+
+    /** Whether the generator adds a bed, a light and a job block to prefabs that lack them. */
+    public boolean prefabFurnish = false;
     public boolean minibosses = true;
 
     public TerrainSettings copy() {
@@ -235,6 +256,9 @@ public final class TerrainSettings {
         copy.structureDensity = structureDensity;
         copy.structureGridSize = structureGridSize;
         copy.structures = structures;
+        copy.prefabBuildingLift = prefabBuildingLift;
+        copy.prefabShipLift = prefabShipLift;
+        copy.prefabFurnish = prefabFurnish;
         copy.minibosses = minibosses;
         return copy;
     }

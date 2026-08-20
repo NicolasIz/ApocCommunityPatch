@@ -68,6 +68,20 @@ public final class ArkConfig {
         return config.getBoolean("prefabs.extract-bundled", true);
     }
 
+    /** Blocks to raise schematic buildings, and vessels, above where the terrain check put them. */
+    public int prefabBuildingLift() {
+        return config.getInt("prefabs.lift.buildings", 3);
+    }
+
+    public int prefabShipLift() {
+        return config.getInt("prefabs.lift.ships", 6);
+    }
+
+    /** Off by default: prefabs are placed exactly as their author built them. */
+    public boolean prefabFurnish() {
+        return config.getBoolean("prefabs.furnish", false);
+    }
+
     public boolean vanillaStructures() {
         return config.getBoolean("structures.vanilla-structures", true);
     }
@@ -131,6 +145,12 @@ public final class ArkConfig {
         TerrainSettings settings = TerrainSettings.forPreset(preset);
         settings.minY = worldMinY;
         settings.maxY = worldMaxY;
+
+        // Prefab placement is a property of the schematics, not of the terrain, so it comes from
+        // its own section rather than from the per-preset terrain overrides.
+        settings.prefabBuildingLift = prefabBuildingLift();
+        settings.prefabShipLift = prefabShipLift();
+        settings.prefabFurnish = prefabFurnish();
 
         apply(settings, config.getConfigurationSection("terrain"));
         apply(settings, config.getConfigurationSection("presets." + preset.name().toLowerCase(Locale.ROOT)));

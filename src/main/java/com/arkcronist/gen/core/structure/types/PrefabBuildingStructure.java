@@ -122,7 +122,8 @@ public final class PrefabBuildingStructure implements Structure {
         int z = context.originZ;
         // Average rather than the exact centre column: a building should meet the ground it stands
         // on as a whole, not balance on whatever block happened to be under its middle.
-        int baseY = context.averageHeight(Math.min(radius, 24)) - 1;
+        int baseY = context.averageHeight(Math.min(radius, 24)) - 1
+                + context.engine.settings().prefabBuildingLift;
         if (baseY + prefab.height >= context.maxY()) {
             baseY = context.maxY() - prefab.height - 1;
         }
@@ -131,8 +132,8 @@ public final class PrefabBuildingStructure implements Structure {
         level(context, writer, prefab, x, z, baseY, rotation);
         prefab.blit(writer, x, baseY, z, rotation, Prefab.BlitOptions.solid(Blocks.AIR));
 
-        // Most shared schematics carry no light at all; a dark hundred block citadel is a mob farm.
-        if (!prefab.hasLight) {
+        // Off by default: a prefab is placed exactly as its author built it, dark or not.
+        if (context.engine.settings().prefabFurnish && !prefab.hasLight) {
             List<int[]> spots = PrefabFurnisher.interiorSpots(buffer, prefab, x, baseY, z, rotation, 24);
             PrefabFurnisher.light(buffer, spots, 0, landmark ? 6 : 3);
         }

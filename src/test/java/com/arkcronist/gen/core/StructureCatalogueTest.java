@@ -111,8 +111,9 @@ class StructureCatalogueTest {
                 silent.add(structure.id());
             } else if (!lit && !structure.id().equals("buried_treasure") && !structure.id().equals("fossil")
                     && !structure.id().equals("trail_ruins") && !structure.id().equals("ancient_city")
-                    // A wreck on the sea floor is meant to be dark; a floating ship is lit by the placer.
-                    && !structure.id().equals("prefab_ship")) {
+                    // Schematic-backed families are stamped exactly as their author built them, so
+                    // their lighting is the author's business and not this rule's.
+                    && !structure.id().startsWith("prefab_")) {
                 dark.add(structure.id());
             }
         }

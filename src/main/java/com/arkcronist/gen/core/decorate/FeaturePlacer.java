@@ -159,11 +159,16 @@ public final class FeaturePlacer {
         if (TreeKind.prefersGiant(species) || random.chance(giant)) {
             return "giant";
         }
+        // Weighted towards the small end: a wood is mostly undergrowth and young trees with the
+        // occasional old giant, not a plantation of identical crowns.
         double roll = random.nextDouble();
-        if (roll < 0.30) {
+        if (roll < 0.35) {
+            return "small";
+        }
+        if (roll < 0.62) {
             return "medium";
         }
-        return roll < 0.80 ? "large" : "giant";
+        return roll < 0.90 ? "large" : "giant";
     }
 
     private double presetGiantBonus() {
