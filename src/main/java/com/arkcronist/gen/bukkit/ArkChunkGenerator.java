@@ -113,7 +113,12 @@ public final class ArkChunkGenerator extends ChunkGenerator {
 
     @Override
     public boolean shouldGenerateDecorations() {
-        return false;
+        // Not a decoration setting so much as the switch that makes vanilla structures real. The
+        // server places a structure's blocks inside its decoration pass, not its structure pass, so
+        // with this off the ocean monuments and mineshafts were being planned and never built.
+        // Turning it on brings the vanilla features along with them; that is the trade the flag
+        // makes, and it is why it follows the same config key.
+        return plugin.arkConfig().vanillaStructures();
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.arkcronist.gen.core;
 
+import com.arkcronist.gen.core.biome.ArkBiome;
 import com.arkcronist.gen.core.block.Blocks;
 import com.arkcronist.gen.core.terrain.BlockWriter;
 import com.arkcronist.gen.core.terrain.ChunkTerrain;
@@ -47,6 +48,75 @@ class GenerationTest {
         ChunkCapture capture = new ChunkCapture();
         engine.generateChunk(chunkX, chunkZ, capture);
         return capture;
+    }
+
+    @ParameterizedTest
+    @EnumSource(Preset.class)
+    @DisplayName("a freezing biome almost never borders a warm one, so its snow and ice survive")
+    void thermalMapStaysCoherent(Preset preset) {
+        // Snow and ice melt on the first random tick when the biome at that exact block is warm
+        // enough to rain. A shredded climate map puts a snowfield one block from a meadow, and the
+        // seam melts away into the bare patches that showed up in play.
+        TerrainEngine engine = new TerrainEngine(20260820L, preset);
+        int cold = 0;
+        int seams = 0;
+        for (int z = -1500; z <= 1500; z += 24) {
+            for (int x = -1500; x <= 1500; x += 24) {
+                ArkBiome biome = engine.biomeAt(x, z);
+                if (biome.decoration.snowLayer < 0.5 && biome.decoration.iceSheet < 0.5) {
+                    continue;
+                }
+                cold++;
+                for (int direction = 0; direction < 4; direction++) {
+                    int nx = x + (direction == 0 ? 8 : direction == 1 ? -8 : 0);
+                    int nz = z + (direction == 2 ? 8 : direction == 3 ? -8 : 0);
+                    if (engine.biomeAt(nx, nz).temperature > 0.25) {
+                        seams++;
+                        break;
+                    }
+                }
+            }
+        }
+        assertTrue(cold > 40, preset + " has almost no cold ground to judge: " + cold);
+        double rate = seams * 100.0 / cold;
+        assertTrue(rate < 4.0, preset + ": " + String.format("%.1f", rate)
+                + "% of freezing ground borders warm ground, so its snow will melt");
+    }
+
+    @ParameterizedTest
+    @EnumSource(Preset.class)
+    @DisplayName("every preset keeps enough open country to build on")
+    void everyPresetHasBuildableGround(Preset preset) {
+        TerrainEngine engine = new TerrainEngine(20260820L, preset);
+        int sea = engine.settings().seaLevel;
+        int land = 0;
+        int flat = 0;
+        for (int z = -1500; z <= 1500; z += 32) {
+            for (int x = -1500; x <= 1500; x += 32) {
+                int height = engine.heightmapHeight(x, z);
+                if (height <= sea) {
+                    continue;
+                }
+                land++;
+                int low = height;
+                int high = height;
+                for (int direction = 0; direction < 4; direction++) {
+                    int nx = x + (direction == 0 ? 16 : direction == 1 ? -16 : 0);
+                    int nz = z + (direction == 2 ? 16 : direction == 3 ? -16 : 0);
+                    int neighbour = engine.heightmapHeight(nx, nz);
+                    low = Math.min(low, neighbour);
+                    high = Math.max(high, neighbour);
+                }
+                if (high - low <= 8) {
+                    flat++;
+                }
+            }
+        }
+        assertTrue(land > 100, preset + " found almost no land");
+        double rate = flat * 100.0 / land;
+        // INSANE is meant to be broken country, but a world with nowhere level has nowhere to put
+        // a village either.
+        assertTrue(rate > 15.0, preset + " has only " + String.format("%.1f", rate) + "% level ground");
     }
 
     @ParameterizedTest
@@ -142,7 +212,11 @@ class GenerationTest {
                     for (int z = 0; z < 16 && checked < 120; z++) {
                         int index = ChunkTerrain.index(x, z);
                         int surface = (int) Math.floor(terrain.height[index]);
-                        if (terrain.height[index] < terrain.water[index] + 2) {
+                        // Judge dry land by the surface the world actually has, not by the
+                        // heightmap. Overhangs and 3D shaping can shave a few blocks off a coastal
+                        // column, and the sea correctly fills what is left - that is a shoreline,
+                        // not a fault, and the heightmap alone cannot tell the two apart.
+                        if (engine.surfaceHeight(cx * 16 + x, cz * 16 + z) < terrain.water[index] + 2) {
                             continue;
                         }
                         // Overhangs and arches can move the real surface a few blocks off the

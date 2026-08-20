@@ -1,6 +1,7 @@
 package com.arkcronist.gen.core.terrain;
 
 import com.arkcronist.gen.core.biome.ArkBiome;
+import com.arkcronist.gen.core.math.MathUtil;
 import com.arkcronist.gen.core.biome.BiomeRegistry;
 import com.arkcronist.gen.core.biome.BiomeSelector;
 import com.arkcronist.gen.core.block.Blocks;
@@ -277,6 +278,13 @@ public final class TerrainEngine {
         // "flood the moment you swim into it": it was dry air sitting directly beneath an ocean.
         boolean seabed = height < water - 0.5;
         int clearance = seabed ? settings.surfaceCaveClearance + 9 : settings.surfaceCaveClearance;
+        // Steep ground needs a deeper skin. On a slope the same clearance is measured straight down,
+        // so a tunnel that sits comfortably below a flat field breaks straight out of a cliff face -
+        // which is where those raw square holes in the mountainsides came from. Mouths still open,
+        // but only where the field is strong enough to cut a whole passage out to daylight.
+        if (!seabed && mountain > 0.15) {
+            clearance += (int) Math.round(MathUtil.smoothStep(MathUtil.normalize(mountain, 0.15, 0.85)) * 10.0);
+        }
         double surfaceCutoff = height - clearance;
         // Hoisted out of the inner loop: both are functions of the column, not of y.
         double strataWarp = strata.columnWarp(x, z);

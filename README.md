@@ -55,6 +55,50 @@ montañas submarinas encima. Medido sobre 30.000 columnas por preset:
 | CHAOTIC | ~70 bloques | ~113 bloques bajo el mar | y ≈ 244 |
 | INSANE | ~90 bloques | ~121 bloques bajo el mar | y ≈ 306 |
 
+### Clima y biomas
+
+Los biomas se eligen por un mapa climático de tres campos: temperatura, humedad y rareza. **La
+temperatura se mantiene deliberadamente más suave que los otros dos**, y esa es la diferencia entre
+un mundo con estaciones y un mundo a cuadros.
+
+El motivo es de juego, no estético: en Minecraft la nieve y el hielo se derriten si el bioma **de ese
+bloque exacto** es lo bastante cálido. Con el mapa térmico troceado, un nevero acababa pegado a un
+prado, la nieve del lado cálido se derretía al primer tick aleatorio y quedaban esos parches pelados
+de tierra y flores en medio del hielo. Ahora la temperatura usa su propio campo, con una longitud de
+onda mayor y una deformación de dominio mucho menor, y la fragmentación solo se aplica a humedad y
+rareza — así un bosque, un pantano y un prado pueden alternar dentro de una misma franja térmica,
+pero un desierto no aparece junto a un glaciar.
+
+Medido sobre 15.600 columnas por preset, comparando con la 1.5:
+
+| | tamaño medio de bioma | frío pegado a cálido | terreno llano |
+|---|---|---|---|
+| BASE | 60 → **74** bloques | 1,0% → **0,6%** | 51% → **59%** |
+| CHAOTIC | 43 → **63** bloques | 0,5% → **0,5%** | 26% → **45%** |
+| INSANE | 30 → **56** bloques | 1,4% → **0,3%** | 11% → **26%** |
+
+Hay una prueba automatizada que falla si más del 4% del suelo helado toca suelo cálido.
+
+Unos 34 biomas, cada uno con identidad propia en **relieve, altura, clima, vegetación, árboles,
+materiales, minerales, cuevas, estructuras y densidad de decoración**. La selección es una búsqueda
+suave por distancia sobre continentalidad, gradiente oceánico, factor de montaña, altitud,
+temperatura, humedad y "rareza", así que las fronteras se mueven con el terreno y las transiciones
+son naturales, no líneas rectas.
+
+Dos biomas pueden compartir clave vanilla y verse completamente distintos: la clave vanilla solo
+controla color de hierba, niebla y spawns naturales; el resto lo decide ArkcronistGenerator.
+
+Bajo tierra el proveedor de biomas cambia a biomas de cueva por regiones, así que el subsuelo tiene
+ambiente propio.
+
+### Explanadas
+
+`flatland-strength` amortigua el relieve en regiones amplias: llanos abiertos entre las cordilleras,
+lo bastante grandes para que la búsqueda de terreno plano del emplazador encuentre dónde poner una
+aldea o un castillo. CHAOTIC e INSANE la llevan alta, porque eran justo los presets donde no había
+sitio para construir. La máscara de montañas se retira donde el llano manda, así que una cordillera
+nunca arranca en mitad de una llanura.
+
 ### Cuevas
 
 El subsuelo no es un agujero vacío. Cada cavidad pertenece a un **bioma de cueva** que decide de qué es el suelo, qué cuelga del techo y qué la ilumina:
@@ -70,20 +114,6 @@ El subsuelo no es un agujero vacío. Cada cavidad pertenece a un **bioma de cuev
 | Magma | Basalto, blackstone, bloques de magma y fuego de almas, cerca de la bedrock. |
 
 Medido sobre 36 chunks por preset: **10% del subsuelo hueco en BASE, 13,8% en CHAOTIC, 18,8% en INSANE**, de lo cual ~27% está inundado. La lava ocupa el 0,1% (pozas), no el 12-24% de la primera versión.
-
-### Biomas
-
-Unos 34 biomas, cada uno con identidad propia en **relieve, altura, clima, vegetación, árboles,
-materiales, minerales, cuevas, estructuras y densidad de decoración**. La selección es una búsqueda
-suave por distancia sobre continentalidad, gradiente oceánico, factor de montaña, altitud,
-temperatura, humedad y "rareza", así que las fronteras se mueven con el terreno y las transiciones
-son naturales, no líneas rectas.
-
-Dos biomas pueden compartir clave vanilla y verse completamente distintos: la clave vanilla solo
-controla color de hierba, niebla y spawns naturales; el resto lo decide ArkcronistGenerator.
-
-Bajo tierra el proveedor de biomas cambia a biomas de cueva por regiones, así que el subsuelo tiene
-ambiente propio.
 
 ### Árboles (.schem)
 
@@ -252,7 +282,13 @@ piedra musgosa, con guarnición y jefe.
 | Aire | `sky_sanctuary`, `bridge` |
 | Subsuelo | `mineshaft` (galerías en dos niveles, raíles, soportes, nido de arañas), `stronghold` (biblioteca, celdas, fuente y sala del portal), `ancient_city` (sculk, columnata, marco de deepslate reforzado), `trial_chamber` (arenas de cobre y tuff con trial spawners y vaults), `dungeon`, `vault`, `geode` (geoda de amatista) |
 
-**Estructuras vanilla auténticas.** Con `structures.vanilla-structures: true` (por defecto) el servidor genera
+**Estructuras vanilla auténticas.** Ojo con cómo lo hace el servidor: Paper coloca los bloques de una
+estructura vanilla **dentro de su pasada de decoración**, no en la de estructuras. Con la decoración
+apagada, el monumento oceánico y las minas se planificaban y no se construían nunca — que es
+exactamente lo que se veía. Activar `vanilla-structures` ahora activa también esa pasada, así que
+vienen con la vegetación y las menas vanilla de propina. No hay forma de separarlas en la API.
+
+ Con `structures.vanilla-structures: true` (por defecto) el servidor genera
 sus propias estructuras en el mundo — monumento oceánico, stronghold, ancient city, mansión, mina, pirámide
 del desierto, templo de jungla, iglú, cabaña de bruja, naufragio, tesoro, portal en ruinas, trail ruins,
 trial chambers y avanzada pillager — tal cual vienen en el juego, siguiendo las claves de bioma vanilla que
@@ -282,7 +318,7 @@ principal cuando el chunk se carga (y solo una vez, marcado en el *persistent da
 
 ## 2. Instalación y uso
 
-1. Copia `ArkcronistGenerator-1.5.0.jar` en `plugins/`.
+1. Copia `ArkcronistGenerator-1.6.0.jar` en `plugins/`.
 2. Arranca el servidor una vez para que se genere `plugins/ArkcronistGenerator/config.yml`.
 3. Crea el mundo con tu gestor de mundos (ArkcronistWorlds, Multiverse, etc.):
 
@@ -436,12 +472,12 @@ chunk actual no los toca. Sustituir el constructor procedural de árboles por pr
 Medición actual (un solo hilo, contenedor de desarrollo, 256 chunks por preset, 160 prefabs cargados):
 
 ```
-BASE:    ~9,6 ms/chunk  (~104 chunks/s/hilo)
-CHAOTIC: ~9,5 ms/chunk  (~105 chunks/s/hilo)
-INSANE:  ~9,9 ms/chunk  (~101 chunks/s/hilo)
+BASE:    ~9,4 ms/chunk  (~106 chunks/s/hilo)
+CHAOTIC: ~9,4 ms/chunk  (~106 chunks/s/hilo)
+INSANE:  ~10,3 ms/chunk (~97 chunks/s/hilo)
 ```
 
-Reparto por fase en BASE: 6,7 ms bloques, 2,0 ms features (árboles y rocas), 0,8 ms estructuras,
+Reparto por fase en BASE: 6,4 ms bloques, 2,1 ms features (árboles y rocas), 0,9 ms estructuras,
 0,004 ms mapa de alturas (99% de aciertos de caché). Sigue siendo generación en paralelo: Paper
 reparte los chunks entre varios hilos.
 
@@ -449,7 +485,7 @@ Reproducible con:
 
 ```bash
 mvn -q package -DskipTests
-java -cp target/ArkcronistGenerator-1.5.0.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
+java -cp target/ArkcronistGenerator-1.6.0.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
 ```
 
 o dentro del juego con `/ag bench INSANE 256`.
@@ -458,7 +494,7 @@ o dentro del juego con `/ag bench INSANE 256`.
 
 ## 6. Pruebas
 
-118 pruebas JUnit 5, todas sin servidor:
+124 pruebas JUnit 5, todas sin servidor:
 
 ```bash
 mvn test
@@ -538,7 +574,7 @@ cubren gzip, NBT, el flujo de varints y el cargador de carpetas):
 ## 7. Compilar
 
 ```bash
-mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.5.0.jar
+mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.6.0.jar
 ```
 
 Requiere JDK 21 y la Paper API 1.21.8 (`repo.papermc.io`, ya declarado en el `pom.xml`).

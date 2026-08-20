@@ -263,6 +263,23 @@ public final class StructurePlacer {
      * every candidate site on every grid cell, and the heightmap answer needs only the cached 2D
      * chunk data instead of building the 3D fields.</p>
      */
+    /**
+     * Height spread over a footprint, measured on the surface the world actually has.
+     *
+     * <p>Costs a 3D field build per probe, so it runs once on a site that has already passed the
+     * cheap heightmap screen, never on every candidate.</p>
+     */
+    private double surfaceRelief(int x, int z, int radius) {
+        int min = Integer.MAX_VALUE;
+        int max = Integer.MIN_VALUE;
+        for (int i = 0; i < 9; i++) {
+            int height = engine.surfaceHeight(x + (i % 3 - 1) * radius, z + (i / 3 - 1) * radius);
+            min = Math.min(min, height);
+            max = Math.max(max, height);
+        }
+        return max - min;
+    }
+
     private double footprintRelief(int x, int z, int radius) {
         int min = Integer.MAX_VALUE;
         int max = Integer.MIN_VALUE;
@@ -359,6 +376,21 @@ public final class StructurePlacer {
             x = site[0];
             z = site[1];
             if (!allows(engine.biomeAt(x, z), chosen)) {
+                return null;
+            }
+            // A last quality gate on the site the search settled for. Every structure levels its own
+            // platform, but levelling a hillside only goes so far before the result looks buried -
+            // which was the complaint from the server. When the flattest spot in the cell is still
+            // this rough, the cell simply holds nothing.
+            double allowed = chosen.placement() == Structure.Placement.SURFACE_LARGE ? 17.0 : 23.0;
+            int probe = Math.max(8, Math.min(chosen.radius(), 14));
+            if (footprintRelief(x, z, probe) > allowed) {
+                return null;
+            }
+            // The heightmap is the cheap screen; this is the real one. Overhangs and arches move the
+            // surface away from the heightmap by several blocks, so a site that looks level on the
+            // heightmap can still be a cliff in the world the player walks on.
+            if (surfaceRelief(x, z, probe) > allowed + 4.0) {
                 return null;
             }
         }

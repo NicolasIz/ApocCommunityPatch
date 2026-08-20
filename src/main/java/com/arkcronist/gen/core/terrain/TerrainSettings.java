@@ -63,6 +63,16 @@ public final class TerrainSettings {
     public double detailAmplitude = 3.6;
 
     // ---------------------------------------------------------------- plateaus, canyons, cliffs
+    /**
+     * How strongly broad regions are flattened into open country.
+     *
+     * <p>A world of nothing but ranges and canyons has nowhere to put a village. This carves out
+     * wide, gently rolling areas between the ranges - flat enough to build on, and large enough
+     * that the structure placer's flat-site search actually finds somewhere.
+     */
+    public double flatlandStrength = 0.35;
+    public double flatlandFrequency = 0.00042;
+
     public double plateauStrength = 0.45;
     public double plateauFrequency = 0.0011;
     public double plateauSteps = 0.14;
@@ -122,9 +132,22 @@ public final class TerrainSettings {
     public double oreMultiplier = 1.0;
 
     // ---------------------------------------------------------------- biomes
-    public double climateFrequency = 0.00085;
-    public double climateWarp = 260.0;
+    public double climateFrequency = 0.00062;
+    public double climateWarp = 150.0;
     public double biomeFragmentation = 0.0;
+
+    /**
+     * How much of the climate warp is applied to temperature, as a fraction.
+     *
+     * <p>Warping temperature as hard as the rest of the climate is what shreds a world's thermal
+     * map: a cold biome ends up bordering a warm one, and any snow or ice on the warm side of that
+     * seam melts on the first random tick. Keeping temperature smooth means a snowfield's
+     * neighbours are also freezing, so the ice stays.
+     */
+    public double thermalWarpFactor = 0.30;
+
+    /** Wavelength multiplier for temperature; above one it makes broader thermal belts. */
+    public double thermalScale = 0.55;
     public double temperatureBias = 0.0;
     public double humidityBias = 0.0;
     public double biomeBlend = 24.0;
@@ -198,6 +221,8 @@ public final class TerrainSettings {
         copy.hillAmplitude = hillAmplitude;
         copy.detailFrequency = detailFrequency;
         copy.detailAmplitude = detailAmplitude;
+        copy.flatlandStrength = flatlandStrength;
+        copy.flatlandFrequency = flatlandFrequency;
         copy.plateauStrength = plateauStrength;
         copy.plateauFrequency = plateauFrequency;
         copy.plateauSteps = plateauSteps;
@@ -248,6 +273,8 @@ public final class TerrainSettings {
         copy.climateFrequency = climateFrequency;
         copy.climateWarp = climateWarp;
         copy.biomeFragmentation = biomeFragmentation;
+        copy.thermalWarpFactor = thermalWarpFactor;
+        copy.thermalScale = thermalScale;
         copy.temperatureBias = temperatureBias;
         copy.humidityBias = humidityBias;
         copy.biomeBlend = biomeBlend;
@@ -299,8 +326,10 @@ public final class TerrainSettings {
 
                 s.reliefAmplitude = 40.0;
                 s.mountainAmplitude = 178.0;
-                s.mountainMaskThreshold = 0.00;
+                s.mountainMaskThreshold = 0.14;
                 s.ridgeSharpness = 0.65;
+                s.flatlandStrength = 0.74;
+                s.flatlandFrequency = 0.00046;
                 s.hillAmplitude = 12.0;
 
                 s.plateauStrength = 0.70;
@@ -325,10 +354,10 @@ public final class TerrainSettings {
                 s.megaCaveDensity = 0.30;
                 s.caveCheeseThreshold = 0.42;
 
-                s.biomeFragmentation = 0.55;
-                s.climateFrequency = 0.00100;
-                s.climateWarp = 420.0;
-                s.biomeBlend = 16.0;
+                s.biomeFragmentation = 0.22;
+                s.climateFrequency = 0.00068;
+                s.climateWarp = 200.0;
+                s.biomeBlend = 24.0;
 
                 s.structureDensity = 1.25;
                 s.structureGridSize = 384;
@@ -357,7 +386,9 @@ public final class TerrainSettings {
                 s.reliefAmplitude = 56.0;
                 s.mountainAmplitude = 268.0;
                 s.mountainFrequency = 0.0013;
-                s.mountainMaskThreshold = -0.12;
+                s.mountainMaskThreshold = 0.02;
+                s.flatlandStrength = 0.68;
+                s.flatlandFrequency = 0.00040;
                 s.ridgeSharpness = 0.80;
                 s.hillAmplitude = 16.0;
                 s.detailAmplitude = 3.5;
@@ -397,10 +428,10 @@ public final class TerrainSettings {
                 s.strataWarp = 22.0;
                 s.oreMultiplier = 1.35;
 
-                s.climateFrequency = 0.00112;
-                s.climateWarp = 640.0;
-                s.biomeFragmentation = 0.9;
-                s.biomeBlend = 12.0;
+                s.climateFrequency = 0.00074;
+                s.climateWarp = 260.0;
+                s.biomeFragmentation = 0.30;
+                s.biomeBlend = 22.0;
 
                 s.treeDensity = 1.15;
                 s.decorationDensity = 1.25;

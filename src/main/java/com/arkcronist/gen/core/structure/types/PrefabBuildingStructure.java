@@ -3,6 +3,7 @@ package com.arkcronist.gen.core.structure.types;
 import com.arkcronist.gen.core.biome.StructureTag;
 import com.arkcronist.gen.core.block.Blocks;
 import com.arkcronist.gen.core.math.FastRandom;
+import com.arkcronist.gen.core.math.MathUtil;
 import com.arkcronist.gen.core.prefab.Prefab;
 import com.arkcronist.gen.core.prefab.PrefabRegistry;
 import com.arkcronist.gen.core.structure.BufferWriter;
@@ -105,8 +106,11 @@ public final class PrefabBuildingStructure implements Structure {
         }
         // The bigger the building, the flatter the ground it insists on: levelling a tower is a few
         // blocks of foundation, levelling a citadel would be an earthwork.
+        // The bigger the footprint, the flatter the ground it insists on. A relief of fourteen is
+        // a gentle rise under a nine block tower and a cliff under a forty block manor, so the
+        // allowance shrinks as the building grows.
         int probe = Math.max(6, radius * 2 / 3);
-        int allowed = radius > 24 ? 14 : 20;
+        int allowed = (int) Math.round(MathUtil.clamp(24.0 - radius * 0.22, 12.0, 22.0));
         return context.relief(context.originX, context.originZ, probe) < allowed;
     }
 

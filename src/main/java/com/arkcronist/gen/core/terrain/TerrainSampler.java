@@ -45,6 +45,7 @@ public final class TerrainSampler {
     private final FractalNoise detail;
     private final FractalNoise mountain;
     private final FractalNoise mountainMask;
+    private final FractalNoise flatlandMask;
     private final FractalNoise plateauMask;
     private final FractalNoise canyon;
     private final FractalNoise erosionField;
@@ -57,6 +58,7 @@ public final class TerrainSampler {
     private final FractalNoise humidity;
     private final FractalNoise weirdness;
     private final DomainWarp climateWarp;
+    private final DomainWarp thermalWarp;
 
     public TerrainSampler(long seed, TerrainSettings settings) {
         this.seed = seed;
@@ -66,6 +68,11 @@ public final class TerrainSampler {
         this.mountainWarp = new DomainWarp(seed, "mountain", 0.0022, 42.0);
         this.riverWarp = new DomainWarp(seed, "river", 0.0011, 190.0);
         this.climateWarp = new DomainWarp(seed, "climate", settings.climateFrequency * 1.7, settings.climateWarp);
+        // Temperature is warped far less than the rest of the climate. Latitude is the one thing
+        // that has to stay coherent over long distances: humidity and weirdness can break a region
+        // into forest, swamp and meadow, but they must not drop a desert next to a glacier.
+        this.thermalWarp = new DomainWarp(seed, "thermal", settings.climateFrequency * 0.9,
+                settings.climateWarp * settings.thermalWarpFactor);
 
         this.continent = FractalNoise.fbm(seed, "continent", settings.continentOctaves, settings.continentFrequency);
         this.coastDetail = FractalNoise.fbm(seed, "coast", 4, settings.continentFrequency * 26.0);
@@ -79,6 +86,8 @@ public final class TerrainSampler {
         this.detail = FractalNoise.fbm(seed, "detail", 2, settings.detailFrequency);
         this.mountain = FractalNoise.ridged(seed, "mountain", 5, settings.mountainFrequency);
         this.mountainMask = FractalNoise.fbm(seed, "mountainMask", 3, settings.mountainMaskFrequency);
+        // Two octaves only: open country should be one broad shape, not a lumpy one.
+        this.flatlandMask = FractalNoise.fbm(seed, "flatland", 2, settings.flatlandFrequency);
         this.plateauMask = FractalNoise.fbm(seed, "plateau", 3, settings.plateauFrequency);
         this.canyon = FractalNoise.fbm(seed, "canyon", 3, settings.canyonFrequency);
         this.erosionField = FractalNoise.fbm(seed, "erosion", 3, 0.00085);
@@ -87,7 +96,10 @@ public final class TerrainSampler {
         this.lakeCells = new CellularNoise(seed, "lakes", settings.lakeFrequency, 0.85);
 
         this.biomeWarp = new DomainWarp(seed, "biomeEdge", 0.011, 7.0);
-        this.temperature = FractalNoise.fbm(seed, "temperature", 4, settings.climateFrequency);
+        // Fewer octaves and a longer wavelength than the other two: broad thermal belts rather
+        // than a speckle of hot and cold.
+        this.temperature = FractalNoise.fbm(seed, "temperature", 3,
+                settings.climateFrequency * settings.thermalScale);
         this.humidity = FractalNoise.fbm(seed, "humidity", 4, settings.climateFrequency * 1.23);
         this.weirdness = FractalNoise.fbm(seed, "weirdness", 4, settings.climateFrequency * 2.11);
     }
@@ -192,9 +204,19 @@ public final class TerrainSampler {
     // ------------------------------------------------------------------ land
 
     private double landSurface(int x, int z, double erosion, ColumnData out) {
+        // Open country: broad regions where relief is damped down to something buildable. Worked out
+        // first because it also holds the mountain belts back, so a range never begins in the middle
+        // of a plain.
+        double flat = 0.0;
+        if (settings.flatlandStrength > 0.0) {
+            flat = MathUtil.smootherStep(MathUtil.normalize(flatlandMask.noise2(x, z) * 1.5, 0.10, 0.62))
+                    * settings.flatlandStrength;
+        }
+        double reliefDamp = 1.0 - flat * 0.80;
+
         double height = settings.baseHeight
-                + relief.noise2(x, z) * settings.reliefAmplitude * MathUtil.lerp(erosion, 1.25, 0.55)
-                + hills.noise2(x, z) * settings.hillAmplitude
+                + relief.noise2(x, z) * settings.reliefAmplitude * MathUtil.lerp(erosion, 1.25, 0.55) * reliefDamp
+                + hills.noise2(x, z) * settings.hillAmplitude * reliefDamp
                 + detail.noise2(x, z) * settings.detailAmplitude;
 
         // Mountain belts: a mask gates where ranges may exist at all, so ranges form chains with
@@ -203,7 +225,7 @@ public final class TerrainSampler {
         // threshold is applied; otherwise a threshold of 0.3 would gate out essentially everything.
         double maskRaw = MathUtil.normalize(mountainMask.noise2(x, z) * 1.6,
                 settings.mountainMaskThreshold, settings.mountainMaskThreshold + 0.35);
-        double mask = MathUtil.smootherStep(maskRaw);
+        double mask = MathUtil.smootherStep(maskRaw) * (1.0 - flat);
         if (mask > 0.0) {
             double mx = mountainWarp.warpedX(x, z);
             double mz = mountainWarp.warpedZ(x, z);
@@ -307,17 +329,20 @@ public final class TerrainSampler {
     private void sampleClimate(int x, int z, double height, ColumnData out) {
         double cx = climateWarp.warpedX(x, z);
         double cz = climateWarp.warpedZ(x, z);
+        double tx = thermalWarp.warpedX(x, z);
+        double tz = thermalWarp.warpedZ(x, z);
 
         double fragment = settings.biomeFragmentation;
         // Fractal noise clusters around its mean; spreading it out is what lets the extremes of the
         // climate table (true desert, true polar) actually occur instead of everything reading as
         // "mild temperate".
-        double t = MathUtil.clamp(temperature.noise2(cx, cz) * 1.9, -1.0, 1.0);
+        double t = MathUtil.clamp(temperature.noise2(tx, tz) * 1.9, -1.0, 1.0);
         double h = MathUtil.clamp(humidity.noise2(cx, cz) * 1.9, -1.0, 1.0);
         double w = MathUtil.clamp(weirdness.noise2(cx, cz) * 1.7, -1.0, 1.0);
         if (fragment > 0.0) {
-            // Fragmented worlds sharpen the climate fields so biomes break into small, distinct patches.
-            t = MathUtil.sharpen(t, fragment * 0.5);
+            // Fragmentation breaks a region into distinct patches - but only through humidity and
+            // weirdness. Sharpening temperature too is what used to put a snowfield one block from
+            // a meadow, and snow placed on the warm side of that seam simply melts.
             h = MathUtil.sharpen(h, fragment * 0.5);
             w = MathUtil.sharpen(w, fragment * 0.35);
         }
