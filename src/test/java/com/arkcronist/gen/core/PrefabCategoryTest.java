@@ -189,20 +189,32 @@ class PrefabCategoryTest {
         }
         assertFalse(writer.columns.isEmpty(), "the castle wrote nothing");
 
-        // Every column the structure touched must be continuous from its lowest written block down
-        // to the terrain: that is what the foundation is for.
+        // Every column must either reach the terrain itself or lean on one that does. The first is
+        // what the foundation guarantees; the second is a roof overhanging its own wall, which is a
+        // porch and not a fault - the foundation deliberately stops at the walls so that an eave
+        // does not become a wall of soil.
         int floating = 0;
         for (var entry : writer.columns.entrySet()) {
             long packed = entry.getKey();
             int x = (int) (packed >> 32);
             int z = (int) packed;
             int lowest = entry.getValue();
-            int ground = engine.surfaceHeight(x, z);
-            if (lowest > ground + 1) {
+            if (lowest <= engine.surfaceHeight(x, z) + 1) {
+                continue;
+            }
+            boolean supported = false;
+            for (int dx = -2; dx <= 2 && !supported; dx++) {
+                for (int dz = -2; dz <= 2 && !supported; dz++) {
+                    Integer neighbour = writer.columns.get(((long) (x + dx) << 32) | ((z + dz) & 0xFFFFFFFFL));
+                    supported = neighbour != null
+                            && neighbour <= engine.surfaceHeight(x + dx, z + dz) + 1;
+                }
+            }
+            if (!supported) {
                 floating++;
             }
         }
-        assertEquals(0, floating, floating + " columns start above the ground with nothing under them");
+        assertEquals(0, floating, floating + " columns hang in the air with nothing under or beside them");
     }
 
     /** Remembers the lowest non-air block written in each column. */

@@ -138,6 +138,11 @@ prefabs:
     buildings: 3
     ships: 6
 
+  # The ground under a building is filled in only beneath the columns it actually
+  # rests on, and with the biome's own soil and turf rather than stone, so a house
+  # on a slope meets the hill instead of standing on a block of masonry. A plot
+  # that would need more than a few blocks of fill is not used at all.
+
   # Add a bed, a lantern and a job block to prefabs that have none, and light the
   # inside of dark buildings.
   #

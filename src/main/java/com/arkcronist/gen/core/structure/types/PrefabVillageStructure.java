@@ -196,6 +196,8 @@ public final class PrefabVillageStructure implements Structure {
         int minZ = z - house.rotatedAnchorZ(rotation);
         int floor = context.engine.settings().minY + 1;
         int stone = context.biome.stone.pickAt(context.engine.seed(), x, baseY, z);
+        int soil = context.biome.subsurface.pickAt(context.engine.seed(), x, baseY, z);
+        int turf = context.biome.surface.pickAt(context.engine.seed(), x, baseY, z);
 
         for (int outX = 0; outX < outWidth; outX++) {
             for (int outZ = 0; outZ < outLength; outZ++) {
@@ -205,8 +207,12 @@ public final class PrefabVillageStructure implements Structure {
                 int worldX = minX + outX;
                 int worldZ = minZ + outZ;
                 int ground = context.height(worldX, worldZ);
-                for (int y = Math.max(ground, floor); y < baseY; y++) {
-                    writer.set(worldX, y, worldZ, stone);
+                boolean rests = house.standsOn(rotation, outX, outZ);
+                if (rests) {
+                    for (int y = Math.max(ground, floor); y < baseY; y++) {
+                        writer.set(worldX, y, worldZ,
+                                y == baseY - 1 ? turf : baseY - y <= 3 ? soil : stone);
+                    }
                 }
                 for (int y = baseY; y <= ground; y++) {
                     writer.set(worldX, y, worldZ, Blocks.AIR);

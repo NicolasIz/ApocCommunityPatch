@@ -111,6 +111,7 @@ public final class SchematicReader {
 
         long[] interior = interiorAir(blocks, paletteAir, width, height, length);
         long[] footprint = footprint(blocks, paletteAir, width, height, length);
+        long[] footing = footing(blocks, paletteAir, width, height, length);
 
         int[] containers = cellsMatching(blocks, names, CONTAINERS);
         int[] spawners = cellsMatching(blocks, names, SPAWNERS);
@@ -124,7 +125,7 @@ public final class SchematicReader {
 
         return new Prefab(id, category, tags, sizeClass, weight, width, height, length, waterline,
                 palettes, paletteAir, blocks, interior, anchor[0], anchor[1], solidCount,
-                containers, spawners, footprint, hasBed, hasLight);
+                containers, spawners, footprint, footing, hasBed, hasLight);
     }
 
     private static String defaultAnchor(String category) {
@@ -384,6 +385,27 @@ public final class SchematicReader {
             }
         }
         return false;
+    }
+
+    /**
+     * One bit per XZ column: does the prefab rest on that column?
+     *
+     * <p>Only the bottom courses count. A roof that overhangs its walls occupies a column without
+     * standing on it, and filling the ground up under an eave builds a wall where the builder meant
+     * to leave a porch.</p>
+     */
+    private static long[] footing(char[] blocks, boolean[] air, int width, int height, int length) {
+        long[] mask = new long[((width * length) + 63) >>> 6];
+        int courses = Math.min(height, 3);
+        for (int y = 0; y < courses; y++) {
+            int layer = y * width * length;
+            for (int column = 0; column < width * length; column++) {
+                if (!air[blocks[layer + column]]) {
+                    mask[column >>> 6] |= 1L << (column & 63);
+                }
+            }
+        }
+        return mask;
     }
 
     /** One bit per XZ column: does any layer of the prefab put a block there? */

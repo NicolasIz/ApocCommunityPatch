@@ -294,10 +294,23 @@ public final class TerrainSampler {
         double bed = height - settings.riverDepth * strength;
         double banked = MathUtil.lerp(Math.pow(strength, settings.riverBankSlope), height, bed);
         out.riverStrength = strength;
-        if (strength > 0.35) {
-            out.waterLevel = Math.max(out.waterLevel, Math.min(height, settings.seaLevel + 2.0));
+        // A river surface is flat, like the sea it runs into. Taking the column's own height meant
+        // every column on a slope carried its own water level, and the result was a sheet of water
+        // climbing the hillside. Above the sea the valley is carved but left dry.
+        if (strength > 0.35 && banked < settings.seaLevel) {
+            out.waterLevel = Math.max(out.waterLevel, settings.seaLevel);
         }
         return Math.min(height, banked);
+    }
+
+    /**
+     * The smooth part of the land height at a point, used to level a lake.
+     *
+     * <p>Deliberately only the broad shape - no hills, no detail, no ranges. It has to give the same
+     * answer for every column of a lake, and it is only ever asked about the middle of one.</p>
+     */
+    private double basinLevel(double x, double z) {
+        return settings.baseHeight + relief.noise2(x, z) * settings.reliefAmplitude;
     }
 
     private double carveLake(int x, int z, double height, double erosion, ColumnData out) {
@@ -317,11 +330,20 @@ public final class TerrainSampler {
             return height;
         }
 
-        double rim = height;
-        double bed = rim - settings.lakeDepth * strength;
+        double bed = height - settings.lakeDepth * strength;
         out.lakeStrength = strength;
-        out.waterLevel = Math.max(out.waterLevel, rim - 1.0);
-        return MathUtil.lerp(strength, height, bed);
+        // One level for the whole lake, taken at its centre, so its surface is flat however the
+        // ground around it rolls. Columns whose ground stands above that level simply stay dry -
+        // which is where the shoreline comes from.
+        // Local, not a field: one sampler serves every generation thread at once.
+        double[] centre = new double[2];
+        lakeCells.cellCentre(x, z, centre);
+        double surface = basinLevel(centre[0], centre[1]) - 1.0;
+        double carved = MathUtil.lerp(strength, height, bed);
+        if (carved < surface) {
+            out.waterLevel = Math.max(out.waterLevel, surface);
+        }
+        return carved;
     }
 
     // ------------------------------------------------------------------ climate

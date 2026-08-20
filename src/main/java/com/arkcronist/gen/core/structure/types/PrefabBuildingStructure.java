@@ -175,7 +175,9 @@ public final class PrefabBuildingStructure implements Structure {
         int minX = x - prefab.rotatedAnchorX(rotation);
         int minZ = z - prefab.rotatedAnchorZ(rotation);
         int floor = context.engine.settings().minY + 1;
-        int foundation = foundationBlock(context);
+        int stone = foundationBlock(context);
+        int soil = context.biome.subsurface.pickAt(context.engine.seed(), x, baseY, z);
+        int turf = context.biome.surface.pickAt(context.engine.seed(), x, baseY, z);
 
         for (int outX = 0; outX < outWidth; outX++) {
             for (int outZ = 0; outZ < outLength; outZ++) {
@@ -185,8 +187,14 @@ public final class PrefabBuildingStructure implements Structure {
                 int worldX = minX + outX;
                 int worldZ = minZ + outZ;
                 int ground = context.height(worldX, worldZ);
-                for (int y = Math.max(ground, floor); y < baseY; y++) {
-                    writer.set(worldX, y, worldZ, foundation);
+                boolean rests = prefab.standsOn(rotation, outX, outZ);
+                // Ground, not masonry. A column of the biome's own stone under a building reads as
+                // a plinth it was dropped onto; soil under turf reads as the hill it stands on.
+                if (rests) {
+                    for (int y = Math.max(ground, floor); y < baseY; y++) {
+                        writer.set(worldX, y, worldZ,
+                                y == baseY - 1 ? turf : baseY - y <= 3 ? soil : stone);
+                    }
                 }
                 // Cut back anything standing above the floor we chose; the prefab's own blocks are
                 // written afterwards and win wherever it has any.

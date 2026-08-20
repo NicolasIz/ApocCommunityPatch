@@ -131,7 +131,12 @@ public final class DecorationPlacer {
         int y = groundY + 1;
 
         if (depth <= 1 && random.chance(profile.iceSheet)) {
-            writer.set(x, waterY, z, Blocks.ICE);
+            // Packed and blue ice never melt, whatever the light or the neighbouring biome does.
+            // Plain ice on a frozen sea is the first thing to disappear and leave open water holes,
+            // so the sheet is built from the two that stay, with a little plain ice for colour.
+            double roll = random.nextDouble();
+            writer.set(x, waterY, z, roll < 0.62 ? Blocks.PACKED_ICE
+                    : roll < 0.90 ? Blocks.BLUE_ICE : Blocks.ICE);
             return;
         }
         if (random.chance(profile.magmaVents * density)) {

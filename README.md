@@ -91,6 +91,21 @@ controla color de hierba, niebla y spawns naturales; el resto lo decide Arkcroni
 Bajo tierra el proveedor de biomas cambia a biomas de cueva por regiones, así que el subsuelo tiene
 ambiente propio.
 
+### Agua
+
+Las superficies de agua son **planas**. Parece obvio, y sin embargo el nivel de cada columna se
+sacaba de la altura de esa misma columna: en una ladera, cada columna llevaba su propio nivel y el
+resultado eran láminas de agua trepando por la pendiente. Ahora un río corre al nivel del mar — por
+encima de esa cota se talla el valle pero se deja seco — y un lago toma un único nivel medido en su
+centro, así que su orilla la decide dónde el terreno sube por encima del agua, que es como funciona
+un lago de verdad.
+
+Medido: entre columnas de agua contiguas, **0,08–0,22% tienen un escalón**, y son los puntos donde un
+lago se encuentra con el mar.
+
+El hielo de los biomas helados se construye con **hielo compacto y hielo azul**. El hielo normal se
+derrite con la luz y era lo primero que desaparecía dejando agujeros de agua abierta en la banquisa.
+
 ### Explanadas
 
 `flatland-strength` amortigua el relieve en regiones amplias: llanos abiertos entre las cordilleras,
@@ -259,6 +274,12 @@ crianza, ni gólems de hierro. Si prefieres que el generador rellene lo que falt
 `prefabs.furnish: true` en `config.yml` y añadirá cama, linterna y bloque de oficio solo donde no
 los haya.
 
+**Cómo se apoyan.** El relleno bajo un edificio va **solo bajo las columnas en las que apoya de
+verdad** — no bajo el alero del tejado, que es donde antes salía un muro — y usa la tierra y el
+césped del propio bioma en vez de piedra, así que una casa en cuesta se encuentra con la colina en
+lugar de quedar sobre un bloque de mampostería. Una parcela que necesitaría más de unos pocos
+bloques de relleno sencillamente no se usa.
+
 **Altura de colocación.** El Y=0 de una schematic suele estar un par de hiladas por debajo del suelo
 visible, así que apoyarla en la altura exacta del terreno la deja enterrada. `prefabs.lift.buildings`
 la sube (3 por defecto) y `prefabs.lift.ships` hace lo propio con los barcos (6 por defecto, porque
@@ -318,7 +339,7 @@ principal cuando el chunk se carga (y solo una vez, marcado en el *persistent da
 
 ## 2. Instalación y uso
 
-1. Copia `ArkcronistGenerator-1.6.0.jar` en `plugins/`.
+1. Copia `ArkcronistGenerator-1.6.1.jar` en `plugins/`.
 2. Arranca el servidor una vez para que se genere `plugins/ArkcronistGenerator/config.yml`.
 3. Crea el mundo con tu gestor de mundos (ArkcronistWorlds, Multiverse, etc.):
 
@@ -485,7 +506,7 @@ Reproducible con:
 
 ```bash
 mvn -q package -DskipTests
-java -cp target/ArkcronistGenerator-1.6.0.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
+java -cp target/ArkcronistGenerator-1.6.1.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
 ```
 
 o dentro del juego con `/ag bench INSANE 256`.
@@ -494,7 +515,7 @@ o dentro del juego con `/ag bench INSANE 256`.
 
 ## 6. Pruebas
 
-124 pruebas JUnit 5, todas sin servidor:
+126 pruebas JUnit 5, todas sin servidor:
 
 ```bash
 mvn test
@@ -574,7 +595,7 @@ cubren gzip, NBT, el flujo de varints y el cargador de carpetas):
 ## 7. Compilar
 
 ```bash
-mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.6.0.jar
+mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.6.1.jar
 ```
 
 Requiere JDK 21 y la Paper API 1.21.8 (`repo.papermc.io`, ya declarado en el `pom.xml`).

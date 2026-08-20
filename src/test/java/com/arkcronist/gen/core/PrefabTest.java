@@ -582,6 +582,60 @@ class PrefabTest {
     }
 
     @Test
+    @DisplayName("every prefab knows which columns it rests on, and they are part of its footprint")
+    void footingIsPartOfTheFootprint() {
+        for (String category : registry.categories()) {
+            for (Prefab prefab : registry.category(category)) {
+                int resting = 0;
+                for (int x = 0; x < prefab.width; x++) {
+                    for (int z = 0; z < prefab.length; z++) {
+                        if (prefab.standsOn(0, x, z)) {
+                            resting++;
+                            assertTrue(prefab.occupies(0, x, z),
+                                    prefab.id + " rests on a column it does not occupy");
+                        }
+                    }
+                }
+                assertTrue(resting > 0, prefab.id + " rests on nothing at all");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("water surfaces are flat, so no sheet of water climbs a hillside")
+    void waterSurfacesAreFlat() {
+        // A level worked out from each column's own height gave every column on a slope its own
+        // water level, and the result was a wall of water up the side of a hill.
+        for (Preset preset : Preset.values()) {
+            TerrainEngine engine = new TerrainEngine(20260820L, preset);
+            int pairs = 0;
+            int steps = 0;
+            for (int x = -1200; x <= 1200; x += 3) {
+                for (int z = -1200; z <= 1200; z += 60) {
+                    ChunkTerrain first = engine.terrain(x >> 4, z >> 4);
+                    int index = ChunkTerrain.index(x & 15, z & 15);
+                    int next = x + 3;
+                    ChunkTerrain second = engine.terrain(next >> 4, z >> 4);
+                    int nextIndex = ChunkTerrain.index(next & 15, z & 15);
+                    if (first.water[index] <= first.height[index]
+                            || second.water[nextIndex] <= second.height[nextIndex]) {
+                        continue;
+                    }
+                    pairs++;
+                    if ((int) Math.floor(first.water[index]) != (int) Math.floor(second.water[nextIndex])) {
+                        steps++;
+                    }
+                }
+            }
+            assertTrue(pairs > 500, preset + " found almost no water to judge");
+            double rate = steps * 100.0 / pairs;
+            // Not zero: where a lake meets the sea their surfaces legitimately differ.
+            assertTrue(rate < 2.0, preset + ": " + String.format("%.2f", rate)
+                    + "% of neighbouring water columns sit at different levels");
+        }
+    }
+
+    @Test
     @DisplayName("a folder with no prefabs degrades quietly instead of failing")
     void emptyRegistryIsHarmless() {
         PrefabRegistry empty = PrefabRegistry.empty();

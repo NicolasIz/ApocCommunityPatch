@@ -57,12 +57,14 @@ public final class Prefab {
     private final int[] spawners;
     /** One bit per XZ column: does this prefab put anything at all in it? */
     private final long[] footprint;
+    /** One bit per XZ column: the columns the prefab rests on, ignoring overhangs. */
+    private final long[] footing;
 
     Prefab(String id, String category, Set<String> tags, String sizeClass, double weight,
            int width, int height, int length, int waterline,
            int[][] palettes, boolean[] paletteAir, char[] blocks, long[] interiorAir,
            int anchorX, int anchorZ, int solidCount, int[] containers, int[] spawners,
-           long[] footprint, boolean hasBed, boolean hasLight) {
+           long[] footprint, long[] footing, boolean hasBed, boolean hasLight) {
         this.id = id;
         this.category = category;
         this.tags = tags;
@@ -82,6 +84,7 @@ public final class Prefab {
         this.containers = containers;
         this.spawners = spawners;
         this.footprint = footprint;
+        this.footing = footing;
         this.hasBed = hasBed;
         this.hasLight = hasLight;
     }
@@ -93,7 +96,16 @@ public final class Prefab {
      * are levelled, so a keep cuts its own terrace out of a slope instead of shaving a rectangle out
      * of the landscape around it.</p>
      */
+    /** Whether the prefab rests on a column, which is where a foundation belongs. */
+    public boolean standsOn(int rotation, int outX, int outZ) {
+        return maskAt(footing, rotation, outX, outZ);
+    }
+
     public boolean occupies(int rotation, int outX, int outZ) {
+        return maskAt(footprint, rotation, outX, outZ);
+    }
+
+    private boolean maskAt(long[] mask, int rotation, int outX, int outZ) {
         int turns = rotation & 3;
         int sourceX;
         int sourceZ;
@@ -119,7 +131,7 @@ public final class Prefab {
             return false;
         }
         int column = sourceZ * width + sourceX;
-        return (footprint[column >>> 6] & (1L << (column & 63))) != 0L;
+        return (mask[column >>> 6] & (1L << (column & 63))) != 0L;
     }
 
     public boolean hasTag(String tag) {
