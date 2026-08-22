@@ -62,6 +62,32 @@ public final class TerrainSettings {
     public double detailFrequency = 0.055;
     public double detailAmplitude = 3.6;
 
+    /**
+     * Roughness added to the heightmap at true block resolution, in blocks.
+     *
+     * <p>Every other height term above is evaluated on the coarse grid, four blocks apart, and then
+     * interpolated. That band-limits the whole landscape: nothing finer than about eight blocks
+     * survives, so a hillside is locally a straight ramp - measured at 0.07 blocks of curvature
+     * against a gradient of 0.35. A straight ramp in a voxel world is a perfect staircase, which is
+     * what put those parallel terraces on every slope.</p>
+     *
+     * <p>This term is added after the interpolation, per block, purely to break that up. It is
+     * gated by slope, so open country stays open: villages, castles and the flatland the presets
+     * carve out need ground you can actually build on, and roughening it would undo that.</p>
+     */
+    public double surfaceDetailAmplitude = 1.00;
+    public double surfaceDetailFrequency = 0.15;
+
+    /**
+     * Gradient band over which the roughness above fades in, in blocks per block.
+     *
+     * <p>Below the minimum the ground is left exactly as the interpolation produced it. That is what
+     * keeps open country buildable - the flatland the presets carve out is there so villages and
+     * castles have somewhere to stand, and roughening it takes that away again.</p>
+     */
+    public double surfaceDetailSlopeMin = 0.20;
+    public double surfaceDetailSlopeMax = 0.42;
+
     // ---------------------------------------------------------------- plateaus, canyons, cliffs
     /**
      * How strongly broad regions are flattened into open country.
@@ -221,6 +247,10 @@ public final class TerrainSettings {
         copy.hillAmplitude = hillAmplitude;
         copy.detailFrequency = detailFrequency;
         copy.detailAmplitude = detailAmplitude;
+        copy.surfaceDetailAmplitude = surfaceDetailAmplitude;
+        copy.surfaceDetailFrequency = surfaceDetailFrequency;
+        copy.surfaceDetailSlopeMin = surfaceDetailSlopeMin;
+        copy.surfaceDetailSlopeMax = surfaceDetailSlopeMax;
         copy.flatlandStrength = flatlandStrength;
         copy.flatlandFrequency = flatlandFrequency;
         copy.plateauStrength = plateauStrength;

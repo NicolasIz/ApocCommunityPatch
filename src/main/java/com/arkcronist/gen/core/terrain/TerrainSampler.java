@@ -43,6 +43,7 @@ public final class TerrainSampler {
     private final FractalNoise relief;
     private final FractalNoise hills;
     private final FractalNoise detail;
+    private final FractalNoise surfaceDetail;
     private final FractalNoise mountain;
     private final FractalNoise mountainMask;
     private final FractalNoise flatlandMask;
@@ -84,6 +85,7 @@ public final class TerrainSampler {
         this.relief = FractalNoise.fbm(seed, "relief", 5, settings.reliefFrequency);
         this.hills = FractalNoise.fbm(seed, "hills", 3, settings.hillFrequency);
         this.detail = FractalNoise.fbm(seed, "detail", 2, settings.detailFrequency);
+        this.surfaceDetail = FractalNoise.fbm(seed, "surface-detail", 3, settings.surfaceDetailFrequency);
         this.mountain = FractalNoise.ridged(seed, "mountain", 5, settings.mountainFrequency);
         this.mountainMask = FractalNoise.fbm(seed, "mountainMask", 3, settings.mountainMaskFrequency);
         // Two octaves only: open country should be one broad shape, not a lumpy one.
@@ -110,6 +112,18 @@ public final class TerrainSampler {
 
     public long seed() {
         return seed;
+    }
+
+    /**
+     * Block-scale roughness for the heightmap, in [-1,1].
+     *
+     * <p>Everything in {@link #sample} is evaluated on the coarse grid and interpolated, so none of
+     * it carries detail below about eight blocks. This is sampled per block instead, after the
+     * interpolation, and is the only term that gives a slope any texture at block resolution.
+     * {@link ChunkTerrain} decides how much of it to apply.</p>
+     */
+    public double surfaceDetail(int x, int z) {
+        return surfaceDetail.noise2(x, z);
     }
 
     /** Full column sample, pre erosion. */

@@ -182,6 +182,12 @@ public final class ChunkTerrain {
                 double h = bicubic(gridHeight, cx, cz, tx, tz);
                 double w = bilinear(gridWater, cx, cz, tx, tz);
 
+                // Everything above is interpolated from nodes four blocks apart, which leaves the
+                // surface locally straight - and a straight ramp of blocks is a staircase. This is
+                // the one term evaluated per block, and it exists to break those terraces up.
+                h += surfaceDetail(sampler, gridHeight, gridRiver, gridLake, cx, cz,
+                        (chunkX << 4) + localX, (chunkZ << 4) + localZ, settings);
+
                 terrain.height[i] = (float) h;
                 terrain.water[i] = (float) Math.max(w, settings.seaLevel);
                 terrain.land[i] = (float) bilinear(gridLand, cx, cz, tx, tz);
@@ -235,6 +241,43 @@ public final class ChunkTerrain {
         double v01 = grid[(cz + 1) * GRID + cx];
         double v11 = grid[(cz + 1) * GRID + cx + 1];
         return MathUtil.bilinear(tx, tz, v00, v10, v01, v11);
+    }
+
+    /**
+     * Block-scale roughness for one column, in blocks.
+     *
+     * <p>Gated on two things. <b>Slope</b>, because open country has to stay open - the presets
+     * carve out flatland precisely so villages and castles have somewhere to stand, and roughening
+     * it would undo that; terracing is only visible on a slope anyway. And <b>water</b>, so a river
+     * bed or a lake floor keeps the clean channel it was carved with instead of sprouting stepping
+     * stones through the surface.</p>
+     */
+    private static double surfaceDetail(TerrainSampler sampler, double[] gridHeight, float[] gridRiver,
+                                        float[] gridLake, int cx, int cz, int worldX, int worldZ,
+                                        TerrainSettings settings) {
+        double amplitude = settings.surfaceDetailAmplitude;
+        if (amplitude <= 0.0) {
+            return 0.0;
+        }
+
+        int node = cz * GRID + cx;
+        double dx = gridHeight[node + 1] - gridHeight[node - 1];
+        double dz = gridHeight[node + GRID] - gridHeight[node - GRID];
+        double slope = Math.sqrt(dx * dx + dz * dz) / (2.0 * CELL);
+
+        // Ramps in quickly and then holds. What breaks a terrace is the contour shifting sideways,
+        // and that shift is amplitude divided by gradient - so gentle slopes, which is where the
+        // staircase reads worst, need the least help. Above a gradient of about a third this is
+        // already at full strength; below a tenth it is off entirely and the ground stays buildable.
+        double onSlope = MathUtil.smoothStep(MathUtil.normalize(slope, settings.surfaceDetailSlopeMin, settings.surfaceDetailSlopeMax));
+        if (onSlope <= 0.0) {
+            return 0.0;
+        }
+
+        double water = Math.max(gridRiver[node], gridLake[node]);
+        double dry = 1.0 - MathUtil.smoothStep(MathUtil.normalize(water, 0.25, 0.70));
+
+        return sampler.surfaceDetail(worldX, worldZ) * amplitude * onSlope * dry;
     }
 
     private static double bicubic(double[] grid, int cx, int cz, double tx, double tz) {

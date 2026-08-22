@@ -91,6 +91,30 @@ controla color de hierba, niebla y spawns naturales; el resto lo decide Arkcroni
 Bajo tierra el proveedor de biomas cambia a biomas de cueva por regiones, así que el subsuelo tiene
 ambiente propio.
 
+### Pendientes (por qué se veían como escaleras)
+
+Todas las alturas se calculan sobre una rejilla muestreada **cada 4 bloques** y luego se interpolan.
+Eso limita el terreno a detalles de 8 bloques o más: por debajo de eso no existe nada. Medido, una
+ladera tenía 0,066 bloques de curvatura contra una pendiente de 0,35 — es decir, era una **rampa
+perfectamente recta**. Y una rampa recta hecha de bloques es, literalmente, una escalera. De ahí las
+terrazas paralelas en cada cerro.
+
+La corrección añade rugosidad a **resolución de bloque**, después de la interpolación. Está limitada
+por pendiente: por debajo de un gradiente de 0,20 el suelo se deja exactamente como estaba, que es lo
+que mantiene las explanadas construibles.
+
+| | rectitud de la ladera (curvatura) | terreno llano |
+|---|---|---|
+| BASE | 0,066 → **0,132** | 45,9% → 42,3% |
+| CHAOTIC | 0,074 → **0,140** | 35,3% → 32,4% |
+| INSANE | 0,078 → **0,145** | 27,0% → 24,8% |
+
+La amplitud está fijada en 1,0 bloques y **no más**: por encima de eso el buscador de sitios planos
+deja de encontrar sitio para los templos, y una familia de estructuras desaparece del mundo. Es un
+compromiso real y medido, no un valor elegido a ojo. Ambos lados están cubiertos por pruebas.
+
+Se ajusta con `surface-detail-amplitude` en `config.yml` (0 lo desactiva por completo).
+
 ### Superficie
 
 Cada bioma tiene una **paleta de superficie**: una ladera nevada es nieve, hierba y hielo compacto en
@@ -374,7 +398,7 @@ principal cuando el chunk se carga (y solo una vez, marcado en el *persistent da
 
 ## 2. Instalación y uso
 
-1. Copia `ArkcronistGenerator-1.6.2.jar` en `plugins/`.
+1. Copia `ArkcronistGenerator-1.6.3.jar` en `plugins/`.
 2. Arranca el servidor una vez para que se genere `plugins/ArkcronistGenerator/config.yml`.
 3. Crea el mundo con tu gestor de mundos (ArkcronistWorlds, Multiverse, etc.):
 
@@ -541,7 +565,7 @@ Reproducible con:
 
 ```bash
 mvn -q package -DskipTests
-java -cp target/ArkcronistGenerator-1.6.2.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
+java -cp target/ArkcronistGenerator-1.6.3.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
 ```
 
 o dentro del juego con `/ag bench INSANE 256`.
@@ -630,7 +654,7 @@ cubren gzip, NBT, el flujo de varints y el cargador de carpetas):
 ## 7. Compilar
 
 ```bash
-mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.6.2.jar
+mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.6.3.jar
 ```
 
 Requiere JDK 21 y la Paper API 1.21.8 (`repo.papermc.io`, ya declarado en el `pom.xml`).

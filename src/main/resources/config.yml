@@ -199,6 +199,15 @@ minibosses:
 #  random tick and leaves bare patches - so the thermal map is held coherent while
 #  humidity and weirdness are free to vary inside it.
 #
+#  Slopes are generated from a grid sampled every four blocks and interpolated, which leaves them
+#  locally straight - and a straight ramp of blocks is a staircase. These add roughness back at
+#  block resolution, gated by slope so open country stays buildable:
+#
+#    surface-detail-amplitude  how much roughness, in blocks (0 disables it)
+#    surface-detail-frequency  its wavelength; higher = finer
+#    surface-detail-slope-min  gradient below which ground is left perfectly flat
+#    surface-detail-slope-max  gradient at which the roughness reaches full strength
+#
 #    flatland-strength   how much of the world is damped into open, buildable
 #    flatland-frequency  country. This is where villages and castles end up.
 # ---------------------------------------------------------------------------
