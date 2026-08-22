@@ -91,6 +91,41 @@ controla color de hierba, niebla y spawns naturales; el resto lo decide Arkcroni
 Bajo tierra el proveedor de biomas cambia a biomas de cueva por regiones, así que el subsuelo tiene
 ambiente propio.
 
+### Superficie
+
+Cada bioma tiene una **paleta de superficie**: una ladera nevada es nieve, hierba y hielo compacto en
+proporción 6:3:1. Hasta la 1.6.1 esa proporción se sorteaba **bloque a bloque** con un hash, así que
+los tres materiales salían intercalados uno junto a otro y la ladera se veía moteada, con tierra
+asomando entre la nieve como si se hubiera derretido. No se derretía: se generaba así.
+
+Ahora el sorteo usa ruido coherente y es **uno por columna**, compartido por toda la pila de
+superficie — la tierra que hay bajo un parche de nieve pertenece a ese parche. La paleta pinta
+manchas, no confeti: un tramo de nieve, luego un banco de hielo compacto.
+
+Dos correcciones acompañan al cambio:
+
+- Se mezcla algo de ruido blanco **antes** de aplicar la curva, para que los bordes de cada mancha
+  queden deshilachados. Sin eso las fronteras son curvas suaves y parecen dibujadas.
+- El resultado se aplana con la CDF normal. El ruido fractal es acampanado (σ ≈ 0,145 medida sobre
+  490.000 muestras) y **nunca llegaba al primer ni al último decil**: una paleta 6:3:1 le daba casi
+  todo a la entrada del medio y el hielo azul no aparecía jamás. Aplanado, los pesos vuelven a
+  significar lo que dicen.
+
+Medido sobre 230.000 columnas por preset, columnas vecinas que comparten material:
+
+| | antes | ahora |
+|---|---|---|
+| BASE | 65,3% | **92,9%** |
+| CHAOTIC | 65,1% | **92,4%** |
+| INSANE | 62,9% | **92,0%** |
+
+Esos promedios favorecen al método viejo, porque un bioma de un solo material coincide consigo mismo
+de cualquier forma; eran las paletas mezcladas — las nevadas — las que salían moteadas. El resto de
+desacuerdo son fronteras de bioma y orilla, que sí cambian de material de un bloque al siguiente.
+
+El knob `surface-roughness` de cada bioma, que hasta ahora estaba declarado pero no se leía, controla
+el tamaño de las manchas.
+
 ### Agua
 
 Las superficies de agua son **planas**. Parece obvio, y sin embargo el nivel de cada columna se
@@ -339,7 +374,7 @@ principal cuando el chunk se carga (y solo una vez, marcado en el *persistent da
 
 ## 2. Instalación y uso
 
-1. Copia `ArkcronistGenerator-1.6.1.jar` en `plugins/`.
+1. Copia `ArkcronistGenerator-1.6.2.jar` en `plugins/`.
 2. Arranca el servidor una vez para que se genere `plugins/ArkcronistGenerator/config.yml`.
 3. Crea el mundo con tu gestor de mundos (ArkcronistWorlds, Multiverse, etc.):
 
@@ -506,7 +541,7 @@ Reproducible con:
 
 ```bash
 mvn -q package -DskipTests
-java -cp target/ArkcronistGenerator-1.6.1.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
+java -cp target/ArkcronistGenerator-1.6.2.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
 ```
 
 o dentro del juego con `/ag bench INSANE 256`.
@@ -595,7 +630,7 @@ cubren gzip, NBT, el flujo de varints y el cargador de carpetas):
 ## 7. Compilar
 
 ```bash
-mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.6.1.jar
+mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.6.2.jar
 ```
 
 Requiere JDK 21 y la Paper API 1.21.8 (`repo.papermc.io`, ya declarado en el `pom.xml`).

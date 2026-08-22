@@ -10,6 +10,7 @@ import com.arkcronist.gen.core.cave.CaveBiome;
 import com.arkcronist.gen.core.cave.CaveBiomeSampler;
 import com.arkcronist.gen.core.cave.CaveDecorator;
 import com.arkcronist.gen.core.math.Hashing;
+import com.arkcronist.gen.core.noise.FractalNoise;
 
 /**
  * The generator core: owns every sampler and turns a chunk coordinate into blocks.
@@ -37,6 +38,7 @@ public final class TerrainEngine {
     private final CaveBiomeSampler caveBiomes;
     private final AquiferSampler aquifers;
     private final CaveDecorator caveDecorator;
+    private final FractalNoise surfaceMottle;
     private final TerrainCache cache;
 
     public TerrainEngine(long seed, Preset preset, TerrainSettings settings, int cacheSize) {
@@ -53,6 +55,7 @@ public final class TerrainEngine {
         this.caveBiomes = new CaveBiomeSampler(seed, settings);
         this.aquifers = new AquiferSampler(seed, settings);
         this.caveDecorator = new CaveDecorator(seed);
+        this.surfaceMottle = FractalNoise.fbm(seed, "surface-mottle", 3, 0.021);
         this.cache = new TerrainCache(cacheSize);
     }
 
@@ -286,9 +289,10 @@ public final class TerrainEngine {
             clearance += (int) Math.round(MathUtil.smoothStep(MathUtil.normalize(mountain, 0.15, 0.85)) * 10.0);
         }
         double surfaceCutoff = height - clearance;
-        // Hoisted out of the inner loop: both are functions of the column, not of y.
+        // Hoisted out of the inner loop: all three are functions of the column, not of y.
         double strataWarp = strata.columnWarp(x, z);
         double deepslateLevel = strata.deepslateLevel(x, z);
+        double surfaceRoll = surfaceRoll(x, z, biome);
 
         // Underground water and lava tables for this column. These are what stop the deep world from
         // being either bone dry or one continuous lava ocean.
@@ -336,7 +340,7 @@ public final class TerrainEngine {
                     runUnderground = caveAirAbove;
                 }
                 depth++;
-                int block = blockFor(x, y, z, biome, depth, height, water, runUnderground, veinField,
+                int block = blockFor(x, y, z, biome, depth, height, water, surfaceRoll, runUnderground, veinField,
                         mottleField, strataWarp, deepslateLevel);
                 writer.set(localX, y, localZ, block);
                 if (topSolid == Integer.MIN_VALUE) {
@@ -396,18 +400,67 @@ public final class TerrainEngine {
         return topSolid == Integer.MIN_VALUE ? (int) Math.floor(height) : topSolid;
     }
 
+    /**
+     * Standard deviation of {@link FractalNoise#unsigned2} at three octaves, measured over half a
+     * million samples. Fractal noise is bell-shaped, not flat: it sits around 0.5 and never once
+     * reached the top or bottom tenth of its range.
+     */
+    private static final double MOTTLE_SIGMA = 0.145;
+
+    /**
+     * Where a column's surface lands in its biome palette, as a uniform value in [0,1).
+     *
+     * <p>Drawing this from a per-block hash is what covered the snowy slopes in salt-and-pepper:
+     * with a palette of snow, grass and packed ice, every block rolled its own material and the
+     * hillside came out as confetti rather than as ground. The roll is coherent noise instead, so a
+     * palette paints <em>patches</em> - a run of snow, then a bank of packed ice - the way a real
+     * surface reads. One roll per column, shared by the whole surface stack, so the soil under a
+     * snow patch belongs to that patch.</p>
+     *
+     * <p>Two corrections make the coherent roll behave like the hash it replaces:</p>
+     * <ul>
+     *   <li>A little white noise is folded into the sample so patch edges fray. Without it the
+     *       boundaries are smooth curves and look drawn on. It goes in before the flattening, as a
+     *       nudge to the position on the curve, so it costs nothing in distribution.</li>
+     *   <li>The result is pushed back through the normal CDF. Palette weights are shares - 6/3/1
+     *       means six parts snow to one part blue ice - and a bell-shaped roll would hand almost
+     *       everything to the middle entry and never once reach the tail. Flattening restores the
+     *       weights as written.</li>
+     * </ul>
+     */
+    private double surfaceRoll(int x, int z, ArkBiome biome) {
+        double scale = biome.surfaceRoughness <= 0.0 ? 1.0 : biome.surfaceRoughness;
+        double coherent = surfaceMottle.unsigned2(x * scale, z * scale);
+        double frayed = coherent + (Hashing.value3(seed ^ 0x9E37B1L, x, 0, z) - 0.5) * 0.055;
+        double roll = normalCdf((frayed - 0.5) / MOTTLE_SIGMA);
+        return roll <= 0.0 ? 0.0 : roll >= 1.0 ? 0.9999999 : roll;
+    }
+
+    /**
+     * The surface roll for a column, for tests that need to check the distribution the palettes
+     * actually see rather than infer it from generated blocks.
+     */
+    public double surfaceRollAt(int x, int z) {
+        return surfaceRoll(x, z, biomeAt(x, z));
+    }
+
+    /** Normal CDF, tanh approximation - within 1e-4 across the range and cheap enough per column. */
+    private static double normalCdf(double z) {
+        return 0.5 * (1.0 + Math.tanh(0.7988 * z * (1.0 + 0.04417 * z * z)));
+    }
+
     private int blockFor(int x, int y, int z, ArkBiome biome, int depth, double height, double water,
-                         boolean underground, ScalarField3D veinField, ScalarField3D mottleField,
-                         double strataWarp, double deepslateLevel) {
+                         double surfaceRoll, boolean underground, ScalarField3D veinField,
+                         ScalarField3D mottleField, double strataWarp, double deepslateLevel) {
         boolean submerged = height < water - 0.4;
         if (!underground) {
             if (depth == 0) {
-                return submerged ? biome.underwater.pickAt(seed, x, y, z) : biome.surface.pickAt(seed, x, y, z);
+                return submerged ? biome.underwater.pick(surfaceRoll) : biome.surface.pick(surfaceRoll);
             }
             if (depth <= biome.surfaceDepth) {
                 return submerged
-                        ? biome.underwater.pickAt(seed ^ 0x5A17L, x, y, z)
-                        : biome.subsurface.pickAt(seed, x, y, z);
+                        ? biome.underwater.pick(surfaceRoll)
+                        : biome.subsurface.pick(surfaceRoll);
             }
         }
 
@@ -426,15 +479,17 @@ public final class TerrainEngine {
         int top = Math.min(maxY, density.islandMaxY());
         int bottom = Math.max(minY, density.islandMinY());
         int depth = -1;
+        double surfaceRoll = surfaceRoll(x, z, biome);
         for (int y = top; y >= bottom; y--) {
             if (islandField.get(x, y, z) > 0.0) {
                 depth++;
                 int block;
                 if (depth == 0) {
-                    block = biome.surface.pickAt(seed, x, y, z);
+                    block = biome.surface.pick(surfaceRoll);
                 } else if (depth <= 3) {
-                    block = biome.subsurface.pickAt(seed, x, y, z);
+                    block = biome.subsurface.pick(surfaceRoll);
                 } else {
+                    // Stone is meant to look mottled block by block; only the skin needs patches.
                     block = biome.stone.pickAt(seed, x, y, z);
                 }
                 writer.set(localX, y, localZ, block);
