@@ -145,9 +145,6 @@ public final class GroveStructure implements Structure {
         grove.blit(writer, x, baseY, z, rotation, Prefab.BlitOptions.solid(Blocks.AIR));
     }
 
-    /** How far a rise may be cut back, in blocks. About what the file can fill in again. */
-    private static final int CUTBACK = 5;
-
     /**
      * The level the stand's own footing wants to sit at.
      *
@@ -207,14 +204,11 @@ public final class GroveStructure implements Structure {
                 for (int y = Math.max(ground, floor); y < baseY; y++) {
                     writer.set(worldX, y, worldZ, y == baseY - 1 ? turf : soil);
                 }
-                // And clear a rise back down to it, so no trunk is buried to the knee - but only a
-                // little way. The file has five courses of soil to give back; cutting deeper than it
-                // can fill is what dug the pits, so anything beyond that is left as the hillside it
-                // is and the trunk simply stands in it.
-                int cut = Math.min(ground, baseY + CUTBACK);
-                for (int y = baseY; y <= cut; y++) {
-                    writer.set(worldX, y, worldZ, Blocks.AIR);
-                }
+                // Nothing is cut back. A building levels a rise out of its way; a tree does
+                // not need to, and cutting here left a hole - the file has four or five courses of
+                // soil to give back, so clearing across a pad thousands of columns wide opened a
+                // slot in the hillside wherever the pad was thinner than the cut. A trunk standing
+                // a few blocks into a rise reads as a tree on a slope. A slot does not.
             }
         }
     }

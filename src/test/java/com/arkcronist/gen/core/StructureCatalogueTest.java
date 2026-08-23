@@ -112,7 +112,9 @@ class StructureCatalogueTest {
             } else if (!lit && !structure.id().equals("buried_treasure") && !structure.id().equals("fossil")
                     && !structure.id().equals("trail_ruins") && !structure.id().equals("ancient_city")
                     // Schematic-backed families are stamped exactly as their author built them, so
-                    // their lighting is the author's business and not this rule's.
+                    // their lighting is the author's business and not this rule's. The grove is one
+                    // of those, and is also a wood: nobody hangs lanterns in a wood.
+                    && !structure.id().equals("grove")
                     && !structure.id().startsWith("prefab_")) {
                 dark.add(structure.id());
             }
@@ -138,6 +140,26 @@ class StructureCatalogueTest {
         for (StructureTag tag : StructureTag.values()) {
             for (StructurePlacer placer : placers) {
                 if (placer.locate(0, 0, tag, 14) != null) {
+                    found.add(tag);
+                    break;
+                }
+            }
+        }
+        // A second, wider pass for whatever the first missed, which costs nothing when nothing did.
+        //
+        // Fourteen rings is generous on the landmark grid and thin on the small one: the prefab
+        // castles have a radius of 21, which puts them on the fine grid where fourteen rings reach
+        // barely two kilometres. That was enough while biomes were fragmented; with biomes wide
+        // enough to read as regions there are fewer of them near any one point, and a family living
+        // in four biomes can easily be further out. Measured on this seed, the nearest castle is at
+        // 2304, 3802 and 3952 blocks on the three presets - present and findable, just not inside
+        // two kilometres.
+        for (StructureTag tag : StructureTag.values()) {
+            if (found.contains(tag)) {
+                continue;
+            }
+            for (StructurePlacer placer : placers) {
+                if (placer.locate(0, 0, tag, 34) != null) {
                     found.add(tag);
                     break;
                 }

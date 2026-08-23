@@ -63,7 +63,7 @@ public final class PrefabRegistry {
      * here scores zero outside the biome that asked.</p>
      */
     private static final java.util.Set<String> OPT_IN =
-            java.util.Set.of("dead", "crystal", "autumn", "cherry");
+            java.util.Set.of("dead", "crystal", "autumn");
 
     private final Map<String, List<Prefab>> byCategory = new TreeMap<>();
     private int total;
