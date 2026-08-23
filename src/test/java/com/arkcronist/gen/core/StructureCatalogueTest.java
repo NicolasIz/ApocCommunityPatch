@@ -200,6 +200,10 @@ class StructureCatalogueTest {
                 underground++;
             }
         }
-        assertTrue(underground >= 8, "expected the deep catalogue (mines, stronghold, city, vaults, geodes)");
+        // Seven, not eight: the ancient city left this tier. It is 172 blocks across and cannot
+        // share a grid with mines and geodes without colliding with them, so it sits on its own
+        // DEEP_LANDMARK spacing. This placer is built without a prefab registry, so the city is not
+        // registered here at all - it exists only when a schematic was supplied for it.
+        assertTrue(underground >= 7, "expected the deep catalogue (mines, stronghold, vaults, geodes)");
     }
 }
