@@ -352,7 +352,7 @@ el preset — BASE tira de los medianos, INSANE de los gigantes. `giant_viking_l
 
 ### Los paquetes de construcciones que vienen incluidos
 
-El JAR trae **89 construcciones** ya repartidas por carpetas, así que un mundo nuevo genera aldeas
+El JAR trae **96 construcciones** ya repartidas por carpetas, así que un mundo nuevo genera aldeas
 sin que tengas que hacer nada:
 
 | Estilo | Qué trae |
@@ -371,9 +371,39 @@ El desglose del paquete medieval:
 | `castles/` | Un **torreón** de 24×25×24 con torres de esquina. |
 | `towers/` | Una **casa-puerta** de 9×24×25 con arco, una torre almenada y dos torretas. |
 
-Como `houses/`, `temples/`, `castles/` y `towers/` traen archivos, **las versiones procedurales de
-aldea, templo, castillo y torre se apagan solas**. La torre de combate, la fortaleza, la ciudad y las
-demás siguen siendo procedurales.
+Añadidas en la 1.7.1, cada una entera, sin trocear:
+
+| Carpeta | Qué trae |
+|---|---|
+| `castles/` | Dos castillos más: 37×35×37 y 25×35×25 |
+| `temples/` | Un **templo de oasis** de 23×21×23 y una **pirámide** de 23×12×23 |
+| `battle_towers/` | **Torre de mago** de 50×148×51 y **torre en ruinas nevada** de 25×26×24 |
+| `ruins/` | **Ruinas nevadas** de 50×19×47 |
+
+Como `houses/`, `temples/`, `castles/`, `towers/` y ahora `battle_towers/` traen archivos, **las
+versiones procedurales de aldea, templo, castillo, torre y torre de combate se apagan solas**. La
+fortaleza, la ciudad y las demás siguen siendo procedurales.
+
+**Dos cosas que conviene saber sobre estas nuevas:**
+
+*El bioma no elige la schematic.* El filtro por bioma actúa sobre la **familia** (qué biomas admiten
+un templo), no sobre el archivo concreto: el selector de edificios recibe `null` como etiqueta
+preferida. Así que la pirámide del desierto puede salir en `cherry_hills` o `lush_valley`, que son
+dos de los cuatro biomas que admiten templos. Se puede arreglar, pero es un cambio en el selector.
+
+*La torre de mago encoge dónde caben las torres de combate.* El filtro de emplazamiento usa el
+**máximo de la familia** en altura y radio, no el del archivo que va a colocarse. Con 148 bloques de
+alto y 50 de ancho, esa torre marca el listón para las dos. Medido sobre el terreno:
+
+| | terreno que admite una torre de combate |
+|---|---|
+| BASE | 96,4% → **82,4%** |
+| CHAOTIC | 89,8% → **63,2%** |
+| INSANE | 71,3% → **31,8%** |
+
+En INSANE se reduce a menos de la mitad. No es un fallo introducido aquí — es cómo funciona el filtro
+desde siempre — pero un archivo de 148 bloques lo hace notar. Si prefieres torres de combate más
+frecuentes, sácala de `battle_towers/`; si prefieres la torre, déjala como está.
 
 **Se colocan tal cual.** El generador no toca el interior: lo que hay en el archivo es lo que se
 construye. Lo único que hace es el emplazamiento — nivelar la parcela, poner cimientos, rotar el
@@ -450,7 +480,7 @@ principal cuando el chunk se carga (y solo una vez, marcado en el *persistent da
 
 ## 2. Instalación y uso
 
-1. Copia `ArkcronistGenerator-1.7.0.jar` en `plugins/`.
+1. Copia `ArkcronistGenerator-1.7.1.jar` en `plugins/`.
 2. Arranca el servidor una vez para que se genere `plugins/ArkcronistGenerator/config.yml`.
 3. Crea el mundo con tu gestor de mundos (ArkcronistWorlds, Multiverse, etc.):
 
@@ -617,7 +647,7 @@ Reproducible con:
 
 ```bash
 mvn -q package -DskipTests
-java -cp target/ArkcronistGenerator-1.7.0.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
+java -cp target/ArkcronistGenerator-1.7.1.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
 ```
 
 o dentro del juego con `/ag bench INSANE 256`.
@@ -706,7 +736,7 @@ cubren gzip, NBT, el flujo de varints y el cargador de carpetas):
 ## 7. Compilar
 
 ```bash
-mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.7.0.jar
+mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.7.1.jar
 ```
 
 Requiere JDK 21 y la Paper API 1.21.8 (`repo.papermc.io`, ya declarado en el `pom.xml`).

@@ -51,7 +51,7 @@ performance:
 #     fortresses/     replaces fortress
 #     outposts/       replaces outpost
 #     towers/         replaces tower
-#     battle_towers/  replaces battle_tower
+#     battle_towers/  replaces battle_tower  (torres de combate)
 #     temples/        replaces temple
 #     camps/          replaces camp
 #     mansions/       replaces mansion
@@ -67,6 +67,16 @@ performance:
 #  The generator does the part the schematic cannot: it lays foundations down to
 #  the real ground, cuts back the hillside above the floor it chose, rotates the
 #  building, garrisons it, and registers the chests inside it as loot.
+#
+#  Two things worth knowing about which file gets chosen:
+#
+#    - The biome filter works on the FAMILY, not on the file. A biome decides
+#      whether it allows a temple at all; it does not choose between the desert
+#      pyramid and the church. So a desert prefab can turn up in a green biome.
+#
+#    - The placement test uses the TALLEST and WIDEST file in the folder for the
+#      whole family. One very large schematic therefore makes every file in that
+#      folder rarer, because they all have to meet its ground requirements.
 #
 #  It does NOT change what is inside them. A prefab is placed exactly as its
 #  author built it - see 'furnish' below if you want that to change.
