@@ -178,7 +178,7 @@ class AncientCityTest {
         TerrainEngine engine = new TerrainEngine(20260823L, preset, TerrainSettings.forPreset(preset), 4096);
         StructurePlacer placer = new StructurePlacer(engine,
                 com.arkcronist.gen.bukkit.config.ArkConfig.vanillaEquivalents(), prefabs());
-        for (int ring = 0; ring <= 6; ring++) {
+        for (int ring = 0; ring <= StructurePlacer.searchRings(StructureTag.ANCIENT_CITY); ring++) {
             int[] site = placer.locate(0, 0, StructureTag.ANCIENT_CITY, ring);
             if (site != null) {
                 return site;
@@ -201,18 +201,20 @@ class AncientCityTest {
         StructurePlacer placer = new StructurePlacer(engine,
                 com.arkcronist.gen.bukkit.config.ArkConfig.vanillaEquivalents(), registry);
 
-        // One sweep outward from the origin, not fourteen from scattered points.
-        //
-        // Fourteen random queries across thirty thousand blocks was affordable when a city could be
-        // anywhere. It is not any more: the family is gated by a biome under one percent of the
-        // world, so most queries find nothing, every miss costs a sweep of the cell, and each query
-        // starts somewhere the site cache knows nothing about. Walking out from one point reuses
-        // that cache the whole way and reaches just as many distinct cities.
+        // Distinct query points, because locate() searches everything out to the ring it is given
+        // and returns the nearest hit. Walking the rings outward from one point therefore hands
+        // back the same city every time - the earlier attempt at this collected exactly one city
+        // and then failed for having too small a sample. Six points a long way apart, and the
+        // placer is shared so its site cache still pays for itself.
         java.util.Set<String> seen = new java.util.LinkedHashSet<>();
         int checked = 0;
         int cut = 0;
-        for (int ring = 0; ring <= 12 && checked < 6; ring++) {
-            int[] site = placer.locate(0, 0, StructureTag.ANCIENT_CITY, ring);
+        int[][] origins = {{0, 0}, {9000, 0}, {0, 9000}, {-9000, 0}, {0, -9000}, {9000, 9000}};
+        for (int[] origin : origins) {
+            int[] site = null;
+            for (int ring = 0; ring <= 8 && site == null; ring++) {
+                site = placer.locate(origin[0], origin[1], StructureTag.ANCIENT_CITY, ring);
+            }
             if (site == null || !seen.add(site[0] + "," + site[2])) {
                 continue;
             }

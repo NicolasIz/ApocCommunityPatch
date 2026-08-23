@@ -380,6 +380,17 @@ public final class StructurePlacer {
         }
 
         int padding = Math.min(grid / 4, maxRadius + 8);
+        // A deep landmark is held to the middle of its cell, and that is not tidiness.
+        //
+        // The sweep below hunts a whole cell for the biome that will host one, so a single patch of
+        // ice spikes lying across a cell boundary gets a city from the cell on each side - and with
+        // only the ordinary padding each of those may sit right against that boundary. Measured,
+        // two cities came out 190 blocks apart, which for a building 172 blocks across means their
+        // walls all but touch: the intact-city test found 31463 sculk in a footprint that holds
+        // 17643. Keeping the point inside the middle half puts at least half a grid between them.
+        if (isDeepLandmark(pool)) {
+            padding = Math.max(padding, grid / 4);
+        }
         int x = cellX * grid + random.nextInt(padding, grid - padding);
         int z = cellZ * grid + random.nextInt(padding, grid - padding);
 
