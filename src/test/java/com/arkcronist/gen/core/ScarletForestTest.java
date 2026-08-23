@@ -156,14 +156,19 @@ class ScarletForestTest {
     void theBiomeOccurs(Preset preset) {
         TerrainEngine engine = new TerrainEngine(20260823L, preset,
                 TerrainSettings.forPreset(preset), 4096);
+        // A coarse sweep, deliberately. The claim is only that the biome exists in an ordinary
+        // world, and at 2.4% to 3.4% of it that shows up in a few thousand samples; the fine sweep
+        // this started as took three minutes to prove the same thing, which is not what that
+        // sentence is worth.
         int hits = 0;
-        for (int z = -4000; z < 4000; z += 24) {
-            for (int x = -4000; x < 4000; x += 24) {
+        for (int z = -3000; z < 3000; z += 32) {
+            for (int x = -3000; x < 3000; x += 32) {
                 if (engine.biomeAt(x, z).name.equals("scarlet_forest")) {
                     hits++;
                 }
             }
         }
-        assertTrue(hits > 0, preset + ": the scarlet forest never occurs in 8000 blocks of world");
+        assertTrue(hits > 20, preset + ": the scarlet forest barely occurs - only " + hits
+                + " of 35156 samples across 6000 blocks of world");
     }
 }

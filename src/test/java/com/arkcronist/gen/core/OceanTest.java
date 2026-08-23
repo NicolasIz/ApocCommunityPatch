@@ -58,7 +58,18 @@ class OceanTest {
                 preset + ": the shelf (" + shelfAverage + ") should be far shallower than the abyss ("
                         + abyssAverage + ")");
         assertTrue(abyssAverage > 40.0, preset + ": deep ocean averages only " + abyssAverage + " blocks");
-        assertTrue(deepest > 70.0, preset + ": deepest point is only " + deepest + " blocks down");
+        // A range, not a floor, and the upper end is the point of it.
+        //
+        // This used to demand more than seventy blocks of depth, from when the sea was meant to be
+        // as deep as it could get. It is not any more: the deep was reaching Y=-25, which is a long
+        // swim back up and leaves almost no rock between the sea floor and the caves under it. What
+        // is wanted now is a sea with a real deep in it that still stops well short of the deep
+        // itself, so both ends are held: below forty-five there is no deep ocean worth the name,
+        // and above seventy-eight the floor is back down where it was.
+        assertTrue(deepest > 45.0, preset + ": the sea has no deep in it - deepest point is only "
+                + deepest + " blocks down");
+        assertTrue(deepest < 78.0, preset + ": the sea is back to being a pit - deepest point is "
+                + deepest + " blocks down");
     }
 
     @Test

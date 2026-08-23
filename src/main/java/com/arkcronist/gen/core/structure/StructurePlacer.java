@@ -505,7 +505,12 @@ public final class StructurePlacer {
         if (to <= from) {
             return null;
         }
-        int step = Math.max(48, (to - from) / 12);
+        // Coarse on purpose. A finer lattice finds a few more small patches of ice and costs the
+        // whole placer a great deal, because this runs for every cell that does not qualify on its
+        // first sample - which, with a host biome under one percent of the world, is nearly all of
+        // them. Patches of ice spikes were measured up to 188 blocks across; a step near a hundred
+        // catches those, and missing an occasional small one only means that cell holds nothing.
+        int step = Math.max(64, (to - from) / 7);
         List<int[]> found = new ArrayList<>();
         for (int dx = from; dx <= to; dx += step) {
             for (int dz = from; dz <= to; dz += step) {

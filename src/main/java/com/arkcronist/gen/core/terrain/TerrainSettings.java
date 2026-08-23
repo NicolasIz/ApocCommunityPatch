@@ -27,11 +27,17 @@ public final class TerrainSettings {
      *
      * <p>Lower means more land. Measured at -0.04 the world came out 57% land on BASE and 48% on the
      * other two - about half the map was sea, which leaves little room for the biomes and the
-     * structures that need them. -0.15 took that to 72/60/63, and this takes it further: the sea is
-     * meant to be something you cross to reach the next coast, not the ground the world is built
-     * on.</p>
+     * structures that need them. This takes it further: the sea is meant to be something you cross
+     * to reach the next coast, not the ground the world is built on.</p>
+     *
+     * <p>Not further still, though, and that limit was measured rather than guessed. Pushed to
+     * -0.28 the land reached 85% on BASE and the deep ocean stopped existing - abyssal columns fell
+     * to 33 in a forty thousand sample sweep, which leaves the trench and abyssal plain biomes, the
+     * ocean monument and everything else that lives out there with nowhere to be. At -0.16 there
+     * are still 109 to 124 of them, averaging sixty blocks deep, and the land is 67/59/58% of the
+     * sweep against 55/48/48 at the value this started from.</p>
      */
-    public double oceanCutoff = -0.28;
+    public double oceanCutoff = -0.16;
     /** Width of the coast transition in continentalness units. */
     public double coastWidth = 0.075;
     /** Extra bays and inlets carved into the coastline. */
@@ -61,7 +67,7 @@ public final class TerrainSettings {
      * and leaves the deep with a ceiling of nothing much. The sea keeps its shape - shelf, slope
      * and trench are all still there - it simply stops well short of the deep.</p>
      */
-    public double oceanFloorMin = 14.0;
+    public double oceanFloorMin = 6.0;
     public double trenchFrequency = 0.00040;
     public double trenchThreshold = 0.80;
     public double seamountAmplitude = 46.0;
@@ -433,7 +439,7 @@ public final class TerrainSettings {
                 s.abyssDepth = 86.0;
                 s.abyssRoughness = 16.0;
                 s.trenchDepth = 44.0;
-                s.oceanFloorMin = 8.0;
+                s.oceanFloorMin = 0.0;
                 s.trenchThreshold = 0.74;
                 s.seamountAmplitude = 68.0;
                 s.oceanIslandStrength = 0.65;
@@ -489,7 +495,7 @@ public final class TerrainSettings {
                 s.abyssDepth = 96.0;
                 s.abyssRoughness = 22.0;
                 s.trenchDepth = 52.0;
-                s.oceanFloorMin = 2.0;
+                s.oceanFloorMin = -6.0;
                 s.trenchThreshold = 0.62;
                 s.trenchFrequency = 0.00052;
                 s.seamountAmplitude = 120.0;

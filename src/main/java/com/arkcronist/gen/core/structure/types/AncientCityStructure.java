@@ -111,7 +111,7 @@ public final class AncientCityStructure implements Structure {
         // placer - only the ice spikes list this family - but a coast can run through the middle of
         // any biome, and the city is 172 blocks across. So the whole footprint and a wide margin
         // round it have to be dry land: not one column of open water anywhere over the roof.
-        if (!dryOverhead(context, city.radius() + SHORE_CLEARANCE)) {
+        if (context.lowestHeight(city.radius() + SHORE_CLEARANCE) < context.seaLevel()) {
             return false;
         }
         // Rock over the WHOLE footprint, not just over the middle. The city is 172 blocks across,
@@ -124,19 +124,6 @@ public final class AncientCityStructure implements Structure {
 
     /** How far past its own footprint a city insists on dry land. */
     private static final int SHORE_CLEARANCE = 48;
-
-    /** Whether every column in a square of the given reach stands above the sea. */
-    private boolean dryOverhead(StructureContext context, int reach) {
-        int step = Math.max(8, reach / 8);
-        for (int dx = -reach; dx <= reach; dx += step) {
-            for (int dz = -reach; dz <= reach; dz += step) {
-                if (context.submerged(context.originX + dx, context.originZ + dz)) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
 
     /**
      * The floor the city stands on.
