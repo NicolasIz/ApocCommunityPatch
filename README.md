@@ -91,25 +91,36 @@ controla color de hierba, niebla y spawns naturales; el resto lo decide Arkcroni
 Bajo tierra el proveedor de biomas cambia a biomas de cueva por regiones, así que el subsuelo tiene
 ambiente propio.
 
-### Dos biomas nuevos: cherry_grove y scarlet_forest
+### Bioma nuevo: scarlet_forest
 
-Construidos alrededor de un solo árbol cada uno, extraídos de las schematics que enviaste.
+Un bosque de gigantes rojos, construido alrededor de **un solo archivo**.
 
-| | árbol | suelo | vanilla | presencia |
+`scarlet_fix.schem` no es un árbol: son cuatro árboles gigantes apoyados unos en otros sobre el
+trozo de suelo del que crecieron, 121×53×97. **No se separa en árboles sueltos.** Lo que hace que
+valga la pena es exactamente lo que separarlo destruiría — las copas se entrelazan y los troncos se
+inclinan. Entra entero al mundo o no entra.
+
+Su tamaño es además la razón de que sea una *estructura* y no una decoración: mide ocho chunks de
+ancho, y el paso de decoración solo puede escribir en el chunk que le toca y sus vecinos. Solo el
+paso de estructuras lleva un búfer a través de un vecindario entero.
+
+| | qué es | suelo | vanilla | presencia |
 |---|---|---|---|---|
-| `cherry_grove` | 8 cerezos | claro: diorita y calcita bajo una capa fina | `cherry_grove` | ~0,9-1,0% |
-| `scarlet_forest` | 12 escarlatas | podzol, tierra tosca y arena roja | `dark_forest` | ~0,6-0,7% |
+| `scarlet_forest` | el bosquecillo, entero | césped sobre tierra, como cualquier bosque | `dark_forest` | 2,4–3,4% |
 
-**La exclusividad es el punto.** Un árbol escarlata fuera del bosque escarlata haría el bioma
-irrelevante, y el sistema de puntuación por sí solo no basta: un peso pequeño es una cola larga, no
-una promesa. Ambas especies están en la lista de exclusión y puntúan **cero** fuera del bioma que las
-pide. Hay una prueba que dibuja 200 árboles por especie y falla si uno se cuela.
+**El rojo es un color, no un bloque.** No se cambió ni un bloque por uno rojo: el suelo es
+`grass_block` sobre `dirt` y las copas son las `oak_leaves` del propio archivo. Lo que los pone
+rojos es el tinte de césped y follaje del bioma, escrito en el datapack de colores.
 
-`cherry_hills` sigue existiendo y no se toca: aquél es un altiplano con mezcla de árboles (y40-150),
-éste es un bosquecillo llano (y6-95) de puro cerezo.
+Eso obliga a una cosa: la superficie es casi todo césped a propósito, porque **el podzol y la tierra
+tosca no admiten tinte en ningún bioma del juego**, ni en vanilla, y cada uno de ellos sería una
+mancha marrón en un bosque rojo. La tierra tampoco se tiñe nunca, así que un talud al descubierto
+seguirá siendo marrón — eso es el cliente, no una decisión del plugin.
 
-**Las hojas escarlata no dependen de ningún tinte:** las copas son `nether_wart_block`, que ya es
-rojo. Lo mismo con `cherry_leaves`, que tiene su color propio.
+**El bioma tenía que poder encontrarse.** El primer intento lo puso en el clima (0,15 / 0,62),
+encima del bosque templado y el oscuro, y solo ganaba donde la rareza era extrema: **0,70% del
+mundo**, y ni un bosquecillo colocado en nueve anillos de rejilla alrededor del origen. Ahora tiene
+un hueco propio en (0,45 / 0,72) y ocupa el 2,4–3,4%, por delante del bosque oscuro (1,05%).
 
 ### Colores propios de bioma (datapack)
 
@@ -125,13 +136,45 @@ Está diseñado para no poder romper nada: el proveedor de biomas pide la clave 
 si no está, usa la clave vanilla de siempre. Un datapack que no cargue cuesta el color y nada más —
 el mundo se genera igual y el servidor arranca igual.
 
+### La Ancient City vive bajo los picos de hielo
+
+El bioma `glacier` (`minecraft:ice_spikes`) es **el único del registro que lista `ANCIENT_CITY`**, y
+el colocador consulta el bioma de la superficie incluso para algo enterrado a trescientos bloques.
+Ahí está toda la regla: una línea en el registro de biomas, no un caso especial escondido en la
+estructura.
+
+Como ese bioma es el **0,86% del mundo**, hicieron falta tres cosas para que la ciudad siga siendo
+encontrable:
+
+- La celda se **barre**, no se muestrea. Probar el único punto que la rejilla nombró habría dejado
+  ocho celdas de cada mil con ciudad.
+- La rejilla se aprieta de 1408 a **1024**. Una rejilla más corta significa más celdas probadas, no
+  ciudades más juntas: una celda sigue teniendo como mucho una.
+- `/ag locate` busca **24 anillos** para esta familia en vez de 6. Con la rejilla en 1408 la ciudad
+  más cercana en CHAOTIC estaba a 15.862 bloques, fuera del límite viejo — que es exactamente como
+  salía "nothing found within range".
+
+Medido ahora: **2.232, 6.916 y 2.767 bloques**, las tres bajo picos de hielo. Y la estructura
+rechaza cualquier sitio con agua abierta sobre el techo o a menos de 48 bloques.
+
+### Árboles: repartidos, no amontonados
+
+El colocador tiraba **32 puntos al azar** en cada chunk. Eso es un reparto de Poisson, y un reparto
+de Poisson pone dos árboles en el mismo bloque con la misma facilidad con la que deja un claro — eso
+es lo que es un bosque saturado, no demasiados árboles sino demasiados en el mismo sitio.
+
+Ahora van en una **rejilla de celdas de 4×4 bloques**, un árbol por celda como máximo, colocado
+dentro de la celda pero lejos de sus bordes, así que dos vecinos nunca quedan a menos de dos bloques.
+La densidad que declara cada bioma sigue significando lo mismo; lo único que cambió es la
+disposición. Encima de eso, el multiplicador global baja de 1,0 a **0,75**.
+
 ### Más tierra firme, biomas más organizados, desierto más grande
 
 | | tierra firme | mancha típica en tierra | desierto |
 |---|---|---|---|
-| BASE | 57,4% → **71,9%** | 16×16 → **24×24** chunks | 3,3% → **5,7%** |
-| CHAOTIC | 48,0% → **59,6%** | 13×13 → **19×19** chunks | 3,5% → **6,3%** |
-| INSANE | 48,9% → **62,5%** | 9×9 → **14×14** chunks | 3,7% → **7,2%** |
+| BASE | 57,4% → **84,7%** | 16×16 → **24×24** chunks | 3,6% → **7,3%** |
+| CHAOTIC | 48,0% → **72,2%** | 13×13 → **19×19** chunks | 4,1% → **7,8%** |
+| INSANE | 48,9% → **74,4%** | 9×9 → **14×14** chunks | 4,4% → **9,0%** |
 
 El desierto se ensanchó a propósito en el mapa climático y se le bajó el listón de continentalidad:
 una pirámide necesita un desierto que la contenga, y al 3% del mundo apenas cabía.
