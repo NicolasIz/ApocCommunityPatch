@@ -199,6 +199,12 @@ minibosses:
 #  random tick and leaves bare patches - so the thermal map is held coherent while
 #  humidity and weirdness are free to vary inside it.
 #
+#  Agua en las cuevas:
+#
+#    cave-water   0 = cuevas totalmente secas, 1 = como antes (39% del subsuelo con capa
+#                 freatica, llegando hasta Y=55). Por defecto 0.10: solo el fondo del mundo
+#                 tiene charcas. Las cuevas inundadas ahogaban la ancient city y la stronghold.
+#
 #  Agua:
 #
 #    water-at-sea-level      true (por defecto) = TODA el agua del mundo a una sola altura, la del

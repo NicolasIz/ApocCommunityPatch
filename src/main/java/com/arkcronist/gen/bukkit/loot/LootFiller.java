@@ -6,13 +6,17 @@ import com.arkcronist.gen.core.structure.LootMarker;
 import org.bukkit.Material;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Container;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.generator.LimitedRegion;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.loot.LootTables;
+import org.bukkit.loot.Lootable;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Fills structure containers with tiered, themed loot.
@@ -26,27 +30,107 @@ public final class LootFiller {
     private LootFiller() {
     }
 
+    /** Counted across the whole world so a silent failure cannot stay silent. */
+    private static final AtomicLong SEEN = new AtomicLong();
+    private static final AtomicLong FILLED = new AtomicLong();
+    private static final AtomicLong REPAIRED = new AtomicLong();
+
     public static void fill(LimitedRegion region, List<LootMarker> markers, long worldSeed) {
         for (LootMarker marker : markers) {
-            if (!region.isInRegion(marker.x(), marker.y(), marker.z())) {
+            int x = marker.x();
+            int y = marker.y();
+            int z = marker.z();
+            if (!region.isInRegion(x, y, z)) {
                 continue;
             }
-            BlockState state = region.getBlockState(marker.x(), marker.y(), marker.z());
-            if (!(state instanceof Container container)) {
-                continue;
+            SEEN.incrementAndGet();
+
+            BlockState state = region.getBlockState(x, y, z);
+            if (!(state instanceof Container)) {
+                // The marker says a container was stamped here, so if the block does not read back
+                // as one, put the chest in ourselves and try again. A prefab's chest arriving as
+                // something the server will not hand back as a Container is the one failure mode
+                // that leaves every chest in the world empty while everything else looks correct.
+                BlockData chest = org.bukkit.Bukkit.createBlockData(Material.CHEST);
+                region.setBlockData(x, y, z, chest);
+                state = region.getBlockState(x, y, z);
+                if (!(state instanceof Container)) {
+                    continue;
+                }
+                REPAIRED.incrementAndGet();
             }
-            Inventory inventory = container.getInventory();
-            FastRandom random = new FastRandom(
-                    Hashing.hash3(worldSeed ^ 0x100D_5EEDL, marker.x(), marker.y(), marker.z()));
-            int stacks = 3 + marker.tier() * 2 + random.nextInt(0, 3);
-            for (int i = 0; i < stacks; i++) {
-                ItemStack item = roll(random, marker.tier(), marker.theme());
-                if (item != null) {
-                    inventory.setItem(random.nextInt(inventory.getSize()), item);
+            Container container = (Container) state;
+
+            FastRandom random = new FastRandom(Hashing.hash3(worldSeed ^ 0x100D_5EEDL, x, y, z));
+
+            // A vanilla loot table where the theme has one. This is how the game's own chests work:
+            // the contents are rolled when the chest is first opened, from the seed set here, so
+            // they are properly random and always current with the version's own tables.
+            LootTables table = tableFor(marker.theme(), marker.tier(), random);
+            if (table != null && container instanceof Lootable lootable) {
+                lootable.setLootTable(table.getLootTable(), Hashing.hash3(worldSeed, x, y, z));
+            } else {
+                Inventory inventory = container.getInventory();
+                int stacks = 3 + marker.tier() * 2 + random.nextInt(0, 3);
+                for (int i = 0; i < stacks; i++) {
+                    ItemStack item = roll(random, marker.tier(), marker.theme());
+                    if (item != null) {
+                        inventory.setItem(random.nextInt(inventory.getSize()), item);
+                    }
                 }
             }
-            region.setBlockState(marker.x(), marker.y(), marker.z(), container);
+            region.setBlockState(x, y, z, container);
+            FILLED.incrementAndGet();
         }
+    }
+
+    /** Containers seen, filled, and repaired - for the startup/report diagnostics. */
+    public static long[] counters() {
+        return new long[]{SEEN.get(), FILLED.get(), REPAIRED.get()};
+    }
+
+    /**
+     * A vanilla loot table suited to the theme, or null to fall back to hand rolled items.
+     *
+     * <p>Tier picks how rich the table is where the theme offers a choice, so a landmark building
+     * is worth more than an outbuilding of the same kind.</p>
+     */
+    private static LootTables tableFor(String theme, int tier, FastRandom random) {
+        return switch (theme) {
+            case "mineshaft" -> LootTables.ABANDONED_MINESHAFT;
+            case "stronghold" -> tier >= 3 ? LootTables.STRONGHOLD_LIBRARY
+                    : random.chance(0.5) ? LootTables.STRONGHOLD_CORRIDOR : LootTables.STRONGHOLD_CROSSING;
+            case "ancient_city" -> LootTables.ANCIENT_CITY;
+            case "dungeon" -> LootTables.SIMPLE_DUNGEON;
+            case "shipwreck", "ship" -> tier >= 3 ? LootTables.SHIPWRECK_TREASURE
+                    : random.chance(0.5) ? LootTables.SHIPWRECK_SUPPLY : LootTables.SHIPWRECK_MAP;
+            case "underwater" -> tier >= 2 ? LootTables.UNDERWATER_RUIN_BIG : LootTables.UNDERWATER_RUIN_SMALL;
+            case "treasure" -> LootTables.BURIED_TREASURE;
+            case "temple" -> random.chance(0.5) ? LootTables.DESERT_PYRAMID : LootTables.JUNGLE_TEMPLE;
+            case "igloo" -> LootTables.IGLOO_CHEST;
+            case "portal" -> LootTables.RUINED_PORTAL;
+            case "trial" -> tier >= 3 ? LootTables.TRIAL_CHAMBERS_REWARD_RARE : LootTables.TRIAL_CHAMBERS_SUPPLY;
+            case "mansion" -> LootTables.WOODLAND_MANSION;
+            case "camp", "battle" -> LootTables.PILLAGER_OUTPOST;
+            case "vault" -> tier >= 3 ? LootTables.END_CITY_TREASURE : LootTables.WOODLAND_MANSION;
+            // Prefab folders. A village house is a village house whoever built the schematic.
+            case "village", "houses" -> switch (random.nextInt(6)) {
+                case 0 -> LootTables.VILLAGE_PLAINS_HOUSE;
+                case 1 -> LootTables.VILLAGE_SNOWY_HOUSE;
+                case 2 -> LootTables.VILLAGE_TAIGA_HOUSE;
+                case 3 -> LootTables.VILLAGE_SAVANNA_HOUSE;
+                case 4 -> LootTables.VILLAGE_DESERT_HOUSE;
+                default -> LootTables.VILLAGE_TANNERY;
+            };
+            case "castles", "castle", "fortress", "towers" -> tier >= 2
+                    ? LootTables.WOODLAND_MANSION : LootTables.PILLAGER_OUTPOST;
+            case "ruins", "ruin" -> random.chance(0.5) ? LootTables.UNDERWATER_RUIN_BIG : LootTables.SIMPLE_DUNGEON;
+            case "temples" -> LootTables.JUNGLE_TEMPLE;
+            case "ships" -> tier >= 2 ? LootTables.SHIPWRECK_TREASURE : LootTables.SHIPWRECK_SUPPLY;
+            // sky, trail and anything a user invents in their own folder: hand rolled, because
+            // there is no vanilla table that means the same thing.
+            default -> null;
+        };
     }
 
     private static ItemStack roll(FastRandom random, int tier, String theme) {

@@ -37,12 +37,22 @@ public final class AquiferSampler {
      * <p>Kept below the surface everywhere so a flooded cave never spills out of a hillside.</p>
      */
     public int waterTable(int x, int z, double surfaceHeight) {
-        if (presence.noise2(x, z) < 0.10) {
+        if (settings.caveWater <= 0.0) {
             return NO_WATER;
         }
+        // Both knobs move together with caveWater: how rare a wet region is, and how high its table
+        // may stand. Scaling only one of them gives either a few drowned worlds or a uniform damp
+        // one; scaling both is what turns "the underground is flooded" into "some deep caves have
+        // pools in them".
+        double threshold = MathUtil.lerp(settings.caveWater, 0.75, -0.10);
+        if (presence.noise2(x, z) < threshold) {
+            return NO_WATER;
+        }
+        double ceiling = MathUtil.lerp(settings.caveWater,
+                settings.minY + 10.0, settings.seaLevel - 8.0);
         double t = presence.unsigned2(x, z);
         double raw = MathUtil.lerp(MathUtil.normalize(level.noise2(x, z), -0.6, 0.6),
-                settings.minY + 12.0, settings.seaLevel - 8.0);
+                settings.minY + 12.0, Math.max(settings.minY + 12.0, ceiling));
         double capped = Math.min(raw, surfaceHeight - 12.0);
         int result = (int) Math.floor(capped);
         // Faint tables produce shallow puddles rather than full lakes.

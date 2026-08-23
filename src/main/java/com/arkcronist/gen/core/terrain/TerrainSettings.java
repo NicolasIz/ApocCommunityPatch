@@ -164,6 +164,20 @@ public final class TerrainSettings {
 
     // ---------------------------------------------------------------- caves
     public boolean caves = true;
+
+    /**
+     * How much of the underground carries a water table, from 0 (bone dry) to 1.
+     *
+     * <p>Aquifers used to be unconditional: 39% of the world had one, the mean table sat at Y=-5 and
+     * they reached as high as Y=55. That drowns the deep caves, and it drowns anything the server
+     * wants to put in them - an ancient city occupies roughly Y=-51 to -20 and was underwater in
+     * 38% of columns.</p>
+     *
+     * <p>This scales both how often a region has water at all and how high the table may rise. At
+     * the default only a small share of the deep world is flooded, and the pools stay near the
+     * bedrock where they read as features rather than as a drowned world.</p>
+     */
+    public double caveWater = 0.10;
     public double caveCheeseThreshold = 0.48;
     public double caveCheeseFrequency = 0.0128;
     public double tunnelThreshold = 0.064;
@@ -313,6 +327,7 @@ public final class TerrainSettings {
         copy.floatingIslandFrequency = floatingIslandFrequency;
         copy.floatingIslandSize = floatingIslandSize;
         copy.caves = caves;
+        copy.caveWater = caveWater;
         copy.caveCheeseThreshold = caveCheeseThreshold;
         copy.caveCheeseFrequency = caveCheeseFrequency;
         copy.tunnelThreshold = tunnelThreshold;

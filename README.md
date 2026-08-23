@@ -91,6 +91,27 @@ controla color de hierba, niebla y spawns naturales; el resto lo decide Arkcroni
 Bajo tierra el proveedor de biomas cambia a biomas de cueva por regiones, así que el subsuelo tiene
 ambiente propio.
 
+### Agua en las cuevas, y por qué no salía la ancient city
+
+Las capas freáticas subterráneas no tenían ningún control: **39% de las columnas** llevaban una, con
+nivel medio en **Y=-5** y llegando hasta **Y=55**. Eso ahoga las cuevas profundas y lo que el
+servidor ponga en ellas — una ancient city ocupa aproximadamente Y=-51 a -20, y el 38% de las
+columnas tenía agua por encima de su suelo.
+
+Con `cave-water: 0.10` (por defecto):
+
+| | subsuelo con capa freática | nivel medio | más alto | inunda la banda de la ancient city |
+|---|---|---|---|---|
+| todos los presets | 39,2% → **1,2%** | -5 → **-48** | 55 → **-44** | 37,8% → **0,9%** |
+
+`cave-water: 0` deja las cuevas completamente secas.
+
+**Pero el agua no era lo único que impedía la ancient city.** El proveedor de biomas solo devolvía
+`deep_dark` por debajo de `minY + 32` (Y=-32). El servidor comprueba el bioma a la **altura de inicio
+de la estructura**, y una ancient city llega bastante más arriba de esa franja — así que la
+comprobación caía sobre dripstone o piedra y **ninguna ciudad podía colocarse jamás**. La franja
+ahora llega hasta `minY + 52` (Y=-12), con margen de sobra.
+
 ### Agua (una sola superficie en todo el mundo)
 
 Había **tres** fallos encadenados, y por eso el agua salía a distinta altura en distintos chunks:
@@ -429,7 +450,7 @@ principal cuando el chunk se carga (y solo una vez, marcado en el *persistent da
 
 ## 2. Instalación y uso
 
-1. Copia `ArkcronistGenerator-1.6.4.jar` en `plugins/`.
+1. Copia `ArkcronistGenerator-1.7.0.jar` en `plugins/`.
 2. Arranca el servidor una vez para que se genere `plugins/ArkcronistGenerator/config.yml`.
 3. Crea el mundo con tu gestor de mundos (ArkcronistWorlds, Multiverse, etc.):
 
@@ -596,7 +617,7 @@ Reproducible con:
 
 ```bash
 mvn -q package -DskipTests
-java -cp target/ArkcronistGenerator-1.6.4.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
+java -cp target/ArkcronistGenerator-1.7.0.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
 ```
 
 o dentro del juego con `/ag bench INSANE 256`.
@@ -685,7 +706,7 @@ cubren gzip, NBT, el flujo de varints y el cargador de carpetas):
 ## 7. Compilar
 
 ```bash
-mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.6.4.jar
+mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.7.0.jar
 ```
 
 Requiere JDK 21 y la Paper API 1.21.8 (`repo.papermc.io`, ya declarado en el `pom.xml`).

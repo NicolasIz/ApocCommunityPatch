@@ -86,7 +86,12 @@ public final class ArkBiomeProvider extends BiomeProvider {
             // Underground: give the caves their own identity, in patches rather than uniformly.
             long region = Hashing.hash(engine.seed() ^ 0xCA5E1L, x >> 7, z >> 7);
             int pick = (int) ((region >>> 20) % 10);
-            if (y < engine.settings().minY + 32 && pick < 2) {
+            // The deep dark has to cover an ancient city's whole vertical extent, not just the
+            // floor it stands on. The server checks the biome at the structure's own start height,
+            // and a city reaches well above the bedrock slice this used to be limited to - so with
+            // the old bound the check was made against dripstone or stone and no city could ever
+            // be placed. Kept generous on purpose: the exact start height is the game's to choose.
+            if (y < engine.settings().minY + 52 && pick < 2) {
                 return deepDark;
             }
             if (pick < 3) {

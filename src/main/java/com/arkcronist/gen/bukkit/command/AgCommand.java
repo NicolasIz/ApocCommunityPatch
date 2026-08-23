@@ -1,6 +1,7 @@
 package com.arkcronist.gen.bukkit.command;
 
 import com.arkcronist.gen.bukkit.ArkWorld;
+import com.arkcronist.gen.bukkit.loot.LootFiller;
 import com.arkcronist.gen.bukkit.ArkcronistPlugin;
 import com.arkcronist.gen.bukkit.BlockBridge;
 import com.arkcronist.gen.core.bench.TerrainBenchmark;
@@ -231,6 +232,18 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
                     + cache.size() + " chunks, hit rate "
                     + String.format(Locale.ROOT, "%.1f%%", cache.hitRate() * 100.0)
                     + ", queued mob groups " + world.mobQueue().size());
+        }
+
+        // Loot is the one part of generation with no visible trace when it fails: the chests are
+        // there, they are just empty, and nothing is logged. These three numbers say whether the
+        // containers were found at all.
+        long[] loot = LootFiller.counters();
+        sender.sendMessage("§7 Containers seen: §f" + loot[0]
+                + "§7, filled: §f" + loot[1]
+                + "§7, block replaced first: §f" + loot[2]);
+        if (loot[0] > 0 && loot[1] < loot[0]) {
+            sender.sendMessage("§c " + (loot[0] - loot[1])
+                    + " container(s) could not be filled - the block did not read back as a container.");
         }
     }
 
