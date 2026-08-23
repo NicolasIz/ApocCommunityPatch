@@ -91,6 +91,50 @@ class NewBiomesTest {
         return found;
     }
 
+    @Test
+    @DisplayName("scarlet canopies are a leaf the biome can actually tint")
+    void scarletLeavesTakeTheBiomeTint() {
+        // They were nether wart block, which is red because its texture is red - it takes no tint,
+        // so the biome's colour could never reach it. Birch is no good either: birch and spruce
+        // leaves carry a hardcoded colour in vanilla and ignore the biome outright. Oak does follow
+        // it, which is why the canopies are oak over a birch trunk.
+        //
+        // Matched by block name rather than by exact state: the reader rewrites a leaf's decay
+        // distance on the way in, so pinning the whole state string here would be testing that
+        // normalisation instead of the thing that matters.
+        PrefabRegistry registry = prefabs();
+        int checked = 0;
+        for (Prefab tree : registry.category("trees")) {
+            if (!tree.id.contains("scarlet")) {
+                continue;
+            }
+            checked++;
+            assertTrue(count(tree, "minecraft:oak_leaves") > 100,
+                    tree.id + " has almost no tintable leaves in it");
+            assertTrue(count(tree, "minecraft:nether_wart_block") == 0,
+                    tree.id + " still carries nether wart block, which no biome can tint");
+            assertTrue(count(tree, "minecraft:birch_leaves") == 0,
+                    tree.id + " uses birch leaves, whose colour is fixed and ignores the biome");
+            assertTrue(count(tree, "minecraft:spruce_leaves") == 0,
+                    tree.id + " uses spruce leaves, whose colour is fixed and ignores the biome");
+            // The trunk is meant to stay birch: it is a birch tree with a red canopy.
+            assertTrue(count(tree, "minecraft:birch_wood") + count(tree, "minecraft:birch_log") > 100,
+                    tree.id + " lost its birch trunk");
+        }
+        assertTrue(checked >= 10, "only " + checked + " scarlet trees were found");
+    }
+
+    /** Blocks of a prefab whose name starts with the given prefix, across every state of it. */
+    private static int count(Prefab prefab, String namePrefix) {
+        int total = 0;
+        for (int id = 0; id < com.arkcronist.gen.core.block.Blocks.REGISTRY.size(); id++) {
+            if (com.arkcronist.gen.core.block.Blocks.REGISTRY.key(id).startsWith(namePrefix)) {
+                total += prefab.blockCount(id, 0);
+            }
+        }
+        return total;
+    }
+
     @ParameterizedTest
     @EnumSource(Preset.class)
     @DisplayName("both biomes actually occur in a world, and the desert has room for a pyramid")

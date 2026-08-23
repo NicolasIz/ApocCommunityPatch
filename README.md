@@ -108,8 +108,14 @@ pide. Hay una prueba que dibuja 200 árboles por especie y falla si uno se cuela
 `cherry_hills` sigue existiendo y no se toca: aquél es un altiplano con mezcla de árboles (y40-150),
 éste es un bosquecillo llano (y6-95) de puro cerezo.
 
-**Las hojas escarlata no dependen de ningún tinte:** las copas son `nether_wart_block`, que ya es
-rojo. Lo mismo con `cherry_leaves`, que tiene su color propio.
+**Las hojas escarlata se tiñen desde el bioma.** Empezaron siendo `nether_wart_block` — rojo porque
+su textura es roja, sin admitir tinte alguno — y ahora son **hojas de roble** sobre tronco de abedul.
+El motivo es concreto: de las hojas del juego, solo algunas siguen el `foliage_color` del bioma
+(roble, jungla, acacia, roble oscuro, mangle). El **abedul y la picea no**: llevan un color fijo en
+el cliente e ignoran el bioma. Por eso el árbol conserva su tronco de abedul pero la copa es de
+roble, que es la única forma de que `foliage: "#A81E1E"` llegue a pintarla.
+
+Las hojas de cerezo son aparte: su textura ya es rosa y no dependen de nada.
 
 ### Colores propios de bioma (datapack)
 

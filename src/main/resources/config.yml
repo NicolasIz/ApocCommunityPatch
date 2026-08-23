@@ -161,8 +161,13 @@ prefabs:
 #  simplemente conserva el valor del bioma vanilla en el que se basa.
 #
 #     grass      cesped y hierba alta
-#     foliage    hojas que el juego tine (roble, abedul...). Las hojas de cerezo
-#                y el nether wart block NO se tinen: ya tienen su color propio.
+#     foliage    hojas que el juego tine. OJO: solo algunas lo son. El roble, la
+#                jungla, la acacia, el roble oscuro y el mangle SI siguen este
+#                color. El ABEDUL y la PICEA no: llevan un color fijo en el
+#                cliente e ignoran el bioma. Las hojas de cerezo tampoco: su
+#                textura ya es rosa. Por eso los arboles escarlata llevan copa
+#                de ROBLE aunque su tronco sea de abedul - es la unica forma de
+#                que el bioma pueda tenirlas.
 #     water      agua        water-fog  niebla bajo el agua
 #     sky        cielo       fog        niebla
 #     rain       si llueve en el bioma (por defecto true)
@@ -170,11 +175,11 @@ prefabs:
 biome-colours:
   enabled: true
 
-  # El bosque escarlata. Sus arboles ya son rojos por si mismos - las copas son
-  # nether wart block - asi que esto es para que el suelo acompane.
+  # El bosque escarlata. El rojo de las hojas viene de AQUI: las copas son hojas
+  # de roble, que si se tinen, asi que este valor es el que las pone escarlata.
   scarlet_forest:
     grass: "#A32020"
-    foliage: "#8E1B1B"
+    foliage: "#A81E1E"
     sky: "#7A4242"
     fog: "#5C2626"
 
