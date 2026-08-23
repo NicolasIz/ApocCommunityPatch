@@ -1,6 +1,7 @@
 package com.arkcronist.gen.bukkit;
 
 import com.arkcronist.gen.bukkit.command.AgCommand;
+import com.arkcronist.gen.bukkit.colour.BiomeColourPack;
 import com.arkcronist.gen.bukkit.config.ArkConfig;
 import com.arkcronist.gen.bukkit.mobs.ChunkSpawnListener;
 import com.arkcronist.gen.core.prefab.PrefabRegistry;
@@ -17,6 +18,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -46,6 +48,7 @@ public final class ArkcronistPlugin extends JavaPlugin {
         this.prefabs = PrefabInstaller.install(getDataFolder().toPath(), getLogger(),
                 arkConfig.extractBundledPrefabs());
         BlockBridge.initialize(getLogger());
+        installBiomeColours();
         getServer().getPluginManager().registerEvents(new ChunkSpawnListener(this), this);
 
         PluginCommand command = getCommand("ag");
@@ -120,6 +123,46 @@ public final class ArkcronistPlugin extends JavaPlugin {
         }
         int newline = message.indexOf('\n');
         return newline < 0 ? message : message.substring(0, newline);
+    }
+
+    /**
+     * Writes the biome colour datapack into every world folder on disk.
+     *
+     * <p>A datapack is read when its world loads, and this runs after that, so the colours arrive on
+     * the <em>next</em> start. That is stated in the log rather than hidden: there is no way for a
+     * plugin to add a biome to a running server - Paper's registry API covers banner patterns,
+     * enchantments and mob variants, but not biomes.</p>
+     *
+     * <p>Nothing depends on it. The biome provider asks the registry for the custom key and falls
+     * back to the vanilla one when it is missing, so a pack that never loads costs the colour and
+     * nothing else.</p>
+     */
+    private void installBiomeColours() {
+        Map<String, BiomeColourPack.Colours> table =
+                arkConfig.biomeColourTable(new com.arkcronist.gen.core.biome.BiomeRegistry());
+        if (table.isEmpty()) {
+            return;
+        }
+        Path container = getServer().getWorldContainer().toPath();
+        int written = 0;
+        try (var worlds = Files.list(container)) {
+            for (Path folder : worlds.toList()) {
+                if (Files.isDirectory(folder) && Files.exists(folder.resolve("level.dat"))) {
+                    if (BiomeColourPack.install(folder, table, getLogger())) {
+                        written++;
+                    }
+                }
+            }
+        } catch (IOException exception) {
+            getLogger().warning("Could not scan the world folders for the colour datapack: "
+                    + exception.getMessage());
+            return;
+        }
+        if (written > 0) {
+            getLogger().info("Biome colours prepared for " + written + " world(s): "
+                    + String.join(", ", table.keySet())
+                    + ". Restart once for them to take effect.");
+        }
     }
 
     @Override

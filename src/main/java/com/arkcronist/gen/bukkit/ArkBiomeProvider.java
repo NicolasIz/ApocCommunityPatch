@@ -1,5 +1,6 @@
 package com.arkcronist.gen.bukkit;
 
+import com.arkcronist.gen.bukkit.colour.BiomeColourPack;
 import com.arkcronist.gen.core.biome.ArkBiome;
 import com.arkcronist.gen.core.math.Hashing;
 import com.arkcronist.gen.core.terrain.TerrainEngine;
@@ -42,7 +43,14 @@ public final class ArkBiomeProvider extends BiomeProvider {
         this.byArkId = new Biome[biomes.size()];
         Set<Biome> unique = new LinkedHashSet<>();
         for (ArkBiome biome : biomes) {
-            Biome resolved = resolve(biome.vanillaKey);
+            // A biome the colour datapack defined wins over the vanilla key it was based on. That
+            // pack is the only way to give a biome grass of its own colour - Paper's registry API
+            // cannot add biomes - and it is entirely optional: when it is not installed, or failed
+            // to load, the lookup comes back null and the vanilla key is used exactly as before.
+            Biome resolved = lookup(BiomeColourPack.NAMESPACE + ":" + biome.name);
+            if (resolved == null) {
+                resolved = resolve(biome.vanillaKey);
+            }
             byArkId[biome.id] = resolved;
             unique.add(resolved);
         }
@@ -53,7 +61,8 @@ public final class ArkBiomeProvider extends BiomeProvider {
         this.all = new ArrayList<>(unique);
     }
 
-    private static Biome resolve(String key) {
+    /** Resolves a biome key, or null when the registry does not hold it. */
+    private static Biome lookup(String key) {
         NamespacedKey namespaced = NamespacedKey.fromString(key);
         if (namespaced != null) {
             try {
@@ -73,7 +82,13 @@ public final class ArkBiomeProvider extends BiomeProvider {
                 // Fall through to plains.
             }
         }
-        return Biome.PLAINS;
+        return null;
+    }
+
+    /** Resolves a key, falling back to plains so the provider never hands back null. */
+    private static Biome resolve(String key) {
+        Biome found = lookup(key);
+        return found == null ? Biome.PLAINS : found;
     }
 
     @Override

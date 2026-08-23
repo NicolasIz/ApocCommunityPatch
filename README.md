@@ -91,6 +91,51 @@ controla color de hierba, niebla y spawns naturales; el resto lo decide Arkcroni
 Bajo tierra el proveedor de biomas cambia a biomas de cueva por regiones, así que el subsuelo tiene
 ambiente propio.
 
+### Dos biomas nuevos: cherry_grove y scarlet_forest
+
+Construidos alrededor de un solo árbol cada uno, extraídos de las schematics que enviaste.
+
+| | árbol | suelo | vanilla | presencia |
+|---|---|---|---|---|
+| `cherry_grove` | 8 cerezos | claro: diorita y calcita bajo una capa fina | `cherry_grove` | ~0,9-1,0% |
+| `scarlet_forest` | 12 escarlatas | podzol, tierra tosca y arena roja | `dark_forest` | ~0,6-0,7% |
+
+**La exclusividad es el punto.** Un árbol escarlata fuera del bosque escarlata haría el bioma
+irrelevante, y el sistema de puntuación por sí solo no basta: un peso pequeño es una cola larga, no
+una promesa. Ambas especies están en la lista de exclusión y puntúan **cero** fuera del bioma que las
+pide. Hay una prueba que dibuja 200 árboles por especie y falla si uno se cuela.
+
+`cherry_hills` sigue existiendo y no se toca: aquél es un altiplano con mezcla de árboles (y40-150),
+éste es un bosquecillo llano (y6-95) de puro cerezo.
+
+**Las hojas escarlata no dependen de ningún tinte:** las copas son `nether_wart_block`, que ya es
+rojo. Lo mismo con `cherry_leaves`, que tiene su color propio.
+
+### Colores propios de bioma (datapack)
+
+El color del césped lo decide el **cliente** a partir del bioma, y en Minecraft no existe ninguno con
+césped rojo. Paper tampoco ayuda: comprobado sobre `paper-api-1.21.8`, su API de registros permite
+añadir patrones de estandarte, encantamientos, sonidos y variantes de mobs — **no biomas**.
+
+Así que el plugin escribe un **datapack** en la carpeta de cada mundo, con un bioma propio por cada
+entrada de `biome-colours` en `config.yml`. Como un datapack se lee al cargar el mundo, los colores
+aparecen en el **siguiente** arranque.
+
+Está diseñado para no poder romper nada: el proveedor de biomas pide la clave propia al registro y,
+si no está, usa la clave vanilla de siempre. Un datapack que no cargue cuesta el color y nada más —
+el mundo se genera igual y el servidor arranca igual.
+
+### Más tierra firme, biomas más organizados, desierto más grande
+
+| | tierra firme | mancha típica en tierra | desierto |
+|---|---|---|---|
+| BASE | 57,4% → **71,9%** | 16×16 → **24×24** chunks | 3,3% → **5,7%** |
+| CHAOTIC | 48,0% → **59,6%** | 13×13 → **19×19** chunks | 3,5% → **6,3%** |
+| INSANE | 48,9% → **62,5%** | 9×9 → **14×14** chunks | 3,7% → **7,2%** |
+
+El desierto se ensanchó a propósito en el mapa climático y se le bajó el listón de continentalidad:
+una pirámide necesita un desierto que la contenga, y al 3% del mundo apenas cabía.
+
 ### El mar cortaba el techo de la Ancient City
 
 Reportado desde el servidor: el océano era tan profundo que rompía el techo y entraba el agua. Eran
@@ -609,7 +654,7 @@ principal cuando el chunk se carga (y solo una vez, marcado en el *persistent da
 
 ## 2. Instalación y uso
 
-1. Copia `ArkcronistGenerator-1.9.2.jar` en `plugins/`.
+1. Copia `ArkcronistGenerator-1.10.0.jar` en `plugins/`.
 2. Arranca el servidor una vez para que se genere `plugins/ArkcronistGenerator/config.yml`.
 3. Crea el mundo con tu gestor de mundos (ArkcronistWorlds, Multiverse, etc.):
 
@@ -776,7 +821,7 @@ Reproducible con:
 
 ```bash
 mvn -q package -DskipTests
-java -cp target/ArkcronistGenerator-1.9.2.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
+java -cp target/ArkcronistGenerator-1.10.0.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
 ```
 
 o dentro del juego con `/ag bench INSANE 256`.
@@ -865,7 +910,7 @@ cubren gzip, NBT, el flujo de varints y el cargador de carpetas):
 ## 7. Compilar
 
 ```bash
-mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.9.2.jar
+mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.10.0.jar
 ```
 
 Requiere JDK 21 y la Paper API 1.21.8 (`repo.papermc.io`, ya declarado en el `pom.xml`).

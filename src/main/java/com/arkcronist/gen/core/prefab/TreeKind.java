@@ -23,6 +23,8 @@ public final class TreeKind {
     public static final String PALE_OAK = "pale_oak";
     public static final String MANGROVE = "mangrove";
     public static final String CHERRY = "cherry";
+    /** The scarlet forest: red-canopied giants, and only where that biome asks for them. */
+    public static final String SCARLET = "scarlet";
     public static final String AZALEA = "azalea";
     public static final String DEAD = "dead";
     /** Fantasy families that only turn up where a preset asks for something strange. */

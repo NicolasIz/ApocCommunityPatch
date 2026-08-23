@@ -141,6 +141,50 @@ prefabs:
   # and no iron golems. Most schematics shared online have no bed and no light.
   furnish: false
 
+# ---------------------------------------------------------------------------
+#  Colores propios de bioma
+# ---------------------------------------------------------------------------
+#  El color del cesped y de las hojas lo decide el CLIENTE a partir del bioma en
+#  el que cree que estas, y en Minecraft no existe ningun bioma con cesped rojo.
+#  Paper tampoco ayuda: su API de registros permite anadir patrones de estandarte,
+#  encantamientos y variantes de mobs, pero NO biomas.
+#
+#  Asi que el plugin escribe un DATAPACK en la carpeta de cada mundo con un bioma
+#  propio por cada entrada de aqui. Como un datapack se lee al cargar el mundo,
+#  los colores aparecen en el SIGUIENTE arranque, no en el actual.
+#
+#  Si el datapack no llega a cargar, no pasa nada: el proveedor de biomas pide la
+#  clave propia al registro y, si no esta, usa la clave vanilla de siempre. Se
+#  pierde el color y nada mas.
+#
+#  Formato: "#RRGGBB", "0xRRGGBB" o un entero. Cualquier clave que quites
+#  simplemente conserva el valor del bioma vanilla en el que se basa.
+#
+#     grass      cesped y hierba alta
+#     foliage    hojas que el juego tine (roble, abedul...). Las hojas de cerezo
+#                y el nether wart block NO se tinen: ya tienen su color propio.
+#     water      agua        water-fog  niebla bajo el agua
+#     sky        cielo       fog        niebla
+#     rain       si llueve en el bioma (por defecto true)
+# ---------------------------------------------------------------------------
+biome-colours:
+  enabled: true
+
+  # El bosque escarlata. Sus arboles ya son rojos por si mismos - las copas son
+  # nether wart block - asi que esto es para que el suelo acompane.
+  scarlet_forest:
+    grass: "#A32020"
+    foliage: "#8E1B1B"
+    sky: "#7A4242"
+    fog: "#5C2626"
+
+  # El cerezal. Suelo claro y un cielo suave; llueve, como en el bioma vanilla.
+  cherry_grove:
+    grass: "#B9D67F"
+    foliage: "#B9D67F"
+    sky: "#C9E0F0"
+    fog: "#E8D5E0"
+
 structures:
   fill-loot: true
 

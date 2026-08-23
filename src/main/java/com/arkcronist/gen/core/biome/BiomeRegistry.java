@@ -399,9 +399,13 @@ public final class BiomeRegistry {
     // ------------------------------------------------------------------ warm lands
 
     private void registerWarmLands() {
+        // Deliberately given a wide berth in the climate map and a low bar on land: a desert
+        // pyramid needs a desert big enough to hold one, and at the old window the whole biome was
+        // 3% of the world.
         register(ArkBiome.builder("desert")
                 .vanilla("minecraft:desert").category(BiomeCategory.DESERT)
-                .climate(0.9, -0.85).land(0.72, 1.0).mountain(0.0, 0.35).height(2.0, 120.0)
+                .climate(0.78, -0.75).land(0.60, 1.0).mountain(0.0, 0.45).height(2.0, 120.0)
+                .weird(0.0, 0.25)
                 .surface(Palette.of(Blocks.SAND, 12.0, Blocks.SANDSTONE, 1.0))
                 .subsurface(Palette.of(Blocks.SAND, 6.0, Blocks.SANDSTONE, 4.0))
                 .stone(Palette.of(Blocks.SANDSTONE, 3.0, Blocks.STONE, 5.0))
@@ -683,6 +687,52 @@ public final class BiomeRegistry {
                     d.mossPatches = 0.05;
                 }))
                 .structures(VILLAGE, TEMPLE, TOWER, CAMP, TRAIL_RUINS));
+
+        // A second cherry biome, kept apart from cherry_hills on purpose: that one is a rolling
+        // upland with a mix of trees, this one is a flat grove of nothing but the schematic cherry.
+        // Pale ground, as asked - diorite and calcite under a thin skin - so the pink reads against
+        // something light rather than against ordinary dirt.
+        register(ArkBiome.builder("cherry_grove")
+                .vanilla("minecraft:cherry_grove").category(BiomeCategory.FOREST)
+                .climate(0.40, 0.40).land(0.70, 1.0).mountain(0.0, 0.22).height(6.0, 95.0)
+                .weird(0.55, 0.85)
+                .surface(Palette.of(Blocks.GRASS_BLOCK, 9.0, Blocks.MOSS_BLOCK, 1.0))
+                .subsurface(Palette.of(Blocks.DIRT, 4.0, Blocks.DIORITE, 4.0, Blocks.CALCITE, 2.0))
+                .stone(Palette.of(Blocks.DIORITE, 5.0, Blocks.CALCITE, 2.0, Blocks.STONE, 4.0))
+                .surfaceDepth(3)
+                .tree(TreeKind.CHERRY, 10.0)
+                .treeDensity(0.020)
+                .treeVariants(0.55, 0.0)
+                .decoration(deco(d -> {
+                    d.grass = 0.35;
+                    d.flowers = 0.30;
+                    d.mossPatches = 0.04;
+                }))
+                .structures(VILLAGE, CAMP, RUINS, TOWER, PREFAB_RUIN));
+
+        // The scarlet forest. Its trees are red because they are built out of a block that is red -
+        // see the note on the extractor - and its ground leans the same way. The grass itself is
+        // only tinted where the colour datapack is installed; without it the ground blocks below
+        // still carry the biome, which is why they are chosen the way they are.
+        register(ArkBiome.builder("scarlet_forest")
+                .vanilla("minecraft:dark_forest").category(BiomeCategory.FOREST)
+                .climate(0.15, 0.62).land(0.72, 1.0).mountain(0.0, 0.30).height(8.0, 110.0)
+                .weird(-0.85, 0.85)
+                .surface(Palette.of(Blocks.GRASS_BLOCK, 5.0, Blocks.PODZOL, 4.0,
+                        Blocks.COARSE_DIRT, 2.0, Blocks.RED_SAND, 1.0))
+                .subsurface(Palette.of(Blocks.COARSE_DIRT, 5.0, Blocks.DIRT, 3.0,
+                        Blocks.RED_SANDSTONE, 2.0))
+                .stone(Palette.of(Blocks.STONE, 6.0, Blocks.RED_SANDSTONE, 2.0, Blocks.GRANITE, 2.0))
+                .surfaceDepth(4)
+                .tree(TreeKind.SCARLET, 10.0)
+                .treeDensity(0.012)
+                .treeVariants(0.85, 0.0)
+                .decoration(deco(d -> {
+                    d.grass = 0.30;
+                    d.flowers = 0.18;
+                    d.mushrooms = 0.04;
+                }))
+                .structures(RUINS, CAMP, TOWER, PREFAB_RUIN, BATTLE_TOWER));
 
         register(ArkBiome.builder("mushroom_isle")
                 .vanilla("minecraft:mushroom_fields").category(BiomeCategory.MUSHROOM)
