@@ -240,7 +240,8 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
         long[] loot = LootFiller.counters();
         sender.sendMessage("§7 Containers seen: §f" + loot[0]
                 + "§7, filled: §f" + loot[1]
-                + "§7, block replaced first: §f" + loot[2]);
+                + "§7, block replaced first: §f" + loot[2]
+                + "§7, from a vanilla table: §f" + loot[3]);
         if (loot[0] > 0 && loot[1] < loot[0]) {
             sender.sendMessage("§c " + (loot[0] - loot[1])
                     + " container(s) could not be filled - the block did not read back as a container.");

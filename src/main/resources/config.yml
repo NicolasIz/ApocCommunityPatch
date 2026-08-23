@@ -211,9 +211,18 @@ minibosses:
 #
 #  Agua en las cuevas:
 #
-#    cave-water   0 = cuevas totalmente secas, 1 = como antes (39% del subsuelo con capa
-#                 freatica, llegando hasta Y=55). Por defecto 0.10: solo el fondo del mundo
-#                 tiene charcas. Las cuevas inundadas ahogaban la ancient city y la stronghold.
+#    cave-water   0 (por defecto) = ninguna capa freatica: las cuevas interiores estan secas.
+#                 1 = como en la 1.6 (39% del subsuelo con agua, llegando hasta Y=55).
+#                 El mar NO depende de esto: una cueva bajo el fondo marino se inunda desde
+#                 el propio mar, asi que esto solo controla las charcas de tierra adentro.
+#
+#  Tamano de las cuevas. Bajarlas fue lo que dejo de destrozar las ancient city: una sala de
+#  40 bloques de alto se traga lo que el servidor construya dentro, porque la estructura se
+#  escribe sobre el terreno que el excavador ya dejo.
+#
+#    cave-cheese-threshold  MAS ALTO = cuevas mas pequenas
+#    cavern-density         salas medianas
+#    mega-cave-density      salas enormes. 0 las quita del todo.
 #
 #  Agua:
 #

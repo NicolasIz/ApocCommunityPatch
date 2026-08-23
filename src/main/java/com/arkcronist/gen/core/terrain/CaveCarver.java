@@ -60,7 +60,7 @@ public final class CaveCarver {
         if (settings.cavernDensity > 0.0 && y >= settings.cavernMinY && y <= settings.cavernMaxY) {
             double centre = MathUtil.lerp(cavernCentre.unsigned2(x, z), settings.cavernMinY + 10,
                     settings.cavernMaxY - 10);
-            double band = layer(y, centre, 13.0);
+            double band = layer(y, centre, 10.0);
             if (band > 0.0) {
                 double threshold = 1.0 - settings.cavernDensity * 0.55;
                 best = Math.max(best, (cavern.unsigned3(x, y * 2.1, z) - threshold) * band * 0.6);
@@ -72,7 +72,10 @@ public final class CaveCarver {
         if (settings.megaCaveDensity > 0.0 && megaCells.cellValue(x, z) < settings.megaCaveDensity) {
             int top = Math.min(settings.seaLevel - 14, 40);
             double centre = MathUtil.lerp(megaCentre.unsigned2(x, z), settings.minY + 22, top);
-            double band = layer(y, centre, 20.0);
+            // Thirteen, not twenty. A forty block tall room swallows whatever the server puts down
+            // there: an ancient city is written into the terrain the carver already left, so where
+            // a hall that size overlaps one, the city ends up hanging in the void in pieces.
+            double band = layer(y, centre, 13.0);
             if (band > 0.0) {
                 best = Math.max(best, (mega.unsigned3(x, y * 1.25, z) - 0.55) * band * 0.9);
             }

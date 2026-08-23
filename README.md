@@ -91,6 +91,46 @@ controla color de hierba, niebla y spawns naturales; el resto lo decide Arkcroni
 Bajo tierra el proveedor de biomas cambia a biomas de cueva por regiones, así que el subsuelo tiene
 ambiente propio.
 
+### Cuevas: por qué la ancient city salía destrozada
+
+La ciudad **sí** se generaba (la franja `deep_dark` ya llega hasta Y=-13), pero salía en pedazos
+colgando dentro de una caverna. La causa es el orden: el servidor escribe los bloques de una
+estructura vanilla **sobre el terreno que el excavador ya dejó**. Si ahí había una sala de 40 bloques
+de alto, la ciudad queda flotando en el vacío.
+
+En INSANE había `mega-cave-density 0.55` — más de la mitad de las celdas con una sala de 40 bloques
+de alto — más `cavern-density 0.78` encima. Nada de eso se parece a vanilla.
+
+Ahora las cuevas están a escala vanilla: salas mega de 40 → 26 bloques de alto y de 0,55 → 0,12 de
+densidad, cavernas de 26 → 20 bloques, y el queso más pequeño en los tres presets.
+
+| | hueco bajo tierra (-60..0) | hueco en la franja de la ciudad | columnas con una sala (>80% vacío) |
+|---|---|---|---|
+| BASE | 19,8% → **8,1%** | 16,7% → **7,9%** | 1,6% → **0,2%** |
+| CHAOTIC | 18,8% → **11,2%** | 16,6% → **9,4%** | 1,8% → **0,4%** |
+| INSANE | 23,0% → **12,2%** | 19,0% → **9,9%** | 1,8% → **0,3%** |
+
+Un 8-12% de hueco es el rango en el que se mueve una cueva vanilla. Las columnas donde una estructura
+quedaría colgando en una sala bajan seis veces.
+
+### Profundidad y agua bajo tierra
+
+`cave-water` pasa a **0**: ninguna capa freática, las cuevas de tierra adentro están secas. El mar no
+depende de eso — una cueva bajo el fondo marino se inunda desde el propio mar — así que las cuevas
+submarinas siguen con agua.
+
+La bedrock ya estaba en Y=-64, que es el **suelo de la dimensión**: por debajo no hay bloques, hay
+vacío. No se puede bajar más sin un datapack que cambie el tipo de dimensión. Lo que sí se ha hecho
+es adelgazar la franja irregular de bedrock (`bedrock-roughness` 4 → 2) y bajar el suelo de las
+cavernas de -58 a -60:
+
+| | antes | ahora |
+|---|---|---|
+| bedrock más alta | Y=-60 | **Y=-62** |
+| media | — | Y=-62,89 |
+
+Son **2 bloques más** de profundidad minable en todo el mundo.
+
 ### Agua en las cuevas, y por qué no salía la ancient city
 
 Las capas freáticas subterráneas no tenían ningún control: **39% de las columnas** llevaban una, con
@@ -480,7 +520,7 @@ principal cuando el chunk se carga (y solo una vez, marcado en el *persistent da
 
 ## 2. Instalación y uso
 
-1. Copia `ArkcronistGenerator-1.7.1.jar` en `plugins/`.
+1. Copia `ArkcronistGenerator-1.8.0.jar` en `plugins/`.
 2. Arranca el servidor una vez para que se genere `plugins/ArkcronistGenerator/config.yml`.
 3. Crea el mundo con tu gestor de mundos (ArkcronistWorlds, Multiverse, etc.):
 
@@ -647,7 +687,7 @@ Reproducible con:
 
 ```bash
 mvn -q package -DskipTests
-java -cp target/ArkcronistGenerator-1.7.1.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
+java -cp target/ArkcronistGenerator-1.8.0.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
 ```
 
 o dentro del juego con `/ag bench INSANE 256`.
@@ -736,7 +776,7 @@ cubren gzip, NBT, el flujo de varints y el cargador de carpetas):
 ## 7. Compilar
 
 ```bash
-mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.7.1.jar
+mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.8.0.jar
 ```
 
 Requiere JDK 21 y la Paper API 1.21.8 (`repo.papermc.io`, ya declarado en el `pom.xml`).

@@ -14,7 +14,7 @@ public final class TerrainSettings {
     public int minY = -64;
     public int maxY = 320;
     public int lavaLevel = -54;
-    public int bedrockRoughness = 4;
+    public int bedrockRoughness = 2;
 
     // ---------------------------------------------------------------- continents
     /** Lower frequency means bigger landmasses. 0.00030 gives continents thousands of blocks wide. */
@@ -173,18 +173,19 @@ public final class TerrainSettings {
      * wants to put in them - an ancient city occupies roughly Y=-51 to -20 and was underwater in
      * 38% of columns.</p>
      *
-     * <p>This scales both how often a region has water at all and how high the table may rise. At
-     * the default only a small share of the deep world is flooded, and the pools stay near the
-     * bedrock where they read as features rather than as a drowned world.</p>
+     * <p>This scales both how often a region has water at all and how high the table may rise.
+     * Default is 0: the dry caves are the ones you can mine and the ones the server can build in.
+     * The sea is unaffected - a cavity under the ocean floor is flooded from the sea itself, not
+     * from an aquifer, so raising this is only ever about inland pools.</p>
      */
-    public double caveWater = 0.10;
-    public double caveCheeseThreshold = 0.48;
+    public double caveWater = 0.0;
+    public double caveCheeseThreshold = 0.56;
     public double caveCheeseFrequency = 0.0128;
     public double tunnelThreshold = 0.064;
     public double tunnelFrequency = 0.0092;
-    public double cavernDensity = 0.45;
+    public double cavernDensity = 0.30;
     public double cavernFrequency = 0.0042;
-    public int cavernMinY = -58;
+    public int cavernMinY = -60;
     public int cavernMaxY = 40;
     public double megaCaveDensity = 0.0;
     public double megaCaveFrequency = 0.0016;
@@ -378,7 +379,7 @@ public final class TerrainSettings {
                 s.canyonStrength = 0.18;
                 s.canyonDepth = 34.0;
                 s.overhangStrength = 0.08;
-                s.megaCaveDensity = 0.10;
+                s.megaCaveDensity = 0.0;
                 s.trenchThreshold = 0.86;
             }
             case CHAOTIC -> {
@@ -423,9 +424,9 @@ public final class TerrainSettings {
                 s.archStrength = 0.25;
                 s.floatingIslandDensity = 0.10;
 
-                s.cavernDensity = 0.60;
-                s.megaCaveDensity = 0.30;
-                s.caveCheeseThreshold = 0.42;
+                s.cavernDensity = 0.36;
+                s.megaCaveDensity = 0.06;
+                s.caveCheeseThreshold = 0.52;
 
                 s.biomeFragmentation = 0.22;
                 s.climateFrequency = 0.00068;
@@ -492,9 +493,9 @@ public final class TerrainSettings {
                 s.floatingIslandMinY = 140;
                 s.floatingIslandMaxY = 310;
 
-                s.caveCheeseThreshold = 0.36;
-                s.cavernDensity = 0.78;
-                s.megaCaveDensity = 0.55;
+                s.caveCheeseThreshold = 0.47;
+                s.cavernDensity = 0.44;
+                s.megaCaveDensity = 0.12;
                 s.megaCaveFrequency = 0.0013;
 
                 s.strataThickness = 6.5;

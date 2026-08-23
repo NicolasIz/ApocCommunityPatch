@@ -12,10 +12,14 @@ import org.bukkit.generator.LimitedRegion;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.Location;
+import org.bukkit.loot.LootContext;
+import org.bukkit.loot.LootTable;
 import org.bukkit.loot.LootTables;
-import org.bukkit.loot.Lootable;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -34,6 +38,7 @@ public final class LootFiller {
     private static final AtomicLong SEEN = new AtomicLong();
     private static final AtomicLong FILLED = new AtomicLong();
     private static final AtomicLong REPAIRED = new AtomicLong();
+    private static final AtomicLong FROM_TABLE = new AtomicLong();
 
     public static void fill(LimitedRegion region, List<LootMarker> markers, long worldSeed) {
         for (LootMarker marker : markers) {
@@ -63,14 +68,38 @@ public final class LootFiller {
 
             FastRandom random = new FastRandom(Hashing.hash3(worldSeed ^ 0x100D_5EEDL, x, y, z));
 
-            // A vanilla loot table where the theme has one. This is how the game's own chests work:
-            // the contents are rolled when the chest is first opened, from the seed set here, so
-            // they are properly random and always current with the version's own tables.
-            LootTables table = tableFor(marker.theme(), marker.tier(), random);
-            if (table != null && container instanceof Lootable lootable) {
-                lootable.setLootTable(table.getLootTable(), Hashing.hash3(worldSeed, x, y, z));
-            } else {
-                Inventory inventory = container.getInventory();
+            Inventory inventory = container.getInventory();
+
+            // The vanilla table is ROLLED HERE and the items put in the chest, rather than left on
+            // the block for the game to roll when a player first opens it. Setting the table is the
+            // tidier mechanism and it is what the game's own chests carry, but it only pays off if
+            // that NBT survives being written back through the region - and on this server it did
+            // not: the filler reported every container filled while every chest opened empty.
+            // Real items in the inventory cannot fail that way.
+            boolean rolled = false;
+            LootTables tables = tableFor(marker.theme(), marker.tier(), random);
+            if (tables != null) {
+                try {
+                    LootTable table = tables.getLootTable();
+                    Location where = new Location(region.getWorld(), x, y, z);
+                    Collection<ItemStack> items = table.populateLoot(
+                            new Random(Hashing.hash3(worldSeed, x, y, z)),
+                            new LootContext.Builder(where).build());
+                    if (items != null && !items.isEmpty()) {
+                        for (ItemStack item : items) {
+                            if (item != null && !item.getType().isAir()) {
+                                inventory.addItem(item);
+                            }
+                        }
+                        rolled = true;
+                        FROM_TABLE.incrementAndGet();
+                    }
+                } catch (Throwable ignored) {
+                    // A table missing from this version, or a context the server will not roll:
+                    // fall through to the hand rolled items rather than leaving the chest empty.
+                }
+            }
+            if (!rolled) {
                 int stacks = 3 + marker.tier() * 2 + random.nextInt(0, 3);
                 for (int i = 0; i < stacks; i++) {
                     ItemStack item = roll(random, marker.tier(), marker.theme());
@@ -86,7 +115,7 @@ public final class LootFiller {
 
     /** Containers seen, filled, and repaired - for the startup/report diagnostics. */
     public static long[] counters() {
-        return new long[]{SEEN.get(), FILLED.get(), REPAIRED.get()};
+        return new long[]{SEEN.get(), FILLED.get(), REPAIRED.get(), FROM_TABLE.get()};
     }
 
     /**
