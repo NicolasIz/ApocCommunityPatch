@@ -383,7 +383,11 @@ public final class StructurePlacer {
             return null;
         }
 
-        if (chosen.placement() != Structure.Placement.UNDERGROUND) {
+        // Anything that lives underground is placed by depth, so none of the surface work below
+        // applies to it: there is no point hunting for level ground overhead, and no sense refusing
+        // a site because the hillside a hundred blocks above it is steep.
+        if (chosen.placement() != Structure.Placement.UNDERGROUND
+                && chosen.placement() != Structure.Placement.DEEP_LANDMARK) {
             // Look around the cell for the flattest ground within reach. A castle half swallowed by a
             // hillside is worse than a castle fifty blocks from where the grid first pointed.
             int[] site = flattestSite(x, z, chosen.radius(), Math.min(grid / 4, 48));

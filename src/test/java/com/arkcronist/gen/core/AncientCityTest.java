@@ -140,6 +140,27 @@ class AncientCityTest {
         }
     }
 
+    @Test
+    @DisplayName("the city survives the list of structures that stand down for vanilla")
+    void theCityIsNotDisabledByTheVanillaHandover() {
+        // The bug this exists for. With vanilla-structures on - which is the default - every built-in
+        // structure that duplicates a vanilla one is disabled. The ancient city was on that list,
+        // from back when the server still placed its own. Once the server stopped being able to,
+        // that entry became the thing preventing ANY city from existing: the schematic loaded, the
+        // structure was constructed, and register() threw it away. On a live server it showed up as
+        // "Nothing found within range" with the prefab sitting right there in /ag prefabs.
+        assertTrue(!com.arkcronist.gen.bukkit.config.ArkConfig.vanillaEquivalents().contains("ancient_city"),
+                "ancient_city is back on the stand-down list; nothing will ever build one");
+
+        TerrainEngine engine = new TerrainEngine(20260823L, Preset.INSANE,
+                TerrainSettings.forPreset(Preset.INSANE), 2048);
+        StructurePlacer placer = new StructurePlacer(engine,
+                com.arkcronist.gen.bukkit.config.ArkConfig.vanillaEquivalents(), prefabs());
+        boolean registered = placer.structures().stream()
+                .anyMatch(structure -> structure.tag() == StructureTag.ANCIENT_CITY);
+        assertTrue(registered, "the ancient city is not registered under the real disabled set");
+    }
+
     @ParameterizedTest
     @EnumSource(Preset.class)
     @DisplayName("a city can be found, and the same seed always puts it in the same place")
@@ -153,7 +174,8 @@ class AncientCityTest {
 
     private static int[] locate(Preset preset) {
         TerrainEngine engine = new TerrainEngine(20260823L, preset, TerrainSettings.forPreset(preset), 4096);
-        StructurePlacer placer = new StructurePlacer(engine, Set.of(), prefabs());
+        StructurePlacer placer = new StructurePlacer(engine,
+                com.arkcronist.gen.bukkit.config.ArkConfig.vanillaEquivalents(), prefabs());
         for (int ring = 0; ring <= 6; ring++) {
             int[] site = placer.locate(0, 0, StructureTag.ANCIENT_CITY, ring);
             if (site != null) {
@@ -173,7 +195,8 @@ class AncientCityTest {
         PrefabRegistry registry = prefabs();
         Prefab city = registry.category("ancient_city").get(0);
         TerrainEngine engine = new TerrainEngine(20260823L, preset, TerrainSettings.forPreset(preset), 8192);
-        StructurePlacer placer = new StructurePlacer(engine, Set.of(), registry);
+        StructurePlacer placer = new StructurePlacer(engine,
+                com.arkcronist.gen.bukkit.config.ArkConfig.vanillaEquivalents(), registry);
 
         int[] site = null;
         for (int ring = 0; ring <= 6 && site == null; ring++) {

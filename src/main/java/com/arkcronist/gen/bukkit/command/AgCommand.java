@@ -199,6 +199,27 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
             }
         }
         final StructureTag target = tag;
+        // "Nothing found within range" is the wrong answer when the family is not in this world at
+        // all - it sends someone looking for something that was never going to be there. The
+        // ancient city is the case that matters: it exists only when its schematic is present.
+        if (target != null) {
+            boolean registered = false;
+            for (com.arkcronist.gen.core.structure.Structure structure : world.structures().structures()) {
+                if (structure.tag() == target) {
+                    registered = true;
+                    break;
+                }
+            }
+            if (!registered) {
+                sender.sendMessage(PREFIX + "§c" + target + " is not registered in this world.");
+                if (target == StructureTag.ANCIENT_CITY) {
+                    sender.sendMessage("§7 The ancient city is built from a schematic. Check that "
+                            + "§fplugins/ArkcronistGenerator/prefabs/ancient_city/§7 has a .schem in "
+                            + "it, then restart. §f/ag prefabs§7 lists what loaded.");
+                }
+                return;
+            }
+        }
         int x = player.getLocation().getBlockX();
         int z = player.getLocation().getBlockZ();
         sender.sendMessage(PREFIX + "Searching…");

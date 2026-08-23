@@ -102,11 +102,25 @@ public final class ArkConfig {
         return disabled;
     }
 
-    /** Built-in structures that duplicate something the vanilla generator already provides. */
+    /**
+     * Built-in structures that duplicate something the vanilla generator already provides.
+     *
+     * <p>The ancient city is deliberately <b>not</b> in this list, and that is the whole point of
+     * the takeover. Every other entry here steps aside because the server places its own; the
+     * server cannot place an ancient city any more, because it only ever does so in the
+     * {@code deep_dark} biome and the biome provider stops reporting that key. Leaving it in the
+     * list disabled the only thing left that could build one - the prefab loaded, the structure was
+     * constructed, and then it was thrown away before it was ever registered.</p>
+     */
     private static final java.util.Set<String> VANILLA_EQUIVALENTS = java.util.Set.of(
-            "monument", "ancient_city", "stronghold", "mineshaft", "mansion", "desert_pyramid",
+            "monument", "stronghold", "mineshaft", "mansion", "desert_pyramid",
             "jungle_temple", "igloo", "witch_hut", "shipwreck", "buried_treasure", "ruined_portal",
             "trail_ruins", "outpost", "trial_chamber");
+
+    /** The list above, for tests that need to check what stands down. */
+    public static java.util.Set<String> vanillaEquivalents() {
+        return VANILLA_EQUIVALENTS;
+    }
 
     public boolean vanillaMobs() {
         return config.getBoolean("world.vanilla-mob-generation", true);
