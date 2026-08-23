@@ -4,10 +4,16 @@ from _nbt import load
 
 def decode(path):
     n,v=load(path)
+    # Sponge v2 keeps everything in the root; v3 nests it under 'Schematic', with the palette and
+    # the block data one level further down again under 'Blocks'.
+    v = v.get('Schematic', v)
     W,H,L=v['Width'],v['Height'],v['Length']
-    pal=v['Palette']  # name -> id
+    blocks = v.get('Blocks', v)
+    pal=blocks['Palette']  # name -> id
     inv={i:k for k,i in pal.items()}
-    data=v['BlockData']
+    data=blocks.get('Data')
+    if data is None:
+        data=blocks['BlockData']
     out=[0]*(W*H*L)
     i=0; idx=0
     b=data
