@@ -94,8 +94,16 @@ public final class AncientCityStructure implements Structure {
     /** Rock that must stand over every part of the roof before a site is accepted. */
     private static final int ROOF_ROCK = 12;
 
-    /** How far the natural chamber frays out past the schematic's own edge. */
-    private static final int APRON = 12;
+    /**
+     * How far the chamber may fray out past the schematic's own edge, at its widest.
+     *
+     * <p>This is a maximum, not a margin: how far the rock actually opens at any point around the
+     * perimeter is decided by noise, and most of it opens nowhere near this far. A uniform skirt was
+     * the first attempt and it did not work - a rectangle with a 12 block border is still a
+     * rectangle. What stops it reading as a box is the reach varying wildly from one side to the
+     * next, so the hall runs out into the rock in lobes.</p>
+     */
+    private static final int APRON = 22;
 
     @Override
     public boolean canPlace(StructureContext context) {
@@ -203,23 +211,33 @@ public final class AncientCityStructure implements Structure {
                     continue;
                 }
                 int beyond = Math.max(Math.max(minX - wx, wx - maxX), Math.max(minZ - wz, wz - maxZ));
-                // Fades out with distance, so the skirt thins rather than ending on its own edge.
-                double reach = 1.0 - beyond / (double) APRON;
-                if (reach <= 0.0) {
+
+                // How far the rock opens HERE. Long wavelength on purpose - a whole stretch of the
+                // perimeter shares a value - so the boundary becomes a few broad bays and a few
+                // places where the wall comes right up to the file's edge, instead of an even
+                // fringe that traces the rectangle it was cut from.
+                double lobe = apron.unsigned2(wx * 0.016 + 133.0, wz * 0.016 - 77.0);
+                double localReach = APRON * (lobe * lobe * 1.45);
+                if (beyond > localReach) {
                     continue;
                 }
-                double n = apron.unsigned2(wx, wz);
-                if (n > reach * 0.85) {
+                double into = 1.0 - beyond / Math.max(1.0, localReach);
+
+                // Fine noise on top, so the edge of each bay is ragged rather than a smooth curve.
+                double grain = apron.unsigned2(wx * 0.14, wz * 0.14);
+                if (grain > 0.35 + into * 0.75) {
                     continue;
                 }
-                // The slot wanders up and down as it goes round, so the skirt reads as passages
-                // leaving the hall at different levels rather than as one band cut at mid height.
-                double drift = apron.unsigned2(wx * 0.35 + 811.0, wz * 0.35 - 407.0);
+
+                // Height: nearly the whole hall where a bay is deep, closing to a low passage as it
+                // runs out. This is the other half of what a uniform slot got wrong - a band cut at
+                // one level reads as a corridor round a building, not as the room continuing.
+                double drift = apron.unsigned2(wx * 0.05 + 811.0, wz * 0.05 - 407.0);
                 int span = toY - fromY;
-                int mid = fromY + (int) (span * (0.25 + drift * 0.5));
-                int height = 3 + (int) ((1.0 - n) * 7.0);
-                int lo = Math.max(fromY, mid - height);
-                int hi = Math.min(toY, mid + height);
+                int half = (int) (span * (0.12 + into * 0.42));
+                int mid = fromY + (int) (span * (0.25 + drift * 0.45));
+                int lo = Math.max(fromY, mid - half);
+                int hi = Math.min(toY, mid + half);
                 for (int wy = lo; wy <= hi; wy++) {
                     writer.set(wx, wy, wz, Blocks.CAVE_AIR);
                 }
