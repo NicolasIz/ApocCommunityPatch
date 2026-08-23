@@ -253,8 +253,12 @@ class PrefabTest {
         assertFamily(TreeKind.AZALEA, Set.of("azalea", "birch", "oak"));
         assertFamily(TreeKind.DEAD, Set.of("dead", "spruce", "dark_oak"));
         assertFamily(TreeKind.CRYSTAL, Set.of("crystal"));
-        // Nobody supplied a cherry tree, so the registry must still answer with something sane.
-        assertFamily(TreeKind.CHERRY, Set.of("azalea", "birch", "oak"));
+        // Cherry and scarlet each back a biome of their own now, so they are exact rather than
+        // approximate: asking for one has to return that one. This line used to say the opposite -
+        // that with no cherry tree supplied the registry should fall back to something sane - and
+        // it was right until the cherry grove arrived with eight of them.
+        assertFamily(TreeKind.CHERRY, Set.of("cherry"));
+        assertFamily(TreeKind.SCARLET, Set.of("scarlet"));
     }
 
     private void assertFamily(String species, Set<String> acceptable) {
@@ -277,11 +281,15 @@ class PrefabTest {
         int exotic = 0;
         for (int i = 0; i < 2000; i++) {
             Prefab picked = registry.pickTree(TreeKind.OAK, "giant", random);
-            if (picked.hasTag("dead") || picked.hasTag("crystal") || picked.hasTag("autumn")) {
+            if (picked.hasTag("dead") || picked.hasTag("crystal") || picked.hasTag("autumn")
+                    || picked.hasTag("cherry") || picked.hasTag("scarlet")) {
                 exotic++;
             }
         }
-        assertTrue(exotic < 60, "an oak forest picked " + exotic + "/2000 strange trees");
+        // Zero, not "few". A scarlet tree outside the scarlet forest, or a cherry outside the
+        // grove, would make those biomes mean nothing - so the opt-in list scores them at zero
+        // rather than merely low, and a long tail of unlikely draws is not good enough.
+        assertEquals(0, exotic, "an oak forest picked " + exotic + "/2000 trees reserved for another biome");
     }
 
     @ParameterizedTest
