@@ -399,9 +399,13 @@ public final class BiomeRegistry {
     // ------------------------------------------------------------------ warm lands
 
     private void registerWarmLands() {
+        // Deliberately given a wide berth in the climate map and a low bar on land: a desert
+        // pyramid needs a desert big enough to hold one, and at the old window the whole biome was
+        // 3% of the world.
         register(ArkBiome.builder("desert")
                 .vanilla("minecraft:desert").category(BiomeCategory.DESERT)
-                .climate(0.9, -0.85).land(0.72, 1.0).mountain(0.0, 0.35).height(2.0, 120.0)
+                .climate(0.78, -0.75).land(0.60, 1.0).mountain(0.0, 0.45).height(2.0, 120.0)
+                .weird(0.0, 0.25)
                 .surface(Palette.of(Blocks.SAND, 12.0, Blocks.SANDSTONE, 1.0))
                 .subsurface(Palette.of(Blocks.SAND, 6.0, Blocks.SANDSTONE, 4.0))
                 .stone(Palette.of(Blocks.SANDSTONE, 3.0, Blocks.STONE, 5.0))
@@ -553,7 +557,11 @@ public final class BiomeRegistry {
                     d.snowLayer = 1.0;
                     d.iceSheet = 0.4;
                 }))
-                .structures(RUINS, TOWER, IGLOO));
+                // The only biome in the world that lists ANCIENT_CITY. A deep landmark is placed by
+                // depth, far under whatever is overhead, but the placer still asks the surface
+                // biome whether it may be there at all - so this one line is what puts every
+                // ancient city under the ice spikes and nowhere else.
+                .structures(RUINS, TOWER, IGLOO, ANCIENT_CITY));
     }
 
     // ------------------------------------------------------------------ highlands and peaks
@@ -683,6 +691,41 @@ public final class BiomeRegistry {
                     d.mossPatches = 0.05;
                 }))
                 .structures(VILLAGE, TEMPLE, TOWER, CAMP, TRAIL_RUINS));
+
+        // The scarlet forest.
+        //
+        // Ordinary ground: grass over dirt, the same as any other forest. Nothing here is a red
+        // block standing in for red colour - the red is the biome's own grass and foliage tint,
+        // written into the colour datapack, so the surface stays grass_block and the canopies stay
+        // oak_leaves and both simply come out red. That is also why the surface is kept almost pure
+        // grass: podzol and coarse dirt take no tint at all, and every one of them in the palette
+        // is a brown patch in a red wood.
+        //
+        // It grows no trees of its own. Its wood is the scarlet grove, one file placed whole by
+        // GroveStructure, which is the only thing that puts those trees anywhere.
+        register(ArkBiome.builder("scarlet_forest")
+                .vanilla("minecraft:dark_forest").category(BiomeCategory.FOREST)
+                // Warm and wet, in the gap between the temperate forest at (0.2, 0.55), the dark
+                // forest at (0.05, 0.75) and the jungle at (0.8, 0.9) - a slot of its own rather
+                // than a fight with three neighbours. The first attempt put it at (0.15, 0.62),
+                // right in the middle of that cluster, and gave it a weirdness of -0.85 at weight
+                // 0.85 to win anything at all. It won where weirdness was extreme and nowhere else:
+                // measured, 0.70% of the world, so rare that no grove was placed within nine grid
+                // rings of the origin. A biome nobody can find is not a biome.
+                .climate(0.45, 0.72).land(0.70, 1.0).mountain(0.0, 0.32).height(6.0, 115.0)
+                .weird(-0.45, 0.30)
+                .surface(Palette.of(Blocks.GRASS_BLOCK, 14.0, Blocks.DIRT, 1.0))
+                .subsurface(Palette.of(Blocks.DIRT, 8.0, Blocks.ROOTED_DIRT, 1.0))
+                .surfaceDepth(4)
+                .decoration(deco(d -> {
+                    // Sparse on purpose. The grove is enormous and the ground under it should read
+                    // as open woodland floor, not as undergrowth fighting the trees for room.
+                    d.grass = 0.26;
+                    d.flowers = 0.10;
+                    d.mushrooms = 0.03;
+                    d.deadLogs = 0.004;
+                }))
+                .structures(GROVE, RUINS, CAMP, TOWER, PREFAB_RUIN));
 
         register(ArkBiome.builder("mushroom_isle")
                 .vanilla("minecraft:mushroom_fields").category(BiomeCategory.MUSHROOM)

@@ -122,6 +122,74 @@ public final class ArkConfig {
         return VANILLA_EQUIVALENTS;
     }
 
+    /** Whether the biome colour datapack should be written into the world folders. */
+    public boolean biomeColours() {
+        return config.getBoolean("biome-colours.enabled", true);
+    }
+
+    /**
+     * Colour overrides read from the config, keyed by this generator's own biome name.
+     *
+     * <p>Only biomes with at least one colour set are returned; everything else keeps its vanilla
+     * key untouched.</p>
+     */
+    public java.util.Map<String, com.arkcronist.gen.bukkit.colour.BiomeColourPack.Colours> biomeColourTable(
+            com.arkcronist.gen.core.biome.BiomeRegistry registry) {
+        java.util.Map<String, com.arkcronist.gen.bukkit.colour.BiomeColourPack.Colours> out =
+                new java.util.LinkedHashMap<>();
+        if (!biomeColours()) {
+            return out;
+        }
+        org.bukkit.configuration.ConfigurationSection section = config.getConfigurationSection("biome-colours");
+        if (section == null) {
+            return out;
+        }
+        for (com.arkcronist.gen.core.biome.ArkBiome biome : registry.all()) {
+            org.bukkit.configuration.ConfigurationSection entry = section.getConfigurationSection(biome.name);
+            if (entry == null) {
+                continue;
+            }
+            Integer grass = colour(entry, "grass");
+            Integer foliage = colour(entry, "foliage");
+            Integer water = colour(entry, "water");
+            Integer waterFog = colour(entry, "water-fog");
+            Integer sky = colour(entry, "sky");
+            Integer fog = colour(entry, "fog");
+            if (grass == null && foliage == null && water == null && waterFog == null
+                    && sky == null && fog == null) {
+                continue;
+            }
+            // Temperature and downfall are what the game uses to decide rain and snow. Taken from
+            // the generator's own biome so a custom colour never quietly changes the weather.
+            double temperature = Math.max(-0.5, Math.min(2.0, 0.5 + biome.temperature * 0.75));
+            double downfall = Math.max(0.0, Math.min(1.0, 0.5 + biome.humidity * 0.5));
+            out.put(biome.name, new com.arkcronist.gen.bukkit.colour.BiomeColourPack.Colours(
+                    biome.vanillaKey, grass, foliage, water, waterFog, sky, fog,
+                    temperature, downfall, entry.getBoolean("rain", true)));
+        }
+        return out;
+    }
+
+    /** Reads "#RRGGBB" or a plain integer. Returns null when the key is absent or unreadable. */
+    private static Integer colour(org.bukkit.configuration.ConfigurationSection section, String key) {
+        String raw = section.getString(key);
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String text = raw.trim();
+        try {
+            if (text.startsWith("#")) {
+                return Integer.parseInt(text.substring(1), 16);
+            }
+            if (text.startsWith("0x") || text.startsWith("0X")) {
+                return Integer.parseInt(text.substring(2), 16);
+            }
+            return Integer.parseInt(text);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
     public boolean vanillaMobs() {
         return config.getBoolean("world.vanilla-mob-generation", true);
     }

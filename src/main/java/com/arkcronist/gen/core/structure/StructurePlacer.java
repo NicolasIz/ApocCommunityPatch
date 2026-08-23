@@ -138,6 +138,12 @@ public final class StructurePlacer {
         if (prefabs.has(com.arkcronist.gen.core.prefab.PrefabCategories.HOUSES)) {
             register(new PrefabVillageStructure(prefabs));
         }
+        // A grove is a whole wood in one file. It has no procedural counterpart, so like the
+        // ancient city it simply is not in the world when nobody supplied one.
+        GroveStructure grove = new GroveStructure(prefabs);
+        if (grove.available()) {
+            register(grove);
+        }
         for (com.arkcronist.gen.core.prefab.PrefabCategories.Rule rule
                 : com.arkcronist.gen.core.prefab.PrefabCategories.rules()) {
             if (prefabs.has(rule.folder())) {
@@ -379,6 +385,21 @@ public final class StructurePlacer {
 
         ArkBiome biome = engine.biomeAt(x, z);
         Structure chosen = pick(pool, biome, random);
+        if (chosen == null && isDeepLandmark(pool)) {
+            // The one case where a cell is worth searching rather than sampling. A deep landmark is
+            // gated by the biome far overhead, and the biome that gates the ancient city is the ice
+            // spikes, which is measured at nine tenths of one percent of the world. Testing the one
+            // point the grid happened to name would make the city a rumour: eight cells in a
+            // thousand would hold one. So the whole cell is swept, and if any of it is ice spikes
+            // the city goes there.
+            int[] site = biomeSite(cellX, cellZ, grid, padding, pool, random);
+            if (site != null) {
+                x = site[0];
+                z = site[1];
+                biome = engine.biomeAt(x, z);
+                chosen = pick(pool, biome, random);
+            }
+        }
         if (chosen == null) {
             return null;
         }
@@ -451,11 +472,68 @@ public final class StructurePlacer {
         return Math.max(768, engine.settings().ancientCityGrid);
     }
 
+    /**
+     * How far out it is worth searching for a family, in grid rings.
+     *
+     * <p>Six rings is right for anything a biome scatters freely. It is not right for the ancient
+     * city: that one is drawn on a wide grid and gated by a biome covering under one percent of the
+     * world, so the nearest one can honestly be ten thousand blocks away. Measured on three presets
+     * the furthest first city was at 15862 blocks, and reporting "nothing found within range" for
+     * something that is simply far away is how this went wrong once already.</p>
+     */
+    public static int searchRings(StructureTag tag) {
+        return tag == StructureTag.ANCIENT_CITY ? 24 : 6;
+    }
+
+    private static boolean isDeepLandmark(List<Structure> pool) {
+        return !pool.isEmpty() && pool.get(0).placement() == Structure.Placement.DEEP_LANDMARK;
+    }
+
+    /**
+     * Sweeps a cell for somewhere the biome overhead will have one of these structures.
+     *
+     * <p>Every qualifying point is collected and one is drawn from them, rather than taking the
+     * first the sweep meets: taking the first would pin every city to the north-west corner of
+     * whatever patch of ice it found.</p>
+     *
+     * @return a point in the cell, or null when nothing in the cell will have it
+     */
+    private int[] biomeSite(int cellX, int cellZ, int grid, int padding,
+                            List<Structure> pool, FastRandom random) {
+        int from = padding;
+        int to = grid - padding;
+        if (to <= from) {
+            return null;
+        }
+        int step = Math.max(48, (to - from) / 12);
+        List<int[]> found = new ArrayList<>();
+        for (int dx = from; dx <= to; dx += step) {
+            for (int dz = from; dz <= to; dz += step) {
+                int x = cellX * grid + dx;
+                int z = cellZ * grid + dz;
+                ArkBiome biome = engine.biomeAt(x, z);
+                for (Structure structure : pool) {
+                    if (allows(biome, structure)) {
+                        found.add(new int[]{x, z});
+                        break;
+                    }
+                }
+            }
+        }
+        return found.isEmpty() ? null : found.get(random.nextInt(found.size()));
+    }
+
     private boolean allows(ArkBiome biome, Structure structure) {
-        if (structure.placement() == Structure.Placement.UNDERGROUND
-                || structure.placement() == Structure.Placement.DEEP_LANDMARK) {
+        if (structure.placement() == Structure.Placement.UNDERGROUND) {
             // Depth decides these, not the biome overhead.
             return true;
+        }
+        // A deep landmark is placed by depth like the rest of the underground, but unlike the rest
+        // of it, which biome is overhead still decides whether it is there at all. That is what
+        // makes "the ancient city is under the ice spikes" a rule of the world rather than a
+        // coincidence: it is the ice spikes biome that lists ANCIENT_CITY, and nothing else does.
+        if (structure.placement() == Structure.Placement.DEEP_LANDMARK) {
+            return biome.structures.contains(structure.tag());
         }
         return switch (structure.tag()) {
             case SKY -> engine.density().floatingIslandsEnabled();

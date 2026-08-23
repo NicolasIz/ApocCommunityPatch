@@ -43,6 +43,8 @@ public enum StructureTag {
     GEODE,
     // Forest specialities
     MANSION,
+    /** A stand of trees loaded whole from {@code prefabs/groves/}. */
+    GROVE,
     /** Schematic landmarks loaded from {@code prefabs/ruins/}. */
     PREFAB_RUIN
 }

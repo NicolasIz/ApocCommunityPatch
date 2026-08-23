@@ -141,6 +141,60 @@ prefabs:
   # and no iron golems. Most schematics shared online have no bed and no light.
   furnish: false
 
+# ---------------------------------------------------------------------------
+#  Colores propios de bioma
+# ---------------------------------------------------------------------------
+#  El color del cesped y de las hojas lo decide el CLIENTE a partir del bioma en
+#  el que cree que estas, y en Minecraft no existe ningun bioma con cesped rojo.
+#  Paper tampoco ayuda: su API de registros permite anadir patrones de estandarte,
+#  encantamientos y variantes de mobs, pero NO biomas.
+#
+#  Asi que el plugin escribe un DATAPACK en la carpeta de cada mundo con un bioma
+#  propio por cada entrada de aqui. Como un datapack se lee al cargar el mundo,
+#  los colores aparecen en el SIGUIENTE arranque, no en el actual.
+#
+#  Si el datapack no llega a cargar, no pasa nada: el proveedor de biomas pide la
+#  clave propia al registro y, si no esta, usa la clave vanilla de siempre. Se
+#  pierde el color y nada mas.
+#
+#  QUE SE TINE Y QUE NO. Esto no es una eleccion del plugin, es como funciona el
+#  cliente, y conviene saberlo antes de pelearse con un color:
+#
+#     SI se tine    grass_block (la capa de encima y los lados), short_grass,
+#                   helechos, hierba alta, cana de azucar, lianas, y las hojas
+#                   de roble, jungla, acacia, oscuro y mangle.
+#     NO se tine    la TIERRA. dirt, coarse_dirt, podzol y rooted_dirt no tienen
+#                   tinte de bioma en ningun bioma del juego, ni en vanilla. Un
+#                   talud de tierra al descubierto seguira siendo marron.
+#                   Tampoco se tinen las hojas de abedul, picea, cerezo ni pale
+#                   oak: esas llevan su color pintado en la textura.
+#
+#  Formato: "#RRGGBB", "0xRRGGBB" o un entero. Cualquier clave que quites
+#  simplemente conserva el valor del bioma vanilla en el que se basa.
+#
+#     grass      cesped y hierba alta
+#     foliage    hojas que el juego tine (roble, jungla, acacia, oscuro, mangle)
+#     water      agua        water-fog  niebla bajo el agua
+#     sky        cielo       fog        niebla
+#     rain       si llueve en el bioma (por defecto true)
+# ---------------------------------------------------------------------------
+biome-colours:
+  enabled: true
+
+  # El bosque escarlata.
+  #
+  # Aqui el color hace TODO el trabajo. El suelo es grass_block sobre dirt y las
+  # copas son oak_leaves, exactamente los mismos bloques que en cualquier bosque:
+  # no se ha cambiado ni un bloque por otro de color rojo. Lo que los pone rojos
+  # es este tinte, y por eso los dos valores que importan son grass y foliage.
+  scarlet_forest:
+    grass: "#A81F1F"
+    foliage: "#B32424"
+    sky: "#7A4242"
+    fog: "#5C2626"
+    water: "#6E2B2B"
+    water-fog: "#4A1D1D"
+
 structures:
   fill-loot: true
 

@@ -224,7 +224,9 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
         int z = player.getLocation().getBlockZ();
         sender.sendMessage(PREFIX + "Searching…");
         plugin.getServer().getAsyncScheduler().runNow(plugin, task -> {
-            int[] found = world.structures().locate(x, z, target, 6);
+            int rings = target == null ? 6
+                    : com.arkcronist.gen.core.structure.StructurePlacer.searchRings(target);
+            int[] found = world.structures().locate(x, z, target, rings);
             plugin.getServer().getScheduler().runTask(plugin, () -> {
                 if (found == null) {
                     sender.sendMessage(PREFIX + "§cNothing found within range.");

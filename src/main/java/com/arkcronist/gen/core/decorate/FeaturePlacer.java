@@ -28,7 +28,20 @@ public final class FeaturePlacer {
 
     private static final long TREE_SALT = 0x71EE_5EEDL;
     private static final long BOULDER_SALT = 0xB0DL;
-    private static final int TREE_ATTEMPTS = 32;
+    /**
+     * Side of the cell a tree is laid in, in blocks. Sixteen cells to a chunk.
+     *
+     * <p>Trees used to be scattered: thirty-two random points in the chunk, each rolled against the
+     * biome's density. That gives a Poisson scatter, and a Poisson scatter puts two trees on the
+     * same block as readily as it leaves a clearing - which is what a saturated wood actually is,
+     * not too many trees but too many in the same place.</p>
+     *
+     * <p>One cell holds at most one tree, so nothing can pile up, and the cell is small enough that
+     * the densest biome in the registry still gets the count it asked for.</p>
+     */
+    private static final int TREE_CELL = 4;
+    /** How far into its cell a tree may wander. Kept off the edges so neighbours cannot touch. */
+    private static final int TREE_JITTER = TREE_CELL - 2;
     /**
      * Calibration for how far apart prefab trees stand.
      *
@@ -72,9 +85,13 @@ public final class FeaturePlacer {
         double globalDecoration = engine.settings().decorationDensity;
         boolean haveTrees = prefabs.has("trees");
 
-        for (int attempt = 0; attempt < TREE_ATTEMPTS; attempt++) {
-            int localX = random.nextInt(16);
-            int localZ = random.nextInt(16);
+        for (int cell = 0; cell < (16 / TREE_CELL) * (16 / TREE_CELL); cell++) {
+            int cellX = cell % (16 / TREE_CELL);
+            int cellZ = cell / (16 / TREE_CELL);
+            // One point per cell, off the cell's edges, so two trees in neighbouring cells are
+            // always at least two blocks apart however the dice fall.
+            int localX = cellX * TREE_CELL + 1 + random.nextInt(TREE_JITTER);
+            int localZ = cellZ * TREE_CELL + 1 + random.nextInt(TREE_JITTER);
             if (!haveTrees) {
                 continue;
             }
@@ -83,9 +100,10 @@ public final class FeaturePlacer {
             if (biome.trees.length == 0 || biome.treeDensity <= 0.0) {
                 continue;
             }
-            // Roll first against the densest a tree could ever be here, so the great majority of
-            // attempts end before they touch the terrain or the registry at all.
-            double ceiling = biome.treeDensity * globalTreeDensity * 256.0 / TREE_ATTEMPTS;
+            // Whether this cell holds a tree at all. Trees per block times the area of a cell is
+            // the chance the cell is occupied, which keeps a biome's declared density meaning the
+            // same thing it always did - it is only the arrangement that changed.
+            double ceiling = biome.treeDensity * globalTreeDensity * TREE_CELL * TREE_CELL;
             if (!random.chance(ceiling)) {
                 continue;
             }

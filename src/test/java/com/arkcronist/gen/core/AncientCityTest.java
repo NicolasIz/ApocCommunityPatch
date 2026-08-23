@@ -274,4 +274,53 @@ class AncientCityTest {
         long chests = loot.stream().filter(m -> "ancient_city".equals(m.theme())).count();
         assertTrue(chests > 0, "the city registered no containers for loot");
     }
+
+    /**
+     * The city is under the ice spikes, and it is never near the sea.
+     *
+     * <p>Both halves were asked for and both are enforced in different places, so both are checked
+     * here. The biome half is declarative: the ice spikes biome is the only one in the registry
+     * that lists ANCIENT_CITY, and the placer asks the surface biome even for a landmark buried
+     * three hundred blocks under it. The sea half is the structure's own, because a coast can run
+     * through the middle of any biome and the city is 172 blocks across.</p>
+     */
+    @ParameterizedTest
+    @EnumSource(Preset.class)
+    @DisplayName("every city sits under the ice spikes, on dry land, well away from the sea")
+    void citiesOnlyStandUnderTheIceSpikes(Preset preset) {
+        PrefabRegistry registry = prefabs();
+        TerrainEngine engine = new TerrainEngine(20260823L, preset, TerrainSettings.forPreset(preset), 8192);
+        StructurePlacer placer = new StructurePlacer(engine,
+                com.arkcronist.gen.bukkit.config.ArkConfig.vanillaEquivalents(), registry);
+
+        int checked = 0;
+        int wrongBiome = 0;
+        int wet = 0;
+        for (int ring = 0; ring <= 9; ring++) {
+            int[] site = placer.locate(0, 0, StructureTag.ANCIENT_CITY, ring);
+            if (site == null) {
+                continue;
+            }
+            checked++;
+            if (!engine.biomeAt(site[0], site[2]).name.equals("glacier")) {
+                wrongBiome++;
+            }
+            // No open water anywhere over the roof, nor for a good way round it.
+            int reach = 130;
+            outer:
+            for (int dx = -reach; dx <= reach; dx += 16) {
+                for (int dz = -reach; dz <= reach; dz += 16) {
+                    if (engine.heightmapHeight(site[0] + dx, site[2] + dz)
+                            < engine.settings().seaLevel) {
+                        wet++;
+                        break outer;
+                    }
+                }
+            }
+        }
+        assertTrue(checked > 0, preset + ": no ancient city found at all, nothing was checked");
+        assertEquals(0, wrongBiome, preset + ": " + wrongBiome + " of " + checked
+                + " cities are not under the ice spikes");
+        assertEquals(0, wet, preset + ": " + wet + " of " + checked + " cities have sea over them");
+    }
 }

@@ -22,15 +22,16 @@ public final class TerrainSettings {
     public int continentOctaves = 5;
     public double continentWarp = 320.0;
     public double continentWarpFrequency = 0.00055;
-    /** Continentalness below this value is ocean. */
     /**
      * Where the continent field stops being land.
      *
      * <p>Lower means more land. Measured at -0.04 the world came out 57% land on BASE and 48% on the
      * other two - about half the map was sea, which leaves little room for the biomes and the
-     * structures that need them.</p>
+     * structures that need them. -0.15 took that to 72/60/63, and this takes it further: the sea is
+     * meant to be something you cross to reach the next coast, not the ground the world is built
+     * on.</p>
      */
-    public double oceanCutoff = -0.15;
+    public double oceanCutoff = -0.28;
     /** Width of the coast transition in continentalness units. */
     public double coastWidth = 0.075;
     /** Extra bays and inlets carved into the coastline. */
@@ -54,8 +55,13 @@ public final class TerrainSettings {
      * Measured, the sea floor was reaching Y=-58 on INSANE - all but touching the bedrock - and 16%
      * of ocean columns sat below the roof of an ancient city, which is how the sea ended up cutting
      * into one. Applied as a smooth minimum, so trenches keep their shape.</p>
+     *
+     * <p>Raised again here. At -14/-19/-24 the floor still reached Y=-25 on INSANE, eighty-eight
+     * blocks under the surface, which is a long way down for water that has to be swum back out of
+     * and leaves the deep with a ceiling of nothing much. The sea keeps its shape - shelf, slope
+     * and trench are all still there - it simply stops well short of the deep.</p>
      */
-    public double oceanFloorMin = -14.0;
+    public double oceanFloorMin = 14.0;
     public double trenchFrequency = 0.00040;
     public double trenchThreshold = 0.80;
     public double seamountAmplitude = 46.0;
@@ -208,7 +214,14 @@ public final class TerrainSettings {
      * <p>The schematic is 172 blocks across, so this is not a grid it can share with anything. Wide
      * spacing is also what makes finding one an event rather than a chore.</p>
      */
-    public int ancientCityGrid = 1408;
+    /**
+     * Spacing of the grid an ancient city is drawn on.
+     *
+     * <p>Tightened from 1408. The city is now gated by the biome overhead and that biome - the ice
+     * spikes - is under one percent of the world, so most cells have nowhere to put one. A closer
+     * grid means more cells tried, not cities closer together: a cell still holds at most one.</p>
+     */
+    public int ancientCityGrid = 1024;
 
     // ---------------------------------------------------------------- strata and ores
     public double strataThickness = 9.0;
@@ -238,7 +251,15 @@ public final class TerrainSettings {
     public double biomeBlend = 24.0;
 
     // ---------------------------------------------------------------- decoration and structures
-    public double treeDensity = 1.0;
+    /**
+     * Multiplier on every biome's own trees-per-block.
+     *
+     * <p>Turned down from 1.0. The complaint was that the woods looked saturated, and two things
+     * were making them so: trees landing on top of each other, which the cell grid in
+     * {@code FeaturePlacer} fixes, and simply too many of them, which is this. A wood wants to have
+     * floor you can see and stand on.</p>
+     */
+    public double treeDensity = 0.75;
     public double decorationDensity = 1.0;
     public double structureDensity = 1.0;
     public int structureGridSize = 448;
@@ -412,7 +433,7 @@ public final class TerrainSettings {
                 s.abyssDepth = 86.0;
                 s.abyssRoughness = 16.0;
                 s.trenchDepth = 44.0;
-                s.oceanFloorMin = -19.0;
+                s.oceanFloorMin = 8.0;
                 s.trenchThreshold = 0.74;
                 s.seamountAmplitude = 68.0;
                 s.oceanIslandStrength = 0.65;
@@ -468,7 +489,7 @@ public final class TerrainSettings {
                 s.abyssDepth = 96.0;
                 s.abyssRoughness = 22.0;
                 s.trenchDepth = 52.0;
-                s.oceanFloorMin = -24.0;
+                s.oceanFloorMin = 2.0;
                 s.trenchThreshold = 0.62;
                 s.trenchFrequency = 0.00052;
                 s.seamountAmplitude = 120.0;
@@ -524,7 +545,7 @@ public final class TerrainSettings {
                 s.biomeFragmentation = 0.18;
                 s.biomeBlend = 22.0;
 
-                s.treeDensity = 1.15;
+                s.treeDensity = 0.85;
                 s.decorationDensity = 1.25;
                 s.structureDensity = 1.6;
                 s.structureGridSize = 352;

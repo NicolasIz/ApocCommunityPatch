@@ -55,7 +55,15 @@ public final class PrefabRegistry {
      * this an ordinary oak forest would fill up with dead trunks and amethyst. Asking for
      * {@code dead} still gets dead trees; asking for {@code oak} no longer does.</p>
      */
-    private static final java.util.Set<String> OPT_IN = java.util.Set.of("dead", "crystal", "autumn");
+    /**
+     * Tree families that only ever appear where a biome asks for them by name.
+     *
+     * <p>Scoring alone is not enough for these: a small weight is a long tail, not a promise, and
+     * "the scarlet forest is the only place with red trees" has to be a promise. Anything tagged
+     * here scores zero outside the biome that asked.</p>
+     */
+    private static final java.util.Set<String> OPT_IN =
+            java.util.Set.of("dead", "crystal", "autumn", "cherry");
 
     private final Map<String, List<Prefab>> byCategory = new TreeMap<>();
     private int total;
