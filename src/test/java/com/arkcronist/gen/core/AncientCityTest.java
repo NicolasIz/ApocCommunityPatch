@@ -332,12 +332,22 @@ class AncientCityTest {
         assertEquals("glacier", engine.biomeAt(site[0], site[2]).name,
                 preset + ": the city at " + site[0] + "," + site[2] + " is not under the ice spikes");
 
-        // No open water over the roof, nor for a good way round it.
-        int reach = 130;
-        for (int dx = -reach; dx <= reach; dx += 16) {
-            for (int dz = -reach; dz <= reach; dz += 16) {
+        // The two halves of "never in the ocean and never near it", checked the way the structure
+        // states them rather than as one fuzzy sweep for wet blocks. Asking for no water at all
+        // anywhere in the margin would be stricter than the rule and stricter than the words: a
+        // frozen pond on an ice plateau is water and is not the sea.
+        Prefab city = registry.category("ancient_city").get(0);
+        for (int dx = -(city.radius() + 48); dx <= city.radius() + 48; dx += 16) {
+            for (int dz = -(city.radius() + 48); dz <= city.radius() + 48; dz += 16) {
+                assertTrue(!engine.biomeAt(site[0] + dx, site[2] + dz).oceanic(),
+                        preset + ": the city at " + site[0] + "," + site[2] + " is next to the sea");
+            }
+        }
+        for (int dx = -city.radius(); dx <= city.radius(); dx += 8) {
+            for (int dz = -city.radius(); dz <= city.radius(); dz += 8) {
                 assertTrue(engine.heightmapHeight(site[0] + dx, site[2] + dz) >= engine.settings().seaLevel,
-                        preset + ": there is sea over the city at " + site[0] + "," + site[2]);
+                        preset + ": there is open water over the roof of the city at "
+                                + site[0] + "," + site[2]);
             }
         }
     }

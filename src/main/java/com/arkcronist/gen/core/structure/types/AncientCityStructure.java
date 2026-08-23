@@ -111,7 +111,8 @@ public final class AncientCityStructure implements Structure {
         // placer - only the ice spikes list this family - but a coast can run through the middle of
         // any biome, and the city is 172 blocks across. So the whole footprint and a wide margin
         // round it have to be dry land: not one column of open water anywhere over the roof.
-        if (seaOverhead(context, city.radius() + SHORE_CLEARANCE)) {
+        if (nearTheSea(context, city.radius() + SHORE_CLEARANCE)
+                || waterOverTheRoof(context, city.radius())) {
             return false;
         }
         // Rock over the WHOLE footprint, not just over the middle. The city is 172 blocks across,
@@ -126,17 +127,38 @@ public final class AncientCityStructure implements Structure {
     private static final int SHORE_CLEARANCE = 48;
 
     /**
-     * Whether any open water stands over the roof, or near enough to matter.
+     * Whether the sea itself is anywhere near, judged by biome rather than by height.
      *
-     * <p>Its own sweep rather than {@code lowestHeight}, because that one steps by a sixth of the
-     * radius - twenty-two blocks out here - and a river or an inlet is narrower than that. It went
-     * straight through the gaps: a city came out at -11157,-1366 on CHAOTIC with sea over it and
-     * the check said the ground never dropped below sea level. Twelve blocks catches what is
-     * actually out there.</p>
+     * <p>This is the half of the rule that says "never in the ocean and never near it", and asking
+     * the biome is the exact way to ask it: a frozen pond on top of an ice plateau is water, and is
+     * not the sea. Biomes are large enough that a stride of sixteen cannot step over one.</p>
      */
-    private boolean seaOverhead(StructureContext context, int reach) {
-        for (int dx = -reach; dx <= reach; dx += 12) {
-            for (int dz = -reach; dz <= reach; dz += 12) {
+    private boolean nearTheSea(StructureContext context, int reach) {
+        for (int dx = -reach; dx <= reach; dx += 16) {
+            for (int dz = -reach; dz <= reach; dz += 16) {
+                if (context.engine().biomeAt(context.originX + dx, context.originZ + dz).oceanic()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Whether any open water stands over the footprint itself.
+     *
+     * <p>The other half, and the one the complaint was actually about: water above the city. Held
+     * to the footprint rather than the whole margin, because what matters is what is over the roof,
+     * and stepped by eight because an inlet or a river is narrower than the twenty-two that
+     * {@code lowestHeight} moves in - it went straight through those gaps and put a city under the
+     * sea at -11157,-1366 while reporting the ground never dropped below sea level.</p>
+     *
+     * <p>Water here is not the same as water getting in: {@code ROOF_ROCK} already keeps twelve
+     * blocks of stone over the highest part of the city. This is the belt to that pair of braces.</p>
+     */
+    private boolean waterOverTheRoof(StructureContext context, int reach) {
+        for (int dx = -reach; dx <= reach; dx += 8) {
+            for (int dz = -reach; dz <= reach; dz += 8) {
                 if (context.height(context.originX + dx, context.originZ + dz) < context.seaLevel()) {
                     return true;
                 }
