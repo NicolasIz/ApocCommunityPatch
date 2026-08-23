@@ -30,9 +30,9 @@ import com.arkcronist.gen.core.structure.StructureContext;
  *       world are not the same building twice.</li>
  *   <li><b>Chamber.</b> The schematic carries its own cavern - it was cut with the rock around it,
  *       58% of the file is air - so the room does not have to be invented. What does have to be
- *       dealt with is the edge of the file, which is a flat plane where that cavern is cut off. An
- *       apron of noise driven cavities is opened just outside it, so the hall frays into the rock
- *       instead of ending against a wall.</li>
+ *       dealt with is the edge of the file, where roughly half of every wall plane is open hall cut
+ *       off flat against untouched stone. Those openings are read out of the file and extruded
+ *       into the rock, so the hall carries on at the height it was already open at.</li>
  *   <li><b>City.</b> Written whole, air included, over its entire footprint.</li>
  *   <li><b>Blend and protect.</b> Because the air is written too, the footprint is authoritative:
  *       whatever the cave carver did there is overwritten. A cave cannot cut the city, cannot leave
@@ -95,15 +95,15 @@ public final class AncientCityStructure implements Structure {
     private static final int ROOF_ROCK = 12;
 
     /**
-     * How far the chamber may fray out past the schematic's own edge, at its widest.
+     * How far the chamber may run out past the schematic's own edge, at its widest.
      *
-     * <p>This is a maximum, not a margin: how far the rock actually opens at any point around the
-     * perimeter is decided by noise, and most of it opens nowhere near this far. A uniform skirt was
-     * the first attempt and it did not work - a rectangle with a 12 block border is still a
-     * rectangle. What stops it reading as a box is the reach varying wildly from one side to the
-     * next, so the hall runs out into the rock in lobes.</p>
+     * <p>A maximum, not a margin. Two earlier attempts made the same mistake in different sizes: a
+     * uniform 12 block skirt, then noise driven lobes that still picked their own height. Both left
+     * a rectangle, because a border of any width drawn round a rectangle traces that rectangle. What
+     * the reach does here is decide how far one already-open stretch of wall carries on, and it is
+     * zero over the roughly half of the perimeter the file leaves solid.</p>
      */
-    private static final int APRON = 22;
+    private static final int APRON = 30;
 
     @Override
     public boolean canPlace(StructureContext context) {
@@ -120,7 +120,12 @@ public final class AncientCityStructure implements Structure {
         // the centre column let a site sit half under a hill and half under an ocean trench, where
         // the sea floor cut straight through the roof and the water came in.
         int roof = base + city.height;
-        return context.lowestHeight(city.radius()) > roof + ROOF_ROCK;
+        if (context.lowestHeight(city.radius()) <= roof + ROOF_ROCK) {
+            return false;
+        }
+        // And rock over the apron too. It reaches further out than the file does, though it stops
+        // five short of the roof, so it needs the same cover measured over the wider ring.
+        return context.lowestHeight(city.radius() + APRON) > roof + ROOF_ROCK - 5;
     }
 
     /**
@@ -179,12 +184,23 @@ public final class AncientCityStructure implements Structure {
     }
 
     /**
-     * Opens an irregular skirt of cavities around the schematic's outer wall.
+     * Carries the file's own cavern out past the edge of the file.
      *
-     * <p>The file is a cuboid, so wherever its own cavern reaches the edge it stops against a flat
-     * plane of untouched stone - a rectangular room in the middle of the deep. This eats into that
-     * plane with noise, so the hall runs out into the rock in fingers and side pockets and the
-     * boundary stops reading as a box.</p>
+     * <p>The schematic is a cuboid cut out of a bigger cave, so every one of its four walls is half
+     * open air: measured on this file, 35% to 64% of each perimeter plane is a hall that simply
+     * stops against untouched stone. That flat plane is the box. Nothing else is - the file's own
+     * floor course is solid and its ceiling is rock, so top and bottom were never the problem.</p>
+     *
+     * <p>The first attempt at this opened cavities <em>near</em> the wall at a height noise picked
+     * on its own. That is why it read as a fringe stapled to the outside of a box rather than as
+     * the room going on: it was a separate corridor that happened to run alongside the building,
+     * and it met the wall wherever it liked. What is done here instead is to read the file - for
+     * each column just outside it, find the wall column it continues and the vertical opening the
+     * file actually has there - and extrude that opening outwards, closing it gradually. Where the
+     * file's edge is open the hall keeps going at exactly the height it was already open at, so
+     * there is no plane where one thing becomes another. Where the file's edge is rock, nothing is
+     * carved and it stays rock. The straight line survives only where it is buried in stone and
+     * nobody can see it.</p>
      */
     private void carveApron(BufferWriter writer, Prefab prefab, int originX, int baseY, int originZ,
                             int rotation) {
@@ -195,51 +211,93 @@ public final class AncientCityStructure implements Structure {
         int maxX = minX + width - 1;
         int maxZ = minZ + length - 1;
 
-        int fromX = minX - APRON;
-        int toX = maxX + APRON;
-        int fromZ = minZ - APRON;
-        int toZ = maxZ + APRON;
-        // Only the middle of the file's height: the schematic's own floor and ceiling stay sealed,
-        // so the apron cannot open the hall to the sky or drop it onto bedrock.
-        int fromY = baseY + 2;
-        int toY = baseY + prefab.height - 6;
+        // The file's own floor course and ceiling stay sealed: the apron may only continue what is
+        // open between them, so it can never open the hall to the sky or drop it onto bedrock.
+        int fromLayer = 2;
+        int toLayer = prefab.height - 5;
+        if (toLayer <= fromLayer) {
+            return;
+        }
 
-        for (int wx = fromX; wx <= toX; wx++) {
-            for (int wz = fromZ; wz <= toZ; wz++) {
-                boolean inside = wx >= minX && wx <= maxX && wz >= minZ && wz <= maxZ;
-                if (inside) {
-                    continue;
-                }
-                int beyond = Math.max(Math.max(minX - wx, wx - maxX), Math.max(minZ - wz, wz - maxZ));
-
-                // How far the rock opens HERE. Long wavelength on purpose - a whole stretch of the
-                // perimeter shares a value - so the boundary becomes a few broad bays and a few
-                // places where the wall comes right up to the file's edge, instead of an even
-                // fringe that traces the rectangle it was cut from.
-                double lobe = apron.unsigned2(wx * 0.016 + 133.0, wz * 0.016 - 77.0);
-                double localReach = APRON * (lobe * lobe * 1.45);
-                if (beyond > localReach) {
-                    continue;
-                }
-                double into = 1.0 - beyond / Math.max(1.0, localReach);
-
-                // Fine noise on top, so the edge of each bay is ragged rather than a smooth curve.
-                double grain = apron.unsigned2(wx * 0.14, wz * 0.14);
-                if (grain > 0.35 + into * 0.75) {
+        for (int wx = minX - APRON; wx <= maxX + APRON; wx++) {
+            for (int wz = minZ - APRON; wz <= maxZ + APRON; wz++) {
+                if (wx >= minX && wx <= maxX && wz >= minZ && wz <= maxZ) {
                     continue;
                 }
 
-                // Height: nearly the whole hall where a bay is deep, closing to a low passage as it
-                // runs out. This is the other half of what a uniform slot got wrong - a band cut at
-                // one level reads as a corridor round a building, not as the room continuing.
-                double drift = apron.unsigned2(wx * 0.05 + 811.0, wz * 0.05 - 407.0);
-                int span = toY - fromY;
-                int half = (int) (span * (0.12 + into * 0.42));
-                int mid = fromY + (int) (span * (0.25 + drift * 0.45));
-                int lo = Math.max(fromY, mid - half);
-                int hi = Math.min(toY, mid + half);
-                for (int wy = lo; wy <= hi; wy++) {
-                    writer.set(wx, wy, wz, Blocks.CAVE_AIR);
+                // How far the rock opens along this stretch of wall. Long wavelength on purpose, so
+                // a whole run of the perimeter shares one value and the hall leaves in a few broad
+                // bays instead of an even border. Squaring it keeps most of the perimeter close to
+                // the file and lets a few places run right out.
+                double lobe = apron.unsigned2(wx * 0.013 + 133.0, wz * 0.013 - 77.0);
+                double reach = APRON * lobe * lobe * 1.9;
+                if (reach < 1.0) {
+                    continue;
+                }
+                int nearX = Math.min(Math.max(wx, minX), maxX);
+                int nearZ = Math.min(Math.max(wz, minZ), maxZ);
+                double beyond = Math.hypot(wx - nearX, wz - nearZ);
+                if (beyond > reach) {
+                    continue;
+                }
+
+                // Which wall column this one continues. Dragged sideways as it goes out, so a bay
+                // wanders off at an angle rather than extruding straight out from the wall like a
+                // row of teeth.
+                double sway = apron.unsigned2(wx * 0.045 - 219.0, wz * 0.045 + 88.0) * 2.0 - 1.0;
+                int drag = (int) (sway * beyond * 0.9);
+                int edgeX = nearX;
+                int edgeZ = nearZ;
+                if (wx < minX || wx > maxX) {
+                    edgeZ = Math.min(Math.max(nearZ + drag, minZ), maxZ);
+                } else {
+                    edgeX = Math.min(Math.max(nearX + drag, minX), maxX);
+                }
+
+                // The opening the file has there: its longest unbroken run of air. Longest run and
+                // not simply lowest-to-highest, because a column can be open along the floor and
+                // open again under the ceiling with a building in between, and boring the whole
+                // height of that would put a shaft outside where the file has a room.
+                int bestLow = -1;
+                int bestHigh = -2;
+                int runLow = -1;
+                for (int layer = fromLayer; layer <= toLayer; layer++) {
+                    if (prefab.airAt(rotation, edgeX - minX, layer, edgeZ - minZ)) {
+                        if (runLow < 0) {
+                            runLow = layer;
+                        }
+                        if (layer - runLow > bestHigh - bestLow) {
+                            bestLow = runLow;
+                            bestHigh = layer;
+                        }
+                    } else {
+                        runLow = -1;
+                    }
+                }
+                if (bestLow < 0) {
+                    // Solid wall here. It stays solid: there is no visible face to break up.
+                    continue;
+                }
+
+                double out = beyond / reach;
+                double keep = Math.pow(1.0 - out, 0.55);
+
+                // Ragged tips, and ribs of rock left standing in the bays.
+                double grain = apron.unsigned2(wx * 0.11 + 5.0, wz * 0.11 - 3.0);
+                if (grain > 0.25 + keep * 0.9) {
+                    continue;
+                }
+
+                double middle = (bestLow + bestHigh) * 0.5;
+                double half = (bestHigh - bestLow) * 0.5 * keep;
+                // Let the passage climb and dip on its way out, so the floor outside is not a
+                // continuation of the file's floor plane either.
+                middle += (apron.unsigned2(wx * 0.06 + 411.0, wz * 0.06 - 707.0) * 2.0 - 1.0)
+                        * beyond * 0.35;
+                int from = (int) Math.max(fromLayer, Math.ceil(middle - half));
+                int to = (int) Math.min(toLayer, Math.floor(middle + half));
+                for (int layer = from; layer <= to; layer++) {
+                    writer.set(wx, baseY + layer, wz, Blocks.CAVE_AIR);
                 }
             }
         }

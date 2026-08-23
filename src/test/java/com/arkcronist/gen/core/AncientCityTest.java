@@ -274,4 +274,145 @@ class AncientCityTest {
         long chests = loot.stream().filter(m -> "ancient_city".equals(m.theme())).count();
         assertTrue(chests > 0, "the city registered no containers for loot");
     }
+
+    /**
+     * The chamber must not read as the cuboid the file was cut as.
+     *
+     * <p>What a player sees standing in the hall is a horizontal slice of it, so that is what is
+     * measured: along each of the four planes the file was cut on, at each height, the longest
+     * unbroken run of wall that sits exactly on that plane. A schematic dropped in as-is scores the
+     * full width of the file on every slice - a wall running dead straight for 172 blocks, which is
+     * the box. Measured on the code this test was written against, the worst slice of the worst
+     * wall is 35 blocks and the average is single digits; before the openings were extruded it was
+     * 118.</p>
+     *
+     * <p>The limit here is 60, a third of the file. It is deliberately loose: the point is to catch
+     * the chamber going back to being a box, not to pin the noise down to the block.</p>
+     */
+    @Test
+    @DisplayName("the chamber's walls do not run straight along the edges of the file")
+    void theChamberIsNotACuboid() {
+        Preset preset = Preset.INSANE;
+        PrefabRegistry registry = prefabs();
+        TerrainEngine engine = new TerrainEngine(20260823L, preset, TerrainSettings.forPreset(preset), 8192);
+        StructurePlacer placer = new StructurePlacer(engine,
+                com.arkcronist.gen.bukkit.config.ArkConfig.vanillaEquivalents(), registry);
+
+        int[] site = null;
+        for (int ring = 0; ring <= 6 && site == null; ring++) {
+            site = placer.locate(0, 0, StructureTag.ANCIENT_CITY, ring);
+        }
+        assertNotNull(site, "no ancient city near the origin to check");
+
+        Region region = new Region();
+        WorldFace face = new WorldFace(region);
+        int centreX = site[0] >> 4;
+        int centreZ = site[2] >> 4;
+        for (int cx = centreX - 9; cx <= centreX + 9; cx++) {
+            for (int cz = centreZ - 9; cz <= centreZ + 9; cz++) {
+                region.originX = cx << 4;
+                region.originZ = cz << 4;
+                engine.generateChunk(cx, cz, region);
+                placer.placeInto(cx, cz, face, new ArrayList<MobSpawn>(), loot(), new ArrayList<SpawnerMarker>());
+            }
+        }
+
+        // Where the file is. Taken from the run of columns holding city material that contains the
+        // site, rather than from the outer extent of city material in the window: the window is wide
+        // enough to clip a second city, and measuring the gap between two of them as though it were
+        // one wall gives a number that means nothing.
+        int sculk = Blocks.REGISTRY.id("minecraft:sculk");
+        int tiles = Blocks.REGISTRY.id("minecraft:deepslate_tiles");
+        int reach = 140;
+        boolean[] alongX = new boolean[2 * reach + 1];
+        boolean[] alongZ = new boolean[2 * reach + 1];
+        for (int x = site[0] - reach; x <= site[0] + reach; x++) {
+            for (int z = site[2] - reach; z <= site[2] + reach; z++) {
+                for (int y = -56; y <= -10; y++) {
+                    int id = region.at(x, y, z);
+                    if (id == sculk || id == tiles) {
+                        alongX[x - site[0] + reach] = true;
+                        alongZ[z - site[2] + reach] = true;
+                        break;
+                    }
+                }
+            }
+        }
+        int minX = site[0];
+        int maxX = site[0];
+        int minZ = site[2];
+        int maxZ = site[2];
+        while (minX - 1 >= site[0] - reach && alongX[minX - 1 - site[0] + reach]) {
+            minX--;
+        }
+        while (maxX + 1 <= site[0] + reach && alongX[maxX + 1 - site[0] + reach]) {
+            maxX++;
+        }
+        while (minZ - 1 >= site[2] - reach && alongZ[minZ - 1 - site[2] + reach]) {
+            minZ--;
+        }
+        while (maxZ + 1 <= site[2] + reach && alongZ[maxZ + 1 - site[2] + reach]) {
+            maxZ++;
+        }
+        assertTrue(maxX - minX > 120 && maxZ - minZ > 120,
+                "the city was not found where it was expected, nothing useful can be measured");
+
+        int limit = 60;
+        for (int wall = 0; wall < 4; wall++) {
+            boolean alongTheZAxis = wall < 2;
+            int from = alongTheZAxis ? minZ : minX;
+            int to = alongTheZAxis ? maxZ : maxX;
+            int worst = 0;
+            for (int y = -54; y <= -14; y++) {
+                int run = 0;
+                for (int p = from; p <= to; p++) {
+                    int insideX;
+                    int insideZ;
+                    int outsideX;
+                    int outsideZ;
+                    switch (wall) {
+                        case 0 -> {
+                            insideX = minX;
+                            insideZ = p;
+                            outsideX = minX - 1;
+                            outsideZ = p;
+                        }
+                        case 1 -> {
+                            insideX = maxX;
+                            insideZ = p;
+                            outsideX = maxX + 1;
+                            outsideZ = p;
+                        }
+                        case 2 -> {
+                            insideX = p;
+                            insideZ = minZ;
+                            outsideX = p;
+                            outsideZ = minZ - 1;
+                        }
+                        default -> {
+                            insideX = p;
+                            insideZ = maxZ;
+                            outsideX = p;
+                            outsideZ = maxZ + 1;
+                        }
+                    }
+                    // A visible face: open where the file ends, solid immediately beyond it.
+                    boolean flat = isOpen(region.at(insideX, y, insideZ))
+                            && !isOpen(region.at(outsideX, y, outsideZ));
+                    run = flat ? run + 1 : 0;
+                    worst = Math.max(worst, run);
+                }
+            }
+            assertTrue(worst < limit, "wall " + wall + " runs straight along the edge of the file for "
+                    + worst + " blocks - the chamber is reading as the box it was cut as");
+        }
+    }
+
+    private static List<LootMarker> loot() {
+        return new ArrayList<>();
+    }
+
+    private static boolean isOpen(int blockId) {
+        return blockId == 0 || blockId == Blocks.AIR || blockId == Blocks.CAVE_AIR;
+    }
 }

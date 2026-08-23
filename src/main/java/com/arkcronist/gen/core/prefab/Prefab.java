@@ -134,6 +134,47 @@ public final class Prefab {
         return (mask[column >>> 6] & (1L << (column & 63))) != 0L;
     }
 
+    /**
+     * Whether one cell of the file is air, addressed in the rotated frame the caller sees.
+     *
+     * <p>Cells outside the box read as solid, which is what a caller walking off the edge wants:
+     * the file has nothing to say about the rock out there.</p>
+     *
+     * <p>This exists so that a structure can ask the schematic where its own cavern is open, rather
+     * than guessing. Extruding an opening outwards only works if you know which openings are
+     * there.</p>
+     */
+    public boolean airAt(int rotation, int outX, int outY, int outZ) {
+        if (outY < 0 || outY >= height) {
+            return false;
+        }
+        int turns = rotation & 3;
+        int sourceX;
+        int sourceZ;
+        switch (turns) {
+            case 1 -> {
+                sourceX = outZ;
+                sourceZ = length - 1 - outX;
+            }
+            case 2 -> {
+                sourceX = width - 1 - outX;
+                sourceZ = length - 1 - outZ;
+            }
+            case 3 -> {
+                sourceX = width - 1 - outZ;
+                sourceZ = outX;
+            }
+            default -> {
+                sourceX = outX;
+                sourceZ = outZ;
+            }
+        }
+        if (sourceX < 0 || sourceZ < 0 || sourceX >= width || sourceZ >= length) {
+            return false;
+        }
+        return paletteAir[blocks[outY * width * length + sourceZ * width + sourceX]];
+    }
+
     public boolean hasTag(String tag) {
         return tags.contains(tag);
     }
