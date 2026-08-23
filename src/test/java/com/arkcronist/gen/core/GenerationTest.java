@@ -143,21 +143,29 @@ class GenerationTest {
     void waterFillsBasins(Preset preset) {
         TerrainEngine engine = new TerrainEngine(1357L, preset);
         int checked = 0;
-        for (int cx = 0; cx < 4 && checked < 200; cx++) {
-            for (int cz = 0; cz < 4 && checked < 200; cz++) {
-                ChunkTerrain terrain = engine.terrain(cx, cz);
-                ChunkCapture chunk = generate(engine, cx, cz);
+        // Spread out rather than sampling sixteen chunks at the origin. The world is deliberately
+        // land-heavy now - 60-72% depending on preset - so a small block of chunks next to spawn can
+        // legitimately hold no ocean at all, and this used to fail for want of a sample.
+        for (int cx = 0; cx < 12 && checked < 200; cx++) {
+            for (int cz = 0; cz < 12 && checked < 200; cz++) {
+                ChunkTerrain terrain = engine.terrain(cx * 9, cz * 9);
+                ChunkCapture chunk = generate(engine, cx * 9, cz * 9);
                 for (int x = 0; x < 16 && checked < 200; x++) {
                     for (int z = 0; z < 16 && checked < 200; z++) {
                         int index = ChunkTerrain.index(x, z);
-                        int surface = (int) Math.floor(terrain.height[index]);
                         int water = (int) Math.floor(terrain.water[index]);
+                        // The real top of the rock, not the heightmap. The two are allowed to
+                        // disagree - an overhang or an arch moves the surface away from the smooth
+                        // heightmap by several blocks - and sampling the heightmap's idea of
+                        // mid-column landed inside gravel that was genuinely meant to be there.
+                        int surface = engine.surfaceHeight((cx * 9 << 4) + x, (cz * 9 << 4) + z);
                         if (surface >= water - 1) {
                             continue;
                         }
                         checked++;
-                        // Sample the middle of the water column: it must be water, never air.
-                        int y = (surface + water) / 2;
+                        // Everything between the rock and the surface of the water is open to that
+                        // water from above, so every block of it must be water.
+                        int y = (surface + 1 + water) / 2;
                         assertEquals(Blocks.WATER, chunk.at(x, y, z),
                                 preset + ": expected water at " + x + "," + y + "," + z);
                     }
