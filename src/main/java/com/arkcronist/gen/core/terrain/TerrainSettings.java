@@ -39,6 +39,16 @@ public final class TerrainSettings {
     public double abyssDepth = 82.0;
     public double abyssRoughness = 9.0;
     public double trenchDepth = 38.0;
+
+    /**
+     * The lowest the sea floor may go, in world Y.
+     *
+     * <p>Shelf, slope, abyss and trench all subtract in turn, and nothing used to stop the total.
+     * Measured, the sea floor was reaching Y=-58 on INSANE - all but touching the bedrock - and 16%
+     * of ocean columns sat below the roof of an ancient city, which is how the sea ended up cutting
+     * into one. Applied as a smooth minimum, so trenches keep their shape.</p>
+     */
+    public double oceanFloorMin = -14.0;
     public double trenchFrequency = 0.00040;
     public double trenchThreshold = 0.80;
     public double seamountAmplitude = 46.0;
@@ -270,6 +280,7 @@ public final class TerrainSettings {
         copy.abyssDepth = abyssDepth;
         copy.abyssRoughness = abyssRoughness;
         copy.trenchDepth = trenchDepth;
+        copy.oceanFloorMin = oceanFloorMin;
         copy.trenchFrequency = trenchFrequency;
         copy.trenchThreshold = trenchThreshold;
         copy.seamountAmplitude = seamountAmplitude;
@@ -394,6 +405,7 @@ public final class TerrainSettings {
                 s.abyssDepth = 86.0;
                 s.abyssRoughness = 16.0;
                 s.trenchDepth = 44.0;
+                s.oceanFloorMin = -19.0;
                 s.trenchThreshold = 0.74;
                 s.seamountAmplitude = 68.0;
                 s.oceanIslandStrength = 0.65;
@@ -449,6 +461,7 @@ public final class TerrainSettings {
                 s.abyssDepth = 96.0;
                 s.abyssRoughness = 22.0;
                 s.trenchDepth = 52.0;
+                s.oceanFloorMin = -24.0;
                 s.trenchThreshold = 0.62;
                 s.trenchFrequency = 0.00052;
                 s.seamountAmplitude = 120.0;

@@ -220,6 +220,12 @@ public final class TerrainSampler {
         }
 
         out.mountainFactor = Math.max(out.mountainFactor, MathUtil.normalize(seamountValue, settings.seamountThreshold, 1.0) * 0.5);
+
+        // A soft floor under the whole ocean profile. Slope, abyss and trench each subtract on top
+        // of the last, and together they were reaching Y=-58 - a hand's width off the bedrock, with
+        // no room left underneath for anything the world wants to put down there. Smoothed rather
+        // than clamped, so a trench still reads as a trench instead of ending on a flat pan.
+        floor = MathUtil.smoothMax(floor, settings.oceanFloorMin, 9.0);
         return Math.min(floor, settings.seaLevel - 0.5);
     }
 

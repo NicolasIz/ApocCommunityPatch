@@ -91,6 +91,9 @@ public final class AncientCityStructure implements Structure {
         return 1.0;
     }
 
+    /** Rock that must stand over every part of the roof before a site is accepted. */
+    private static final int ROOF_ROCK = 12;
+
     /** How far the natural chamber frays out past the schematic's own edge. */
     private static final int APRON = 12;
 
@@ -100,10 +103,16 @@ public final class AncientCityStructure implements Structure {
             return false;
         }
         int minY = context.engine().settings().minY;
-        // Room for the whole file above the bedrock, and enough rock overhead that the hall is
-        // genuinely underground rather than a hole in a hillside.
         int base = baseY(context);
-        return base >= minY + 4 && base + city.height + 14 < context.groundY;
+        if (base < minY + 4) {
+            return false;
+        }
+        // Rock over the WHOLE footprint, not just over the middle. The city is 172 blocks across,
+        // and the ground it needs above it is the ground above its thinnest corner: checking only
+        // the centre column let a site sit half under a hill and half under an ocean trench, where
+        // the sea floor cut straight through the roof and the water came in.
+        int roof = base + city.height;
+        return context.lowestHeight(city.radius()) > roof + ROOF_ROCK;
     }
 
     /**

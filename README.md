@@ -91,6 +91,30 @@ controla color de hierba, niebla y spawns naturales; el resto lo decide Arkcroni
 Bajo tierra el proveedor de biomas cambia a biomas de cueva por regiones, así que el subsuelo tiene
 ambiente propio.
 
+### El mar cortaba el techo de la Ancient City
+
+Reportado desde el servidor: el océano era tan profundo que rompía el techo y entraba el agua. Eran
+**dos** causas, y las dos están corregidas.
+
+**1. El fondo marino bajaba casi hasta la bedrock.** Plataforma, talud, abismo y fosa restan uno
+detrás de otro y nada limitaba el total. Medido: el fondo llegaba a **Y=-58** en INSANE. Ahora hay un
+suelo suave (`ocean-floor-min`, mínimo suavizado para que una fosa siga pareciendo una fosa):
+
+| | fondo marino más profundo |
+|---|---|
+| BASE | -43 → **-15** |
+| CHAOTIC | -52 → **-19** |
+| INSANE | -58 → **-25** |
+
+**2. El sitio se comprobaba solo en la columna del centro.** La ciudad mide 172 bloques de lado, así
+que un emplazamiento podía caer medio bajo una colina y medio bajo una fosa — y ahí el fondo marino
+cortaba el techo. Ahora se mide **el punto más delgado** de toda la huella: se exigen 12 bloques de
+roca sobre el techo en cada parte de ella.
+
+Comprobado sobre 102 ciudades en los tres presets: **0 con el techo cortado**, margen mínimo de roca
+12 bloques. Que parte de la huella caiga bajo el mar es normal y no pasa nada — lo que importa es que
+haya roca entre el agua y el techo.
+
 ### Ancient City: generada por nosotros, no por el servidor
 
 Es la **única** estructura vanilla que este generador reemplaza. Se construye desde
@@ -585,7 +609,7 @@ principal cuando el chunk se carga (y solo una vez, marcado en el *persistent da
 
 ## 2. Instalación y uso
 
-1. Copia `ArkcronistGenerator-1.9.1.jar` en `plugins/`.
+1. Copia `ArkcronistGenerator-1.9.2.jar` en `plugins/`.
 2. Arranca el servidor una vez para que se genere `plugins/ArkcronistGenerator/config.yml`.
 3. Crea el mundo con tu gestor de mundos (ArkcronistWorlds, Multiverse, etc.):
 
@@ -752,7 +776,7 @@ Reproducible con:
 
 ```bash
 mvn -q package -DskipTests
-java -cp target/ArkcronistGenerator-1.9.1.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
+java -cp target/ArkcronistGenerator-1.9.2.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
 ```
 
 o dentro del juego con `/ag bench INSANE 256`.
@@ -841,7 +865,7 @@ cubren gzip, NBT, el flujo de varints y el cargador de carpetas):
 ## 7. Compilar
 
 ```bash
-mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.9.1.jar
+mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.9.2.jar
 ```
 
 Requiere JDK 21 y la Paper API 1.21.8 (`repo.papermc.io`, ya declarado en el `pom.xml`).

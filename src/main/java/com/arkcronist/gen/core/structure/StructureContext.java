@@ -77,6 +77,26 @@ public final class StructureContext {
         return (int) (sum / Math.max(1, samples));
     }
 
+    /**
+     * The lowest ground anywhere over a footprint.
+     *
+     * <p>{@link #averageHeight} and {@link #relief} both answer questions about how level a site is.
+     * This answers a different one: how much rock is guaranteed over every part of it. A structure
+     * buried under the whole of its own footprint needs the <em>thinnest</em> point to be thick
+     * enough, because that is where the roof gives out - one ocean trench clipping a corner is all
+     * it takes.</p>
+     */
+    public int lowestHeight(int radius) {
+        int lowest = Integer.MAX_VALUE;
+        int step = Math.max(4, radius / 6);
+        for (int dx = -radius; dx <= radius; dx += step) {
+            for (int dz = -radius; dz <= radius; dz += step) {
+                lowest = Math.min(lowest, height(originX + dx, originZ + dz));
+            }
+        }
+        return lowest == Integer.MAX_VALUE ? groundY : lowest;
+    }
+
     public int seaLevel() {
         return engine.settings().seaLevel;
     }

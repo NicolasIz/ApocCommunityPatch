@@ -211,6 +211,11 @@ minibosses:
 #
 #  Agua en las cuevas:
 #
+#  ocean-floor-min   lo mas hondo que puede llegar el fondo marino, en Y. Plataforma, talud,
+#                    abismo y fosa restan uno tras otro; esto pone el limite al total. Estaba
+#                    llegando a Y=-58, casi la bedrock, y el mar cortaba el techo de la
+#                    ancient city. Por defecto -14 (BASE), -19 (CHAOTIC), -24 (INSANE).
+#
 #  Agua bajo tierra: ya no hay ningun ajuste, porque ya no hay capa freatica. El agua existe
 #  donde esta CONECTADA con un cuerpo de agua por encima: el mar, un rio, un lago. El primer
 #  bloque solido de una columna sella todo lo que hay debajo, asi que una cueva cerrada es

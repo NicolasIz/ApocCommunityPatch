@@ -185,6 +185,50 @@ class AncientCityTest {
         return null;
     }
 
+    @ParameterizedTest
+    @EnumSource(Preset.class)
+    @DisplayName("every site has solid rock over the whole roof, so the sea cannot cut into it")
+    void noSiteHasItsRoofCutOpen(Preset preset) {
+        // Reported from the server: the ocean was deep enough to break through the roof and let the
+        // water in. Two things caused it - the sea floor reached Y=-58, and canPlace only looked at
+        // the centre column, so a footprint 172 blocks across could sit half under a hill and half
+        // under a trench. The site test now measures the thinnest point of the roof.
+        PrefabRegistry registry = prefabs();
+        Prefab city = registry.category("ancient_city").get(0);
+        TerrainEngine engine = new TerrainEngine(20260823L, preset, TerrainSettings.forPreset(preset), 4096);
+        StructurePlacer placer = new StructurePlacer(engine,
+                com.arkcronist.gen.bukkit.config.ArkConfig.vanillaEquivalents(), registry);
+
+        java.util.Set<String> seen = new java.util.LinkedHashSet<>();
+        int checked = 0;
+        int cut = 0;
+        java.util.Random random = new java.util.Random(11);
+        for (int attempt = 0; attempt < 24; attempt++) {
+            int qx = random.nextInt(30000) - 15000;
+            int qz = random.nextInt(30000) - 15000;
+            int[] site = null;
+            for (int ring = 0; ring <= 4 && site == null; ring++) {
+                site = placer.locate(qx, qz, StructureTag.ANCIENT_CITY, ring);
+            }
+            if (site == null || !seen.add(site[0] + "," + site[2])) {
+                continue;
+            }
+            checked++;
+            int roof = (site[1] - 3) + city.height;
+            int lowest = Integer.MAX_VALUE;
+            for (int dx = -city.radius(); dx <= city.radius(); dx += 6) {
+                for (int dz = -city.radius(); dz <= city.radius(); dz += 6) {
+                    lowest = Math.min(lowest, engine.heightmapHeight(site[0] + dx, site[2] + dz));
+                }
+            }
+            if (lowest <= roof) {
+                cut++;
+            }
+        }
+        assertTrue(checked >= 10, preset + ": only " + checked + " cities found, sample too small");
+        assertEquals(0, cut, preset + ": " + cut + " of " + checked + " cities have ground cutting their roof");
+    }
+
     @Test
     @DisplayName("the city generates whole: every block of the file reaches the world")
     void theCityArrivesIntact() {
