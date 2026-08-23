@@ -5,7 +5,8 @@ import com.arkcronist.gen.core.noise.CellularNoise;
 import com.arkcronist.gen.core.noise.FractalNoise;
 
 /**
- * The underground: winding tunnels, open cheese caves, big caverns and preset gated mega caves.
+ * The underground: winding tunnels, open cheese pockets and the occasional cavern, with walls
+ * roughened so they read as rock rather than as pipe.
  *
  * <p>All four systems fold into a single "openness" scalar (positive means carved). The scalar
  * depends only on world position, never on the surface height, which is what allows it to be
@@ -22,10 +23,8 @@ public final class CaveCarver {
     private final FractalNoise tunnelA;
     private final FractalNoise tunnelB;
     private final FractalNoise cavern;
-    private final FractalNoise mega;
-    private final CellularNoise megaCells;
     private final FractalNoise cavernCentre;
-    private final FractalNoise megaCentre;
+    private final FractalNoise wall;
 
     public CaveCarver(long seed, TerrainSettings settings) {
         this.settings = settings;
@@ -33,10 +32,8 @@ public final class CaveCarver {
         this.tunnelA = FractalNoise.fbm(seed, "tunnelA", 2, settings.tunnelFrequency);
         this.tunnelB = FractalNoise.fbm(seed, "tunnelB", 2, settings.tunnelFrequency * 1.07);
         this.cavern = FractalNoise.fbm(seed, "cavern", 3, settings.cavernFrequency);
-        this.mega = FractalNoise.fbm(seed, "megaCave", 2, settings.megaCaveFrequency);
-        this.megaCells = new CellularNoise(seed, "megaCaveCells", settings.megaCaveFrequency * 0.6, 0.9);
         this.cavernCentre = FractalNoise.fbm(seed, "cavernCentre", 2, settings.cavernFrequency * 0.45);
-        this.megaCentre = FractalNoise.fbm(seed, "megaCentre", 2, settings.megaCaveFrequency * 0.5);
+        this.wall = FractalNoise.fbm(seed, "caveWall", 2, 0.09);
     }
 
     /** Position only openness. Positive means the world would be carved away here. */
@@ -67,18 +64,19 @@ public final class CaveCarver {
             }
         }
 
-        // Mega caves: preset gated and cell clustered, tall enough to hold an underground structure -
-        // but still a room with a floor and a roof, never a hollowed out world.
-        if (settings.megaCaveDensity > 0.0 && megaCells.cellValue(x, z) < settings.megaCaveDensity) {
-            int top = Math.min(settings.seaLevel - 14, 40);
-            double centre = MathUtil.lerp(megaCentre.unsigned2(x, z), settings.minY + 22, top);
-            // Thirteen, not twenty. A forty block tall room swallows whatever the server puts down
-            // there: an ancient city is written into the terrain the carver already left, so where
-            // a hall that size overlaps one, the city ends up hanging in the void in pieces.
-            double band = layer(y, centre, 13.0);
-            if (band > 0.0) {
-                best = Math.max(best, (mega.unsigned3(x, y * 1.25, z) - 0.55) * band * 0.9);
-            }
+        // There is no mega cave system any more. It was a third field, cell clustered and forty
+        // blocks tall, and nothing in the vanilla world looks like it: it turned the deep into one
+        // continuous hall and swallowed whatever was built down there. What it was for - the sense
+        // that the underground occasionally opens out - is what the cavern layer above already
+        // does, at a size a player reads as a room.
+
+        // Walls last. Everything above is smooth noise, and smooth noise gives a tunnel the cross
+        // section of a pipe. This roughens the surface only - it is strongest where the field is
+        // near zero, which is exactly the wall, and dies away inside solid rock and open air - so
+        // caves keep their shape while their edges break up.
+        double edge = 1.0 - Math.min(1.0, Math.abs(best) * 26.0);
+        if (edge > 0.0) {
+            best += wall.noise3(x * 1.7, y * 1.7, z * 1.7) * 0.012 * edge;
         }
         return best;
     }

@@ -1,23 +1,72 @@
 package com.arkcronist.gen.core.structure.types;
 
 import com.arkcronist.gen.core.biome.StructureTag;
-import com.arkcronist.gen.core.block.BlockShapes;
 import com.arkcronist.gen.core.block.Blocks;
 import com.arkcronist.gen.core.math.FastRandom;
-import com.arkcronist.gen.core.structure.*;
+import com.arkcronist.gen.core.math.Hashing;
+import com.arkcronist.gen.core.noise.FractalNoise;
+import com.arkcronist.gen.core.prefab.Prefab;
+import com.arkcronist.gen.core.prefab.PrefabRegistry;
+import com.arkcronist.gen.core.structure.BufferWriter;
+import com.arkcronist.gen.core.structure.LootMarker;
+import com.arkcronist.gen.core.structure.SpawnerMarker;
+import com.arkcronist.gen.core.structure.Structure;
+import com.arkcronist.gen.core.structure.StructureBuffer;
+import com.arkcronist.gen.core.structure.StructureContext;
 
 /**
- * An ancient city in the deep dark.
+ * The ancient city, built from a schematic rather than from the server's own generator.
  *
- * <p>A sculk covered platform of deepslate tile, a colonnade of tall pillars, the central frame of
- * reinforced deepslate with its wardens' altar, ruined side buildings, soul lanterns as the only
- * light, and sensors and shriekers everywhere. Loot is heavy; so is the risk.</p>
+ * <p>This is the one vanilla structure taken over here. The server can no longer place its own,
+ * because it only ever does so in the {@code deep_dark} biome and the biome provider stops
+ * reporting that key; every other vanilla structure is left exactly as it was.</p>
+ *
+ * <p>The order is seed, place, turn, chamber, city, blend, loot:</p>
+ * <ol>
+ *   <li><b>Seed and place.</b> One candidate per grid cell, offset inside the cell by the world
+ *       seed, so where a city stands is fixed for a seed and unrelated to the order chunks are
+ *       generated in.</li>
+ *   <li><b>Turn.</b> One of four rotations, and independently a mirror, so two cities on the same
+ *       world are not the same building twice.</li>
+ *   <li><b>Chamber.</b> The schematic carries its own cavern - it was cut with the rock around it,
+ *       58% of the file is air - so the room does not have to be invented. What does have to be
+ *       dealt with is the edge of the file, which is a flat plane where that cavern is cut off. An
+ *       apron of noise driven cavities is opened just outside it, so the hall frays into the rock
+ *       instead of ending against a wall.</li>
+ *   <li><b>City.</b> Written whole, air included, over its entire footprint.</li>
+ *   <li><b>Blend and protect.</b> Because the air is written too, the footprint is authoritative:
+ *       whatever the cave carver did there is overwritten. A cave cannot cut the city, cannot leave
+ *       it hanging, and cannot run through it - not because the carver was told to avoid it, but
+ *       because there is nothing left of the carver's work inside the box.</li>
+ *   <li><b>Loot.</b> Its chests are registered as containers and filled from the vanilla ancient
+ *       city table.</li>
+ * </ol>
  */
 public final class AncientCityStructure implements Structure {
 
+    /** The folder the schematic lives in. Not a placement rule - this structure places it. */
+    public static final String CATEGORY = "ancient_city";
+
+    private final PrefabRegistry prefabs;
+    private final Prefab city;
+    private final FractalNoise apron;
+
+    public AncientCityStructure(PrefabRegistry prefabs, long seed) {
+        this.prefabs = prefabs;
+        this.city = prefabs.has(CATEGORY) && !prefabs.category(CATEGORY).isEmpty()
+                ? prefabs.category(CATEGORY).get(0)
+                : null;
+        this.apron = FractalNoise.fbm(seed, "ancientCityApron", 3, 0.075);
+    }
+
+    /** Whether a schematic was supplied at all. Without one this structure does not register. */
+    public boolean available() {
+        return city != null;
+    }
+
     @Override
     public Placement placement() {
-        return Placement.UNDERGROUND;
+        return Placement.DEEP_LANDMARK;
     }
 
     @Override
@@ -32,114 +81,134 @@ public final class AncientCityStructure implements Structure {
 
     @Override
     public int radius() {
-        return 56;
+        // Half the footprint plus the apron, so the placer searches a wide enough neighbourhood of
+        // chunks to find this city from any chunk it reaches into.
+        return city == null ? 56 : city.radius() + APRON;
     }
 
     @Override
     public double weight() {
-        return 0.45;
+        return 1.0;
     }
+
+    /** How far the natural chamber frays out past the schematic's own edge. */
+    private static final int APRON = 12;
 
     @Override
     public boolean canPlace(StructureContext context) {
-        return context.groundY > context.engine().settings().minY + 70;
+        if (city == null || !context.engine().settings().ancientCity) {
+            return false;
+        }
+        int minY = context.engine().settings().minY;
+        // Room for the whole file above the bedrock, and enough rock overhead that the hall is
+        // genuinely underground rather than a hole in a hillside.
+        int base = baseY(context);
+        return base >= minY + 4 && base + city.height + 14 < context.groundY;
+    }
+
+    /**
+     * The floor the city stands on.
+     *
+     * <p>Deliberately a function of the world seed and the cell alone, not of the terrain: a fixed
+     * deep band means the biome provider can answer "is this inside a city" without touching the
+     * heightmap, and it keeps the city clear of the surface no matter what is overhead.</p>
+     */
+    private int baseY(StructureContext context) {
+        int minY = context.engine().settings().minY;
+        long roll = Hashing.hash3(context.engine().seed() ^ 0xC17F1_00A5L,
+                context.originX >> 6, 0, context.originZ >> 6);
+        // Twelve clear of the world floor, not six. The lava table sits at minY+6, and the file's
+        // own bottom course is rock but not solid rock everywhere - at six the two met and the city
+        // was standing on lava in places. This leaves a floor of stone underneath it.
+        return minY + 12 + (int) ((roll >>> 17) % 7);
     }
 
     @Override
     public void build(StructureContext context, StructureBuffer buffer) {
+        if (city == null) {
+            return;
+        }
         FastRandom random = context.random;
         int x = context.originX;
         int z = context.originZ;
-        int minY = context.engine().settings().minY;
-        int y = minY + random.nextInt(10, 22);
-        int half = random.nextInt(26, 36);
+        int base = baseY(context);
 
-        // Excavate the cavern that holds the city, then floor it.
-        for (int ox = -half; ox <= half; ox++) {
-            for (int oz = -half; oz <= half; oz++) {
-                double distance = Math.sqrt(ox * ox + oz * oz) / half;
-                if (distance > 1.0) {
+        // Four turns, chosen from the site seed. Not a mirror: mirroring a schematic means
+        // mirroring every block state in it - which way a stair faces, which way a door hangs - and
+        // the rotator here does turns only. Four deterministic orientations, honestly four.
+        int rotation = random.nextInt(4);
+
+        BufferWriter writer = new BufferWriter(buffer, context.engine().settings().minY, context.maxY());
+
+        // The apron first: it only ever opens rock that the city is about to overwrite anyway where
+        // the two overlap, so order costs nothing and the city always wins.
+        carveApron(writer, city, x, base, z, rotation);
+
+        // Air included. This is what makes the footprint authoritative and the city safe from
+        // anything the carver left behind.
+        city.blit(writer, x, base, z, rotation, Prefab.BlitOptions.authoritative(Blocks.CAVE_AIR));
+
+        int tier = 3;
+        city.forEachContainer(x, base, z, rotation, (cx, cy, cz) ->
+                buffer.addLoot(new LootMarker(cx, cy, cz, tier, "ancient_city")));
+        city.forEachSpawner(x, base, z, rotation, (cx, cy, cz) ->
+                buffer.addSpawner(new SpawnerMarker(cx, cy, cz, "SKELETON")));
+    }
+
+    /**
+     * Opens an irregular skirt of cavities around the schematic's outer wall.
+     *
+     * <p>The file is a cuboid, so wherever its own cavern reaches the edge it stops against a flat
+     * plane of untouched stone - a rectangular room in the middle of the deep. This eats into that
+     * plane with noise, so the hall runs out into the rock in fingers and side pockets and the
+     * boundary stops reading as a box.</p>
+     */
+    private void carveApron(BufferWriter writer, Prefab prefab, int originX, int baseY, int originZ,
+                            int rotation) {
+        int width = prefab.rotatedWidth(rotation);
+        int length = prefab.rotatedLength(rotation);
+        int minX = originX - prefab.rotatedAnchorX(rotation);
+        int minZ = originZ - prefab.rotatedAnchorZ(rotation);
+        int maxX = minX + width - 1;
+        int maxZ = minZ + length - 1;
+
+        int fromX = minX - APRON;
+        int toX = maxX + APRON;
+        int fromZ = minZ - APRON;
+        int toZ = maxZ + APRON;
+        // Only the middle of the file's height: the schematic's own floor and ceiling stay sealed,
+        // so the apron cannot open the hall to the sky or drop it onto bedrock.
+        int fromY = baseY + 2;
+        int toY = baseY + prefab.height - 6;
+
+        for (int wx = fromX; wx <= toX; wx++) {
+            for (int wz = fromZ; wz <= toZ; wz++) {
+                boolean inside = wx >= minX && wx <= maxX && wz >= minZ && wz <= maxZ;
+                if (inside) {
                     continue;
                 }
-                int roof = y + 18 - (int) (distance * 6);
-                for (int oy = 0; oy <= roof - y; oy++) {
-                    buffer.set(x + ox, y + oy, z + oz, Blocks.AIR);
+                int beyond = Math.max(Math.max(minX - wx, wx - maxX), Math.max(minZ - wz, wz - maxZ));
+                // Fades out with distance, so the skirt thins rather than ending on its own edge.
+                double reach = 1.0 - beyond / (double) APRON;
+                if (reach <= 0.0) {
+                    continue;
                 }
-                double roll = (ox * 31 + oz * 17 + 1000) % 100 / 100.0;
-                buffer.set(x + ox, y - 1, z + oz, roll < 0.55 ? Blocks.SCULK
-                        : roll < 0.75 ? Blocks.DEEPSLATE_TILES : Blocks.DEEPSLATE_BRICKS);
-                buffer.set(x + ox, roof, z + oz, roll < 0.4 ? Blocks.SCULK : Blocks.DEEPSLATE);
+                double n = apron.unsigned2(wx, wz);
+                if (n > reach * 0.85) {
+                    continue;
+                }
+                // The slot wanders up and down as it goes round, so the skirt reads as passages
+                // leaving the hall at different levels rather than as one band cut at mid height.
+                double drift = apron.unsigned2(wx * 0.35 + 811.0, wz * 0.35 - 407.0);
+                int span = toY - fromY;
+                int mid = fromY + (int) (span * (0.25 + drift * 0.5));
+                int height = 3 + (int) ((1.0 - n) * 7.0);
+                int lo = Math.max(fromY, mid - height);
+                int hi = Math.min(toY, mid + height);
+                for (int wy = lo; wy <= hi; wy++) {
+                    writer.set(wx, wy, wz, Blocks.CAVE_AIR);
+                }
             }
         }
-
-        // Colonnade.
-        for (int i = 0; i < 12; i++) {
-            double angle = i * Math.PI / 6.0;
-            int px = x + (int) Math.round(Math.cos(angle) * (half - 8));
-            int pz = z + (int) Math.round(Math.sin(angle) * (half - 8));
-            int height = random.nextInt(10, 17);
-            for (int oy = 0; oy < height; oy++) {
-                BuildKit.box(buffer, px - 1, y + oy, pz - 1, px + 1, y + oy, pz + 1,
-                        oy % 5 == 4 ? Blocks.CHISELED_DEEPSLATE : Blocks.DEEPSLATE_BRICKS);
-            }
-            buffer.set(px, y + height, pz, Blocks.SCULK_CATALYST);
-            if (random.chance(0.5)) {
-                buffer.set(px + 1, y + 2, pz, Blocks.SOUL_LANTERN);
-            }
-        }
-
-        // Central platform and the frame.
-        BuildKit.box(buffer, x - 8, y - 1, z - 8, x + 8, y - 1, z + 8, Blocks.DEEPSLATE_TILES);
-        BuildKit.box(buffer, x - 6, y, z - 6, x + 6, y, z + 6, Blocks.SCULK);
-        for (int i = -4; i <= 4; i++) {
-            buffer.set(x + i, y + 1, z - 5, Blocks.REINFORCED_DEEPSLATE);
-            buffer.set(x + i, y + 1, z + 5, Blocks.REINFORCED_DEEPSLATE);
-        }
-        for (int oy = 1; oy <= 7; oy++) {
-            buffer.set(x - 5, y + oy, z, Blocks.REINFORCED_DEEPSLATE);
-            buffer.set(x + 5, y + oy, z, Blocks.REINFORCED_DEEPSLATE);
-        }
-        for (int i = -5; i <= 5; i++) {
-            buffer.set(x + i, y + 8, z, Blocks.REINFORCED_DEEPSLATE);
-        }
-        buffer.set(x, y + 1, z, Blocks.SCULK_CATALYST);
-        buffer.set(x - 1, y + 1, z, Blocks.SCULK_SHRIEKER);
-        buffer.set(x + 1, y + 1, z, Blocks.SCULK_SHRIEKER);
-        BuildKit.chest(buffer, x, y + 1, z - 2, 3, "ancient_city");
-        BuildKit.chest(buffer, x, y + 1, z + 2, 3, "ancient_city");
-
-        // Ruined side buildings with their own loot and traps.
-        int buildings = random.nextInt(4, 8);
-        for (int i = 0; i < buildings; i++) {
-            double angle = random.nextDouble() * Math.PI * 2.0;
-            int distance = random.nextInt(12, half - 6);
-            int bx = x + (int) Math.round(Math.cos(angle) * distance);
-            int bz = z + (int) Math.round(Math.sin(angle) * distance);
-            int halfX = random.nextInt(3, 7);
-            int halfZ = random.nextInt(3, 7);
-            int height = random.nextInt(4, 8);
-            BuildKit.decayedBox(buffer, random, bx - halfX, y, bz - halfZ, bx + halfX, y + height,
-                    bz + halfZ, Blocks.DEEPSLATE_BRICKS, 0.55);
-            BuildKit.box(buffer, bx - halfX + 1, y, bz - halfZ + 1, bx + halfX - 1, y + height - 1,
-                    bz + halfZ - 1, Blocks.AIR);
-            BuildKit.box(buffer, bx - halfX + 1, y - 1, bz - halfZ + 1, bx + halfX - 1, y - 1,
-                    bz + halfZ - 1, Blocks.DEEPSLATE_TILES);
-            buffer.set(bx, y, bz, Blocks.SCULK_SENSOR);
-            if (random.chance(0.7)) {
-                BuildKit.chest(buffer, bx + halfX - 1, y, bz + halfZ - 1, 3, "ancient_city");
-            }
-            if (random.chance(0.5)) {
-                buffer.set(bx - halfX + 1, y + 1, bz - halfZ + 1, Blocks.SOUL_LANTERN);
-            }
-            buffer.set(bx + 1, y, bz + 1, Blocks.SCULK_SHRIEKER);
-        }
-
-        // Sculk growth spreading out from the centre.
-        for (int i = 0; i < 220; i++) {
-            int sx = x + random.nextInt(-half + 2, half - 2);
-            int sz = z + random.nextInt(-half + 2, half - 2);
-            buffer.set(sx, y - 1, sz, random.chance(0.15) ? Blocks.SCULK_SENSOR : Blocks.SCULK);
-        }
-        buffer.addSpawn(MobSpawn.boss(x + 3, y + 1, z + 3, "WITHER_SKELETON", 4, "cave_horror"));
     }
 }

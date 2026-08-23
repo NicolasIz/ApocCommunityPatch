@@ -91,6 +91,71 @@ controla color de hierba, niebla y spawns naturales; el resto lo decide Arkcroni
 Bajo tierra el proveedor de biomas cambia a biomas de cueva por regiones, así que el subsuelo tiene
 ambiente propio.
 
+### Ancient City: generada por nosotros, no por el servidor
+
+Es la **única** estructura vanilla que este generador reemplaza. Se construye desde
+`prefabs/ancient_city/ancient_city.schem` (172x39x172). Todo lo demás — strongholds, mineshafts,
+trial chambers, monumentos, aldeas, mazmorras — sigue exactamente igual.
+
+**Cómo se le quita al servidor.** Vanilla solo coloca una ancient city en el bioma `deep_dark`, y
+este generador deja de reportar esa clave. Eso apaga esa estructura y **solo esa**: ninguna otra la
+pide. El coste es la ambientación del bioma (su niebla, su silencio); la ciudad llega con todo su
+sculk, y sus shriekers siguen invocando lo que invocan, porque eso son bloques.
+
+**El orden es: semilla → sitio → giro → cámara → ciudad → integración → botín.**
+
+- **Sitio.** Un candidato por celda de 1408 bloques, desplazado dentro de la celda por la semilla del
+  mundo. Fijo para una semilla, independiente del orden en que se generen los chunks.
+- **Giro.** Cuatro rotaciones deterministas. **No hay espejado**: espejar una schematic obliga a
+  espejar cada estado de bloque (hacia dónde mira una escalera, hacia dónde abre una puerta) y el
+  rotador de aquí solo hace giros. Cuatro orientaciones, honestamente cuatro.
+- **Cámara.** No hace falta inventarla: la schematic se cortó **con su caverna** — el 58% del archivo
+  es aire, con techo y paredes irregulares. Lo que sí hay que resolver es el borde del archivo, que
+  es un plano recto donde esa caverna queda cortada. Se abre un faldón de cavidades por ruido justo
+  por fuera, de modo que la sala se deshilacha hacia la roca en dedos y bolsas laterales.
+- **Ciudad.** Se escribe **entera, incluido el aire**, sobre toda su huella.
+- **Integración y protección.** Escribir también el aire es lo que hace que la huella mande: lo que
+  el excavador de cuevas hubiera dejado ahí queda sobrescrito. Una cueva **no puede** cortar la
+  ciudad, dejarla colgando ni atravesarla — no porque se le haya pedido al excavador que la evite,
+  sino porque dentro de la caja no queda nada suyo.
+- **Botín.** Sus 8 cofres se registran como contenedores y se llenan con la tabla vanilla
+  `ANCIENT_CITY`, sorteada al generar.
+
+Verificado generando los chunks alrededor de una ciudad con el pipeline real (terreno y cuevas
+primero, estructuras encima): **17.643 bloques de sculk colocados contra 17.643 en el archivo**, y lo
+mismo para `deepslate_tiles` y `deepslate_bricks`. Ni un bloque perdido.
+
+**Un aviso sobre la schematic que enviaste.** Traía un command block en [86,6,96] con
+`Command: "/kill @e"` y `auto: 1` — activo sin redstone. Este generador nunca transporta datos de
+block entity, así que el comando no habría viajado, pero el bloque tampoco se coloca: los command
+block, jigsaw y structure block se convierten en roca al cargar cualquier prefab. Hay una prueba que
+lo verifica en las cuatro rotaciones.
+
+### Cuevas y agua: dos cambios de arquitectura, no de números
+
+**El agua ya no tiene "nivel".** Antes había una *capa freática*: una altura por región, y todo hueco
+por debajo se rellenaba. Eso es lo que metía agua en cuevas cerradas, dejaba agua por debajo de las
+cuevas y ponía varias superficies a distinta altura en la misma ladera. **Se ha eliminado.** Ahora el
+agua se decide por **conexión**: al recorrer la columna se lleva la cuenta de si sigue abierta al
+cuerpo de agua de arriba, y **el primer bloque sólido sella todo lo que hay debajo**. Una cueva
+cerrada es aire y roca. Lo único que puede contener es lava, junto a la bedrock, como en vanilla.
+
+Hay dos pruebas que lo fijan como invariante: ningún bloque de agua puede estar bajo roca, y ninguna
+columna puede tener dos cuerpos de agua separados.
+
+**Las mega-cuevas ya no existen.** No están puestas a cero: se ha borrado el sistema. Era un tercer
+campo, agrupado por celdas y de 40 bloques de alto, y nada en vanilla se parece a eso. Lo que
+aportaba — que el subsuelo se abra de vez en cuando — ya lo hace la capa de cavernas, a un tamaño que
+se lee como una sala. En su lugar hay **irregularidad de pared**: un ruido que actúa solo donde el
+campo está cerca de cero, es decir justo en la pared, y se apaga dentro de la roca y del aire. Los
+túneles conservan su forma y sus bordes se rompen.
+
+| | hueco bajo tierra | franja de la ciudad | columnas con una sala (>80% vacío) |
+|---|---|---|---|
+| BASE | 19,8% → **8,2%** | 16,7% → **8,0%** | 1,6% → **0,1%** |
+| CHAOTIC | 18,8% → **7,8%** | 16,6% → **7,5%** | 1,8% → **0,2%** |
+| INSANE | 23,0% → **10,6%** | 19,0% → **10,2%** | 1,8% → **0,3%** |
+
 ### Cuevas: por qué la ancient city salía destrozada
 
 La ciudad **sí** se generaba (la franja `deep_dark` ya llega hasta Y=-13), pero salía en pedazos
@@ -520,7 +585,7 @@ principal cuando el chunk se carga (y solo una vez, marcado en el *persistent da
 
 ## 2. Instalación y uso
 
-1. Copia `ArkcronistGenerator-1.8.0.jar` en `plugins/`.
+1. Copia `ArkcronistGenerator-1.9.0.jar` en `plugins/`.
 2. Arranca el servidor una vez para que se genere `plugins/ArkcronistGenerator/config.yml`.
 3. Crea el mundo con tu gestor de mundos (ArkcronistWorlds, Multiverse, etc.):
 
@@ -687,7 +752,7 @@ Reproducible con:
 
 ```bash
 mvn -q package -DskipTests
-java -cp target/ArkcronistGenerator-1.8.0.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
+java -cp target/ArkcronistGenerator-1.9.0.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
 ```
 
 o dentro del juego con `/ag bench INSANE 256`.
@@ -776,7 +841,7 @@ cubren gzip, NBT, el flujo de varints y el cargador de carpetas):
 ## 7. Compilar
 
 ```bash
-mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.8.0.jar
+mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.9.0.jar
 ```
 
 Requiere JDK 21 y la Paper API 1.21.8 (`repo.papermc.io`, ya declarado en el `pom.xml`).

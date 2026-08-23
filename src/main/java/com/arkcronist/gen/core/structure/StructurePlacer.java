@@ -34,12 +34,14 @@ public final class StructurePlacer {
     private static final long LARGE_SALT = 0x1A26E_5A17L;
     private static final long SMALL_SALT = 0x5A11_5A17L;
     private static final long DEEP_SALT = 0xDEEB_5A17L;
+    private static final long LANDMARK_SALT = 0xC17A_5A17L;
     private static final int CACHE_LIMIT = 32;
 
     private final TerrainEngine engine;
     private final List<Structure> large = new ArrayList<>();
     private final List<Structure> small = new ArrayList<>();
     private final List<Structure> underground = new ArrayList<>();
+    private final List<Structure> deepLandmark = new ArrayList<>();
     private final ConcurrentHashMap<Long, StructureBuffer> cache = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<Long> cacheOrder = new ConcurrentLinkedQueue<>();
     // Site resolution is far cheaper to keep than a whole built structure, and it is what the flat
@@ -118,7 +120,13 @@ public final class StructurePlacer {
         register(new UndergroundStructure());
         register(new MineshaftStructure());
         register(new StrongholdStructure());
-        register(new AncientCityStructure());
+        // The ancient city only exists when a schematic was supplied for it. Without one the
+        // family simply is not in the world - there is no procedural fallback any more, because the
+        // point of taking it over from the server was to build it from the file.
+        AncientCityStructure ancientCity = new AncientCityStructure(prefabs, engine.seed());
+        if (ancientCity.available()) {
+            register(ancientCity);
+        }
         register(new TrialChamberStructure());
         register(new GeodeStructure());
         register(new FossilStructure());
@@ -152,6 +160,7 @@ public final class StructurePlacer {
         }
         switch (structure.placement()) {
             case UNDERGROUND -> underground.add(structure);
+            case DEEP_LANDMARK -> deepLandmark.add(structure);
             case SURFACE_LARGE -> large.add(structure);
             case SURFACE_SMALL -> small.add(structure);
         }
@@ -161,6 +170,7 @@ public final class StructurePlacer {
         List<Structure> all = new ArrayList<>(large);
         all.addAll(small);
         all.addAll(underground);
+        all.addAll(deepLandmark);
         return all;
     }
 
@@ -179,6 +189,10 @@ public final class StructurePlacer {
         scan(chunkX, chunkZ, writer, spawnsOut, lootOut, spawnersOut, gridLarge, LARGE_SALT, large);
         scan(chunkX, chunkZ, writer, spawnsOut, lootOut, spawnersOut, gridSmall, SMALL_SALT, small);
         scan(chunkX, chunkZ, writer, spawnsOut, lootOut, spawnersOut, gridDeep, DEEP_SALT, underground);
+        if (!deepLandmark.isEmpty()) {
+            scan(chunkX, chunkZ, writer, spawnsOut, lootOut, spawnersOut,
+                    landmarkGrid(), LANDMARK_SALT, deepLandmark);
+        }
     }
 
     private void scan(int chunkX, int chunkZ, RegionWriter writer, List<MobSpawn> spawnsOut,
@@ -416,6 +430,9 @@ public final class StructurePlacer {
         if (grid == gridLarge) {
             return LARGE_SALT;
         }
+        if (grid == landmarkGrid()) {
+            return LANDMARK_SALT;
+        }
         return grid == Math.max(80, gridLarge / 2) ? DEEP_SALT : SMALL_SALT;
     }
 
@@ -425,8 +442,14 @@ public final class StructurePlacer {
      * <p>Two families are not biome gated: sky sanctuaries belong to the floating island band rather
      * than to any surface biome, and buried vaults sit far below whatever happens to be overhead.</p>
      */
+    /** Spacing of the deep landmark grid. Wide enough that two never share a neighbourhood. */
+    private int landmarkGrid() {
+        return Math.max(768, engine.settings().ancientCityGrid);
+    }
+
     private boolean allows(ArkBiome biome, Structure structure) {
-        if (structure.placement() == Structure.Placement.UNDERGROUND) {
+        if (structure.placement() == Structure.Placement.UNDERGROUND
+                || structure.placement() == Structure.Placement.DEEP_LANDMARK) {
             // Depth decides these, not the biome overhead.
             return true;
         }
@@ -488,6 +511,12 @@ public final class StructurePlacer {
             found = searchRing(startX, startZ, tag, ring, gridDeep, DEEP_SALT, underground);
             if (found != null) {
                 return found;
+            }
+            if (!deepLandmark.isEmpty()) {
+                found = searchRing(startX, startZ, tag, ring, landmarkGrid(), LANDMARK_SALT, deepLandmark);
+                if (found != null) {
+                    return found;
+                }
             }
         }
         return null;

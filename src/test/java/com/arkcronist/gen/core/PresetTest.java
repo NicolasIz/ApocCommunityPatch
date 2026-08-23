@@ -85,7 +85,9 @@ class PresetTest {
         assertTrue(insane.archStrength > chaotic.archStrength, "INSANE should carve the most arches");
         assertTrue(insane.canyonStrength > chaotic.canyonStrength);
         assertTrue(chaotic.canyonStrength > base.canyonStrength);
-        assertTrue(insane.megaCaveDensity > base.megaCaveDensity);
+        // Mega caves are gone entirely; INSANE now shows its hand through cave size instead.
+        assertTrue(insane.caveCheeseThreshold < base.caveCheeseThreshold);
+        assertTrue(insane.cavernDensity > base.cavernDensity);
         assertTrue(insane.biomeFragmentation > chaotic.biomeFragmentation);
         assertTrue(chaotic.biomeFragmentation > base.biomeFragmentation);
     }

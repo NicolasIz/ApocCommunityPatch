@@ -211,10 +211,10 @@ minibosses:
 #
 #  Agua en las cuevas:
 #
-#    cave-water   0 (por defecto) = ninguna capa freatica: las cuevas interiores estan secas.
-#                 1 = como en la 1.6 (39% del subsuelo con agua, llegando hasta Y=55).
-#                 El mar NO depende de esto: una cueva bajo el fondo marino se inunda desde
-#                 el propio mar, asi que esto solo controla las charcas de tierra adentro.
+#  Agua bajo tierra: ya no hay ningun ajuste, porque ya no hay capa freatica. El agua existe
+#  donde esta CONECTADA con un cuerpo de agua por encima: el mar, un rio, un lago. El primer
+#  bloque solido de una columna sella todo lo que hay debajo, asi que una cueva cerrada es
+#  aire y roca. Lo unico que puede haber en una cueva cerrada es lava, junto a la bedrock.
 #
 #  Tamano de las cuevas. Bajarlas fue lo que dejo de destrozar las ancient city: una sala de
 #  40 bloques de alto se traga lo que el servidor construya dentro, porque la estructura se
@@ -222,7 +222,6 @@ minibosses:
 #
 #    cave-cheese-threshold  MAS ALTO = cuevas mas pequenas
 #    cavern-density         salas medianas
-#    mega-cave-density      salas enormes. 0 las quita del todo.
 #
 #  Agua:
 #
@@ -308,7 +307,6 @@ terrain:
   # cave-cheese-threshold: 0.62   # lower = more open caves
   # tunnel-threshold: 0.055
   # cavern-density: 0.30
-  # mega-cave-density: 0.04
   # surface-cave-clearance: 5     # rock kept under the surface, keeps oceans from draining
 
   # --- strata and ores --------------------------------------------------
@@ -348,4 +346,3 @@ presets:
     # canyon-strength: 0.65
   insane:
     # floating-island-density: 0.55
-    # mega-cave-density: 0.70

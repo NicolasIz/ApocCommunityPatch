@@ -251,7 +251,7 @@ public final class Prefab {
                     int cell = layer + sourceZ * width + sourceX;
                     int index = blocks[cell];
                     boolean air = paletteAir[index];
-                    if (air && !(hollow && isInterior(cell))) {
+                    if (air && !options.fillAllAir() && !(hollow && isInterior(cell))) {
                         continue;
                     }
                     if (decay > 0.0 && !air && damaged(decaySeed, cell, y, decay)) {
@@ -284,6 +284,23 @@ public final class Prefab {
         hash ^= hash >>> 27;
         double roll = ((hash >>> 11) & ((1L << 53) - 1)) / (double) (1L << 53);
         return roll < chance;
+    }
+
+    /**
+     * How many cells of this prefab resolve to one block id at a given rotation.
+     *
+     * <p>Used to check that a stamped prefab arrived complete: the count in the file and the count
+     * in the world have to match.</p>
+     */
+    public int blockCount(int blockId, int rotation) {
+        int[] palette = palettes[rotation & 3];
+        int total = 0;
+        for (char cell : blocks) {
+            if (palette[cell] == blockId) {
+                total++;
+            }
+        }
+        return total;
     }
 
     /** Reports where a stamped prefab put its containers and spawners, in world coordinates. */
@@ -334,18 +351,32 @@ public final class Prefab {
     }
 
     /** How a prefab should be stamped: enclosed air, damage, and what "air" means. */
-    public record BlitOptions(boolean fillInterior, int airBlock, double decay, long decaySeed) {
+    public record BlitOptions(boolean fillInterior, int airBlock, double decay, long decaySeed,
+                              boolean fillAllAir) {
 
         public static BlitOptions solid(int airBlock) {
-            return new BlitOptions(true, airBlock, 0.0, 0L);
+            return new BlitOptions(true, airBlock, 0.0, 0L, false);
         }
 
         public static BlitOptions flooded() {
-            return new BlitOptions(false, 0, 0.0, 0L);
+            return new BlitOptions(false, 0, 0.0, 0L, false);
         }
 
         public static BlitOptions wreck(long seed, double decay) {
-            return new BlitOptions(false, 0, decay, seed);
+            return new BlitOptions(false, 0, decay, seed, false);
+        }
+
+        /**
+         * Writes every cell of the file, air included, over the whole footprint.
+         *
+         * <p>The other modes skip air that reaches the edge of the box, because a building wants the
+         * world's own air around it. A schematic that was cut <em>with its cavern</em> wants the
+         * opposite: the file is the authority over its whole volume. That is also what makes the
+         * footprint safe from anything already written there - there is nothing of it left inside
+         * the box to be cut by.</p>
+         */
+        public static BlitOptions authoritative(int airBlock) {
+            return new BlitOptions(true, airBlock, 0.0, 0L, true);
         }
     }
 }

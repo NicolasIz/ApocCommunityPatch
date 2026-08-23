@@ -34,7 +34,6 @@ public final class ArkBiomeProvider extends BiomeProvider {
     private final Biome[] byArkId;
     private final Biome dripstone;
     private final Biome lush;
-    private final Biome deepDark;
     private final List<Biome> all;
 
     public ArkBiomeProvider(TerrainEngine engine) {
@@ -49,10 +48,8 @@ public final class ArkBiomeProvider extends BiomeProvider {
         }
         this.dripstone = resolve("minecraft:dripstone_caves");
         this.lush = resolve("minecraft:lush_caves");
-        this.deepDark = resolve("minecraft:deep_dark");
         unique.add(dripstone);
         unique.add(lush);
-        unique.add(deepDark);
         this.all = new ArrayList<>(unique);
     }
 
@@ -86,14 +83,17 @@ public final class ArkBiomeProvider extends BiomeProvider {
             // Underground: give the caves their own identity, in patches rather than uniformly.
             long region = Hashing.hash(engine.seed() ^ 0xCA5E1L, x >> 7, z >> 7);
             int pick = (int) ((region >>> 20) % 10);
-            // The deep dark has to cover an ancient city's whole vertical extent, not just the
-            // floor it stands on. The server checks the biome at the structure's own start height,
-            // and a city reaches well above the bedrock slice this used to be limited to - so with
-            // the old bound the check was made against dripstone or stone and no city could ever
-            // be placed. Kept generous on purpose: the exact start height is the game's to choose.
-            if (y < engine.settings().minY + 52 && pick < 2) {
-                return deepDark;
-            }
+            // deep_dark is deliberately never reported.
+            //
+            // It is the only biome the server will place an ancient city in, so withholding it is
+            // what takes that one structure off the server and hands it to this generator - which
+            // builds it from a schematic instead. Nothing else is affected: strongholds, mineshafts,
+            // trial chambers, monuments, villages and the rest do not ask for this key and generate
+            // exactly as they always did.
+            //
+            // The cost is the biome's own ambience - its fog, its silence, its lack of ordinary mob
+            // spawns. The city still arrives with all of its sculk, and its shriekers still summon
+            // what they summon, because those are blocks rather than biome behaviour.
             if (pick < 3) {
                 return lush;
             }

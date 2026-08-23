@@ -18,7 +18,15 @@ public interface Structure {
         /** Finds: towers, camps, ruins, wrecks. Common, close together. */
         SURFACE_SMALL,
         /** Placed by depth rather than by biome: mines, strongholds, vaults, geodes. */
-        UNDERGROUND
+        UNDERGROUND,
+        /**
+         * One rare landmark deep underground, on a grid of its own.
+         *
+         * <p>The ancient city is the only member. It is far too large to share the underground grid
+         * with mines and geodes - it would collide with them and turn up far too often - so it gets
+         * its own spacing and its own salt.</p>
+         */
+        DEEP_LANDMARK
     }
 
     /** Defaults by size; underground structures override it. */

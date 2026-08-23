@@ -86,7 +86,16 @@ public final class SchematicReader {
         int[][] palettes = new int[4][names.length];
         for (int rotation = 0; rotation < 4; rotation++) {
             for (int i = 0; i < names.length; i++) {
-                palettes[rotation][i] = Blocks.REGISTRY.id(BlockStateRotator.rotate(names[i], rotation));
+                String name = names[i];
+            // A command block in a schematic is not something to stamp across a world. This
+            // generator never carries block entity data, so any command inside one would not travel
+            // and the block would arrive blank - but an always-active command block sitting in a
+            // structure every player will visit is still not worth shipping, so it becomes rock.
+            // The one in the supplied ancient city held "/kill @e" set to run without redstone.
+            if (isCommandBlock(name)) {
+                name = "minecraft:deepslate";
+            }
+            palettes[rotation][i] = Blocks.REGISTRY.id(BlockStateRotator.rotate(name, rotation));
             }
         }
 
@@ -367,6 +376,16 @@ public final class SchematicReader {
             }
         }
         return interior;
+    }
+
+    private static boolean isCommandBlock(String name) {
+        int bracket = name.indexOf('[');
+        String bare = bracket > 0 ? name.substring(0, bracket) : name;
+        return bare.equals("minecraft:command_block")
+                || bare.equals("minecraft:chain_command_block")
+                || bare.equals("minecraft:repeating_command_block")
+                || bare.equals("minecraft:jigsaw")
+                || bare.equals("minecraft:structure_block");
     }
 
     private static boolean anyPaletteEntry(String[] names, java.util.function.Predicate<String> test) {

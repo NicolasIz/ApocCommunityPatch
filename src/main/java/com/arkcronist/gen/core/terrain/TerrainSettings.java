@@ -165,20 +165,6 @@ public final class TerrainSettings {
     // ---------------------------------------------------------------- caves
     public boolean caves = true;
 
-    /**
-     * How much of the underground carries a water table, from 0 (bone dry) to 1.
-     *
-     * <p>Aquifers used to be unconditional: 39% of the world had one, the mean table sat at Y=-5 and
-     * they reached as high as Y=55. That drowns the deep caves, and it drowns anything the server
-     * wants to put in them - an ancient city occupies roughly Y=-51 to -20 and was underwater in
-     * 38% of columns.</p>
-     *
-     * <p>This scales both how often a region has water at all and how high the table may rise.
-     * Default is 0: the dry caves are the ones you can mine and the ones the server can build in.
-     * The sea is unaffected - a cavity under the ocean floor is flooded from the sea itself, not
-     * from an aquifer, so raising this is only ever about inland pools.</p>
-     */
-    public double caveWater = 0.0;
     public double caveCheeseThreshold = 0.56;
     public double caveCheeseFrequency = 0.0128;
     public double tunnelThreshold = 0.064;
@@ -187,9 +173,25 @@ public final class TerrainSettings {
     public double cavernFrequency = 0.0042;
     public int cavernMinY = -60;
     public int cavernMaxY = 40;
-    public double megaCaveDensity = 0.0;
-    public double megaCaveFrequency = 0.0016;
     public int surfaceCaveClearance = 5;
+
+    // ---------------------------------------------------------------- ancient city
+    /**
+     * Whether this generator places the ancient city itself.
+     *
+     * <p>It is the one vanilla structure taken over here. The server can no longer place its own,
+     * because it only ever does so in the {@code deep_dark} biome and this generator stops reporting
+     * that key - see the biome provider. Every other vanilla structure is untouched.</p>
+     */
+    public boolean ancientCity = true;
+
+    /**
+     * Spacing of the ancient city grid, in blocks: one candidate cell this wide, everywhere.
+     *
+     * <p>The schematic is 172 blocks across, so this is not a grid it can share with anything. Wide
+     * spacing is also what makes finding one an event rather than a chore.</p>
+     */
+    public int ancientCityGrid = 1408;
 
     // ---------------------------------------------------------------- strata and ores
     public double strataThickness = 9.0;
@@ -328,7 +330,6 @@ public final class TerrainSettings {
         copy.floatingIslandFrequency = floatingIslandFrequency;
         copy.floatingIslandSize = floatingIslandSize;
         copy.caves = caves;
-        copy.caveWater = caveWater;
         copy.caveCheeseThreshold = caveCheeseThreshold;
         copy.caveCheeseFrequency = caveCheeseFrequency;
         copy.tunnelThreshold = tunnelThreshold;
@@ -337,9 +338,9 @@ public final class TerrainSettings {
         copy.cavernFrequency = cavernFrequency;
         copy.cavernMinY = cavernMinY;
         copy.cavernMaxY = cavernMaxY;
-        copy.megaCaveDensity = megaCaveDensity;
-        copy.megaCaveFrequency = megaCaveFrequency;
         copy.surfaceCaveClearance = surfaceCaveClearance;
+        copy.ancientCity = ancientCity;
+        copy.ancientCityGrid = ancientCityGrid;
         copy.strataThickness = strataThickness;
         copy.strataWarp = strataWarp;
         copy.strataFrequency = strataFrequency;
@@ -379,7 +380,6 @@ public final class TerrainSettings {
                 s.canyonStrength = 0.18;
                 s.canyonDepth = 34.0;
                 s.overhangStrength = 0.08;
-                s.megaCaveDensity = 0.0;
                 s.trenchThreshold = 0.86;
             }
             case CHAOTIC -> {
@@ -425,7 +425,6 @@ public final class TerrainSettings {
                 s.floatingIslandDensity = 0.10;
 
                 s.cavernDensity = 0.36;
-                s.megaCaveDensity = 0.06;
                 s.caveCheeseThreshold = 0.52;
 
                 s.biomeFragmentation = 0.22;
@@ -495,8 +494,6 @@ public final class TerrainSettings {
 
                 s.caveCheeseThreshold = 0.47;
                 s.cavernDensity = 0.44;
-                s.megaCaveDensity = 0.12;
-                s.megaCaveFrequency = 0.0013;
 
                 s.strataThickness = 6.5;
                 s.strataWarp = 22.0;

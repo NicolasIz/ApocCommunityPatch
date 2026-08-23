@@ -297,12 +297,14 @@ public final class TerrainEngine {
         // Underground water and lava tables for this column. These are what stop the deep world from
         // being either bone dry or one continuous lava ocean.
         int lavaTable = aquifers.lavaTable(x, z);
-        int waterTable = aquifers.waterTable(x, z, height);
-        if (seabed) {
-            // Everything hollow under the sea floor belongs to the sea.
-            int seaFill = (int) Math.floor(water);
-            waterTable = waterTable == AquiferSampler.NO_WATER ? seaFill : Math.max(waterTable, seaFill);
-        }
+
+        // Water reaches a cavity only while the column is still open to the body of water above it.
+        // This is the whole water rule, and it is a rule about connection rather than about height:
+        // the first solid block seals everything under it, so a closed cave is air and rock. What it
+        // replaces was a water TABLE - a height per region, filled in wherever a cavity happened to
+        // be below it - which is how sealed caves ended up full of water, how water appeared under
+        // caves, and how one hillside carried several water surfaces at once.
+        boolean openToWater = true;
         // Cave region sampled once per column instead of once per cavity.
         double caveRoll = caveBiomes.regionRoll(x, z);
         double caveBlend = caveBiomes.regionBlend(x, z);
@@ -336,6 +338,8 @@ public final class TerrainEngine {
             }
 
             if (solid) {
+                // Rock. Everything below this is cut off from whatever water stands above it.
+                openToWater = false;
                 if (depth < 0) {
                     runUnderground = caveAirAbove;
                 }
@@ -380,9 +384,13 @@ public final class TerrainEngine {
                     }
                     airRun++;
                     if (y <= lavaTable) {
+                        // Lava sits just off the bedrock, as it does in the vanilla world, and is
+                        // the one liquid a sealed cave may hold.
                         writer.set(localX, y, localZ, Blocks.LAVA);
                         cavityFlooded = true;
-                    } else if (waterTable != AquiferSampler.NO_WATER && y <= waterTable) {
+                    } else if (openToWater && y <= waterTop) {
+                        // Still connected upward to the sea, a river or a lake: this cavity is part
+                        // of that body, so it holds its water.
                         writer.set(localX, y, localZ, Blocks.WATER);
                         cavityFlooded = true;
                     }
@@ -391,7 +399,11 @@ public final class TerrainEngine {
                     cavityTop = Integer.MIN_VALUE;
                     airRun = 0;
                     cavityFlooded = false;
-                    if (y <= waterTop) {
+                    // The same connection rule. This branch is open space that the carver did not
+                    // make - the sea itself, and the hollow under an overhang or an arch. The
+                    // overhang is the case that matters: it is air below solid rock, so without the
+                    // seal it filled with water and left a pool hanging under a cliff.
+                    if (openToWater && y <= waterTop) {
                         writer.set(localX, y, localZ, Blocks.WATER);
                     }
                 }

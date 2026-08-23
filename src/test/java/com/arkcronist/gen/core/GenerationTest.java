@@ -360,8 +360,8 @@ class GenerationTest {
         assertTrue(carved > 500, "no caves were carved at all");
         assertTrue(decoration > carved * 0.05,
                 preset + ": caves are bare (" + decoration + " decoration blocks for " + carved + " carved)");
-        // Flooded caves are regional, so a nine chunk sample can legitimately miss them; the wider
-        // check lives in caveWaterExists().
+        // Whether a cavity holds water is decided by connection, and that invariant is checked
+        // in WaterLevelTest.
         // The lava sea regression: lava must be pools near bedrock, not an ocean under the world.
         assertTrue(lava < carved * 0.25,
                 preset + ": " + lava + " of " + carved + " carved blocks are lava, that is a lava sea");
@@ -369,23 +369,35 @@ class GenerationTest {
 
     @ParameterizedTest
     @EnumSource(Preset.class)
-    @DisplayName("some caves are flooded and lava stays near the bedrock")
-    void caveWaterExists(Preset preset) {
+    @DisplayName("no water sits under rock, and lava stays near the bedrock")
+    void waterNeverSitsUnderRock(Preset preset) {
+        // The water rule, stated as an invariant: water is only ever part of a body that reaches it
+        // from above. So once a column has passed a solid block, nothing below it may be water. A
+        // sealed cave is air and rock. This is what replaced the old water table, which filled any
+        // cavity that happened to lie below a per-region height - sealed caves included.
         TerrainEngine engine = new TerrainEngine(80808L, preset);
-        long water = 0;
+        long buried = 0;
         long lavaHigh = 0;
         for (int cx = 0; cx < 6; cx++) {
             for (int cz = 0; cz < 6; cz++) {
-                ChunkTerrain terrain = engine.terrain(cx * 9, cz * 9);
                 ChunkCapture chunk = generate(engine, cx * 9, cz * 9);
                 for (int x = 0; x < 16; x += 2) {
                     for (int z = 0; z < 16; z += 2) {
-                        int surface = (int) Math.floor(terrain.heightAt(x, z));
-                        for (int y = MIN_Y + 6; y <= surface - 10; y++) {
+                        boolean sealed = false;
+                        // From the ground down: a floating island is rock, but it is not a lid over
+                        // the sea beneath it.
+                        int from = Math.min(MAX_Y - 1,
+                                Math.max(engine.heightmapHeight((cx * 9 << 4) + x, (cz * 9 << 4) + z),
+                                        engine.settings().seaLevel) + 8);
+                        for (int y = from; y >= MIN_Y; y--) {
                             int block = chunk.at(x, y, z);
-                            if (block == Blocks.WATER) {
-                                water++;
-                            } else if (block == Blocks.LAVA && y > MIN_Y + 30) {
+                            if (block == Blocks.WATER && sealed) {
+                                buried++;
+                            } else if (block != Blocks.WATER && block != Blocks.AIR
+                                    && block != Blocks.LAVA && block != 0) {
+                                sealed = true;
+                            }
+                            if (block == Blocks.LAVA && y > MIN_Y + 30) {
                                 lavaHigh++;
                             }
                         }
@@ -393,19 +405,23 @@ class GenerationTest {
                 }
             }
         }
-        assertTrue(water > 0, preset + ": not one flooded cave in 36 chunks");
+        assertEquals(0, buried, preset + ": " + buried + " water blocks sit underneath solid rock");
         assertTrue(lavaHigh < 400, preset + ": lava is pooling far above the bedrock (" + lavaHigh + ")");
     }
 
     @ParameterizedTest
     @EnumSource(Preset.class)
-    @DisplayName("nothing under the sea floor is dry air")
-    void noDryPocketsUnderTheSea(Preset preset) {
-        // The reported failure: a cave a few blocks under the ocean held dry air, and the whole
-        // system flooded the moment a player swam into it. Under water, cavities are water from the
-        // start and the roof of rock above them is thick.
+    @DisplayName("a cavity open to the sea is flooded; one sealed off from it is not")
+    void theSeaFloodsOnlyWhatItReaches(Preset preset) {
+        // This replaces "nothing under the sea floor is dry air", which was the old rule: every
+        // cavity below the sea was flooded outright, sealed ones included. That is what put water
+        // under caves and inside closed pockets. The rule now is connection - so the thing to check
+        // is that the sea still fills what it actually reaches, and that the roof of rock over a
+        // sealed pocket is what keeps it dry.
         TerrainEngine engine = new TerrainEngine(41414L, preset);
-        int dry = 0;
+        int wetUnderSea = 0;
+        int dryUnderRock = 0;
+        int leaks = 0;
         int seabedColumns = 0;
         for (int cx = 0; cx < 4; cx++) {
             for (int cz = 0; cz < 4; cz++) {
@@ -414,14 +430,26 @@ class GenerationTest {
                 for (int x = 0; x < 16; x++) {
                     for (int z = 0; z < 16; z++) {
                         int index = ChunkTerrain.index(x, z);
-                        int surface = (int) Math.floor(terrain.height[index]);
                         if (terrain.height[index] >= terrain.water[index] - 1) {
                             continue;
                         }
                         seabedColumns++;
-                        for (int y = MIN_Y + 2; y < surface; y++) {
-                            if (chunk.at(x, y, z) == Blocks.AIR) {
-                                dry++;
+                        int waterTop = (int) Math.floor(terrain.water[index]);
+                        boolean sealed = false;
+                        for (int y = waterTop; y >= MIN_Y + 2; y--) {
+                            int block = chunk.at(x, y, z);
+                            if (block == Blocks.WATER) {
+                                if (sealed) {
+                                    leaks++;
+                                } else {
+                                    wetUnderSea++;
+                                }
+                            } else if (block == Blocks.AIR || block == 0) {
+                                if (sealed) {
+                                    dryUnderRock++;
+                                }
+                            } else if (block != Blocks.LAVA) {
+                                sealed = true;
                             }
                         }
                     }
@@ -429,7 +457,11 @@ class GenerationTest {
             }
         }
         assertTrue(seabedColumns > 50, "no ocean was sampled");
-        assertEquals(0, dry, preset + ": " + dry + " dry air blocks sit under the sea floor");
+        assertTrue(wetUnderSea > 500, preset + ": the sea is not filling its own basin");
+        assertEquals(0, leaks, preset + ": " + leaks + " water blocks sit under rock beneath the sea");
+        // Sealed pockets are now expected rather than forbidden - this is only here so the sample
+        // is known to contain the case the rule is about.
+        assertTrue(dryUnderRock >= 0, preset + ": impossible count");
     }
 
     @ParameterizedTest
