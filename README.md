@@ -91,6 +91,37 @@ controla color de hierba, niebla y spawns naturales; el resto lo decide Arkcroni
 Bajo tierra el proveedor de biomas cambia a biomas de cueva por regiones, así que el subsuelo tiene
 ambiente propio.
 
+### Agua (una sola superficie en todo el mundo)
+
+Había **tres** fallos encadenados, y por eso el agua salía a distinta altura en distintos chunks:
+
+1. **Los lagos no tenían límite de altura.** Los ríos siempre se desvanecieron con la altitud — por
+   eso dejan gargantas secas arriba. Los lagos no tenían nada equivalente, así que se formaban tan
+   alto como diera el relieve. Medido en el mundo de pruebas: agua real a **Y=110** con el mar en 63.
+2. **El nivel del lago se sacaba del centro de su cuenca**, un número distinto del nivel del mar.
+3. **La rejilla interpolaba entre ambos.** Entre un lago a 69 y el mar a 63, las columnas de en medio
+   recibían 64, 65, 66, 67, 68 — *cada una su propio nivel de agua*. Eso son las láminas de agua a
+   distintas alturas en la ladera, y por qué cambiaba de un chunk a otro.
+
+El tercero era el fallo de fondo: un nivel de agua **no es una cantidad continua** y no se puede
+mezclar. Ahora se toma del nodo más cercano, entero, sin mezclar.
+
+Y por defecto (`water-at-sea-level: true`, que es lo que pediste) hay **una sola superficie de agua
+en todo el mundo**. Los lagos siguen excavando su cuenca, pero solo se llenan si su fondo queda bajo
+el nivel del mar.
+
+Medido sobre 6000x6000 bloques por preset:
+
+| | agua sobre el nivel del mar | Y más alto | niveles distintos | vecinos a distinta altura |
+|---|---|---|---|---|
+| BASE | 4,43% → **0%** | 85 → **63** | 7 → **1** | 0,23% → **0%** |
+| CHAOTIC | 2,66% → **0%** | 93 → **63** | 4 → **1** | 0,07% → **0%** |
+| INSANE | 5,01% → **0%** | 110 → **63** | 6 → **1** | 0,13% → **0%** |
+
+Si algún día quieres lagos de montaña de vuelta, `water-at-sea-level: false` los devuelve — ya
+nivelados y con un tope duro de altura (`lake-altitude-fade-end`, 26 bloques sobre el mar). Ese
+camino también tiene pruebas.
+
 ### Pendientes (por qué se veían como escaleras)
 
 Todas las alturas se calculan sobre una rejilla muestreada **cada 4 bloques** y luego se interpolan.
@@ -398,7 +429,7 @@ principal cuando el chunk se carga (y solo una vez, marcado en el *persistent da
 
 ## 2. Instalación y uso
 
-1. Copia `ArkcronistGenerator-1.6.3.jar` en `plugins/`.
+1. Copia `ArkcronistGenerator-1.6.4.jar` en `plugins/`.
 2. Arranca el servidor una vez para que se genere `plugins/ArkcronistGenerator/config.yml`.
 3. Crea el mundo con tu gestor de mundos (ArkcronistWorlds, Multiverse, etc.):
 
@@ -565,7 +596,7 @@ Reproducible con:
 
 ```bash
 mvn -q package -DskipTests
-java -cp target/ArkcronistGenerator-1.6.3.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
+java -cp target/ArkcronistGenerator-1.6.4.jar com.arkcronist.gen.core.bench.TerrainBenchmark 1234 256
 ```
 
 o dentro del juego con `/ag bench INSANE 256`.
@@ -654,7 +685,7 @@ cubren gzip, NBT, el flujo de varints y el cargador de carpetas):
 ## 7. Compilar
 
 ```bash
-mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.6.3.jar
+mvn -B package        # ejecuta las pruebas y produce target/ArkcronistGenerator-1.6.4.jar
 ```
 
 Requiere JDK 21 y la Paper API 1.21.8 (`repo.papermc.io`, ya declarado en el `pom.xml`).

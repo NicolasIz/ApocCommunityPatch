@@ -199,6 +199,14 @@ minibosses:
 #  random tick and leaves bare patches - so the thermal map is held coherent while
 #  humidity and weirdness are free to vary inside it.
 #
+#  Agua:
+#
+#    water-at-sea-level      true (por defecto) = TODA el agua del mundo a una sola altura, la del
+#                            mar. Los lagos solo se llenan si su fondo queda por debajo. Ponlo en
+#                            false si quieres lagos con su propio nivel.
+#    lake-altitude-fade-end  con water-at-sea-level en false, altura maxima sobre el mar a la que
+#                            se permite un lago. Es un corte duro: por encima no se genera ninguno.
+#
 #  Slopes are generated from a grid sampled every four blocks and interpolated, which leaves them
 #  locally straight - and a straight ramp of blocks is a staircase. These add roughness back at
 #  block resolution, gated by slope so open country stays buildable:

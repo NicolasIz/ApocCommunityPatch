@@ -126,6 +126,31 @@ public final class TerrainSettings {
     public double lakeChance = 0.10;
     public double lakeDepth = 8.0;
 
+    /**
+     * Hold every water surface in the world at sea level.
+     *
+     * <p>A lake used to carry its own level, taken from the broad relief at the middle of its basin.
+     * On high ground that put real water high on a mountainside - measured at Y=110 against a sea
+     * level of 63 - and since a lake's level and the sea's are two different numbers, the grid
+     * between them interpolated through every value in between. That is where sheets of water at a
+     * dozen different heights came from, and why the height changed from chunk to chunk.</p>
+     *
+     * <p>With this on there is exactly one water surface in the world and lakes fill only where
+     * their floor lies below it. Turn it off to get per-lake levels back; they are levelled and
+     * altitude-capped now either way, but one sea level is the setting that cannot go wrong.</p>
+     */
+    public boolean waterAtSeaLevel = true;
+
+    /**
+     * Height band, above sea level, over which lake basins fade out.
+     *
+     * <p>Rivers have always had this - it is why they leave dry gorges up high instead of floating
+     * water. Lakes had nothing equivalent, so a basin could form at any altitude the relief allowed.
+     * Past the end of this band no lake is carved at all.</p>
+     */
+    public double lakeAltitudeFadeStart = 8.0;
+    public double lakeAltitudeFadeEnd = 26.0;
+
     // ---------------------------------------------------------------- 3D terrain
     public double overhangStrength = 0.0;
     public double overhangFrequency = 0.021;
@@ -275,6 +300,9 @@ public final class TerrainSettings {
         copy.lakeFrequency = lakeFrequency;
         copy.lakeChance = lakeChance;
         copy.lakeDepth = lakeDepth;
+        copy.waterAtSeaLevel = waterAtSeaLevel;
+        copy.lakeAltitudeFadeStart = lakeAltitudeFadeStart;
+        copy.lakeAltitudeFadeEnd = lakeAltitudeFadeEnd;
         copy.overhangStrength = overhangStrength;
         copy.overhangFrequency = overhangFrequency;
         copy.overhangBand = overhangBand;

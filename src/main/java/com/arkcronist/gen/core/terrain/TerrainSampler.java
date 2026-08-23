@@ -156,6 +156,14 @@ public final class TerrainSampler {
             height = carveLake(x, z, height, erosion, out);
         }
 
+        // One surface for the whole world. Every raised level in here - a lake's own, a river's -
+        // is a second number that the coarse grid then has to blend towards the sea's, and the
+        // blend is what produced water at every height in between. Capping it at the source means
+        // there is only ever one number to blend.
+        if (settings.waterAtSeaLevel) {
+            out.waterLevel = Math.min(out.waterLevel, settings.seaLevel);
+        }
+
         // Soft world limits: instead of letting a trench clip through bedrock or a peak flatten on
         // the build ceiling, both ends are compressed smoothly so the shape survives, just squashed.
         height = MathUtil.smoothMax(height, settings.minY + 6.0, 10.0);
@@ -337,22 +345,45 @@ public final class TerrainSampler {
         if (basin <= 0.0) {
             return height;
         }
-        // Lakes prefer settled, eroded ground: no ponds hanging on a cliff face.
-        double flatness = MathUtil.smoothStep(MathUtil.normalize(erosion, 0.35, 0.8));
-        double strength = basin * flatness;
-        if (strength <= 0.02) {
-            return height;
-        }
-
-        double bed = height - settings.lakeDepth * strength;
-        out.lakeStrength = strength;
         // One level for the whole lake, taken at its centre, so its surface is flat however the
         // ground around it rolls. Columns whose ground stands above that level simply stay dry -
         // which is where the shoreline comes from.
         // Local, not a field: one sampler serves every generation thread at once.
         double[] centre = new double[2];
         lakeCells.cellCentre(x, z, centre);
-        double surface = basinLevel(centre[0], centre[1]) - 1.0;
+        // Floored to a whole block. A water level is the y of a block face, and letting it stay
+        // fractional meant two columns of the same lake could round to different blocks.
+        double surface = Math.floor(basinLevel(centre[0], centre[1]) - 1.0);
+
+        // Lakes prefer settled, eroded ground: no ponds hanging on a cliff face.
+        double flatness = MathUtil.smoothStep(MathUtil.normalize(erosion, 0.35, 0.8));
+        // And they belong to the lowlands. Rivers have always faded out with altitude; lakes had
+        // nothing of the sort, so a basin could form as high as the relief went and then fill -
+        // which is how real water ended up sitting on a mountainside at Y=110.
+        //
+        // The fade is measured on the lake's own surface, not on the column asking. Those are two
+        // different heights: the surface comes from the middle of the basin, so gating on the
+        // column let a lake sitting well up a mountain still pour its level into any lower column
+        // that happened to pass the test. Gating on the surface is the thing actually being
+        // promised - no water above this height.
+        //
+        // Cut outright at the top of the band rather than left to fade away. A fade never quite
+        // reaches zero, and a lake at six percent strength is still a lake full of water - which is
+        // how one turned up at Y=97 under a cap that was supposed to stop it. The cap is exactly
+        // seaLevel + lakeAltitudeFadeEnd, and nothing generates above it.
+        double ceiling = settings.seaLevel + settings.lakeAltitudeFadeEnd;
+        if (surface > ceiling) {
+            return height;
+        }
+        double altitudeFade = 1.0 - MathUtil.smoothStep(MathUtil.normalize(surface,
+                settings.seaLevel + settings.lakeAltitudeFadeStart, ceiling));
+        double strength = basin * flatness * altitudeFade;
+        if (strength <= 0.02) {
+            return height;
+        }
+
+        double bed = height - settings.lakeDepth * strength;
+        out.lakeStrength = strength;
         double carved = MathUtil.lerp(strength, height, bed);
         if (carved < surface) {
             out.waterLevel = Math.max(out.waterLevel, surface);

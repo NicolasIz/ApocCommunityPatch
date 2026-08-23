@@ -180,7 +180,12 @@ public final class ChunkTerrain {
                 int i = index(localX, localZ);
 
                 double h = bicubic(gridHeight, cx, cz, tx, tz);
-                double w = bilinear(gridWater, cx, cz, tx, tz);
+                // Nearest node, never blended. Every other field here is a continuous quantity and
+                // interpolating it is right; a water level is not. Blending a lake's level towards
+                // the sea's handed the columns in between their own private levels - 64, 65, 66,
+                // 67, 68 - and those are the sheets of water sitting at different heights on a
+                // hillside. A body of water has one surface, so the value is taken whole.
+                double w = nearest(gridWater, cx, cz, tx, tz);
 
                 // Everything above is interpolated from nodes four blocks apart, which leaves the
                 // surface locally straight - and a straight ramp of blocks is a staircase. This is
@@ -278,6 +283,13 @@ public final class ChunkTerrain {
         double dry = 1.0 - MathUtil.smoothStep(MathUtil.normalize(water, 0.25, 0.70));
 
         return sampler.surfaceDetail(worldX, worldZ) * amplitude * onSlope * dry;
+    }
+
+    /** Nearest grid node, for quantities that must not be blended between neighbours. */
+    private static double nearest(double[] grid, int cx, int cz, double tx, double tz) {
+        int x = tx < 0.5 ? cx : cx + 1;
+        int z = tz < 0.5 ? cz : cz + 1;
+        return grid[z * GRID + x];
     }
 
     private static double bicubic(double[] grid, int cx, int cz, double tx, double tz) {
