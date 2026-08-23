@@ -23,7 +23,14 @@ public final class TerrainSettings {
     public double continentWarp = 320.0;
     public double continentWarpFrequency = 0.00055;
     /** Continentalness below this value is ocean. */
-    public double oceanCutoff = -0.04;
+    /**
+     * Where the continent field stops being land.
+     *
+     * <p>Lower means more land. Measured at -0.04 the world came out 57% land on BASE and 48% on the
+     * other two - about half the map was sea, which leaves little room for the biomes and the
+     * structures that need them.</p>
+     */
+    public double oceanCutoff = -0.15;
     /** Width of the coast transition in continentalness units. */
     public double coastWidth = 0.075;
     /** Extra bays and inlets carved into the coastline. */
@@ -210,8 +217,8 @@ public final class TerrainSettings {
     public double oreMultiplier = 1.0;
 
     // ---------------------------------------------------------------- biomes
-    public double climateFrequency = 0.00062;
-    public double climateWarp = 150.0;
+    public double climateFrequency = 0.00046;
+    public double climateWarp = 120.0;
     public double biomeFragmentation = 0.0;
 
     /**
@@ -439,9 +446,9 @@ public final class TerrainSettings {
                 s.cavernDensity = 0.36;
                 s.caveCheeseThreshold = 0.52;
 
-                s.biomeFragmentation = 0.22;
-                s.climateFrequency = 0.00068;
-                s.climateWarp = 200.0;
+                s.biomeFragmentation = 0.12;
+                s.climateFrequency = 0.00050;
+                s.climateWarp = 155.0;
                 s.biomeBlend = 24.0;
 
                 s.structureDensity = 1.25;
@@ -512,9 +519,9 @@ public final class TerrainSettings {
                 s.strataWarp = 22.0;
                 s.oreMultiplier = 1.35;
 
-                s.climateFrequency = 0.00074;
-                s.climateWarp = 260.0;
-                s.biomeFragmentation = 0.30;
+                s.climateFrequency = 0.00056;
+                s.climateWarp = 195.0;
+                s.biomeFragmentation = 0.18;
                 s.biomeBlend = 22.0;
 
                 s.treeDensity = 1.15;
