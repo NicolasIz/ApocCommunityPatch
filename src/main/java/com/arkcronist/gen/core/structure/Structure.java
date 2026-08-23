@@ -48,4 +48,15 @@ public interface Structure {
     boolean canPlace(StructureContext context);
 
     void build(StructureContext context, StructureBuffer buffer);
+
+    /**
+     * The height worth telling a player about when they ask where this structure is.
+     *
+     * <p>The surface, for anything built on it. A structure that lives deep underground has to
+     * override this, otherwise a search reports the ground overhead and sends the player digging in
+     * the right column at the wrong depth - a hundred blocks off, for an ancient city.</p>
+     */
+    default int locateY(StructureContext context) {
+        return context.groundY;
+    }
 }

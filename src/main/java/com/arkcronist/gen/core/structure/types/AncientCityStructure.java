@@ -124,6 +124,12 @@ public final class AncientCityStructure implements Structure {
     }
 
     @Override
+    public int locateY(StructureContext context) {
+        // Stand a player a few blocks above the floor of the hall, not on the ground overhead.
+        return baseY(context) + 3;
+    }
+
+    @Override
     public void build(StructureContext context, StructureBuffer buffer) {
         if (city == null) {
             return;

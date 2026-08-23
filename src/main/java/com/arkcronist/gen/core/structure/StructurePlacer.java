@@ -535,7 +535,9 @@ public final class StructurePlacer {
                 if (site == null || (tag != null && site.structure().tag() != tag)) {
                     continue;
                 }
-                return new int[]{site.x(), engine.surfaceHeight(site.x(), site.z()), site.z()};
+                // Ask the structure how deep it is rather than assuming the surface: a deep
+                // landmark reports the floor of its own hall.
+                return new int[]{site.x(), site.structure().locateY(contextFor(site)), site.z()};
             }
         }
         return null;
