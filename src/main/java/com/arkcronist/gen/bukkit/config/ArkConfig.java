@@ -21,6 +21,19 @@ public final class ArkConfig {
     private final FileConfiguration config;
     private final Map<String, String> minibossNames = new HashMap<>();
 
+    /**
+     * The hostile-mob swap, parsed once.
+     *
+     * <p>Read on every natural spawn, which on a populated server is hundreds of events a second,
+     * so these are not rebuilt per call. Rebuilding them was the first shape of this and it meant
+     * three fresh collections - two sets and a map of copied lists - for every mob that tried to
+     * appear anywhere in the world. This object is thrown away and remade on reload, so parsing in
+     * the constructor is also what keeps a reload honest.</p>
+     */
+    private final java.util.Set<String> hostileMobPresets;
+    private final java.util.Set<String> hostileMobReasons;
+    private final java.util.Map<String, java.util.List<String>> hostileMobTable;
+
     public ArkConfig(FileConfiguration config) {
         this.config = config;
         ConfigurationSection names = config.getConfigurationSection("minibosses.names");
@@ -29,6 +42,41 @@ public final class ArkConfig {
                 minibossNames.put(key.toLowerCase(Locale.ROOT), names.getString(key, key));
             }
         }
+        this.hostileMobPresets = readUpperCaseSet("hostile-mobs.presets", java.util.Set.of());
+        this.hostileMobReasons = readUpperCaseSet("hostile-mobs.reasons", java.util.Set.of("NATURAL"));
+        this.hostileMobTable = readHostileMobTable();
+    }
+
+    private java.util.Set<String> readUpperCaseSet(String path, java.util.Set<String> fallback) {
+        java.util.Set<String> values = new java.util.LinkedHashSet<>();
+        for (String raw : config.getStringList(path)) {
+            String value = raw.trim().toUpperCase(Locale.ROOT);
+            if (!value.isEmpty()) {
+                values.add(value);
+            }
+        }
+        return values.isEmpty() ? fallback : java.util.Set.copyOf(values);
+    }
+
+    private java.util.Map<String, java.util.List<String>> readHostileMobTable() {
+        java.util.Map<String, java.util.List<String>> table = new java.util.LinkedHashMap<>();
+        ConfigurationSection section = config.getConfigurationSection("hostile-mobs.table");
+        if (section == null) {
+            return java.util.Map.of();
+        }
+        for (String key : section.getKeys(false)) {
+            java.util.List<String> mobs = new java.util.ArrayList<>();
+            for (String raw : section.getStringList(key)) {
+                String name = raw.trim();
+                if (!name.isEmpty()) {
+                    mobs.add(name);
+                }
+            }
+            if (!mobs.isEmpty()) {
+                table.put(key.trim().toUpperCase(Locale.ROOT), java.util.List.copyOf(mobs));
+            }
+        }
+        return java.util.Map.copyOf(table);
     }
 
     public Preset defaultPreset() {
@@ -197,23 +245,12 @@ public final class ArkConfig {
 
     /** Which presets get the swap. A world on any other preset keeps its vanilla mobs. */
     public java.util.Set<String> hostileMobPresets() {
-        java.util.Set<String> presets = new java.util.LinkedHashSet<>();
-        for (String raw : config.getStringList("hostile-mobs.presets")) {
-            presets.add(raw.trim().toUpperCase(java.util.Locale.ROOT));
-        }
-        return presets;
+        return hostileMobPresets;
     }
 
     /** Which spawn reasons get the swap. Natural spawning only, unless told otherwise. */
     public java.util.Set<String> hostileMobReasons() {
-        java.util.Set<String> reasons = new java.util.LinkedHashSet<>();
-        for (String raw : config.getStringList("hostile-mobs.reasons")) {
-            reasons.add(raw.trim().toUpperCase(java.util.Locale.ROOT));
-        }
-        if (reasons.isEmpty()) {
-            reasons.add("NATURAL");
-        }
-        return reasons;
+        return hostileMobReasons;
     }
 
     /** Whether the garrisons and bosses this generator places are swapped too. */
@@ -229,25 +266,7 @@ public final class ArkConfig {
      * that is the whole weighting mechanism, and it is enough.</p>
      */
     public java.util.Map<String, java.util.List<String>> hostileMobTable() {
-        java.util.Map<String, java.util.List<String>> table = new java.util.LinkedHashMap<>();
-        org.bukkit.configuration.ConfigurationSection section =
-                config.getConfigurationSection("hostile-mobs.table");
-        if (section == null) {
-            return table;
-        }
-        for (String key : section.getKeys(false)) {
-            java.util.List<String> names = new java.util.ArrayList<>();
-            for (String raw : section.getStringList(key)) {
-                String name = raw.trim();
-                if (!name.isEmpty()) {
-                    names.add(name);
-                }
-            }
-            if (!names.isEmpty()) {
-                table.put(key.trim().toUpperCase(java.util.Locale.ROOT), java.util.List.copyOf(names));
-            }
-        }
-        return table;
+        return hostileMobTable;
     }
 
     public boolean vanillaMobs() {
