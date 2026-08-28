@@ -62,13 +62,27 @@ public final class MythicBridge {
                 if (instance == null) {
                     continue;
                 }
-                Object helper = instance.getClass().getMethod("getAPIHelper").invoke(instance);
+                // Asked of the resolved class, not of instance.getClass(). They are usually the
+                // same and when they are not this is the difference between working and not: if the
+                // runtime class is an internal, non-public one, getMethod still hands back the
+                // public method but invoking it throws IllegalAccessException, because it is the
+                // declaring class that has to be reachable and it is not.
+                Object helper = type.getMethod("getAPIHelper").invoke(instance);
                 if (helper == null) {
                     continue;
                 }
                 Method spawn = findSpawn(helper.getClass());
                 if (spawn == null) {
                     continue;
+                }
+                // Same trap one level down, and here there is no public class to ask instead - the
+                // helper is whatever getAPIHelper returned. Opening the method up covers the case;
+                // if the JVM refuses, the invoke below would have failed anyway and the bridge
+                // reports itself unavailable rather than throwing on every spawn.
+                try {
+                    spawn.setAccessible(true);
+                } catch (RuntimeException ignored) {
+                    // Left as it is; it may still be invokable.
                 }
                 apiHelper = helper;
                 spawnMethod = spawn;

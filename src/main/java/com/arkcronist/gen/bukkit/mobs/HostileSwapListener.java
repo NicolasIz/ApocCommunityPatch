@@ -50,7 +50,11 @@ public final class HostileSwapListener implements Listener {
         if (!plugin.arkConfig().hostileMobReasons().contains(event.getSpawnReason().name())) {
             return;
         }
-        ArkWorld world = plugin.worlds().find(event.getLocation().getWorld().getName());
+        org.bukkit.World bukkitWorld = event.getLocation().getWorld();
+        if (bukkitWorld == null) {
+            return;
+        }
+        ArkWorld world = plugin.worlds().find(bukkitWorld.getName());
         if (world == null
                 || !plugin.arkConfig().hostileMobPresets().contains(world.preset().name())) {
             return;
