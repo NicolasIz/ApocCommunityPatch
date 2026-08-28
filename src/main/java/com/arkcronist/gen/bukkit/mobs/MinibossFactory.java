@@ -50,6 +50,17 @@ public final class MinibossFactory {
         }
 
         Location location = new Location(world, request.x() + 0.5, request.y(), request.z() + 0.5);
+
+        // A garrison of the custom mobs, where one is configured for this entity type. Returned as
+        // it comes: a MythicMobs mob carries its own health, damage and behaviour from its own
+        // configuration, and layering this generator's tier scaling on top of that would give a mob
+        // with several times the health its author set. The tier is passed to MythicMobs as a level
+        // and what it does with it is its business.
+        Entity custom = customFor(request, location, config);
+        if (custom != null) {
+            return custom;
+        }
+
         Entity entity = world.spawnEntity(location, type);
         if (!(entity instanceof LivingEntity living)) {
             return entity;
@@ -86,6 +97,28 @@ public final class MinibossFactory {
                 equipment.setHelmetDropChance(0.05f);
             }
         }
+    }
+
+    /**
+     * The MythicMobs stand-in for a structure's mob, or null to use the vanilla one.
+     *
+     * <p>Same table the spawn listener uses, so a castle's guards are the same goblins a player
+     * meets in the open rather than a second, separate idea of what lives in this world.</p>
+     */
+    private static Entity customFor(MobSpawn request, Location location, ArkConfig config) {
+        if (!config.hostileMobsEnabled() || !config.replaceStructureMobs() || !MythicBridge.available()) {
+            return null;
+        }
+        java.util.List<String> candidates =
+                config.hostileMobTable().get(request.entityType().toUpperCase(Locale.ROOT));
+        if (candidates == null || candidates.isEmpty()) {
+            return null;
+        }
+        // Chosen from the position, not from a shared random: the same site must produce the same
+        // garrison every time it is generated, exactly like everything else here.
+        long roll = Hashing.hash3(0x60B1_1A5L, request.x(), request.y(), request.z());
+        String chosen = candidates.get((int) Math.floorMod(roll, candidates.size()));
+        return MythicBridge.spawn(chosen, location, Math.max(1, request.tier()));
     }
 
     private static void applyBoss(LivingEntity living, MobSpawn request, ArkConfig config,

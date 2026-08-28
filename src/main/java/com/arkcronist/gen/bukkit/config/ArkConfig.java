@@ -190,6 +190,66 @@ public final class ArkConfig {
         }
     }
 
+    /** Whether hostile mobs should be swapped for MythicMobs ones at all. */
+    public boolean hostileMobsEnabled() {
+        return config.getBoolean("hostile-mobs.enabled", false);
+    }
+
+    /** Which presets get the swap. A world on any other preset keeps its vanilla mobs. */
+    public java.util.Set<String> hostileMobPresets() {
+        java.util.Set<String> presets = new java.util.LinkedHashSet<>();
+        for (String raw : config.getStringList("hostile-mobs.presets")) {
+            presets.add(raw.trim().toUpperCase(java.util.Locale.ROOT));
+        }
+        return presets;
+    }
+
+    /** Which spawn reasons get the swap. Natural spawning only, unless told otherwise. */
+    public java.util.Set<String> hostileMobReasons() {
+        java.util.Set<String> reasons = new java.util.LinkedHashSet<>();
+        for (String raw : config.getStringList("hostile-mobs.reasons")) {
+            reasons.add(raw.trim().toUpperCase(java.util.Locale.ROOT));
+        }
+        if (reasons.isEmpty()) {
+            reasons.add("NATURAL");
+        }
+        return reasons;
+    }
+
+    /** Whether the garrisons and bosses this generator places are swapped too. */
+    public boolean replaceStructureMobs() {
+        return config.getBoolean("hostile-mobs.replace-structure-mobs", true);
+    }
+
+    /**
+     * Vanilla entity type to the MythicMobs names that may stand in for it.
+     *
+     * <p>Keyed by the upper-case entity name, because that is what both the spawn event and the
+     * generator's own mob requests carry. A name repeated in a list simply comes up more often -
+     * that is the whole weighting mechanism, and it is enough.</p>
+     */
+    public java.util.Map<String, java.util.List<String>> hostileMobTable() {
+        java.util.Map<String, java.util.List<String>> table = new java.util.LinkedHashMap<>();
+        org.bukkit.configuration.ConfigurationSection section =
+                config.getConfigurationSection("hostile-mobs.table");
+        if (section == null) {
+            return table;
+        }
+        for (String key : section.getKeys(false)) {
+            java.util.List<String> names = new java.util.ArrayList<>();
+            for (String raw : section.getStringList(key)) {
+                String name = raw.trim();
+                if (!name.isEmpty()) {
+                    names.add(name);
+                }
+            }
+            if (!names.isEmpty()) {
+                table.put(key.trim().toUpperCase(java.util.Locale.ROOT), java.util.List.copyOf(names));
+            }
+        }
+        return table;
+    }
+
     public boolean vanillaMobs() {
         return config.getBoolean("world.vanilla-mob-generation", true);
     }

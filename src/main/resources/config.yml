@@ -195,6 +195,56 @@ biome-colours:
     water: "#6E2B2B"
     water-fog: "#4A1D1D"
 
+# ---------------------------------------------------------------------------
+#  Mobs hostiles propios (MythicMobs + ModelEngine)
+# ---------------------------------------------------------------------------
+#  Cambia los mobs hostiles VANILLA por mobs de MythicMobs, en los mundos de
+#  este generador y solo en los presets que digas aqui.
+#
+#  QUE HACE FALTA. Los packs de MythicMobs y ModelEngine se instalan aparte,
+#  arrastrando sus carpetas a plugins/ como dice la guia del pack. Este plugin
+#  NO los trae dentro: solo conoce los nombres y se los pide a MythicMobs.
+#
+#  SI MYTHICMOBS NO ESTA, no pasa nada: no se sustituye nada y salen los mobs
+#  de siempre. El mundo se genera igual y el servidor arranca igual.
+#
+#  COMO SUSTITUYE. Cuando el juego va a poner un mob de la tabla, se pide antes
+#  el mob de MythicMobs; SOLO si ese aparece de verdad se cancela el vanilla.
+#  Asi, si escribes mal un nombre o el pack no esta cargado, el mundo se queda
+#  con sus mobs en vez de quedarse vacio.
+#
+#  PESOS. La lista se sortea al azar. Para que uno salga mas, ponlo mas veces.
+# ---------------------------------------------------------------------------
+hostile-mobs:
+  enabled: true
+
+  # En que presets se sustituye. Vacio = en ninguno.
+  presets: [INSANE]
+
+  # Por que motivos. NATURAL es el spawn de siempre (de noche, en cuevas).
+  # Anade SPAWNER si tambien quieres cambiar los de los generadores de mobs, y
+  # REINFORCEMENTS para los refuerzos que llama un zombie al ser golpeado.
+  reasons: [NATURAL]
+
+  # Cambiar tambien las guarniciones y jefes de las estructuras del generador.
+  replace-structure-mobs: true
+
+  # vanilla -> lista de nombres de MythicMobs.
+  #
+  # Los nombres de abajo son los de los packs "Goblin Mobs" y "Skeleton Mobs"
+  # de Amonde. Si usas otros packs, cambia la lista: aqui solo hay nombres.
+  #
+  # OJO con skeleton_mage_proj: NO lo pongas. No es un enemigo, es el proyectil
+  # que lanza el mago, y es un ARMOR_STAND. En una lista de spawn te llenaria
+  # el mundo de armor stands invisibles.
+  table:
+    ZOMBIE: [am_goblin_melee, am_goblin_melee, am_goblin_whip, am_goblin_brute]
+    ZOMBIE_VILLAGER: [am_goblin_mage, am_goblin_ranger]
+    HUSK: [am_goblin_brute, am_goblin_melee]
+    SKELETON: [skeleton_melee, skeleton_archer, skeleton_archer, skeleton_mage]
+    STRAY: [skeleton_archer, skeleton_mage]
+    WITHER_SKELETON: [skeleton_elite]
+
 structures:
   fill-loot: true
 

@@ -7,6 +7,11 @@ author: Arkcronist
 website: https://github.com/NicolasIz/ApocCommunityPatch
 folia-supported: false
 
+# Optional, both of them. Without MythicMobs the hostile-mobs section does nothing and the world
+# keeps its vanilla mobs; ModelEngine is what gives those mobs their models, and MythicMobs is the
+# one that asks for it, so this plugin never touches it directly.
+softdepend: [MythicMobs, ModelEngine]
+
 commands:
   ag:
     description: ArkcronistGenerator control command.

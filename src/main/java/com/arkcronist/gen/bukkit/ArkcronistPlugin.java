@@ -48,8 +48,11 @@ public final class ArkcronistPlugin extends JavaPlugin {
         this.prefabs = PrefabInstaller.install(getDataFolder().toPath(), getLogger(),
                 arkConfig.extractBundledPrefabs());
         BlockBridge.initialize(getLogger());
+        com.arkcronist.gen.bukkit.mobs.MythicBridge.initialize(getLogger());
         installBiomeColours();
         getServer().getPluginManager().registerEvents(new ChunkSpawnListener(this), this);
+        getServer().getPluginManager().registerEvents(
+                new com.arkcronist.gen.bukkit.mobs.HostileSwapListener(this), this);
 
         PluginCommand command = getCommand("ag");
         if (command != null) {

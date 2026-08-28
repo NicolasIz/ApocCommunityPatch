@@ -122,6 +122,46 @@ encima del bosque templado y el oscuro, y solo ganaba donde la rareza era extrem
 mundo**, y ni un bosquecillo colocado en nueve anillos de rejilla alrededor del origen. Ahora tiene
 un hueco propio en (0,45 / 0,72) y ocupa el 2,4–3,4%, por delante del bosque oscuro (1,05%).
 
+### Mobs hostiles propios (MythicMobs + ModelEngine)
+
+En los mundos de este generador, y **solo en los presets que digas**, los mobs hostiles vanilla se
+cambian por mobs de MythicMobs. Por defecto: `INSANE`, y solo el spawn natural.
+
+**Los packs no van dentro del plugin.** Son assets de pago y sus guías dicen expresamente que no se
+compartan, así que este repositorio no contiene ni un `.bbmodel` ni un `.yml` de MythicMobs. El
+plugin solo conoce **nombres** y se los pide a MythicMobs; tú instalas los packs arrastrando sus
+carpetas a `plugins/`, como dice su guía, y haces `/mm reload` y `/meg reload`.
+
+**Nunca deja el mundo vacío.** El orden importa y es toda la seguridad de esto: primero se pide el
+mob de MythicMobs y **solo si aparece de verdad** se cancela el vanilla. Un nombre mal escrito, un
+pack sin cargar o un MythicMobs ausente dejan el mundo con sus mobs de siempre, no sin mobs.
+
+**Sin MythicMobs no pasa nada.** Va como `softdepend`: si no está, la sección no hace nada, el mundo
+se genera igual y el servidor arranca igual. ModelEngine no se toca desde el código — el modelo lo
+ata MythicMobs en su propia config.
+
+La tabla que viene puesta usa los packs *Goblin Mobs* y *Skeleton Mobs* de Amonde:
+
+| vanilla | pasa a ser |
+|---|---|
+| `ZOMBIE` | goblin melee (×2), whip, brute |
+| `ZOMBIE_VILLAGER` | goblin mage, ranger |
+| `HUSK` | goblin brute, melee |
+| `SKELETON` | skeleton melee, archer (×2), mage |
+| `STRAY` | skeleton archer, mage |
+| `WITHER_SKELETON` | skeleton elite |
+
+Un nombre repetido sale más veces: ése es todo el sistema de pesos, y basta.
+
+**`skeleton_mage_proj` no está en la tabla y no debe estarlo.** No es un enemigo: es el proyectil que
+lanza el mago, un `ARMOR_STAND` sin vida ni IA. En una lista de spawn te llenaría el mundo de armor
+stands invisibles. Hay una prueba que falla si alguien lo mete.
+
+Las guarniciones y jefes de las estructuras usan la **misma** tabla, así que los guardias de un
+castillo son los mismos goblins que te encuentras en campo abierto. A esos no se les aplica el
+escalado de tier del plugin: un mob de MythicMobs trae su propia vida y daño de su config, y sumar
+ambas cosas daría un mob con varias veces la vida que su autor le puso.
+
 ### Colores propios de bioma (datapack)
 
 El color del césped lo decide el **cliente** a partir del bioma, y en Minecraft no existe ninguno con
