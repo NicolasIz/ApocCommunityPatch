@@ -9,10 +9,14 @@ import com.arkcronist.gen.core.prefab.Prefab;
 import com.arkcronist.gen.core.prefab.PrefabRegistry;
 import com.arkcronist.gen.core.structure.BufferWriter;
 import com.arkcronist.gen.core.structure.LootMarker;
+import com.arkcronist.gen.core.structure.MobSpawn;
+import com.arkcronist.gen.core.structure.PrefabFurnisher;
 import com.arkcronist.gen.core.structure.SpawnerMarker;
 import com.arkcronist.gen.core.structure.Structure;
 import com.arkcronist.gen.core.structure.StructureBuffer;
 import com.arkcronist.gen.core.structure.StructureContext;
+
+import java.util.List;
 
 /**
  * The ancient city, built from a schematic rather than from the server's own generator.
@@ -220,6 +224,53 @@ public final class AncientCityStructure implements Structure {
                 buffer.addLoot(new LootMarker(cx, cy, cz, tier, "ancient_city")));
         city.forEachSpawner(x, base, z, rotation, (cx, cy, cz) ->
                 buffer.addSpawner(new SpawnerMarker(cx, cy, cz, "SKELETON")));
+        garrison(context, buffer, random, x, base, z, rotation);
+    }
+
+    /**
+     * Who is down there when you arrive.
+     *
+     * <p>Until now the city had spawners and nothing else, which meant walking into the largest
+     * structure in the world and finding it empty until a spawner happened to tick. These are placed
+     * with the city, spread through it, and on this generator they are the same skeletons the rest of
+     * the world uses - the table in the config decides what those actually are, so a server running
+     * the custom packs meets those here too.</p>
+     *
+     * <p>Every one of them stands on a floor the schematic itself laid, found by reading the city
+     * back out of the buffer it was just written into. Nothing is guessed from the height of the
+     * chamber, which is what put garrisons inside the rock elsewhere.</p>
+     */
+    private void garrison(StructureContext context, StructureBuffer buffer, FastRandom random,
+                          int x, int base, int z, int rotation) {
+        int guards = switch (context.preset) {
+            case BASE -> 8;
+            case CHAOTIC -> 14;
+            case INSANE -> 22;
+        };
+        // The city is hundreds of blocks across, so the stride is wide and the sample is still large.
+        int span = Math.min(city.rotatedWidth(rotation), city.rotatedLength(rotation));
+        int stride = Math.max(2, span / 24);
+        List<int[]> spots = PrefabFurnisher.standingSpots(buffer, city, x, base, z, rotation,
+                guards * 4, stride);
+        if (spots.isEmpty()) {
+            return;
+        }
+        for (int i = 0; i < guards && !spots.isEmpty(); i++) {
+            int[] spot = spots.remove(random.nextInt(spots.size()));
+            // A wither skeleton is 2.4 blocks tall and suffocates under a two block ceiling, so it
+            // only goes where the hall is actually open above it. The city has plenty of that; a
+            // corridor does not, and gets an ordinary skeleton.
+            boolean tall = PrefabFurnisher.headroom(buffer, spot[0], spot[1], spot[2], 3);
+            buffer.addSpawn(MobSpawn.mob(spot[0], spot[1], spot[2],
+                    tall && random.chance(0.25) ? "WITHER_SKELETON" : "SKELETON", 3));
+        }
+        for (int[] seat : spots) {
+            if (PrefabFurnisher.headroom(buffer, seat[0], seat[1], seat[2], 3)) {
+                buffer.addSpawn(MobSpawn.boss(seat[0], seat[1], seat[2], "WITHER_SKELETON", 4,
+                        "cave_horror"));
+                return;
+            }
+        }
     }
 
     /**

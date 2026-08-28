@@ -53,6 +53,14 @@ public final class ArkcronistPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ChunkSpawnListener(this), this);
         getServer().getPluginManager().registerEvents(
                 new com.arkcronist.gen.bukkit.mobs.HostileSwapListener(this), this);
+        getServer().getPluginManager().registerEvents(new WorldAdoptionListener(this), this);
+        // Worlds that are already open when the plugin starts. Without this a restarted server does
+        // not recognise its own generated world until something makes it generate a fresh chunk, and
+        // everything keyed on "is this one of ours" - the hostile mob swap above, most visibly - does
+        // nothing at all until then.
+        for (org.bukkit.World world : getServer().getWorlds()) {
+            WorldAdoptionListener.adopt(this, world);
+        }
 
         PluginCommand command = getCommand("ag");
         if (command != null) {

@@ -49,7 +49,15 @@ public final class MinibossFactory {
             return null;
         }
 
-        Location location = new Location(world, request.x() + 0.5, request.y(), request.z() + 0.5);
+        // Where the structure asked for is a wish, not a fact: it was chosen during generation from
+        // the structure's own buffer, and several structures scatter their guards sideways while
+        // keeping the anchor's height, which walls them into the hillside wherever the ground rises.
+        // The world is finished and loaded by now, so the column is checked and the mob is put where
+        // it can actually stand - or not put anywhere at all.
+        Location location = SpawnSpot.resolve(world, request, type);
+        if (location == null) {
+            return null;
+        }
 
         // A garrison of the custom mobs, where one is configured for this entity type. Returned as
         // it comes: a MythicMobs mob carries its own health, damage and behaviour from its own

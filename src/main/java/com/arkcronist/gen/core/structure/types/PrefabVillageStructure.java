@@ -95,6 +95,7 @@ public final class PrefabVillageStructure implements Structure {
         BufferWriter writer = new BufferWriter(buffer, context.engine.settings().minY, context.maxY());
         int wanted = houseCount(context, random);
         List<int[]> placed = new ArrayList<>();
+        List<Home> homes = new ArrayList<>();
 
         int greenX = context.originX;
         int greenZ = context.originZ;
@@ -130,13 +131,25 @@ public final class PrefabVillageStructure implements Structure {
             if (context.engine.settings().prefabFurnish) {
                 furnish(buffer, house, x, baseY, z, rotation, random);
             }
-            populate(buffer, random, x, z, baseY);
+            homes.add(new Home(house, x, z, baseY, rotation));
             placed.add(new int[]{x, z, footprint, baseY});
         }
 
         if (!placed.isEmpty()) {
             paths(context, writer, placed, greenX, greenZ);
         }
+
+        // After the paths, not before. A path is drawn along the ground from each door back to the
+        // green and the first blocks of it are laid inside the house it starts at, so a villager
+        // chosen before the paths exist can have one dropped on the square it was standing on. The
+        // buffer has to be finished before anything reads a floor out of it.
+        for (Home home : homes) {
+            populate(buffer, random, home.house(), home.x(), home.z(), home.baseY(), home.rotation());
+        }
+    }
+
+    /** One house that was actually built, kept so its residents can be placed once the village is. */
+    private record Home(Prefab house, int x, int z, int baseY, int rotation) {
     }
 
     private int houseCount(StructureContext context, FastRandom random) {
@@ -272,16 +285,37 @@ public final class PrefabVillageStructure implements Structure {
         }
     }
 
-    /** Villagers, and the iron golem that comes with having enough of them. */
-    private void populate(StructureBuffer buffer, FastRandom random, int x, int z, int baseY) {
-        int residents = random.nextInt(1, 4);
-        for (int i = 0; i < residents; i++) {
-            buffer.addSpawn(MobSpawn.mob(x + random.nextInt(-2, 2), baseY + 1, z + random.nextInt(-2, 2),
-                    "VILLAGER", 0));
+    /**
+     * Villagers, and the iron golem that comes with having enough of them.
+     *
+     * <p>Put inside the house, on floors the house itself laid. Scattering them a few blocks around
+     * its centre at the height of its floor is what this replaced: a house is not a flat disc, so
+     * two of those three blocks land in a wall, on a stair, or a step outside the door on ground the
+     * plot never levelled - and a villager asked to appear inside a block suffocates before anyone
+     * arrives to trade with them.</p>
+     */
+    private void populate(StructureBuffer buffer, FastRandom random, Prefab house,
+                          int x, int z, int baseY, int rotation) {
+        List<int[]> spots = PrefabFurnisher.standingSpots(buffer, house, x, baseY, z, rotation, 12, 1);
+        if (spots.isEmpty()) {
+            return;
         }
-        if (random.chance(0.35)) {
-            buffer.addSpawn(MobSpawn.mob(x + random.nextInt(-3, 3), baseY + 1, z + random.nextInt(-3, 3),
-                    "IRON_GOLEM", 0));
+        int residents = Math.min(spots.size(), random.nextInt(1, 4));
+        for (int i = 0; i < residents; i++) {
+            int[] spot = spots.remove(random.nextInt(spots.size()));
+            buffer.addSpawn(MobSpawn.mob(spot[0], spot[1], spot[2], "VILLAGER", 0));
+        }
+        // The golem needs three blocks: it is 2.7 tall, so an ordinary room's two blocks of air put
+        // its head in the ceiling. Most houses have nowhere like that, and a village with no golem
+        // is a great deal better than one with a golem slowly suffocating in an attic.
+        if (!random.chance(0.35)) {
+            return;
+        }
+        for (int[] spot : spots) {
+            if (PrefabFurnisher.headroom(buffer, spot[0], spot[1], spot[2], 3)) {
+                buffer.addSpawn(MobSpawn.mob(spot[0], spot[1], spot[2], "IRON_GOLEM", 0));
+                return;
+            }
         }
     }
 

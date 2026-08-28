@@ -4,6 +4,7 @@ import com.arkcronist.gen.bukkit.ArkWorld;
 import com.arkcronist.gen.bukkit.loot.LootFiller;
 import com.arkcronist.gen.bukkit.ArkcronistPlugin;
 import com.arkcronist.gen.bukkit.BlockBridge;
+import com.arkcronist.gen.bukkit.mobs.MythicBridge;
 import com.arkcronist.gen.core.bench.TerrainBenchmark;
 import com.arkcronist.gen.core.biome.ArkBiome;
 import com.arkcronist.gen.core.biome.StructureTag;
@@ -83,6 +84,15 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
     private void version(CommandSender sender) {
         sender.sendMessage(PREFIX + "Version §b" + plugin.getPluginMeta().getVersion()
                 + " §7| block states resolved: §f" + BlockBridge.size());
+        // Worth a line of its own: when the custom mobs do not turn up on a server, the first thing
+        // to know is whether this plugin ever managed to reach MythicMobs at all. Without it the
+        // answer was only in the startup log, which by then has scrolled away.
+        sender.sendMessage("§7 Custom hostile mobs: " + (MythicBridge.available()
+                ? "§aMythicMobs " + MythicBridge.version()
+                        + " §7| presets §f" + plugin.arkConfig().hostileMobPresets()
+                        + " §7| reasons §f" + plugin.arkConfig().hostileMobReasons()
+                        + " §7| " + plugin.arkConfig().hostileMobTable().size() + " vanilla types replaced"
+                : "§enot available §7(MythicMobs missing or its API could not be reached)"));
     }
 
     private void presets(CommandSender sender) {

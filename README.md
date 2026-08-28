@@ -125,7 +125,9 @@ un hueco propio en (0,45 / 0,72) y ocupa el 2,4–3,4%, por delante del bosque o
 ### Mobs hostiles propios (MythicMobs + ModelEngine)
 
 En los mundos de este generador, y **solo en los presets que digas**, los mobs hostiles vanilla se
-cambian por mobs de MythicMobs. Por defecto: `INSANE`, y solo el spawn natural.
+cambian por mobs de MythicMobs. Por defecto: `INSANE`, y por tres motivos de spawn — el natural (de
+noche y en cuevas, por todo el mundo), los generadores de mobs que traen las estructuras `.schem`, y
+los refuerzos que llama un zombi al ser golpeado.
 
 **Los packs no van dentro del plugin.** Son assets de pago y sus guías dicen expresamente que no se
 compartan, así que este repositorio no contiene ni un `.bbmodel` ni un `.yml` de MythicMobs. El
@@ -161,6 +163,50 @@ Las guarniciones y jefes de las estructuras usan la **misma** tabla, así que lo
 castillo son los mismos goblins que te encuentras en campo abierto. A esos no se les aplica el
 escalado de tier del plugin: un mob de MythicMobs trae su propia vida y daño de su config, y sumar
 ambas cosas daría un mob con varias veces la vida que su autor le puso.
+
+**La `ancient city` ya no está vacía.** Antes solo llevaba generadores de mobs, así que la estructura
+más grande del mundo estaba desierta al entrar hasta que a uno le tocaba tick. Ahora lleva guarnición
+propia — 8 / 14 / 22 esqueletos según el preset, más un jefe — repartida por sus propios suelos, y
+son de los tipos que la tabla cubre, así que con los packs puestos te encuentras a los tuyos.
+
+#### Dónde se para un mob (y por qué muchos se morían)
+
+Esto era un fallo de verdad y no de una estructura. Medido sobre el catálogo entero, 120 sitios por
+estructura: sin la pasada que se explica abajo, **2928 de 8052** mobs de guarnición salen dentro de un
+bloque; con ella, **44**. Dos causas, las dos aburridas:
+
+- Una estructura elige su guarnición mientras se construye y **luego sigue construyendo**: pone
+  muebles, talla una escalera, cuelga un farol, escribe un muro. La posición que era una habitación
+  vacía cuando se eligió puede tener una estantería encima cuando la estructura termina.
+- Varias reparten guardias hacia los lados alrededor de un punto pero **se quedan con la altura de
+  ese punto**. En llano no se nota; en cualquier pendiente el mob aparece dentro del cerro. Eso es
+  literalmente el *"salen bajo tierra y se mueren"*.
+
+Se arregla en dos sitios y ninguno adivina nada:
+
+1. **Al terminar de construir** (`StructureBuffer.settleSpawns`), una pasada mueve cada mob a un
+   suelo que la estructura haya puesto de verdad — 2884 de los 8052 se mueven. Donde el búfer no
+   tiene nada escrito la estructura no opina de esa columna — eso es terreno — y la posición se deja
+   tal cual. Los 44 que quedan son mobs en cuartos donde después se colgó un farol o se puso un
+   barril, y no hay otro sitio en esa columna.
+2. **Al aparecer** (`SpawnSpot`), ya con el chunk generado y cargado, se comprueba la columna contra
+   el mundo real: suelo sólido, hueco suficiente, nada de lava ni de agua para quien no nada. Si no
+   hay sitio, **el mob no se pone**. Mejor un guardia de menos que uno muerto en tres segundos.
+
+La búsqueda es **solo vertical**, a propósito: los spawns llegan ya repartidos por chunk, así que la
+columna está en un chunk cargado. Buscar de lado pediría chunks vecinos y los generaría en medio de
+un `ChunkLoadEvent`, que es una forma muy eficaz de convertir una guarnición en un tirón del servidor.
+
+La altura del mob cuenta. Un esqueleto wither mide 2,4 bloques y un gólem 2,7: en un cuarto normal
+—suelo, dos de aire, techo— tienen los ojos dentro del techo, y un mob con los ojos en un bloque se
+asfixia. Los dos piden tres bloques; donde no los hay, el jefe de un prefab es un esqueleto normal en
+vez de un cadáver, y la aldea se queda sin gólem antes que con uno asfixiándose en un desván.
+
+**Y un mundo ya generado ahora se reconoce al arrancar.** Los mundos se registraban solo como efecto
+secundario de generar un chunk, así que al reiniciar un servidor cuyo mundo ya está generado alrededor
+del spawn no se registraba nada, y todo lo que empieza por *"¿este mundo es de los míos?"* —el cambio
+de mobs, el primero— respondía que no hasta que alguien caminaba lo bastante lejos. Ahora se adoptan
+al cargarse.
 
 ### Colores propios de bioma (datapack)
 

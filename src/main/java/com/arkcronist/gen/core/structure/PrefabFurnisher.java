@@ -34,13 +34,29 @@ public final class PrefabFurnisher {
      */
     public static List<int[]> interiorSpots(StructureBuffer buffer, Prefab prefab,
                                             int originX, int baseY, int originZ, int rotation, int limit) {
+        return standingSpots(buffer, prefab, originX, baseY, originZ, rotation, limit, 1);
+    }
+
+    /**
+     * The same scan, taken across the whole building instead of out of one corner.
+     *
+     * <p>{@link #interiorSpots} walks every column and stops at its limit, which for anything larger
+     * than a cottage means every spot it returns is in the same corner - fine for the first few
+     * lanterns, useless for a garrison, which has to be spread through the place it is guarding.
+     * Striding over the footprint samples all of it for the same amount of work.</p>
+     *
+     * @param stride how many columns to skip between samples; 1 is every column
+     */
+    public static List<int[]> standingSpots(StructureBuffer buffer, Prefab prefab, int originX, int baseY,
+                                            int originZ, int rotation, int limit, int stride) {
+        int step = Math.max(1, stride);
         int outWidth = prefab.rotatedWidth(rotation);
         int outLength = prefab.rotatedLength(rotation);
         int minX = originX - prefab.rotatedAnchorX(rotation);
         int minZ = originZ - prefab.rotatedAnchorZ(rotation);
         List<int[]> spots = new ArrayList<>();
-        for (int outX = 1; outX < outWidth - 1 && spots.size() < limit; outX++) {
-            for (int outZ = 1; outZ < outLength - 1 && spots.size() < limit; outZ++) {
+        for (int outX = 1; outX < outWidth - 1 && spots.size() < limit; outX += step) {
+            for (int outZ = 1; outZ < outLength - 1 && spots.size() < limit; outZ += step) {
                 if (!prefab.occupies(rotation, outX, outZ)) {
                     continue;
                 }
@@ -48,7 +64,7 @@ public final class PrefabFurnisher {
                 int worldZ = minZ + outZ;
                 for (int y = baseY + 1; y < baseY + prefab.height - 1; y++) {
                     int floor = buffer.get(worldX, y - 1, worldZ);
-                    if (floor < 0 || floor == Blocks.AIR) {
+                    if (floor < 0 || Blocks.isAir(floor)) {
                         continue;
                     }
                     if (clear(buffer, worldX, y, worldZ) && clear(buffer, worldX, y + 1, worldZ)) {
@@ -61,10 +77,34 @@ public final class PrefabFurnisher {
         return spots;
     }
 
-    /** Nothing solid here: either the prefab wrote air, or it wrote nothing at all. */
+    /**
+     * Nothing solid here: either the prefab wrote air, or it wrote nothing at all.
+     *
+     * <p>Cave air counts. It is air in every way that matters and it is what the deep structures are
+     * hollowed out with, so a check for {@code minecraft:air} alone reads the whole inside of an
+     * ancient city as solid rock and finds nowhere in it to stand.</p>
+     */
     public static boolean clear(StructureBuffer buffer, int x, int y, int z) {
         int block = buffer.get(x, y, z);
-        return block < 0 || block == Blocks.AIR;
+        return block < 0 || Blocks.isAir(block);
+    }
+
+    /**
+     * Whether a spot has this much clear space above it.
+     *
+     * <p>Two blocks is a person and most mobs. Some are taller and it matters more than it sounds:
+     * a wither skeleton is 2.4 blocks and an iron golem 2.7, so both of them put their eyes inside
+     * the ceiling of an ordinary room - and a mob with its eyes in a solid block suffocates. That is
+     * why a standard house cannot hold one, and why anything tall has to be asked for by height
+     * rather than just dropped on the nearest floor.</p>
+     */
+    public static boolean headroom(StructureBuffer buffer, int x, int y, int z, int blocks) {
+        for (int offset = 0; offset < blocks; offset++) {
+            if (!clear(buffer, x, y + offset, z)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

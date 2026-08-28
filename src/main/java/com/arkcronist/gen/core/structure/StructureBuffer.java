@@ -1,5 +1,7 @@
 package com.arkcronist.gen.core.structure;
 
+import com.arkcronist.gen.core.block.Blocks;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -118,6 +120,76 @@ public final class StructureBuffer {
 
     public List<MobSpawn> spawns() {
         return spawns;
+    }
+
+    /** How far up or down a mob may be moved to find a floor of the structure's own. */
+    private static final int SETTLE_REACH = 6;
+
+    /**
+     * Moves every queued mob onto a block this structure actually laid.
+     *
+     * <p>Run once, after the structure has finished building, and it is worth explaining why it has
+     * to be here rather than inside each structure. A structure decides where its garrison goes as
+     * it goes along, and then keeps building: it lays furniture, cuts a stair, hangs a lantern,
+     * writes a wall. By the time it is finished, a position that was an empty room when it was
+     * chosen may have a bookshelf in it. Measured across the whole catalogue, that and jittered
+     * positions put nearly half of all garrison mobs inside a block - which is the "they come out
+     * underground and die" this was reported as, and it was never one structure's bug.</p>
+     *
+     * <p>What it will not do is guess. Where the buffer holds nothing at all the structure has no
+     * opinion about that column - the mob is standing on ordinary terrain - and the position is left
+     * exactly as it was for the server side to check against the real world, which is the only place
+     * that knows what the terrain there is. Nothing is ever dropped here either: this pass moves
+     * mobs, and only the world can say that there is nowhere for one to go.</p>
+     */
+    public void settleSpawns() {
+        for (int i = 0; i < spawns.size(); i++) {
+            MobSpawn spawn = spawns.get(i);
+            if (standable(spawn, spawn.y())) {
+                continue;
+            }
+            for (int step = 1; step <= SETTLE_REACH; step++) {
+                if (standable(spawn, spawn.y() - step)) {
+                    spawns.set(i, spawn.atHeight(spawn.y() - step));
+                    break;
+                }
+                if (standable(spawn, spawn.y() + step)) {
+                    spawns.set(i, spawn.atHeight(spawn.y() + step));
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * Whether this buffer would let the mob stand here.
+     *
+     * <p>An unwritten cell counts as clear rather than as blocked, because it means the structure
+     * put nothing there - not that nothing is there. The same reading applies under the mob's feet:
+     * an unwritten cell below is terrain, which is usually exactly what a mob outside the walls is
+     * meant to be standing on.</p>
+     */
+    private boolean standable(MobSpawn spawn, int y) {
+        boolean floats = !spawn.needsFloor();
+        int needed = spawn.height();
+        for (int offset = 0; offset < needed; offset++) {
+            int block = get(spawn.x(), y + offset, spawn.z());
+            if (block < 0 || Blocks.isAir(block)) {
+                continue;
+            }
+            // Water is not in the way of something that swims in it. Without this line a monument's
+            // guardians all read as walled in, and the pass below would helpfully move every one of
+            // them out of the sea.
+            if (floats && Blocks.isLiquid(block)) {
+                continue;
+            }
+            return false;
+        }
+        if (floats) {
+            return true;
+        }
+        int floor = get(spawn.x(), y - 1, spawn.z());
+        return floor < 0 || (!Blocks.isAir(floor) && !Blocks.isLiquid(floor));
     }
 
     public List<LootMarker> loot() {

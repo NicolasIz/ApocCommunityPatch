@@ -457,6 +457,9 @@ public final class StructurePlacer {
             return buffer;
         }
         site.structure().build(contextFor(site), buffer);
+        // Once, at the end, for every structure alike: a mob chosen halfway through a build can have
+        // a wall or a bookshelf written into it before that build finishes.
+        buffer.settleSpawns();
         return buffer;
     }
 

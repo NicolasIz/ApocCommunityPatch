@@ -221,10 +221,21 @@ hostile-mobs:
   # En que presets se sustituye. Vacio = en ninguno.
   presets: [INSANE]
 
-  # Por que motivos. NATURAL es el spawn de siempre (de noche, en cuevas).
-  # Anade SPAWNER si tambien quieres cambiar los de los generadores de mobs, y
-  # REINFORCEMENTS para los refuerzos que llama un zombie al ser golpeado.
-  reasons: [NATURAL]
+  # Por que motivos se sustituye.
+  #
+  #   NATURAL        el spawn de siempre: de noche, en cuevas, por todo el mundo.
+  #   SPAWNER        los generadores de mobs que trae cada estructura .schem
+  #                  (la ancient city lleva muchos de esqueletos).
+  #   REINFORCEMENTS los refuerzos que llama un zombie al ser golpeado.
+  #
+  # OJO con SPAWNER: un generador cuenta cuantos mobs de SU tipo hay cerca para
+  # saber cuando parar. Si el mob de MythicMobs esta hecho sobre otro tipo de
+  # entidad distinto al del generador, ese conteo no lo ve y el generador no
+  # deja de producir. Los packs de goblins y esqueletos van sobre zombie/husk y
+  # skeleton, que es justo lo que ponen estos generadores, asi que cuadra. Si
+  # aun asi ves demasiados mobs alrededor de un generador, quita SPAWNER de la
+  # lista y ya esta.
+  reasons: [NATURAL, SPAWNER, REINFORCEMENTS]
 
   # Cambiar tambien las guarniciones y jefes de las estructuras del generador.
   replace-structure-mobs: true

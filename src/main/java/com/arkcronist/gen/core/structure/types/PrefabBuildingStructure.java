@@ -15,6 +15,7 @@ import com.arkcronist.gen.core.structure.Structure;
 import com.arkcronist.gen.core.structure.StructureBuffer;
 import com.arkcronist.gen.core.structure.StructureContext;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -209,7 +210,20 @@ public final class PrefabBuildingStructure implements Structure {
         return context.biome.stone.pickAt(context.engine.seed(), context.originX, context.groundY, context.originZ);
     }
 
-    /** Something lives here. What, depends on whether this is a home or a ruin. */
+    /**
+     * Something lives here. What, depends on whether this is a home or a ruin.
+     *
+     * <p>The guards are stood on floors the building itself laid, read back out of the buffer it was
+     * just written into. The obvious way - scatter them round the anchor and use the floor's height -
+     * is what this replaced, and it was the reason garrisons kept turning up inside the ground: the
+     * scatter is as wide as the biggest file in the category while the building actually placed may
+     * be much smaller, so most of those points landed outside the levelled footprint, on hillside
+     * that stands well above the floor. A mob asked to appear there is walled in and suffocates.</p>
+     *
+     * <p>Reading the buffer instead means every guard is somewhere the building has a floor and two
+     * blocks of headroom: a room, a walkway, its own courtyard. Nothing is guessed about the terrain,
+     * because nothing needs to be.</p>
+     */
     private void garrison(StructureContext context, StructureBuffer buffer, FastRandom random,
                           Prefab prefab, int x, int z, int baseY, int rotation) {
         int guards = switch (context.preset) {
@@ -217,16 +231,60 @@ public final class PrefabBuildingStructure implements Structure {
             case CHAOTIC -> landmark ? 5 : 2;
             case INSANE -> landmark ? 8 : 3;
         };
-        int spread = Math.max(2, radius / 2);
-        for (int i = 0; i < guards; i++) {
-            int gx = x + random.nextInt(-spread, spread);
-            int gz = z + random.nextInt(-spread, spread);
-            buffer.addSpawn(MobSpawn.mob(gx, baseY + 2, gz, random.chance(0.5) ? "ZOMBIE" : "SKELETON", 1));
+        // Sampled across the whole building rather than out of one corner, so a keep is not defended
+        // entirely from its north-west tower. Bigger buildings stride further; the count asked for is
+        // several times the garrison so there is a real choice of where each one goes.
+        int span = Math.min(prefab.rotatedWidth(rotation), prefab.rotatedLength(rotation));
+        int stride = Math.max(1, span / 16);
+        List<int[]> spots = PrefabFurnisher.standingSpots(buffer, prefab, x, baseY, z, rotation,
+                Math.max(24, guards * 5), stride);
+
+        for (int i = 0; i < guards && !spots.isEmpty(); i++) {
+            int[] spot = spots.remove(random.nextInt(spots.size()));
+            buffer.addSpawn(MobSpawn.mob(spot[0], spot[1], spot[2],
+                    random.chance(0.5) ? "ZOMBIE" : "SKELETON", 1));
         }
-        if (landmark) {
-            buffer.addSpawn(MobSpawn.boss(x, baseY + 3, z, "WITHER_SKELETON", 3,
-                    "Guardian of the " + displayName()));
+        if (!landmark) {
+            return;
         }
+        // A wither skeleton is 2.4 blocks tall, and an ordinary room is two blocks of air under a
+        // ceiling - which puts its eyes in that ceiling and suffocates it. So the seat has to be
+        // somewhere with three blocks of room, and where the building has none, the guardian is a
+        // skeleton instead of a corpse.
+        List<int[]> tall = new ArrayList<>();
+        for (int[] spot : spots) {
+            if (PrefabFurnisher.headroom(buffer, spot[0], spot[1], spot[2], 3)) {
+                tall.add(spot);
+            }
+        }
+        String name = "Guardian of the " + displayName();
+        int[] seat = central(tall.isEmpty() ? spots : tall, x, z);
+        if (seat == null) {
+            return;
+        }
+        buffer.addSpawn(MobSpawn.boss(seat[0], seat[1], seat[2],
+                tall.isEmpty() ? "SKELETON" : "WITHER_SKELETON", 3, name));
+    }
+
+    /**
+     * The spot nearest the middle of the building, for whatever holds it.
+     *
+     * <p>Not a rule of architecture, just a better guess than the first spot in the list: the hall,
+     * the throne room and the keep tend to be central, and the corners tend to be stairs.</p>
+     */
+    private static int[] central(List<int[]> spots, int x, int z) {
+        int[] best = null;
+        long bestDistance = Long.MAX_VALUE;
+        for (int[] spot : spots) {
+            long dx = spot[0] - x;
+            long dz = spot[2] - z;
+            long distance = dx * dx + dz * dz;
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                best = spot;
+            }
+        }
+        return best;
     }
 
     private String displayName() {
