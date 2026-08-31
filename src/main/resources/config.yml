@@ -195,6 +195,19 @@ biome-colours:
     water: "#6E2B2B"
     water-fog: "#4A1D1D"
 
+  # Las llanuras de ceniza, donde esta el volcan.
+  #
+  # Aqui no hay cesped que tenir: el suelo ya es basalto, grava y blackstone. Lo
+  # que hace el trabajo es el cielo y la niebla, que es de donde sale la sensacion
+  # de aire cargado de ceniza. El bioma vanilla que se le entrega al servidor es
+  # badlands a proposito y NO basalt_deltas: la clave decide que mobs saca el
+  # juego, y basalt_deltas trae ghasts al overworld.
+  volcanic_wastes:
+    sky: "#4A423E"
+    fog: "#38312E"
+    water: "#3D3330"
+    water-fog: "#241E1C"
+
 # ---------------------------------------------------------------------------
 #  Mobs hostiles propios (MythicMobs + ModelEngine)
 # ---------------------------------------------------------------------------
@@ -249,12 +262,88 @@ hostile-mobs:
   # que lanza el mago, y es un ARMOR_STAND. En una lista de spawn te llenaria
   # el mundo de armor stands invisibles.
   table:
-    ZOMBIE: [am_goblin_melee, am_goblin_melee, am_goblin_whip, am_goblin_brute]
+    ZOMBIE: [am_goblin_melee, am_goblin_melee, am_goblin_whip, am_goblin_brute, spider_melee]
     ZOMBIE_VILLAGER: [am_goblin_mage, am_goblin_ranger]
-    HUSK: [am_goblin_brute, am_goblin_melee]
+    HUSK: [am_goblin_brute, am_goblin_melee, spider_poison, spider_trapper]
     SKELETON: [skeleton_melee, skeleton_archer, skeleton_archer, skeleton_mage]
     STRAY: [skeleton_archer, skeleton_mage]
-    WITHER_SKELETON: [skeleton_elite]
+    WITHER_SKELETON: [skeleton_elite, spider_elite]
+    VINDICATOR: [cursed_knight, cursed_archer, cursed_mage]
+    PILLAGER: [cursed_archer, cursed_mage]
+    EVOKER: [cursed_mage]
+
+  # ---------------------------------------------------------------------------
+  #  El Nether
+  # ---------------------------------------------------------------------------
+  #  El Nether NO lo genera este plugin: es el mundo vanilla del servidor. Por
+  #  eso no se puede elegir por preset como el overworld, y se elige por ser el
+  #  Nether. Esa distincion es justo lo que permite tener a los esqueletos
+  #  volcanicos alli abajo y en ningun otro sitio.
+  nether:
+    enabled: true
+
+    # Vacio = todos los mundos NETHER del servidor. Si tienes varios y solo
+    # quieres uno, ponlo aqui por nombre.
+    worlds: []
+
+    # Los Volcanic Cinder son una EXPANSION: necesitan instalado el pack base
+    # "Dungeon Skeletons V1" de E-magination. Sin el, estos nombres no existen
+    # para MythicMobs y no pasara nada (se queda el mob vanilla).
+    table:
+      WITHER_SKELETON: [dSkeleton_Warrior_Cinder_em, dSkeleton_Tank_Cinder_em, dSkeleton_Halberdier_Cinder_em]
+      SKELETON: [dSkeleton_footman_Cinder_em, dSkeleton_swordman_Cinder_em, dSkeleton_Archer_Cinder_em, dSkeleton_Wizard_Cinder_em]
+
+  # ---------------------------------------------------------------------------
+  #  Spawner propio: de dia Y de noche
+  # ---------------------------------------------------------------------------
+  #  La tabla de arriba solo puede CAMBIAR un spawn que el juego iba a hacer de
+  #  todos modos, y de dia, en la superficie, el juego no hace ninguno: un mob
+  #  hostil necesita oscuridad. Asi que a mediodia no hay nada que cambiar y el
+  #  mundo esta vacio de ellos. Esta seccion es la unica forma de tenerlos fuera
+  #  a plena luz.
+  #
+  #  Esta hecho para ser aburrido en un servidor con gente: solo alrededor de
+  #  jugadores, nunca en un chunk sin cargar, con tope por jugador, y usando la
+  #  misma comprobacion de "aqui se puede estar de pie" que todo lo demas.
+  ambient:
+    enabled: true
+
+    # Cada cuantos ticks corre. 100 = 5 segundos. Subelo si quieres menos mobs.
+    period-ticks: 100
+
+    # Cuantas posiciones prueba por jugador y ronda antes de rendirse.
+    attempts: 4
+
+    # Nunca mas cerca de esto (que nadie vea aparecer uno) ni mas lejos de esto
+    # (que no se salga de lo que el servidor tiene cargado).
+    min-distance: 26
+    max-distance: 46
+
+    # Cuantos mobs SUYOS puede haber ya cerca de un jugador antes de parar.
+    per-player-cap: 8
+
+    # Lo que saca en un mundo de este generador.
+    overworld:
+      - spider_melee
+      - spider_melee
+      - spider_poison
+      - spider_trapper
+      - spider_elite
+      - cursed_knight
+      - cursed_archer
+      - cursed_mage
+      - am_goblin_melee
+      - skeleton_archer
+
+    # Lo que saca en el Nether. Solo los volcanicos, que es lo que se pidio.
+    nether:
+      - dSkeleton_footman_Cinder_em
+      - dSkeleton_swordman_Cinder_em
+      - dSkeleton_Archer_Cinder_em
+      - dSkeleton_Warrior_Cinder_em
+      - dSkeleton_Halberdier_Cinder_em
+      - dSkeleton_Wizard_Cinder_em
+      - dSkeleton_Tank_Cinder_em
 
 structures:
   fill-loot: true

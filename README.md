@@ -129,6 +129,20 @@ cambian por mobs de MythicMobs. Por defecto: `INSANE`, y por tres motivos de spa
 noche y en cuevas, por todo el mundo), los generadores de mobs que traen las estructuras `.schem`, y
 los refuerzos que llama un zombi al ser golpeado.
 
+Los packs que trae configurados de serie son cinco, de tres autores:
+
+| pack | mobs |
+|---|---|
+| Goblin Mobs *(Amonde)* | brute, mage, melee, ranger, whip |
+| Skeleton Mobs *(Amonde)* | melee, archer, mage, elite |
+| Spider Mobs *(Amonde)* | melee, trapper, poison, elite |
+| Cursed Mobs | knight, archer, mage |
+| Dungeon Skeletons V1 · Volcanic Cinder *(E-magination)* | footman, swordman, halberdier, warrior, tank, archer, wizard |
+
+**Los Volcanic Cinder son una expansión, no un pack suelto.** Necesitan el pack base *Dungeon
+Skeletons V1* instalado; sin él esos nombres no existen para MythicMobs y el mob se queda vanilla,
+que es exactamente lo que hace este plugin cuando no puede cumplir.
+
 **Los packs no van dentro del plugin.** Son assets de pago y sus guías dicen expresamente que no se
 compartan, así que este repositorio no contiene ni un `.bbmodel` ni un `.yml` de MythicMobs. El
 plugin solo conoce **nombres** y se los pide a MythicMobs; tú instalas los packs arrastrando sus
@@ -155,9 +169,39 @@ La tabla que viene puesta usa los packs *Goblin Mobs* y *Skeleton Mobs* de Amond
 
 Un nombre repetido sale más veces: ése es todo el sistema de pesos, y basta.
 
-**`skeleton_mage_proj` no está en la tabla y no debe estarlo.** No es un enemigo: es el proyectil que
-lanza el mago, un `ARMOR_STAND` sin vida ni IA. En una lista de spawn te llenaría el mundo de armor
-stands invisibles. Hay una prueba que falla si alguien lo mete.
+**Ni un solo `_vfx` está en la tabla, y no deben estarlo.** Los packs traen entradas que no son
+enemigos sino atrezo: `skeleton_mage_proj` es el proyectil del mago (un `ARMOR_STAND` sin vida ni
+IA), los `cursed_*_vfx` son gallinas con mil de vida que llevan un efecto visual, `spider_trap` es la
+telaraña que pone el trapper y `spider_pois` y `spdr_stomp_vfx` son armor stands otra vez. Todos son
+nombres reales que MythicMobs sacará encantado si se los pides. Hay una prueba con la lista completa
+que falla si alguien mete uno.
+
+### Los volcánicos, solo en el Nether
+
+El Nether **no lo genera este plugin**: es el mundo vanilla del servidor. Por eso no se puede elegir
+por preset como el overworld, y se elige por ser el Nether. Esa distinción es justo lo que permite
+tener a los esqueletos volcánicos allí abajo y en ningún otro sitio — hay una prueba que recorre
+todas las listas del overworld y falla si alguno se ha escapado a una de ellas.
+
+### De día y de noche
+
+La tabla de arriba solo puede **cambiar** un spawn que el juego iba a hacer de todos modos, y de día,
+en la superficie, el juego no hace ninguno: un mob hostil necesita oscuridad. A mediodía no hay nada
+que cambiar y el mundo está vacío de ellos.
+
+Por eso hay un spawner propio (`hostile-mobs.ambient`), y está hecho para ser aburrido en un servidor
+con gente:
+
+- **Solo alrededor de jugadores**, en un anillo que empieza lo bastante lejos para que nadie vea
+  aparecer uno y termina dentro de lo que el servidor tiene cargado.
+- **Nunca en un chunk sin cargar.** Se comprueba antes de tocar un solo bloque. Pedir un bloque de un
+  chunk sin cargar lo genera en el acto, en el hilo principal, que es como un spawner se convierte en
+  un tirón del servidor.
+- **Con tope por jugador.** Cada mob que crea lleva una marca y cuenta las suyas —y solo las suyas—
+  antes de añadir otro.
+- **Con la misma comprobación de "aquí se puede estar de pie"** que todo lo demás, la de `SpawnSpot`:
+  suelo sólido, hueco arriba, ni lava ni agua. Un spawner que suelta mobs dentro de la roca es
+  justamente el fallo que se quitó el día anterior.
 
 Las guarniciones y jefes de las estructuras usan la **misma** tabla, así que los guardias de un
 castillo son los mismos goblins que te encuentras en campo abierto. A esos no se les aplica el
@@ -207,6 +251,41 @@ secundario de generar un chunk, así que al reiniciar un servidor cuyo mundo ya 
 del spawn no se registraba nada, y todo lo que empieza por *"¿este mundo es de los míos?"* —el cambio
 de mobs, el primero— respondía que no hasta que alguien caminaba lo bastante lejos. Ahora se adoptan
 al cargarse.
+
+## El volcán y las llanuras de ceniza
+
+Un bioma nuevo, `volcanic_wastes`, y la única estructura del generador que **construye una montaña**
+en vez de apoyarse en una.
+
+**La silueta es todo el asunto.** Un cono de escoria es recto y aburrido de lejos; un volcán en
+escudo es una colina. Un *estrato*volcán —Fuji, Mayon, Anak Krakatoa— es el que todo el mundo se
+imagina: una falda ancha de ceniza que se empina hasta una cumbre afilada, que es lo que sale de
+apilar coladas y caídas de ceniza alrededor de una boca durante mucho tiempo.
+
+Eso sale de una línea. La altura a una fracción `t` del camino al borde es `H · (1 − t^0,62)`, con el
+exponente **por debajo de uno**: a un décimo del radio el cono ya ha soltado un cuarto de su altura, y
+el último tercio del radio es casi plano. Con exponente 1 sale un cono de tráfico.
+
+El resto es textura: el contorno va deformado para que la base no sea un círculo de compás, los
+flancos llevan barrancos donde la ceniza ha bajado, el material cambia con la altura (grava y ceniza
+al pie, basalto en los flancos, blackstone y magma arriba) y un lado del borde está mellado, con la
+colada saliendo por ahí. Anak Krakatoa tiene exactamente esa muesca.
+
+**La lava se queda en el cráter**, y esto costó una versión entera. La primera no tenía borde: con ese
+perfil, a la distancia del cráter el cono ya está treinta bloques por debajo de la cumbre, así que un
+cráter medido desde esa cumbre salía más hondo que alto el monte. Renderizado en corte, era un lago
+de lava en un cuenco **sin paredes** — en un servidor, eso es una catarata de lava por cada flanco.
+Ahora la cumbre es una meseta un cuarto más ancha que el cráter, y ese anillo es lo que sujeta el
+lago. Hay una prueba que recorre **cada bloque de lava** de la estructura y falla si alguno da al aire
+de lado.
+
+Las coladas de los flancos son **bloques de magma, no lava**. Sería fácil hacer ríos de lava y se
+vería tremendo durante un minuto, hasta que el bosque de abajo ardiera y el servidor se pasara los
+ticks calculando líquido.
+
+El bioma vanilla que se le entrega al servidor es `badlands` **a propósito y no `basalt_deltas`**: esa
+clave decide qué mobs saca el juego, y `basalt_deltas` trae ghasts al overworld. La ceniza y el cielo
+oscuro salen del datapack de colores, que no puede importar una lista de mobs.
 
 ### Colores propios de bioma (datapack)
 

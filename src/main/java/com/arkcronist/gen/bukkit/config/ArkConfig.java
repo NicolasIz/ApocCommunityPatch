@@ -33,6 +33,10 @@ public final class ArkConfig {
     private final java.util.Set<String> hostileMobPresets;
     private final java.util.Set<String> hostileMobReasons;
     private final java.util.Map<String, java.util.List<String>> hostileMobTable;
+    private final java.util.Map<String, java.util.List<String>> netherMobTable;
+    private final java.util.Set<String> netherWorlds;
+    private final java.util.List<String> ambientOverworld;
+    private final java.util.List<String> ambientNether;
 
     public ArkConfig(FileConfiguration config) {
         this.config = config;
@@ -44,7 +48,33 @@ public final class ArkConfig {
         }
         this.hostileMobPresets = readUpperCaseSet("hostile-mobs.presets", java.util.Set.of());
         this.hostileMobReasons = readUpperCaseSet("hostile-mobs.reasons", java.util.Set.of("NATURAL"));
-        this.hostileMobTable = readHostileMobTable();
+        this.hostileMobTable = readMobTable("hostile-mobs.table");
+        this.netherMobTable = readMobTable("hostile-mobs.nether.table");
+        this.netherWorlds = readLowerCaseSet("hostile-mobs.nether.worlds");
+        this.ambientOverworld = readNames("hostile-mobs.ambient.overworld");
+        this.ambientNether = readNames("hostile-mobs.ambient.nether");
+    }
+
+    private java.util.Set<String> readLowerCaseSet(String path) {
+        java.util.Set<String> values = new java.util.LinkedHashSet<>();
+        for (String raw : config.getStringList(path)) {
+            String value = raw.trim().toLowerCase(Locale.ROOT);
+            if (!value.isEmpty()) {
+                values.add(value);
+            }
+        }
+        return java.util.Set.copyOf(values);
+    }
+
+    private java.util.List<String> readNames(String path) {
+        java.util.List<String> names = new java.util.ArrayList<>();
+        for (String raw : config.getStringList(path)) {
+            String name = raw.trim();
+            if (!name.isEmpty()) {
+                names.add(name);
+            }
+        }
+        return java.util.List.copyOf(names);
     }
 
     private java.util.Set<String> readUpperCaseSet(String path, java.util.Set<String> fallback) {
@@ -58,9 +88,9 @@ public final class ArkConfig {
         return values.isEmpty() ? fallback : java.util.Set.copyOf(values);
     }
 
-    private java.util.Map<String, java.util.List<String>> readHostileMobTable() {
+    private java.util.Map<String, java.util.List<String>> readMobTable(String path) {
         java.util.Map<String, java.util.List<String>> table = new java.util.LinkedHashMap<>();
-        ConfigurationSection section = config.getConfigurationSection("hostile-mobs.table");
+        ConfigurationSection section = config.getConfigurationSection(path);
         if (section == null) {
             return java.util.Map.of();
         }
@@ -267,6 +297,67 @@ public final class ArkConfig {
      */
     public java.util.Map<String, java.util.List<String>> hostileMobTable() {
         return hostileMobTable;
+    }
+
+    /**
+     * Vanilla entity type to MythicMobs name, for the Nether.
+     *
+     * <p>A table of its own because the Nether is not a world this plugin makes. It cannot be
+     * selected by preset the way an Arkcronist world is, and what belongs there is not what belongs
+     * on a green hillside - which is the whole reason the volcanic skeletons are kept to it.</p>
+     */
+    public java.util.Map<String, java.util.List<String>> netherMobTable() {
+        return netherMobTable;
+    }
+
+    /** Whether the Nether rules apply to the world with this name. */
+    public boolean netherApplies(String worldName) {
+        if (!config.getBoolean("hostile-mobs.nether.enabled", true)) {
+            return false;
+        }
+        // An empty list means every Nether on the server, which is what a single-world server wants
+        // and what a server with several of them can narrow by naming them.
+        return netherWorlds.isEmpty() || netherWorlds.contains(worldName.toLowerCase(Locale.ROOT));
+    }
+
+    /** Whether the plugin spawns mobs itself, which is the only way to have them out in daylight. */
+    public boolean ambientEnabled() {
+        return config.getBoolean("hostile-mobs.ambient.enabled", false);
+    }
+
+    /** How often the ambient spawner runs, in ticks. */
+    public int ambientPeriodTicks() {
+        return Math.max(20, config.getInt("hostile-mobs.ambient.period-ticks", 100));
+    }
+
+    /** How many positions it tries per player per run before giving up until the next one. */
+    public int ambientAttempts() {
+        return Math.max(1, Math.min(16, config.getInt("hostile-mobs.ambient.attempts", 4)));
+    }
+
+    /** Never closer than this to the player, so nobody watches one appear. */
+    public int ambientMinDistance() {
+        return Math.max(8, config.getInt("hostile-mobs.ambient.min-distance", 26));
+    }
+
+    /** Never further than this, so it stays inside what the server keeps loaded. */
+    public int ambientMaxDistance() {
+        return Math.max(12, config.getInt("hostile-mobs.ambient.max-distance", 46));
+    }
+
+    /** How many of its own mobs may already be near a player before it stops adding more. */
+    public int ambientCap() {
+        return Math.max(0, config.getInt("hostile-mobs.ambient.per-player-cap", 8));
+    }
+
+    /** What the ambient spawner puts in an Arkcronist overworld. */
+    public java.util.List<String> ambientOverworld() {
+        return ambientOverworld;
+    }
+
+    /** What it puts in the Nether. */
+    public java.util.List<String> ambientNether() {
+        return ambientNether;
     }
 
     public boolean vanillaMobs() {

@@ -36,6 +36,7 @@ public final class ArkcronistPlugin extends JavaPlugin {
     private ArkConfig arkConfig;
     private WorldRegistry worlds;
     private PrefabRegistry prefabs;
+    private org.bukkit.scheduler.BukkitTask ambientSpawner;
 
     @Override
     public void onEnable() {
@@ -61,6 +62,7 @@ public final class ArkcronistPlugin extends JavaPlugin {
         for (org.bukkit.World world : getServer().getWorlds()) {
             WorldAdoptionListener.adopt(this, world);
         }
+        startAmbientSpawner();
 
         PluginCommand command = getCommand("ag");
         if (command != null) {
@@ -148,6 +150,31 @@ public final class ArkcronistPlugin extends JavaPlugin {
      * back to the vanilla one when it is missing, so a pack that never loads costs the colour and
      * nothing else.</p>
      */
+    /**
+     * Starts the spawner that puts the custom mobs out in daylight.
+     *
+     * <p>Kept as a field so a reload can stop it and start it again at the new period rather than
+     * quietly leaving the old one running beside the new one, which is how a plugin ends up spawning
+     * at twice the rate it says it does.</p>
+     */
+    private void startAmbientSpawner() {
+        stopAmbientSpawner();
+        if (!arkConfig.hostileMobsEnabled() || !arkConfig.ambientEnabled()) {
+            return;
+        }
+        int period = arkConfig.ambientPeriodTicks();
+        ambientSpawner = getServer().getScheduler()
+                .runTaskTimer(this, new com.arkcronist.gen.bukkit.mobs.AmbientSpawnTask(this),
+                        period, period);
+    }
+
+    private void stopAmbientSpawner() {
+        if (ambientSpawner != null) {
+            ambientSpawner.cancel();
+            ambientSpawner = null;
+        }
+    }
+
     private void installBiomeColours() {
         Map<String, BiomeColourPack.Colours> table =
                 arkConfig.biomeColourTable(new com.arkcronist.gen.core.biome.BiomeRegistry());
@@ -178,6 +205,7 @@ public final class ArkcronistPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        stopAmbientSpawner();
         if (worlds != null) {
             worlds.clearCaches();
         }
@@ -200,6 +228,7 @@ public final class ArkcronistPlugin extends JavaPlugin {
     public void reload() {
         reloadConfig();
         this.arkConfig = new ArkConfig(getConfig());
+        startAmbientSpawner();
         worlds.clearCaches();
     }
 

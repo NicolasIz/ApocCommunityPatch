@@ -62,18 +62,31 @@ public final class SpawnSpot {
      * @return the location, or null when the column has nowhere to put it and it should be skipped
      */
     public static Location resolve(World world, MobSpawn request, EntityType type) {
-        int x = request.x();
-        int z = request.z();
         // How tall the mob is and whether it stands on anything are the request's own business - the
         // same two answers the structure pass used, so the two checks cannot disagree.
-        boolean floats = !request.needsFloor() || aquatic(type);
-        int needed = request.height();
+        return resolve(world, request.x(), request.y(), request.z(), request.height(),
+                !request.needsFloor() || aquatic(type));
+    }
+
+    /**
+     * The same search, for a caller that has a column and a shape rather than a queued request.
+     *
+     * <p>The ambient spawner is the one that needs this: it invents its own positions around a
+     * player and has no {@link MobSpawn} to ask, but it wants exactly the same answer about where a
+     * mob can stand - one rule for both, so a mob dropped by a structure and a mob dropped beside a
+     * player are held to the same thing.</p>
+     *
+     * @param needed how many blocks of clear space the mob needs above its feet
+     * @param floats true for something that swims or flies and so needs no floor
+     * @return the location, or null when the column has nowhere to put it
+     */
+    public static Location resolve(World world, int x, int wantedY, int z, int needed, boolean floats) {
         int lowest = world.getMinHeight() + 1;
-        int highest = world.getMaxHeight() - needed;
+        int highest = world.getMaxHeight() - Math.max(1, needed);
         if (lowest > highest) {
             return null;
         }
-        int wanted = Math.max(lowest, Math.min(highest, request.y()));
+        int wanted = Math.max(lowest, Math.min(highest, wantedY));
 
         if (fits(world, x, wanted, z, floats, needed)) {
             return at(world, x, wanted, z);

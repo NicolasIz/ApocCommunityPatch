@@ -46,5 +46,7 @@ public enum StructureTag {
     /** A stand of trees loaded whole from {@code prefabs/groves/}. */
     GROVE,
     /** Schematic landmarks loaded from {@code prefabs/ruins/}. */
-    PREFAB_RUIN
+    PREFAB_RUIN,
+    /** A stratovolcano: the landmark of the ash plains, and the only thing that builds a mountain. */
+    VOLCANO
 }

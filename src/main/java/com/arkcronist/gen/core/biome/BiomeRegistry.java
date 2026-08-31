@@ -643,7 +643,7 @@ public final class BiomeRegistry {
         register(ArkBiome.builder("volcanic_range")
                 .vanilla("minecraft:stony_peaks").category(BiomeCategory.VOLCANIC)
                 .climate(0.85, -0.35).land(0.75, 1.0).mountain(0.55, 1.0).height(110.0, 300.0)
-                .weird(-0.8, 0.7)
+                .weird(-0.52, 0.26)
                 .surface(Palette.of(Blocks.BASALT, 5.0, Blocks.BLACKSTONE, 4.0, Blocks.MAGMA_BLOCK, 1.0))
                 .subsurface(Palette.of(Blocks.BASALT, 5.0, Blocks.BLACKSTONE, 3.0))
                 .stone(Palette.of(Blocks.BASALT, 4.0, Blocks.BLACKSTONE, 3.0, Blocks.SMOOTH_BASALT, 2.0, Blocks.DEEPSLATE, 1.0))
@@ -726,6 +726,37 @@ public final class BiomeRegistry {
                     d.deadLogs = 0.004;
                 }))
                 .structures(GROVE, RUINS, CAMP, TOWER, PREFAB_RUIN));
+
+        // Ash plains, and the only biome in the world that builds a mountain instead of standing on
+        // one. Its slot is hot and half dry, between the savanna at (0.75, -0.25) and the desert at
+        // (0.78, -0.75), and it is pushed out to a weirdness of its own so it does not simply eat
+        // the edge of either: a volcanic waste that turns up wherever a desert would have is not a
+        // rare thing you travel to, it is a desert that went out.
+        register(ArkBiome.builder("volcanic_wastes")
+                // Badlands, not basalt_deltas, and that is a real decision rather than timidity.
+                // The key handed to the server decides which mobs the game spawns there, and
+                // basalt_deltas spawns ghasts and magma cubes - in the overworld, where a ghast is a
+                // flying grief machine with nothing to stop it. The ash and the dark sky come from
+                // the colour datapack instead, which costs nothing and cannot import a mob list.
+                .vanilla("minecraft:badlands").category(BiomeCategory.VOLCANIC)
+                .climate(0.86, -0.38).land(0.68, 1.0).mountain(0.0, 0.42).height(4.0, 118.0)
+                .weird(-0.52, 0.26)
+                .surface(Palette.of(Blocks.BASALT, 8.0, Blocks.GRAVEL, 4.0, Blocks.BLACKSTONE, 3.0,
+                        Blocks.TUFF, 2.0, Blocks.MAGMA_BLOCK, 0.35))
+                .subsurface(Palette.of(Blocks.BASALT, 6.0, Blocks.BLACKSTONE, 3.0, Blocks.TUFF, 2.0))
+                .stone(Palette.of(Blocks.BLACKSTONE, 4.0, Blocks.BASALT, 3.0, Blocks.TUFF, 2.0,
+                        Blocks.STONE, 2.0))
+                .surfaceDepth(5)
+                .roughness(1.6)
+                .decoration(deco(d -> {
+                    // Nothing grows. What there is instead is the ground venting, and the rubble a
+                    // flow leaves when it cools and breaks up.
+                    d.magmaVents = 0.05;
+                    d.boulders = 0.010;
+                    d.deadBush = 0.012;
+                }))
+                .ores(1.4, 1.0, 0.9, 1.3, 1.2, 1.0, 1.0, 0.7)
+                .structures(VOLCANO, RUINS, CAMP, TOWER, RUINED_PORTAL, FOSSIL, PREFAB_RUIN));
 
         register(ArkBiome.builder("mushroom_isle")
                 .vanilla("minecraft:mushroom_fields").category(BiomeCategory.MUSHROOM)

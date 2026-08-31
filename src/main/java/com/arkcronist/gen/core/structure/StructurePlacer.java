@@ -130,6 +130,9 @@ public final class StructurePlacer {
         register(new TrialChamberStructure());
         register(new GeodeStructure());
         register(new FossilStructure());
+        // Landform rather than building: the one structure here that makes a mountain instead of
+        // standing on one.
+        register(new VolcanoStructure(engine.seed()));
         // Schematic backed families. Each one exists only when its folder has files in it, so an
         // install with an empty prefabs folder behaves exactly as it did before there were any.
         if (prefabs.has("ships")) {

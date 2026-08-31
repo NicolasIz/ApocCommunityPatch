@@ -12,6 +12,7 @@ import org.bukkit.event.entity.CreatureSpawnEvent;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -54,14 +55,13 @@ public final class HostileSwapListener implements Listener {
         if (bukkitWorld == null) {
             return;
         }
-        ArkWorld world = plugin.worlds().find(bukkitWorld.getName());
-        if (world == null
-                || !plugin.arkConfig().hostileMobPresets().contains(world.preset().name())) {
+        Map<String, List<String>> table = tableFor(bukkitWorld);
+        if (table.isEmpty()) {
             return;
         }
 
         String vanilla = event.getEntityType().name().toUpperCase(Locale.ROOT);
-        List<String> candidates = plugin.arkConfig().hostileMobTable().get(vanilla);
+        List<String> candidates = table.get(vanilla);
         if (candidates == null || candidates.isEmpty()) {
             return;
         }
@@ -85,5 +85,26 @@ public final class HostileSwapListener implements Listener {
             return;
         }
         event.setCancelled(true);
+    }
+
+    /**
+     * Which table applies in this world, or an empty one when none does.
+     *
+     * <p>Two rules, and they are selected differently on purpose. An overworld is ours only if this
+     * generator made it and its preset is one the config named. The Nether is nobody's - it is the
+     * server's own vanilla world - so it cannot be recognised by preset and is recognised by being
+     * the Nether. That distinction is the whole reason the volcanic skeletons can be kept down there
+     * and nowhere else.</p>
+     */
+    private Map<String, List<String>> tableFor(org.bukkit.World world) {
+        if (world.getEnvironment() == org.bukkit.World.Environment.NETHER) {
+            return plugin.arkConfig().netherApplies(world.getName())
+                    ? plugin.arkConfig().netherMobTable() : Map.of();
+        }
+        ArkWorld ark = plugin.worlds().find(world.getName());
+        if (ark == null || !plugin.arkConfig().hostileMobPresets().contains(ark.preset().name())) {
+            return Map.of();
+        }
+        return plugin.arkConfig().hostileMobTable();
     }
 }
