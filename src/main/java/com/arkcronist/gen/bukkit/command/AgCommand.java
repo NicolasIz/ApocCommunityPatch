@@ -268,17 +268,23 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
         }
 
         // Loot is the one part of generation with no visible trace when it fails: the chests are
-        // there, they are just empty, and nothing is logged. These three numbers say whether the
-        // containers were found at all.
+        // there, they are just empty, and nothing is logged. These numbers say whether the
+        // containers were found at all, and separate the ones left empty on purpose from the ones
+        // that failed - without that split, a low fill-chance looks exactly like a bug.
         long[] loot = LootFiller.counters();
         sender.sendMessage("§7 Containers seen: §f" + loot[0]
                 + "§7, filled: §f" + loot[1]
+                + "§7, empty by fill-chance: §f" + loot[4]
                 + "§7, block replaced first: §f" + loot[2]
                 + "§7, from a vanilla table: §f" + loot[3]);
-        if (loot[0] > 0 && loot[1] < loot[0]) {
-            sender.sendMessage("§c " + (loot[0] - loot[1])
+        long unaccounted = loot[0] - loot[1] - loot[4];
+        if (loot[0] > 0 && unaccounted > 0) {
+            sender.sendMessage("§c " + unaccounted
                     + " container(s) could not be filled - the block did not read back as a container.");
         }
+        java.util.Set<String> themes = plugin.lootRules().names();
+        sender.sendMessage("§7 Loot themes configured: §f"
+                + (themes.isEmpty() ? "none (built-in rules everywhere)" : String.join(", ", themes)));
     }
 
     private void bench(CommandSender sender, String[] args) {

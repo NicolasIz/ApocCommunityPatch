@@ -252,6 +252,52 @@ del spawn no se registraba nada, y todo lo que empieza por *"¿este mundo es de 
 de mobs, el primero— respondía que no hasta que alguien caminaba lo bastante lejos. Ahora se adoptan
 al cargarse.
 
+## Loot de los cofres, configurable
+
+Las estructuras `.schem` traen sus propios cofres y barriles, y ahora **qué hay dentro se decide en
+`config.yml`** en vez de estar fijo en el código.
+
+Antes el tema —la carpeta de la que salió el `.schem`— elegía una tabla de loot vanilla y se acabó.
+Eso vale para las familias que construye el propio plugin y no vale para las que no: un servidor que
+mete sus castillos en `prefabs/castles/` no tenía forma de decir qué llevan dentro, y uno que quiera
+la moneda de su economía ahí dentro no tenía forma ninguna.
+
+Cada tema puede declarar tablas vanilla, su propia lista de objetos, o las dos:
+
+```yaml
+loot:
+  themes:
+    castles:
+      tables: [WOODLAND_MANSION, PILLAGER_OUTPOST]
+      fill-chance: 0.45
+      rolls: 3
+      items:
+        - "IRON_INGOT 2-8 weight=14"
+        - "DIAMOND 1-2 weight=2"
+        - "IRON_SWORD 1 weight=3 enchanted"
+```
+
+Si pones las dos cosas, primero se tira la tabla vanilla y tus objetos se añaden **encima**: quien
+mete la moneda de su servidor en los castillos quiere que esté en los castillos, no que el castillo
+deje de tener otra cosa. Un tema que no aparezca en el config usa lo de siempre, así que un
+`config.yml` sin tocar se comporta exactamente como antes.
+
+**Sobre `fill-chance`, que es el número que importa.** Los `.schem` decorados traen muchísimos más
+contenedores de los que parece: medido sobre los que vienen con el plugin, `large_stone_castle_01`
+tiene **78**, `giant_stone_castle_02` tiene **73** y `ship_first_rate` tiene **94**. Son barriles de
+adorno. Llenarlos todos con una tabla de mansión convierte un castillo en un almacén. Por eso los
+temas grandes vienen entre 0,4 y 0,5, y qué cofres concretos llevan algo sale de la posición: es fijo
+para una semilla, no depende de quién entre primero.
+
+Y por eso `/ag stats` cuenta aparte los **vacíos a propósito** de los que **fallaron**. Sin esa
+separación, bajar `fill-chance` es indistinguible de un fallo, que es justo la confusión que este
+apartado tenía que evitar.
+
+Los nombres de tablas y materiales se comprueban **al cargar el config**, no al abrir el cofre, y hay
+una prueba que valida cada uno contra el juego. Un nombre mal escrito es si no el fallo más silencioso
+que tiene este plugin: unos cofres salen más pobres de lo que pusiste, en un tipo de estructura, en
+algún sitio, y nadie se entera.
+
 ## El volcán y las llanuras de ceniza
 
 Un bioma nuevo, `volcanic_wastes`, y la única estructura del generador que **construye una montaña**

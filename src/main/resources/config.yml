@@ -209,6 +209,141 @@ biome-colours:
     water-fog: "#241E1C"
 
 # ---------------------------------------------------------------------------
+#  Loot de los cofres
+# ---------------------------------------------------------------------------
+#  Que hay dentro de los cofres y barriles que traen las estructuras, incluidos
+#  los de tus .schem.
+#
+#  El "tema" es la CARPETA de prefabs de la que salio la estructura (castles,
+#  houses, ships, temples, towers, ruins, battle_towers, ancient_city...) o el
+#  nombre de una familia propia del generador (village, dungeon, stronghold,
+#  mineshaft, mansion, vault, trial, camp, sky, temple, underwater, portal...).
+#
+#  Un tema que no aparezca aqui usa lo que trae el plugin de serie. Es decir:
+#  si no tocas nada, todo funciona igual que antes. Esto anade una palanca, no
+#  la mueve.
+#
+#  Cada tema puede llevar:
+#    tables:      tablas de loot VANILLA. Se tira UNA al azar.
+#    items:       tu propia lista. Formato: MATERIAL cantidad [weight=n] [enchanted]
+#                 La cantidad puede ser un numero (3) o un rango (1-5).
+#                 weight = cuanto sale ese objeto frente a los demas (por defecto 10).
+#                 enchanted = si es una herramienta o armadura, sale encantada.
+#    rolls:       cuantos objetos de TU lista se meten en cada cofre.
+#    fill-chance: que fraccion de los cofres de ese tema llevan algo (1.0 = todos).
+#
+#  Si pones tables Y items, primero se tira la tabla vanilla y tus objetos se
+#  anaden ENCIMA. Quien mete la moneda de su servidor en los castillos quiere
+#  que este en los castillos, no que el castillo deje de tener otra cosa.
+#
+#  AVISO sobre fill-chance: los .schem decorados traen muchos mas contenedores
+#  de los que parece. Los castillos que vienen con el plugin tienen entre 63 y
+#  78 barriles y cofres cada uno, y el barco grande 94: son de adorno. Con
+#  fill-chance a 1.0 se llenan TODOS. Si te parece demasiado, baja el numero del
+#  tema en cuestion; a 0.3 se llena aproximadamente uno de cada tres, y siempre
+#  los mismos para una misma semilla.
+# ---------------------------------------------------------------------------
+loot:
+  enabled: true
+
+  # Tope de objetos distintos por cofre.
+  max-stacks: 8
+
+  # Valores por defecto para cualquier tema que no diga lo suyo.
+  fill-chance: 1.0
+  rolls: 3
+
+  themes:
+    # --- carpetas de .schem ---
+    castles:
+      tables: [WOODLAND_MANSION, PILLAGER_OUTPOST]
+      fill-chance: 0.45
+      rolls: 3
+      items:
+        - "IRON_INGOT 2-8 weight=14"
+        - "GOLD_INGOT 1-5 weight=10"
+        - "EMERALD 1-3 weight=6"
+        - "EXPERIENCE_BOTTLE 1-4 weight=6"
+        - "GOLDEN_APPLE 1 weight=3"
+        - "DIAMOND 1-2 weight=2"
+        - "IRON_SWORD 1 weight=3 enchanted"
+        - "IRON_CHESTPLATE 1 weight=2 enchanted"
+
+    houses:
+      tables: [VILLAGE_PLAINS_HOUSE, VILLAGE_TAIGA_HOUSE, VILLAGE_SNOWY_HOUSE, VILLAGE_TANNERY]
+      fill-chance: 0.6
+      rolls: 2
+      items:
+        - "BREAD 2-6 weight=14"
+        - "WHEAT 3-9 weight=12"
+        - "COAL 2-6 weight=10"
+        - "IRON_INGOT 1-3 weight=6"
+        - "EMERALD 1-2 weight=3"
+
+    ships:
+      tables: [SHIPWRECK_SUPPLY, SHIPWRECK_TREASURE, SHIPWRECK_MAP]
+      fill-chance: 0.4
+      rolls: 2
+      items:
+        - "GOLD_INGOT 1-6 weight=10"
+        - "COOKED_COD 2-6 weight=8"
+        - "GUNPOWDER 2-8 weight=8"
+        - "MAP 1 weight=3"
+        - "HEART_OF_THE_SEA 1 weight=1"
+
+    towers:
+      tables: [PILLAGER_OUTPOST]
+      fill-chance: 0.8
+      rolls: 2
+      items:
+        - "ARROW 4-16 weight=14"
+        - "BOOK 1-3 weight=8"
+        - "LAPIS_LAZULI 2-6 weight=8"
+        - "ENCHANTED_BOOK 1 weight=2"
+
+    battle_towers:
+      tables: [PILLAGER_OUTPOST, WOODLAND_MANSION]
+      fill-chance: 0.5
+      rolls: 3
+      items:
+        - "IRON_INGOT 2-6 weight=12"
+        - "EXPERIENCE_BOTTLE 2-6 weight=8"
+        - "DIAMOND 1-2 weight=3"
+        - "CROSSBOW 1 weight=3 enchanted"
+
+    temples:
+      tables: [JUNGLE_TEMPLE, DESERT_PYRAMID]
+      fill-chance: 0.9
+      rolls: 3
+      items:
+        - "GOLD_INGOT 2-7 weight=12"
+        - "EMERALD 1-4 weight=8"
+        - "ENDER_PEARL 1-2 weight=5"
+        - "GOLDEN_APPLE 1 weight=3"
+        - "ENCHANTED_GOLDEN_APPLE 1 weight=1"
+
+    ruins:
+      tables: [SIMPLE_DUNGEON, UNDERWATER_RUIN_BIG]
+      fill-chance: 0.9
+      rolls: 2
+      items:
+        - "BONE 2-6 weight=12"
+        - "ROTTEN_FLESH 2-8 weight=10"
+        - "IRON_INGOT 1-4 weight=8"
+        - "ENCHANTED_BOOK 1 weight=2"
+
+    ancient_city:
+      tables: [ANCIENT_CITY, ANCIENT_CITY_ICE_BOX]
+      fill-chance: 1.0
+      rolls: 3
+      items:
+        - "ECHO_SHARD 1-3 weight=10"
+        - "SCULK_CATALYST 1-2 weight=5"
+        - "DIAMOND 1-3 weight=5"
+        - "DISC_FRAGMENT_5 1 weight=3"
+        - "ENCHANTED_GOLDEN_APPLE 1 weight=1"
+
+# ---------------------------------------------------------------------------
 #  Mobs hostiles propios (MythicMobs + ModelEngine)
 # ---------------------------------------------------------------------------
 #  Cambia los mobs hostiles VANILLA por mobs de MythicMobs, en los mundos de

@@ -39,8 +39,23 @@ public final class LootFiller {
     private static final AtomicLong FILLED = new AtomicLong();
     private static final AtomicLong REPAIRED = new AtomicLong();
     private static final AtomicLong FROM_TABLE = new AtomicLong();
+    private static final AtomicLong LEFT_EMPTY = new AtomicLong();
 
     public static void fill(LimitedRegion region, List<LootMarker> markers, long worldSeed) {
+        fill(region, markers, worldSeed, LootRules.none());
+    }
+
+    /**
+     * The same, with whatever {@code config.yml} says about these themes.
+     *
+     * <p>A theme the config does not mention falls through to the built-in rules below, so a server
+     * that never opens the {@code loot} section gets exactly what it got before.</p>
+     */
+    public static void fill(LimitedRegion region, List<LootMarker> markers, long worldSeed,
+                            LootRules rules) {
+        if (!rules.enabled()) {
+            return;
+        }
         for (LootMarker marker : markers) {
             int x = marker.x();
             int y = marker.y();
@@ -67,6 +82,18 @@ public final class LootFiller {
             Container container = (Container) state;
 
             FastRandom random = new FastRandom(Hashing.hash3(worldSeed ^ 0x100D_5EEDL, x, y, z));
+            LootRules.Theme configured = rules.theme(marker.theme());
+
+            // Rolled from the position like everything else, so which chests are worth opening is
+            // fixed for a seed rather than decided by who walked in first.
+            if (configured.fillChance() < 1.0 && !random.chance(configured.fillChance())) {
+                // Counted apart from the ones that were filled, and that is not bookkeeping: the
+                // whole reason these counters exist is to answer "why are my chests empty", and a
+                // chest deliberately left empty reported as filled is the one answer that would send
+                // somebody hunting for a bug that is not there.
+                LEFT_EMPTY.incrementAndGet();
+                continue;
+            }
 
             Inventory inventory = container.getInventory();
 
@@ -77,7 +104,9 @@ public final class LootFiller {
             // not: the filler reported every container filled while every chest opened empty.
             // Real items in the inventory cannot fail that way.
             boolean rolled = false;
-            LootTables tables = tableFor(marker.theme(), marker.tier(), random);
+            LootTables tables = configured.tables().isEmpty()
+                    ? tableFor(marker.theme(), marker.tier(), random)
+                    : configured.tables().get(random.nextInt(configured.tables().size()));
             if (tables != null) {
                 try {
                     LootTable table = tables.getLootTable();
@@ -99,8 +128,27 @@ public final class LootFiller {
                     // fall through to the hand rolled items rather than leaving the chest empty.
                 }
             }
+            // The theme's own items go in on top of whatever the table gave, not instead of it.
+            // Somebody who lists their server's own currency in a castle wants it in the castle
+            // chests, not a castle that stops holding anything else.
+            int own = Math.min(rules.maxStacks(), configured.rolls());
+            for (int i = 0; i < own; i++) {
+                ItemStack item = configured.pick(random);
+                if (item == null) {
+                    break;
+                }
+                if (item.getType().getMaxDurability() > 0 && enchantedIn(configured, item)) {
+                    enchant(item, random, Math.max(1, marker.tier()));
+                }
+                // addItem and not setItem at a random slot: the vanilla table has already put its
+                // items in, and a random slot would sometimes land on one and delete it. Scattering
+                // looks better and is not worth losing a table's drop over.
+                inventory.addItem(item);
+                rolled = true;
+            }
+
             if (!rolled) {
-                int stacks = 3 + marker.tier() * 2 + random.nextInt(0, 3);
+                int stacks = Math.min(rules.maxStacks(), 3 + marker.tier() * 2 + random.nextInt(0, 3));
                 for (int i = 0; i < stacks; i++) {
                     ItemStack item = roll(random, marker.tier(), marker.theme());
                     if (item != null) {
@@ -113,9 +161,19 @@ public final class LootFiller {
         }
     }
 
-    /** Containers seen, filled, and repaired - for the startup/report diagnostics. */
+    /** Whether the theme asked for this material to come out enchanted. */
+    private static boolean enchantedIn(LootRules.Theme theme, ItemStack item) {
+        for (LootRules.Entry entry : theme.items()) {
+            if (entry.material() == item.getType()) {
+                return entry.enchanted();
+            }
+        }
+        return false;
+    }
+
+    /** Containers seen, filled, repaired, rolled from a vanilla table, and left empty on purpose. */
     public static long[] counters() {
-        return new long[]{SEEN.get(), FILLED.get(), REPAIRED.get(), FROM_TABLE.get()};
+        return new long[]{SEEN.get(), FILLED.get(), REPAIRED.get(), FROM_TABLE.get(), LEFT_EMPTY.get()};
     }
 
     /**

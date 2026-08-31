@@ -48,7 +48,7 @@ public final class StructurePopulator extends BlockPopulator {
         world.structures().placeInto(chunkX, chunkZ, writer, spawns, loot, spawners);
 
         if (plugin.arkConfig().fillLoot()) {
-            LootFiller.fill(limitedRegion, loot, world.seed());
+            LootFiller.fill(limitedRegion, loot, world.seed(), plugin.lootRules());
         }
         configureSpawners(limitedRegion, spawners);
 

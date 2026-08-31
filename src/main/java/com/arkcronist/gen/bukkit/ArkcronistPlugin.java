@@ -37,11 +37,14 @@ public final class ArkcronistPlugin extends JavaPlugin {
     private WorldRegistry worlds;
     private PrefabRegistry prefabs;
     private org.bukkit.scheduler.BukkitTask ambientSpawner;
+    private com.arkcronist.gen.bukkit.loot.LootRules lootRules =
+            com.arkcronist.gen.bukkit.loot.LootRules.none();
 
     @Override
     public void onEnable() {
         ensureUsableConfig();
         this.arkConfig = new ArkConfig(getConfig());
+        this.lootRules = com.arkcronist.gen.bukkit.loot.LootRules.read(getConfig(), getLogger()::warning);
         this.worlds = new WorldRegistry(this);
 
         // Prefabs first: loading them registers every block state they use, and the bridge below
@@ -215,6 +218,11 @@ public final class ArkcronistPlugin extends JavaPlugin {
         return arkConfig;
     }
 
+    /** What the config says goes in structure chests. Re-read on reload, like everything else. */
+    public com.arkcronist.gen.bukkit.loot.LootRules lootRules() {
+        return lootRules;
+    }
+
     public WorldRegistry worlds() {
         return worlds;
     }
@@ -228,6 +236,7 @@ public final class ArkcronistPlugin extends JavaPlugin {
     public void reload() {
         reloadConfig();
         this.arkConfig = new ArkConfig(getConfig());
+        this.lootRules = com.arkcronist.gen.bukkit.loot.LootRules.read(getConfig(), getLogger()::warning);
         startAmbientSpawner();
         worlds.clearCaches();
     }
