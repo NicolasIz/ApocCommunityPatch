@@ -39,6 +39,7 @@ public final class ArkcronistPlugin extends JavaPlugin {
     private org.bukkit.scheduler.BukkitTask ambientSpawner;
     private com.arkcronist.gen.bukkit.loot.LootRules lootRules =
             com.arkcronist.gen.bukkit.loot.LootRules.none();
+    private com.arkcronist.gen.bukkit.world.DimensionManager dimensions;
 
     @Override
     public void onEnable() {
@@ -46,6 +47,7 @@ public final class ArkcronistPlugin extends JavaPlugin {
         this.arkConfig = new ArkConfig(getConfig());
         this.lootRules = com.arkcronist.gen.bukkit.loot.LootRules.read(getConfig(), getLogger()::warning);
         this.worlds = new WorldRegistry(this);
+        this.dimensions = new com.arkcronist.gen.bukkit.world.DimensionManager(this);
 
         // Prefabs first: loading them registers every block state they use, and the bridge below
         // resolves the whole table in one pass.
@@ -58,6 +60,8 @@ public final class ArkcronistPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(
                 new com.arkcronist.gen.bukkit.mobs.HostileSwapListener(this), this);
         getServer().getPluginManager().registerEvents(new WorldAdoptionListener(this), this);
+        getServer().getPluginManager().registerEvents(
+                new com.arkcronist.gen.bukkit.world.PortalListener(this), this);
         // Worlds that are already open when the plugin starts. Without this a restarted server does
         // not recognise its own generated world until something makes it generate a fresh chunk, and
         // everything keyed on "is this one of ours" - the hostile mob swap above, most visibly - does
@@ -216,6 +220,11 @@ public final class ArkcronistPlugin extends JavaPlugin {
 
     public ArkConfig arkConfig() {
         return arkConfig;
+    }
+
+    /** Gives each generated world its own Nether and End. */
+    public com.arkcronist.gen.bukkit.world.DimensionManager dimensions() {
+        return dimensions;
     }
 
     /** What the config says goes in structure chests. Re-read on reload, like everything else. */

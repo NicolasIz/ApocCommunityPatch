@@ -209,6 +209,51 @@ biome-colours:
     water-fog: "#241E1C"
 
 # ---------------------------------------------------------------------------
+#  Nether y End propios
+# ---------------------------------------------------------------------------
+#  Cada mundo de este generador tiene SU Nether y SU End, en vez de compartir
+#  los del servidor. Un servidor con un mundo BASE y uno INSANE tenia un solo
+#  Nether entre los dos: cruzabas un portal en cualquiera de ellos y salias al
+#  mismo sitio, o sea que los dos presets compartian la mitad del juego que no
+#  es el overworld.
+#
+#  Los nombres siguen la convencion del propio servidor: el mundo "insane" tiene
+#  "insane_nether" e "insane_the_end". Asi quedan en el disco donde cualquiera
+#  los buscaria, y cualquier otro plugin que conozca la convencion los encuentra.
+#
+#  LOS GENERA EL JUEGO, no este plugin, y es una decision, no un atajo: el Nether
+#  mide 128 bloques bajo un techo de bedrock, sin cielo y sin mar, y el End es
+#  vacio con islas flotantes y una pelea de dragon montada sobre sus estructuras.
+#  El motor de aqui es un motor de overworld -continentes, oceanos, nivel del mar,
+#  montanas- y nada de eso vale alli. Dejandoselo al juego, el Nether y el End
+#  funcionan bien, dragon incluido.
+#
+#  La PRIMERA vez que se ve un mundo, crear su Nether y su End genera sus chunks
+#  de spawn y para el servidor un momento. Pasa una sola vez y queda en el log.
+# ---------------------------------------------------------------------------
+dimensions:
+  enabled: true
+
+  nether: true
+  end: true
+
+  nether-suffix: "_nether"
+  end-suffix: "_the_end"
+
+  # Enviar los portales a esos mundos.
+  #
+  # APAGALO si ya usas Multiverse-NetherPortals o cualquier otro plugin que
+  # gestione portales, o tendreis dos plugins peleandose por el mismo portal.
+  #
+  # Solo se cambia el MUNDO de destino, nunca las coordenadas: para cuando salta
+  # el evento, el juego ya ha dividido entre ocho al entrar, multiplicado por
+  # ocho al salir y ajustado la altura. Rehacer esa cuenta aqui es la forma
+  # tipica de dejar a alguien a ocho mil bloques de donde queria estar.
+  link-portals: true
+
+  # Los mundos que NO son de este generador no se tocan en absoluto.
+
+# ---------------------------------------------------------------------------
 #  Loot de los cofres
 # ---------------------------------------------------------------------------
 #  Que hay dentro de los cofres y barriles que traen las estructuras, incluidos

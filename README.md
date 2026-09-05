@@ -252,6 +252,46 @@ del spawn no se registraba nada, y todo lo que empieza por *"¿este mundo es de 
 de mobs, el primero— respondía que no hasta que alguien caminaba lo bastante lejos. Ahora se adoptan
 al cargarse.
 
+## Nether y End propios por mundo
+
+Cada mundo de este generador tiene **su** Nether y **su** End en vez de compartir los del servidor.
+Antes, un servidor con un mundo BASE y uno INSANE tenía un solo Nether entre los dos: cruzabas un
+portal en cualquiera de ellos y salías al mismo sitio, o sea que los dos presets compartían la mitad
+del juego que no es el overworld.
+
+Los nombres siguen la convención del propio servidor: `insane` tiene `insane_nether` e
+`insane_the_end`. Así quedan en el disco donde cualquiera los buscaría, y cualquier otro plugin que
+conozca la convención los encuentra.
+
+**Los genera el juego, no este plugin**, y es una decisión, no un atajo. El Nether mide 128 bloques
+bajo un techo de bedrock, sin cielo y sin mar; el End es vacío con islas flotantes y una pelea de
+dragón montada sobre sus estructuras. El motor de aquí es un motor de overworld —continentes,
+océanos, nivel del mar, montañas— y nada de eso vale allí. Dejándoselo al juego, el Nether y el End
+funcionan bien, dragón incluido, y la puerta queda abierta a generarlos nosotros más adelante sin
+cambiar nada de cómo se llega a ellos.
+
+**De los portales solo se cambia el mundo de destino, nunca las coordenadas.** Para cuando salta el
+evento, el juego ya ha dividido entre ocho al entrar, multiplicado por ocho al salir y ajustado la
+altura, y esa cuenta es una propiedad del *tipo* de dimensión, no de qué Nether concreto sea.
+Rehacerla aquí sería reimplementar algo que ya está bien, y equivocarse en la escala es como un
+plugin deja a alguien a ocho mil bloques de donde quería estar.
+
+Dos casos que sí necesitan trato aparte, y los dos dejarían a un jugador tirado:
+
+- **Las puertas del End** (`END_GATEWAY`) no son portales del End. Mueven de una parte del End a otra
+  y su destino ya es correcto. Tratar todo lo que no es un portal del End como si fuera uno del
+  Nether convertía cada salto de puerta en un viaje al overworld.
+- **Salir del End** es el único caso que no conserva las coordenadas. El juego le da al portal de
+  salida el punto de reaparición del jugador, y cuando ese punto está en otro mundo —el principal del
+  servidor, porque nunca durmió en este— copiar sus coordenadas al mundo del que salió lo deja en lo
+  que hubiera en ese punto. Ahí la única respuesta sensata es el spawn del propio mundo.
+
+Los mundos que **no** son de este generador no se tocan en absoluto. Y si ya usas
+Multiverse-NetherPortals o similar, `dimensions.link-portals: false` y que lo lleve él.
+
+Un efecto lateral que sale gratis: la sección `hostile-mobs.nether` se aplica a cualquier mundo cuyo
+entorno sea NETHER, así que los esqueletos volcánicos aparecen en estos Nethers nuevos sin tocar nada.
+
 ## Loot de los cofres, configurable
 
 Las estructuras `.schem` traen sus propios cofres y barriles, y ahora **qué hay dentro se decide en

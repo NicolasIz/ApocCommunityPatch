@@ -128,6 +128,7 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
 
         sender.sendMessage(PREFIX + "World §f" + world.name() + " §7preset §b" + world.preset()
                 + " §7seed §f" + world.seed());
+        companions(sender, world.name());
         sender.sendMessage("§7 Biome §f" + biome.name + " §8(" + biome.category
                 + " → " + biome.vanillaKey + ")");
         sender.sendMessage("§7 Surface §f" + surface + " §7water §f" + water
@@ -137,6 +138,41 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
         }
         sender.sendMessage("§7 Trees §f" + biome.trees.length + " species §7| structures allowed: §f"
                 + (biome.structures.isEmpty() ? "none" : biome.structures.toString()));
+    }
+
+    /**
+     * Which Nether and End belong to this world, and whether they are actually there.
+     *
+     * <p>Worth a line because the failure is invisible otherwise: the worlds are created once, and if
+     * the server refused - a name it would not take, a world manager that objected, a full disk -
+     * nothing about walking around the overworld looks any different, and the first anybody knows is
+     * a player coming out of a portal in the wrong Nether.</p>
+     */
+    private void companions(CommandSender sender, String name) {
+        if (!plugin.arkConfig().ownDimensions()) {
+            sender.sendMessage("§7 Own Nether and End: §eoff §8(dimensions.enabled)");
+            return;
+        }
+        StringBuilder line = new StringBuilder("§7 Own dimensions: ");
+        line.append(part(plugin.arkConfig().ownNether(),
+                com.arkcronist.gen.bukkit.world.DimensionLinks.netherOf(name,
+                        plugin.arkConfig().netherSuffix())));
+        line.append(" §7| ");
+        line.append(part(plugin.arkConfig().ownEnd(),
+                com.arkcronist.gen.bukkit.world.DimensionLinks.endOf(name,
+                        plugin.arkConfig().endSuffix())));
+        if (!plugin.arkConfig().linkPortals()) {
+            line.append(" §7| portals §enot routed §8(dimensions.link-portals)");
+        }
+        sender.sendMessage(line.toString());
+    }
+
+    private String part(boolean wanted, String name) {
+        if (!wanted) {
+            return "§8" + name + " (off)";
+        }
+        return plugin.getServer().getWorld(name) == null
+                ? "§c" + name + " (missing)" : "§a" + name;
     }
 
     private void biome(CommandSender sender, String[] args) {

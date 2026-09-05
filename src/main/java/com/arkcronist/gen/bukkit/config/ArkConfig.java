@@ -360,6 +360,35 @@ public final class ArkConfig {
         return ambientNether;
     }
 
+    /** Whether each generated world gets a Nether and an End of its own. */
+    public boolean ownDimensions() {
+        return config.getBoolean("dimensions.enabled", true);
+    }
+
+    public boolean ownNether() {
+        return config.getBoolean("dimensions.nether", true);
+    }
+
+    public boolean ownEnd() {
+        return config.getBoolean("dimensions.end", true);
+    }
+
+    /** Appended to the world's name for its Nether; the server's own convention by default. */
+    public String netherSuffix() {
+        String value = config.getString("dimensions.nether-suffix", "_nether");
+        return value == null || value.isBlank() ? "_nether" : value.trim();
+    }
+
+    public String endSuffix() {
+        String value = config.getString("dimensions.end-suffix", "_the_end");
+        return value == null || value.isBlank() ? "_the_end" : value.trim();
+    }
+
+    /** Whether portals are routed to those worlds. Off when another plugin already does it. */
+    public boolean linkPortals() {
+        return config.getBoolean("dimensions.link-portals", true);
+    }
+
     public boolean vanillaMobs() {
         return config.getBoolean("world.vanilla-mob-generation", true);
     }

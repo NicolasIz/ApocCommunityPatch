@@ -41,8 +41,14 @@ public final class WorldAdoptionListener implements Listener {
      * adopted as the other.</p>
      */
     public static void adopt(ArkcronistPlugin plugin, World world) {
-        if (world.getGenerator() instanceof ArkChunkGenerator generator) {
-            plugin.worlds().get(world, generator.preset());
+        if (!(world.getGenerator() instanceof ArkChunkGenerator generator)) {
+            return;
         }
+        plugin.worlds().get(world, generator.preset());
+        // Next tick, not now. This can run from inside WorldLoadEvent, and creating a world from
+        // inside the load of another world is asking the server to re-enter something it is in the
+        // middle of. A tick later it is finished and the creation is an ordinary one.
+        plugin.getServer().getScheduler().runTask(plugin,
+                () -> plugin.dimensions().ensureCompanions(world));
     }
 }
