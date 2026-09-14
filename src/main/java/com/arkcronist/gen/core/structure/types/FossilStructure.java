@@ -25,7 +25,9 @@ public final class FossilStructure implements Structure {
 
     @Override
     public int radius() {
-        return 10;
+        // Sixteen and not ten. A spine is up to thirteen long and its ribs reach past that, so the
+        // old figure was three blocks short of what this actually writes.
+        return 16;
     }
 
     @Override

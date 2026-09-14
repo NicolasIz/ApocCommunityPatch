@@ -30,6 +30,26 @@ public final class ShipPrefabStructure implements Structure {
 
     private static final int DEEP_WATER = 14;
 
+    /**
+     * How much further than one ship's width a consort may lie from the flagship.
+     *
+     * <p>Named rather than written into the spread, because the spread and {@link #radius()} have to
+     * agree and for a long time they did not. The reach of a fleet is the flagship's own half-width,
+     * plus this, plus the consort's half-width - and {@code radius()} was reporting just the first of
+     * those three. A structure that writes further than it declares is written into cells that no
+     * chunk beyond the declared distance ever asks about, so the far ships came out with their bows
+     * missing. Measured at the time: declared 43, reached 104, against a catalogue whose widest
+     * structure is 99.</p>
+     *
+     * <p>Twelve rather than the twenty-four it was, and that is worth a sentence because it is free.
+     * A consort already stands a full ship's width from the flagship before this is added, so the
+     * number is only jitter on top of a gap that is there anyway - at twenty-four the fleet was no
+     * better spread, it just reported a radius of 110 and made every chunk in the world consult
+     * more grid cells for it. At twelve the honest radius is 98, which fits under the catalogue's
+     * existing maximum and costs nothing at all.</p>
+     */
+    private static final int CONSORT_GAP = 12;
+
     private final PrefabRegistry prefabs;
     private final int radius;
 
@@ -54,7 +74,9 @@ public final class ShipPrefabStructure implements Structure {
 
     @Override
     public int radius() {
-        return radius;
+        // The whole fleet, not one hull: the flagship reaches out by its own half-width, a consort
+        // stands up to CONSORT_GAP beyond that, and then has a half-width of its own.
+        return radius * 2 + CONSORT_GAP;
     }
 
     @Override
@@ -95,7 +117,7 @@ public final class ShipPrefabStructure implements Structure {
         int count = afloat ? squadronSize(context.preset, random) : 1;
 
         for (int index = 0; index < count; index++) {
-            int spread = index == 0 ? 0 : radius + random.nextInt(6, 24);
+            int spread = index == 0 ? 0 : radius + random.nextInt(6, CONSORT_GAP);
             double angle = random.nextDouble() * Math.PI * 2.0;
             int x = context.originX + (int) Math.round(Math.cos(angle) * spread);
             int z = context.originZ + (int) Math.round(Math.sin(angle) * spread);

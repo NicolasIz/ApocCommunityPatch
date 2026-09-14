@@ -108,7 +108,13 @@ public final class PrefabVillageStructure implements Structure {
             }
             int ring = 1 + attempt / Math.max(1, wanted);
             double angle = random.nextDouble() * Math.PI * 2.0;
-            int distance = ring * spacing / 2 + random.nextInt(0, spacing / 2 + 1);
+            // Held inside the radius this structure declares. The rings grow with each attempt and
+            // nothing used to stop them: houses went out to ninety-five blocks from a village that
+            // told the placer it was seventy-two across, and a house past the declared radius is
+            // written into cells that distant chunks never consult - so it comes out with a wall
+            // missing. Clamping keeps the village compact, which is also what a village should be.
+            int distance = Math.min(radius - houseRadius,
+                    ring * spacing / 2 + random.nextInt(0, spacing / 2 + 1));
             int x = greenX + (int) Math.round(Math.cos(angle) * distance);
             int z = greenZ + (int) Math.round(Math.sin(angle) * distance);
 

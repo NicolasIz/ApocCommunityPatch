@@ -211,6 +211,16 @@ public final class MinibossFactory {
         return item;
     }
 
+    /**
+     * The highest health the game will accept on an attribute.
+     *
+     * <p>Past this, {@code setBaseValue} throws. The multipliers here are config, and the config can
+     * say anything: at a health multiplier of thirty a tier four boss asks for 1440, the call throws,
+     * the spawn is abandoned and the server gets a warning for every miniboss in the world. Clamping
+     * gives a very tough boss instead of no boss and a log full of stack traces.</p>
+     */
+    private static final double HEALTH_CEILING = 1024.0;
+
     private static void scale(LivingEntity living, Attribute attribute, double factor) {
         AttributeInstance instance = living.getAttribute(attribute);
         if (instance == null) {
@@ -224,7 +234,11 @@ public final class MinibossFactory {
         if (base <= 0.0) {
             base = attribute == Attribute.ARMOR || attribute == Attribute.ARMOR_TOUGHNESS ? 2.0 : base;
         }
-        instance.setBaseValue(base * factor);
+        double scaled = base * factor;
+        if (attribute == Attribute.MAX_HEALTH) {
+            scaled = Math.min(scaled, HEALTH_CEILING);
+        }
+        instance.setBaseValue(scaled);
     }
 
     private static double maxHealth(LivingEntity living) {

@@ -61,9 +61,14 @@ public final class DimensionManager {
         if (plugin.getServer().getWorld(name) != null) {
             return;
         }
-        plugin.getLogger().info("Creating " + environment + " world '" + name + "' for '" + belongsTo
-                + "' (seed " + seed + "). This generates its spawn chunks and will pause the server "
-                + "briefly; it happens once.");
+        // "Opening" rather than "creating", because both happen here and an admin reading the log
+        // should not be told a world is being created every restart. A world a plugin made is not
+        // remembered by the server across restarts, so after the first time this call finds the
+        // folder on disk and loads it - same method, same log line, entirely different event.
+        boolean fresh = !new java.io.File(plugin.getServer().getWorldContainer(), name).isDirectory();
+        plugin.getLogger().info((fresh ? "Creating " : "Opening ") + environment + " world '" + name
+                + "' for '" + belongsTo + "'" + (fresh ? " (seed " + seed + ")" : "")
+                + ". This loads its spawn chunks and will pause the server briefly.");
         try {
             World created = new WorldCreator(name)
                     .environment(environment)

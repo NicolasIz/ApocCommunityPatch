@@ -32,7 +32,8 @@ public final class MineshaftStructure implements Structure {
 
     @Override
     public int radius() {
-        return 60;
+        // Sixty-four, because a corridor that ends at sixty puts its last post one block past it.
+        return 64;
     }
 
     @Override

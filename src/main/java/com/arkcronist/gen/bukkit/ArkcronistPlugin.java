@@ -242,12 +242,32 @@ public final class ArkcronistPlugin extends JavaPlugin {
     }
 
     /** Re-reads config.yml. Existing worlds keep their engines; caches are dropped. */
+    /**
+     * Re-reads the configuration and makes it actually apply.
+     *
+     * <p>The worlds are rebuilt, not just emptied of cached chunks, and that is the whole point of
+     * this method. An {@link ArkWorld} builds its engine once from the {@link
+     * com.arkcronist.gen.core.terrain.TerrainSettings} it is handed, so clearing the cache alone left
+     * every world still generating from the old config while the command cheerfully reported the new
+     * one as applied - a change to {@code terrain:} or {@code presets:} did nothing at all until the
+     * server was restarted, and nothing said so.</p>
+     *
+     * <p>Rebuilding empties each world's queue of structure mobs that have not been spawned yet, so
+     * a garrison whose chunk had been generated but not yet visited is lost. That is a small price on
+     * an explicit command, and the alternative is a reload that quietly does not reload.</p>
+     */
     public void reload() {
         reloadConfig();
         this.arkConfig = new ArkConfig(getConfig());
         this.lootRules = com.arkcronist.gen.bukkit.loot.LootRules.read(getConfig(), getLogger()::warning);
         startAmbientSpawner();
-        worlds.clearCaches();
+        worlds.reset();
+        // And straight back in. Leaving the registry empty would mean nothing recognises these as
+        // our worlds until a fresh chunk is generated - which is exactly the bug that made the
+        // hostile mob swap do nothing after a restart.
+        for (org.bukkit.World world : getServer().getWorlds()) {
+            WorldAdoptionListener.adopt(this, world);
+        }
     }
 
     @Override
