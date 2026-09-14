@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -86,5 +87,21 @@ class DimensionLinksTest {
         // Two presets on the same server have different seeds, so their companions differ too -
         // which is the entire point of giving each world its own.
         assertNotEquals(DimensionLinks.seedFor(1L, true), DimensionLinks.seedFor(2L, true));
+    }
+
+    @Test
+    @DisplayName("only an overworld is given companions of its own")
+    void onlyOverworldsGetCompanions() {
+        assertTrue(DimensionLinks.wantsCompanions(org.bukkit.World.Environment.NORMAL));
+
+        // The generator can be attached to any world the server will make. Without this guard,
+        // pointing it at a Nether would have the plugin build that Nether a Nether - Foo_nether for
+        // a world already called Foo that is itself the Nether - and an End, and then route portals
+        // between the three.
+        assertFalse(DimensionLinks.wantsCompanions(org.bukkit.World.Environment.NETHER),
+                "a Nether was given a Nether of its own");
+        assertFalse(DimensionLinks.wantsCompanions(org.bukkit.World.Environment.THE_END),
+                "an End was given an End of its own");
+        assertFalse(DimensionLinks.wantsCompanions(org.bukkit.World.Environment.CUSTOM));
     }
 }
