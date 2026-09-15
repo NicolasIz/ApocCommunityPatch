@@ -104,12 +104,19 @@ public final class ArkcronistPlugin extends JavaPlugin {
         }
         Path source = getDataFolder().toPath()
                 .resolve(com.arkcronist.gen.bukkit.datapack.DatapackInstaller.SOURCE_FOLDER);
+        boolean firstTime = !Files.isDirectory(source);
         try {
             Files.createDirectories(source);
             Path readme = source.resolve("README.txt");
             if (!Files.exists(readme)) {
                 Files.writeString(readme,
                         com.arkcronist.gen.bukkit.datapack.DatapackInstaller.README);
+            }
+            if (firstTime) {
+                // Said once, on the start that creates it. A folder nobody knows about is a folder
+                // nobody puts anything in.
+                getLogger().info("Datapacks go in " + source + " - drop the zips there and restart."
+                        + " There is a README.txt in it explaining the rest.");
             }
         } catch (IOException exception) {
             getLogger().log(Level.WARNING, "Could not prepare " + source, exception);
