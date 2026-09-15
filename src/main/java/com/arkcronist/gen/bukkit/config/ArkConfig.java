@@ -160,6 +160,27 @@ public final class ArkConfig {
         return config.getBoolean("prefabs.furnish", false);
     }
 
+    /**
+     * Whether to copy datapacks from the plugin folder into the server's world folder at startup.
+     *
+     * <p>On by default because the folder starts empty: with nothing in it this does nothing at all
+     * beyond creating the folder and a note explaining what it is for.</p>
+     */
+    public boolean installDatapacks() {
+        return config.getBoolean("datapacks.install", true);
+    }
+
+    /**
+     * Datapacks to install even though they declare a different game version.
+     *
+     * <p>Names of files, exactly as they are in the folder. Empty by default, because forcing a pack
+     * onto a version it was not built for is a decision with consequences and nobody should arrive
+     * at it by accident.</p>
+     */
+    public java.util.Set<String> retargetDatapacks() {
+        return new java.util.LinkedHashSet<>(config.getStringList("datapacks.retarget"));
+    }
+
     public boolean vanillaStructures() {
         return config.getBoolean("structures.vanilla-structures", true);
     }

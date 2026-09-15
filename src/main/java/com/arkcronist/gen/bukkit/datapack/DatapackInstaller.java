@@ -1,0 +1,362 @@
+package com.arkcronist.gen.bukkit.datapack;
+
+import org.bukkit.NamespacedKey;
+import org.bukkit.Server;
+import org.bukkit.packs.DataPack;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.Locale;
+import java.util.function.Consumer;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+
+/**
+ * Puts datapacks where the server will actually read them, and says plainly when it cannot.
+ *
+ * <h2>Why the plugin does this at all</h2>
+ *
+ * <p>A datapack that replaces a dimension - Incendium for the Nether, Nullscape for the End - is the
+ * only way to give this generator's companion worlds terrain it does not generate itself. Both
+ * replace {@code minecraft:the_nether} and {@code minecraft:the_end} outright, so once the server
+ * has them, <em>every</em> Nether and End it creates uses them, including the ones this plugin makes
+ * a moment after an overworld. Nothing has to be wired per world; the dimension is simply different.
+ *
+ * <h2>The part that cannot be worked around</h2>
+ *
+ * <p>World generation registries are built from the datapack folder before any plugin is loaded, and
+ * they are frozen once the first world opens. A plugin cannot add a worldgen datapack to the server
+ * it is already running on - not through this class, not through {@code /datapack enable}, not at
+ * all. So this copies the files into place and says, once, that the server has to be restarted for
+ * them to take effect. It is one restart, the first time.</p>
+ *
+ * <h2>What it will not do</h2>
+ *
+ * <p>No datapack is shipped inside the plugin. These are other people's work under their own terms -
+ * Stardust Labs, for one, permits any server to run Incendium and Nullscape and forbids
+ * redistributing them - so the admin supplies the files and this moves them. The folder it reads
+ * from is created on first start with a note in it saying so.</p>
+ */
+public final class DatapackInstaller {
+
+    /** Where an admin drops the zips. */
+    public static final String SOURCE_FOLDER = "datapacks";
+
+    private DatapackInstaller() {
+    }
+
+    /** What happened to one pack. */
+    public record Result(String file, PackMeta meta, Outcome outcome) {
+    }
+
+    public enum Outcome {
+        /** Copied into the world folder; takes effect after a restart. */
+        INSTALLED,
+        /** Already in the world folder, left alone. */
+        PRESENT,
+        /** Built for a different game version; not copied. */
+        INCOMPATIBLE,
+        /** Built for a different game version, and installed anyway because config said to. */
+        RETARGETED,
+        /** Not a datapack, or its pack.mcmeta could not be read. */
+        UNREADABLE,
+        /** The copy itself failed. */
+        FAILED
+    }
+
+    /**
+     * Installs every pack in {@code source} into {@code target}, and reports on each.
+     *
+     * @param serverFormat the data pack format this server loads, from {@link #serverFormat}
+     * @param log          where human-readable progress goes
+     */
+    public static List<Result> install(Path source, Path target, int serverFormat, Consumer<String> log) {
+        return install(source, target, serverFormat, java.util.Set.of(), log);
+    }
+
+    /**
+     * As above, but {@code retarget} names packs to install even though their declared version does
+     * not match, rewriting the copy's {@code pack.mcmeta} so the server will load it.
+     *
+     * <p>Only the copy is touched; the file the admin put in the plugin folder is never modified.
+     * Whether this produces a working pack or a building full of holes depends entirely on what the
+     * pack is made of, which is what {@link PackBlocks} is for.</p>
+     */
+    public static List<Result> install(Path source, Path target, int serverFormat,
+                                       java.util.Set<String> retarget, Consumer<String> log) {
+        List<Result> results = new ArrayList<>();
+        if (!Files.isDirectory(source)) {
+            return results;
+        }
+
+        List<Path> zips = new ArrayList<>();
+        try (DirectoryStream<Path> entries = Files.newDirectoryStream(source, "*.zip")) {
+            entries.forEach(zips::add);
+        } catch (IOException exception) {
+            log.accept("Could not read " + source + ": " + exception.getMessage());
+            return results;
+        }
+        zips.sort(java.util.Comparator.comparing(path -> path.getFileName().toString()
+                .toLowerCase(Locale.ROOT)));
+
+        for (Path zip : zips) {
+            results.add(installOne(zip, target, serverFormat, retarget, log));
+        }
+        return results;
+    }
+
+    private static Result installOne(Path zip, Path target, int serverFormat,
+                                     java.util.Set<String> retarget, Consumer<String> log) {
+        String name = zip.getFileName().toString();
+
+        PackMeta meta = readMeta(zip);
+        if (meta == null) {
+            log.accept("'" + name + "' has no readable pack.mcmeta, so it is not a datapack. Skipped.");
+            return new Result(name, null, Outcome.UNREADABLE);
+        }
+
+        PackMeta.Verdict verdict = meta.verdictFor(serverFormat);
+        boolean forced = serverFormat > 0 && verdict != PackMeta.Verdict.COMPATIBLE
+                && retarget.contains(name);
+        if (serverFormat > 0 && verdict != PackMeta.Verdict.COMPATIBLE && !forced) {
+            // Refusing to copy is the point. A pack the server will not load still appears in the
+            // world folder and in /datapack list, which is exactly how an evening gets spent looking
+            // for a structure that was never going to generate.
+            log.accept("'" + name + "' is built for data pack format " + meta.range()
+                    + " and this server is format " + serverFormat + " ("
+                    + (verdict == PackMeta.Verdict.TOO_NEW ? "newer game needed" : "older game")
+                    + "). Not installed - it would sit there without loading.");
+            return new Result(name, meta, Outcome.INCOMPATIBLE);
+        }
+
+        Path destination = target.resolve(name);
+        if (Files.exists(destination)) {
+            return new Result(name, meta, Outcome.PRESENT);
+        }
+
+        try {
+            Files.createDirectories(target);
+            if (forced) {
+                copyWithFormat(zip, destination, serverFormat);
+            } else {
+                Files.copy(zip, destination, StandardCopyOption.COPY_ATTRIBUTES);
+            }
+        } catch (IOException exception) {
+            log.accept("Could not copy '" + name + "' into " + target + ": " + exception.getMessage());
+            return new Result(name, meta, Outcome.FAILED);
+        }
+        if (forced) {
+            log.accept("Installed '" + name + "' with the version it declares rewritten from "
+                    + meta.range() + " to " + serverFormat + ", because the config asked for it."
+                    + " Your own copy is untouched. The server will load it now; whether it works"
+                    + " is a different question, and the block check answers that one.");
+            return new Result(name, meta, Outcome.RETARGETED);
+        }
+        log.accept("Installed '" + name + "' (format " + meta.range() + ").");
+        return new Result(name, meta, Outcome.INSTALLED);
+    }
+
+    /**
+     * The datapack files that override the same vanilla definitions as each other.
+     *
+     * <p>Two packs that both rewrite {@code data/minecraft/worldgen/structure/village_plains.json}
+     * do not merge and do not error: whichever the server reads last wins, and which that is depends
+     * on load order. The pack of the two an admin thought they were getting may be the one that
+     * loses, silently and only in the half of the game the other pack also touched. It is worth one
+     * line in the log.</p>
+     *
+     * <p>Only {@code data/minecraft/} counts. Two packs with their own namespaces are adding their
+     * own things and cannot collide; overriding the game's own files is the only way to overwrite
+     * somebody else.</p>
+
+     * <p>Tags are the exception and are not counted. A tag file from a datapack is <em>merged</em>
+     * into the game's own list rather than replacing it, so two packs both adding to
+     * {@code has_structure/village_plains} is how tags are meant to be used, not a conflict.
+     * Counting them turns every pair of packs that touch the same part of the game into a warning -
+     * Incendium and Nullscape, written by the same people to be run together, share one stone tag -
+     * and a warning that cries wolf is worse than no warning.</p>
+     *
+     * @return one line per colliding pair, empty when there are none
+     */
+    public static List<String> collisions(Path folder, List<Result> installed) {
+        List<String> warnings = new ArrayList<>();
+        List<String> names = new ArrayList<>();
+        List<java.util.Set<String>> overrides = new ArrayList<>();
+
+        for (Result result : installed) {
+            if (result.outcome() != Outcome.INSTALLED && result.outcome() != Outcome.PRESENT) {
+                continue;
+            }
+            java.util.Set<String> vanillaFiles = vanillaOverrides(folder.resolve(result.file()));
+            if (vanillaFiles.isEmpty()) {
+                continue;
+            }
+            names.add(result.file());
+            overrides.add(vanillaFiles);
+        }
+
+        for (int a = 0; a < names.size(); a++) {
+            for (int b = a + 1; b < names.size(); b++) {
+                java.util.Set<String> shared = new java.util.TreeSet<>(overrides.get(a));
+                shared.retainAll(overrides.get(b));
+                if (shared.isEmpty()) {
+                    continue;
+                }
+                String example = shared.iterator().next();
+                warnings.add("'" + names.get(a) + "' and '" + names.get(b) + "' both replace "
+                        + shared.size() + " of the game's own files (" + example
+                        + (shared.size() > 1 ? ", ..." : "")
+                        + "). Only one of them wins, and which is not defined. Keep one.");
+            }
+        }
+        return warnings;
+    }
+
+    /** Every {@code data/minecraft/...} file a pack replaces. */
+    private static java.util.Set<String> vanillaOverrides(Path zip) {
+        java.util.Set<String> found = new java.util.HashSet<>();
+        try (ZipFile file = new ZipFile(zip.toFile())) {
+            java.util.Enumeration<? extends ZipEntry> entries = file.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                if (entry.isDirectory()) {
+                    continue;
+                }
+                String name = entry.getName();
+                if (name.startsWith("data/minecraft/") && name.endsWith(".json")
+                        && !name.startsWith("data/minecraft/tags/")) {
+                    found.add(name);
+                }
+            }
+        } catch (IOException | IllegalStateException exception) {
+            return java.util.Set.of();
+        }
+        return found;
+    }
+
+    /**
+     * What a retargeted pack's pack.mcmeta is replaced with: the server's own format, and a
+     * description that says who changed it, so nobody later mistakes it for the original.
+     */
+    private static final String RETARGETED_META =
+            "{\n"
+            + "  \"pack\": {\n"
+            + "    \"description\": \"Retargeted by ArkcronistGenerator\",\n"
+            + "    \"pack_format\": %1$d,\n"
+            + "    \"min_format\": %1$d,\n"
+            + "    \"max_format\": %1$d\n"
+            + "  }\n"
+            + "}\n";
+
+    /**
+     * Copies a datapack, replacing the version its {@code pack.mcmeta} declares.
+     *
+     * <p>Every other entry is copied through byte for byte. The whole change is the one number the
+     * server reads to decide whether to load the pack at all.</p>
+     */
+    private static void copyWithFormat(Path from, Path to, int format) throws IOException {
+        try (ZipFile in = new ZipFile(from.toFile());
+             java.util.zip.ZipOutputStream out =
+                     new java.util.zip.ZipOutputStream(Files.newOutputStream(to))) {
+            Enumeration<? extends ZipEntry> entries = in.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                out.putNextEntry(new ZipEntry(entry.getName()));
+                if (!entry.isDirectory()) {
+                    if ("pack.mcmeta".equals(entry.getName())) {
+                        out.write(RETARGETED_META.formatted(format)
+                                .getBytes(StandardCharsets.UTF_8));
+                    } else {
+                        try (InputStream source = in.getInputStream(entry)) {
+                            source.transferTo(out);
+                        }
+                    }
+                }
+                out.closeEntry();
+            }
+        }
+    }
+
+    /** The declared version range of a datapack zip, or null when it is not one. */
+    public static PackMeta readMeta(Path zip) {
+        try (ZipFile file = new ZipFile(zip.toFile())) {
+            ZipEntry entry = file.getEntry("pack.mcmeta");
+            if (entry == null) {
+                return null;
+            }
+            try (InputStream in = file.getInputStream(entry)) {
+                return PackMeta.read(new String(in.readAllBytes(), StandardCharsets.UTF_8));
+            }
+        } catch (IOException | IllegalStateException exception) {
+            return null;
+        }
+    }
+
+    /**
+     * The data pack format this server loads.
+     *
+     * <p>Taken from the game's own built-in pack rather than a table of version numbers kept in this
+     * plugin, so it stays right on a server this build has never seen.</p>
+     *
+     * @return the format, or 0 when the server will not say
+     */
+    public static int serverFormat(Server server) {
+        try {
+            DataPack vanilla = server.getDataPackManager().getDataPack(NamespacedKey.minecraft("vanilla"));
+            if (vanilla != null) {
+                return vanilla.getPackFormat();
+            }
+            for (DataPack pack : server.getDataPackManager().getDataPacks()) {
+                if (pack.getSource() == DataPack.Source.DEFAULT
+                        || pack.getSource() == DataPack.Source.BUILT_IN) {
+                    return pack.getPackFormat();
+                }
+            }
+        } catch (RuntimeException | LinkageError exception) {
+            // An older or unusual server that does not expose its packs. Reported by the caller as
+            // "cannot check", which is honest, rather than guessed at.
+            return 0;
+        }
+        return 0;
+    }
+
+    /** The note left in the source folder so an admin finds out what it is for. */
+    public static final String README = """
+            Datapacks dropped in this folder are copied into the server's world folder when the
+            plugin starts, so they load with the game's own world generation.
+
+            What belongs here
+            -----------------
+            Any datapack zip. The ones this was built for:
+
+              Incendium   - replaces the Nether. Every Nether the server creates uses it,
+                            including the one this plugin makes for each generated world.
+              Nullscape   - replaces the End, the same way.
+              Structure packs - anything that adds or overrides overworld structures. This
+                            generator lets the server place its own structures, so datapack
+                            structures generate alongside the ones it builds itself.
+
+            Nothing is downloaded for you and nothing is bundled with the plugin: these are other
+            people's work under their own licences, and several of them allow you to run the pack
+            on any server while forbidding anyone to redistribute it. Get the zip from its author
+            and put it here.
+
+            Two things worth knowing
+            ------------------------
+            1. A datapack only takes effect after a server restart. World generation is built
+               before plugins load, so the first start after you add a pack copies it into place
+               and the second start is when it does anything. The log says so each time.
+
+            2. A pack built for a different game version is not copied at all, and the log says
+               which version it wanted. The server would have listed it and quietly refused to
+               load it, which is far harder to notice.
+            """;
+}

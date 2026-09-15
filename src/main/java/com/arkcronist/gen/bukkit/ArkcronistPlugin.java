@@ -53,6 +53,7 @@ public final class ArkcronistPlugin extends JavaPlugin {
         // resolves the whole table in one pass.
         this.prefabs = PrefabInstaller.install(getDataFolder().toPath(), getLogger(),
                 arkConfig.extractBundledPrefabs());
+        installDatapacks();
         BlockBridge.initialize(getLogger());
         com.arkcronist.gen.bukkit.mobs.MythicBridge.initialize(getLogger());
         installBiomeColours();
@@ -82,6 +83,110 @@ public final class ArkcronistPlugin extends JavaPlugin {
                 + " - " + prefabs.size() + " prefabs"
                 + " - default preset " + arkConfig.defaultPreset()
                 + ", use -g ArkcronistGenerator:<BASE|CHAOTIC|INSANE>");
+    }
+
+    /**
+     * Copies the admin's datapacks into the folder the server generates worlds from.
+     *
+     * <p>This is how Incendium and Nullscape reach the Nether and End this plugin creates. Both
+     * replace the vanilla dimension outright, so once the server has read them every Nether and
+     * every End it makes uses them - there is nothing to attach per world, and no code here that
+     * knows anything about either pack.</p>
+     *
+     * <p>The catch is timing, and it cannot be engineered away: world generation registries are
+     * built from the datapack folder before plugins load and frozen when the first world opens.
+     * So the first start after a pack is added copies it and the next start is when it does
+     * something. Saying so, once, in the log, is the whole of the fix.</p>
+     */
+    private void installDatapacks() {
+        if (!arkConfig.installDatapacks()) {
+            return;
+        }
+        Path source = getDataFolder().toPath()
+                .resolve(com.arkcronist.gen.bukkit.datapack.DatapackInstaller.SOURCE_FOLDER);
+        try {
+            Files.createDirectories(source);
+            Path readme = source.resolve("README.txt");
+            if (!Files.exists(readme)) {
+                Files.writeString(readme,
+                        com.arkcronist.gen.bukkit.datapack.DatapackInstaller.README);
+            }
+        } catch (IOException exception) {
+            getLogger().log(Level.WARNING, "Could not prepare " + source, exception);
+            return;
+        }
+
+        java.util.List<org.bukkit.World> open = getServer().getWorlds();
+        if (open.isEmpty()) {
+            // Nothing to copy into yet. Only possible on a server with no level at all.
+            return;
+        }
+        Path target = open.get(0).getWorldFolder().toPath().resolve("datapacks");
+
+        int format = com.arkcronist.gen.bukkit.datapack.DatapackInstaller.serverFormat(getServer());
+        if (format == 0) {
+            getLogger().warning("This server will not say which data pack format it loads, so packs"
+                    + " are installed without checking. One built for another version will be"
+                    + " listed by the server and quietly not loaded.");
+        }
+
+        java.util.List<com.arkcronist.gen.bukkit.datapack.DatapackInstaller.Result> results =
+                com.arkcronist.gen.bukkit.datapack.DatapackInstaller.install(
+                        source, target, format, arkConfig.retargetDatapacks(), getLogger()::info);
+        if (results.isEmpty()) {
+            return;
+        }
+
+        for (String collision : com.arkcronist.gen.bukkit.datapack.DatapackInstaller
+                .collisions(target, results)) {
+            getLogger().warning(collision);
+        }
+
+        for (com.arkcronist.gen.bukkit.datapack.DatapackInstaller.Result result : results) {
+            if (result.outcome() == com.arkcronist.gen.bukkit.datapack.DatapackInstaller
+                    .Outcome.RETARGETED) {
+                reportMissingBlocks(target.resolve(result.file()));
+            }
+        }
+
+        long fresh = results.stream()
+                .filter(r -> r.outcome() == com.arkcronist.gen.bukkit.datapack.DatapackInstaller
+                        .Outcome.INSTALLED)
+                .count();
+        if (fresh > 0) {
+            getLogger().warning(fresh + " datapack(s) were copied into " + target + ". They do"
+                    + " NOT apply to this run: the server builds world generation before plugins"
+                    + " start. Restart the server once and they will be in effect, including for"
+                    + " the Nether and End of every world this generator makes.");
+        }
+    }
+
+    /**
+     * Warns about blocks a forced datapack uses that this game does not have.
+     *
+     * <p>Changing the version a pack declares is enough to make the server load it and says nothing
+     * at all about whether it will work. When a structure is placed, any block in its palette the
+     * game does not recognise is simply dropped: the building generates with holes in it, no error
+     * is logged, and the cause is a game version away from the symptom. Reading the palettes turns
+     * that into a list of names before anybody walks out to find the hole.</p>
+     */
+    private void reportMissingBlocks(Path pack) {
+        java.util.List<String> missing = new java.util.ArrayList<>();
+        for (String id : com.arkcronist.gen.bukkit.datapack.PackBlocks.paletteBlocks(pack)) {
+            if (org.bukkit.Material.matchMaterial(id) == null) {
+                missing.add(id);
+            }
+        }
+        if (missing.isEmpty()) {
+            getLogger().info("'" + pack.getFileName() + "' uses no blocks this game does not have,"
+                    + " so the version rewrite is very likely all it needed.");
+            return;
+        }
+        java.util.Collections.sort(missing);
+        getLogger().warning("'" + pack.getFileName() + "' uses " + missing.size()
+                + " block(s) that do not exist in this version: " + String.join(", ", missing)
+                + ". Wherever a structure of its uses one, that block is left out and the building"
+                + " generates with a hole in it. Nothing else will tell you this.");
     }
 
     /**

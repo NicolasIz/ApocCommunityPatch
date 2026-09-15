@@ -525,6 +525,49 @@ hostile-mobs:
       - dSkeleton_Wizard_Cinder_em
       - dSkeleton_Tank_Cinder_em
 
+# Datapacks
+# =========
+# Drop datapack zips in plugins/ArkcronistGenerator/datapacks/ and they are copied into the
+# server's world folder at startup, where the game reads them.
+#
+# This is how a custom Nether or End reaches the companion worlds this plugin creates. A pack
+# like Incendium replaces minecraft:the_nether outright, so once the server has read it, every
+# Nether it makes uses it - including the one created for each generated world. Nullscape does
+# the same for the End. Nothing has to be configured per world.
+#
+# Two things this cannot change:
+#
+#   * A datapack only takes effect after a RESTART. The server builds world generation before
+#     any plugin loads, so the start that copies a pack is never the start that uses it. The
+#     log says clearly when a restart is owed.
+#
+#   * A pack built for another game version is not copied, and the log says which version it
+#     wanted. Left alone, the server lists such a pack and refuses to load it without saying so,
+#     which is a great deal harder to notice than a missing file.
+#
+# No datapack is shipped inside this plugin. They are other people's work under their own
+# licences - several permit any server to run them while forbidding redistribution - so you
+# supply the zip and this puts it where it belongs.
+datapacks:
+  install: true
+
+  # Packs to install even though they declare a different game version.
+  #
+  # Put the file name exactly as it appears in the folder. The COPY in the world folder gets its
+  # pack.mcmeta rewritten to this server's format; the file you put in the plugin folder is never
+  # touched.
+  #
+  # Read this before using it. Changing the version a pack declares makes the server LOAD it and
+  # says nothing about whether it WORKS. When a structure is placed, any block in it the game does
+  # not have is silently dropped and the building generates with a hole where that block was.
+  # Nothing is logged by the game and the cause is a whole version away from the symptom.
+  #
+  # So the plugin reads the block palettes of every pack you force and tells you, at startup,
+  # exactly which blocks are missing. A pack that comes back with none is very likely fine - the
+  # version number was the only thing standing in the way. A pack that lists copper golem statues
+  # and shelves is a pack built for a newer game, and no number will fix that.
+  retarget: []
+
 structures:
   fill-loot: true
 

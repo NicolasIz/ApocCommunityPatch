@@ -292,6 +292,91 @@ Multiverse-NetherPortals o similar, `dimensions.link-portals: false` y que lo ll
 Un efecto lateral que sale gratis: la sección `hostile-mobs.nether` se aplica a cualquier mundo cuyo
 entorno sea NETHER, así que los esqueletos volcánicos aparecen en estos Nethers nuevos sin tocar nada.
 
+## Datapacks: Incendium en el Nether, Nullscape en el End
+
+Deja los zips en `plugins/ArkcronistGenerator/datapacks/` y el plugin los copia a la carpeta del
+mundo del servidor al arrancar, que es de donde el juego los lee.
+
+Esto es lo que lleva un Nether o un End custom a los mundos acompañantes. **Incendium sustituye
+`minecraft:the_nether` entero** y **Nullscape sustituye `minecraft:the_end`**, así que en cuanto el
+servidor los ha leído, *cualquier* Nether y *cualquier* End que cree los usa — incluidos los que este
+plugin crea un instante después de cada overworld. No hay nada que configurar por mundo y no hay una
+sola línea de código aquí que sepa nada de ninguno de los dos packs.
+
+### Las dos cosas que no se pueden esquivar
+
+**1. Un datapack no hace efecto hasta que reinicias.** El servidor construye la generación del mundo
+a partir de la carpeta de datapacks *antes* de cargar ningún plugin, y la congela cuando abre el
+primer mundo. Un plugin no puede añadir un datapack de worldgen al servidor en el que ya está
+corriendo: ni así, ni con `/datapack enable`, ni de ninguna forma. Por eso el arranque que copia un
+pack nunca es el que lo usa. El log lo dice cada vez que queda un reinicio pendiente.
+
+**2. Un pack hecho para otra versión no se copia**, y el log dice qué versión pedía. Si se deja
+pasar, el servidor lo lista y se niega a cargarlo sin decir nada, que es muchísimo más difícil de
+notar que un fichero que falta. El formato del servidor se pregunta al propio juego (el pack
+integrado `minecraft:vanilla`), no a una tabla de versiones dentro del plugin, así que sigue siendo
+correcto en un servidor que esta build no ha visto nunca.
+
+### Packs que se pisan
+
+Dos packs que reescriben el mismo fichero de `data/minecraft/` no se fusionan ni dan error: gana el
+que el servidor lea el último, y cuál es eso no está definido. El plugin los compara y avisa.
+
+Los **tags** están excluidos del aviso a propósito: un tag de datapack se *fusiona* con la lista del
+juego en vez de reemplazarla, así que dos packs añadiéndose al mismo tag es cómo se usan los tags,
+no un conflicto. Contarlos convertía en aviso a cualquier par de packs que tocase la misma esquina
+del juego —Incendium y Nullscape, escritos por la misma gente para ir juntos, comparten un tag de
+piedra— y un aviso que grita sin motivo es peor que no avisar.
+
+### Forzar un pack hecho para otra versión
+
+Un pack para otra versión se rechaza por defecto, pero a veces lo único que le sobra es el número.
+`datapacks.retarget` toma nombres de fichero y reescribe el `pack.mcmeta` **de la copia** en la
+carpeta del mundo. Tu zip original no se toca nunca.
+
+```yaml
+datapacks:
+  retarget:
+    - ominous-towers-v1-2.zip
+```
+
+**Léete esto antes de usarlo.** Cambiar el número hace que el servidor **cargue** el pack y no dice
+nada sobre si **funciona**. Al colocar una estructura, cualquier bloque de su paleta que el juego no
+tenga se descarta en silencio: el edificio se genera con un agujero donde iba ese bloque, el juego no
+registra nada, y la causa está a una versión de distancia del síntoma.
+
+Por eso el plugin lee las paletas de bloques de cada pack que fuerces y te dice al arrancar
+exactamente qué falta. Un pack que sale con cero es que el número era lo único que estorbaba.
+
+Un ejemplo real, medido sobre tres packs pensados para 1.21.9+ en un servidor 1.21.8:
+
+| Pack | Bloques de sus estructuras | Ausentes en 1.21.8 |
+|---|---|---|
+| Ominous Towers 1.2 | 75 | **0** — solo le sobraba el número |
+| Reds More Structures 1.1.2 | 199 | **1**, `minecraft:grass`, que Mojang renombró hace tiempo y que arrastra también un pack de 1.21.8 |
+| Just Another Structure Pack 2.4 | 179 | **8**, del Copper Age: estatua de gólem de cobre, antorcha de pared, cadena, cofre, farol y pararrayos encerados oxidados, y las estanterías |
+
+Los dos primeros se acomodan cambiando el número. El tercero no: esos ocho bloques no existen en
+1.21.8 y ningún número los inventa.
+
+### Aquí no viene ningún datapack incluido
+
+Son trabajo de otra gente bajo sus propias licencias. La de Stardust Labs (Incendium, Nullscape),
+por ejemplo, permite expresamente usarlos en cualquier servidor, público o privado, e incluso con
+ánimo de lucro — y prohíbe redistribuirlos. Así que el zip lo pones tú y el plugin lo mueve donde
+toca. La carpeta se crea sola en el primer arranque con un `README.txt` dentro explicando esto.
+
+### Estructuras de datapack y las de este generador
+
+`structures.vanilla-structures: true` hace que el servidor coloque sus propias estructuras, y eso
+incluye las que añada o sustituya un datapack. No hay que hacer nada para que convivan con las que
+construye este generador.
+
+Un pack que *sobrescribe* definiciones vanilla (villas, templos, torres de saqueador, fortalezas)
+reemplaza lo que el servidor ya estaba colocando, sin tocar el catálogo de aquí: las equivalentes
+propias ya se apartan solas cuando `vanilla-structures` está activo. Si además quieres que la aldea
+procedural propia se aparte y dejar solo las del datapack, añade `village` a `structures.disabled`.
+
 ## Loot de los cofres, configurable
 
 Las estructuras `.schem` traen sus propios cofres y barriles, y ahora **qué hay dentro se decide en
