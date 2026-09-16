@@ -132,8 +132,7 @@ public final class AmbientSpawnTask implements Runnable {
             return plugin.arkConfig().netherApplies(world.getName())
                     ? plugin.arkConfig().ambientNether() : List.of();
         }
-        ArkWorld ark = plugin.worlds().find(world.getName());
-        if (ark == null || !plugin.arkConfig().hostileMobPresets().contains(ark.preset().name())) {
+        if (!MobWorlds.applies(plugin, world)) {
             return List.of();
         }
         return plugin.arkConfig().ambientOverworld();

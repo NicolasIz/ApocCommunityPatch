@@ -12,6 +12,7 @@ import org.bukkit.generator.BlockPopulator;
 import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.generator.WorldInfo;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Random;
@@ -23,6 +24,14 @@ import java.util.Random;
  * structures all come from ArkcronistGenerator. Only natural mob generation is left to the server,
  * because that is genuinely better handled by vanilla's spawner.</p>
  *
+ * <p>Unless the world asked for the opposite. In datapack mode every one of those passes is handed
+ * back to the game and this generator writes nothing at all - no terrain, no prefabs, no structures,
+ * not even a biome provider. That is the only way a terrain datapack can reach a world here: a pack
+ * cannot be scoped to one world, because world generation registries are global, so what decides
+ * whether a world listens to Terralith is whether its generator left the game's noise pass switched
+ * on. The world is still registered as one of ours, which is what keeps the custom hostile mobs in
+ * it.</p>
+ *
  * <p>The generator is parallel capable. All state it touches is either immutable or explicitly
  * concurrent, and every result is derived from world position rather than call order, so Paper is
  * free to generate chunks on as many threads as it likes.</p>
@@ -31,14 +40,25 @@ public final class ArkChunkGenerator extends ChunkGenerator {
 
     private final ArkcronistPlugin plugin;
     private final Preset preset;
+    private final boolean datapackTerrain;
 
     public ArkChunkGenerator(ArkcronistPlugin plugin, Preset preset) {
+        this(plugin, preset, false);
+    }
+
+    public ArkChunkGenerator(ArkcronistPlugin plugin, Preset preset, boolean datapackTerrain) {
         this.plugin = plugin;
         this.preset = preset;
+        this.datapackTerrain = datapackTerrain;
     }
 
     public Preset preset() {
         return preset;
+    }
+
+    /** Whether the ground under this world is the game's rather than this generator's. */
+    public boolean datapackTerrain() {
+        return datapackTerrain;
     }
 
     private ArkWorld world(WorldInfo info) {
@@ -48,22 +68,42 @@ public final class ArkChunkGenerator extends ChunkGenerator {
     @Override
     public void generateNoise(@NotNull WorldInfo worldInfo, @NotNull Random random, int chunkX, int chunkZ,
                               @NotNull ChunkData chunkData) {
+        if (datapackTerrain) {
+            // The game has already filled this chunk from its own noise settings, which is where a
+            // terrain datapack lives. Writing anything here would bury it.
+            return;
+        }
         world(worldInfo).engine().generateChunk(chunkX, chunkZ, new ChunkDataWriter(chunkData));
     }
 
     @Override
-    public @NotNull BiomeProvider getDefaultBiomeProvider(@NotNull WorldInfo worldInfo) {
-        return new ArkBiomeProvider(world(worldInfo).engine());
+    public @Nullable BiomeProvider getDefaultBiomeProvider(@NotNull WorldInfo worldInfo) {
+        // Null means the game's own biome source, which is the one a datapack replaces. Supplying
+        // ours instead would give Terralith's terrain vanilla biomes laid over it, and none of its
+        // surface rules would fire.
+        return datapackTerrain ? null : new ArkBiomeProvider(world(worldInfo).engine());
     }
 
     @Override
     public @NotNull List<BlockPopulator> getDefaultPopulators(@NotNull World world) {
-        return List.of(new FeaturePopulator(plugin, preset), new StructurePopulator(plugin, preset));
+        // Both populators anchor what they build to this generator's own idea of where the ground
+        // is. On terrain somebody else made, that number belongs to a different world: the castles
+        // would hang in the air or sit buried. There is no way to ask the game what height it will
+        // generate at a point without generating it, and a structure reaches six chunks past the one
+        // being populated, so this is not a gap to be closed - it is why datapack mode places
+        // nothing of ours at all.
+        return datapackTerrain
+                ? List.of()
+                : List.of(new FeaturePopulator(plugin, preset), new StructurePopulator(plugin, preset));
     }
 
     @Override
     public int getBaseHeight(@NotNull WorldInfo worldInfo, @NotNull Random random, int x, int z,
                              @NotNull HeightMap heightMap) {
+        if (datapackTerrain) {
+            // Not ours to answer. With the game's noise pass on, the game knows this and we do not.
+            return super.getBaseHeight(worldInfo, random, x, z, heightMap);
+        }
         ArkWorld world = world(worldInfo);
         int surface = world.engine().surfaceHeight(x, z);
         int water = world.engine().waterLevel(x, z);
@@ -74,7 +114,11 @@ public final class ArkChunkGenerator extends ChunkGenerator {
     }
 
     @Override
-    public @NotNull Location getFixedSpawnLocation(@NotNull World world, @NotNull Random random) {
+    public @Nullable Location getFixedSpawnLocation(@NotNull World world, @NotNull Random random) {
+        if (datapackTerrain) {
+            // Null lets the server find its own spawn, the way it does for any world it generated.
+            return null;
+        }
         ArkWorld ark = plugin.worlds().get(world, preset);
         // Walk outwards from the origin until dry, reasonably flat land shows up.
         //
@@ -122,17 +166,17 @@ public final class ArkChunkGenerator extends ChunkGenerator {
 
     @Override
     public boolean shouldGenerateNoise() {
-        return false;
+        return datapackTerrain;
     }
 
     @Override
     public boolean shouldGenerateSurface() {
-        return false;
+        return datapackTerrain;
     }
 
     @Override
     public boolean shouldGenerateCaves() {
-        return false;
+        return datapackTerrain;
     }
 
     @Override
@@ -142,7 +186,7 @@ public final class ArkChunkGenerator extends ChunkGenerator {
         // with this off the ocean monuments and mineshafts were being planned and never built.
         // Turning it on brings the vanilla features along with them; that is the trade the flag
         // makes, and it is why it follows the same config key.
-        return plugin.arkConfig().vanillaStructures();
+        return datapackTerrain || plugin.arkConfig().vanillaStructures();
     }
 
     @Override
@@ -150,7 +194,7 @@ public final class ArkChunkGenerator extends ChunkGenerator {
         // Let the server place its own structures. They come from the game's own definitions, so an
         // ocean monument really is an ocean monument, and they follow the vanilla biome keys the
         // biome provider reports. The built-in equivalents step aside in config.
-        return plugin.arkConfig().vanillaStructures();
+        return datapackTerrain || plugin.arkConfig().vanillaStructures();
     }
 
     @Override

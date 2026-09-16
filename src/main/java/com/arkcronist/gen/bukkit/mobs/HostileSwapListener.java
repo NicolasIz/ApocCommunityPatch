@@ -101,8 +101,7 @@ public final class HostileSwapListener implements Listener {
             return plugin.arkConfig().netherApplies(world.getName())
                     ? plugin.arkConfig().netherMobTable() : Map.of();
         }
-        ArkWorld ark = plugin.worlds().find(world.getName());
-        if (ark == null || !plugin.arkConfig().hostileMobPresets().contains(ark.preset().name())) {
+        if (!MobWorlds.applies(plugin, world)) {
             return Map.of();
         }
         return plugin.arkConfig().hostileMobTable();

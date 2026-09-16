@@ -409,6 +409,21 @@ loot:
 #  PESOS. La lista se sortea al azar. Para que uno salga mas, ponlo mas veces.
 # ---------------------------------------------------------------------------
 hostile-mobs:
+  # Worlds this plugin did NOT generate, that should still get the custom mobs.
+  #
+  # World name, then the preset whose mob table it should use. The preset generates nothing here -
+  # the world is somebody else's - it only picks which of the tables below applies, exactly as a
+  # generated world's own preset does.
+  #
+  # This is how you get Arkcronist mobs in a world built by a terrain datapack (Terralith,
+  # Tectonic), by another generator, or by hand. The terrain and this generator's structures cannot
+  # follow into such a world - both are built from its own idea of where the ground is - but the
+  # mobs have no such tie: they are placed around players, on ground that is already there.
+  #
+  #   adopt-worlds:
+  #     terralith_world: INSANE
+  adopt-worlds: {}
+
   enabled: true
 
   # En que presets se sustituye. Vacio = en ninguno.

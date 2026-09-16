@@ -366,6 +366,57 @@ por ejemplo, permite expresamente usarlos en cualquier servidor, público o priv
 ánimo de lucro — y prohíbe redistribuirlos. Así que el zip lo pones tú y el plugin lo mueve donde
 toca. La carpeta se crea sola en el primer arranque con un `README.txt` dentro explicando esto.
 
+### Un mundo generado por los datapacks: `-g ArkcronistGenerator:datapack`
+
+```
+ac create terralith normal -g ArkcronistGenerator:INSANE+datapack
+```
+
+Ese mundo lo construye **el juego con los datapacks que tengas puestos** — Terralith, Tectonic, lo
+que sea — y este plugin no escribe en él ni un bloque: sin terreno propio, sin prefabs, sin
+estructuras, sin proveedor de biomas. Pero sigue registrado como mundo nuestro, y eso es lo que
+mantiene dentro **los mobs personalizados**, de día y de noche, con la tabla del preset que nombres.
+
+El preset sigue significando algo en este modo: no genera nada, pero es por lo que se eligen las
+tablas de mobs. `INSANE+datapack` es un mundo Terralith con los mobs de INSANE.
+
+Se aceptan `datapack`, `datapacks`, `vanilla`, `noprefabs` y `notprefabs`, juntos con el preset o
+sueltos, separados por `+`, `:`, `-`, `_` o un espacio.
+
+### Por qué no hace falta un .yml que diga a qué preset afecta cada datapack
+
+Porque no se puede, y porque ya está resuelto por otro lado.
+
+**No se puede** apuntar un datapack a un mundo y no a otro. Los registros de generación del mundo son
+globales y se congelan al abrir el primer mundo, así que un pack que sustituye el overworld lo
+sustituye en todas partes. No hay una lista por mundo que decida eso.
+
+**Ya está resuelto** porque lo que decide si un mundo escucha a Terralith no es el datapack: es el
+generador del mundo. Un mundo Arkcronist normal apaga las pasadas de ruido, superficie y cuevas del
+juego, así que el terreno de Terralith **no le llega jamás** por construcción. Uno creado con
+`datapack` las enciende todas. El interruptor por mundo es el propio `-g`, y ya existía.
+
+Con una excepción, y conviene saberla: un pack como Terralith también **redefine biomas vanilla**
+(Terralith redefine 39, y 28 de ellos son de los que nuestro generador reporta). Como dejamos
+encendida la pasada de decoración del juego —es la misma que coloca las estructuras vanilla, no se
+pueden separar—, esas redefiniciones sí cambian árboles, flores y minerales en nuestros mundos. Es lo
+único que se escapa. Si te molesta, `structures.vanilla-structures: false` lo corta del todo, a
+cambio de quedarte también sin monumentos, fortalezas ni ciudades antiguas del servidor.
+
+### Mobs nuestros en mundos que no son nuestros
+
+```yaml
+hostile-mobs:
+  adopt-worlds:
+    un_mundo_cualquiera: INSANE
+```
+
+Para un mundo que no hizo este plugin — creado a mano, por otro generador, o vanilla del todo. El
+preset no genera nada ahí: solo elige qué tabla de mobs se aplica, igual que hace el preset propio de
+un mundo nuestro. El terreno y las estructuras no pueden seguirte a un mundo así, porque ambos se
+construyen a partir de nuestra propia idea de dónde está el suelo; los mobs no tienen esa atadura,
+se colocan alrededor de los jugadores sobre suelo que ya está ahí.
+
 ### Estructuras de datapack y las de este generador
 
 `structures.vanilla-structures: true` hace que el servidor coloque sus propias estructuras, y eso
