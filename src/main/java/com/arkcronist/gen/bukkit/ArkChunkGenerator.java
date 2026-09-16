@@ -62,7 +62,7 @@ public final class ArkChunkGenerator extends ChunkGenerator {
     }
 
     private ArkWorld world(WorldInfo info) {
-        return plugin.worlds().get(info, preset);
+        return plugin.worlds().get(info, preset, datapackTerrain);
     }
 
     @Override
@@ -119,7 +119,7 @@ public final class ArkChunkGenerator extends ChunkGenerator {
             // Null lets the server find its own spawn, the way it does for any world it generated.
             return null;
         }
-        ArkWorld ark = plugin.worlds().get(world, preset);
+        ArkWorld ark = plugin.worlds().get(world, preset, datapackTerrain);
         // Walk outwards from the origin until dry, reasonably flat land shows up.
         //
         // Both halves of that sentence used to be untrue. The test was

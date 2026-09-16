@@ -396,6 +396,18 @@ public final class ArkcronistPlugin extends JavaPlugin {
                     + " datapacks are installed, not by this plugin. No Arkcronist terrain, prefabs"
                     + " or structures will be placed in it; its hostile mobs follow the "
                     + parsed.preset() + " tables.");
+            if (!com.arkcronist.gen.bukkit.datapack.DatapackInstaller.anyInstalled(getServer())) {
+                // Said here rather than left to be discovered on foot. Asking for datapack terrain
+                // on a server with no datapacks produces a plain vanilla world and no error at all.
+                getLogger().warning("...but this server has no datapack loaded, so '" + worldName
+                        + "' will come out as an ordinary vanilla world. A terrain datapack must sit"
+                        + " in the MAIN world's datapacks folder - drop the zip in "
+                        + getDataFolder().toPath().resolve(
+                                com.arkcronist.gen.bukkit.datapack.DatapackInstaller.SOURCE_FOLDER)
+                        + " and restart TWICE: once to copy it into place, once for the game to read"
+                        + " it. A new world's own datapacks folder is never read. Check with"
+                        + " /datapack list before creating the world.");
+            }
         }
         return new ArkChunkGenerator(this, parsed.preset(), parsed.datapackTerrain());
     }

@@ -328,6 +328,36 @@ public final class DatapackInstaller {
         return 0;
     }
 
+    /**
+     * Whether the server has any datapack of its own loaded at all.
+     *
+     * <p>Asked when a world is created that wants its terrain from the datapacks: if the answer is
+     * no, that world is about to be generated as plain vanilla and the person who asked for it will
+     * not find out until they walk around in it. The mistake behind that is almost always the same
+     * one - the zip was put in the new world's own datapacks folder, which the game never reads, or
+     * the server has not been restarted since the pack was copied into place.</p>
+     *
+     * <p>Only the game's own packs are discounted. Anything from a folder or a zip counts, because
+     * working out whether a particular pack replaces the overworld means reading its contents, and
+     * an admin who has installed nothing at all is the case worth catching.</p>
+     */
+    public static boolean anyInstalled(Server server) {
+        try {
+            for (DataPack pack : server.getDataPackManager().getDataPacks()) {
+                if (pack.getSource() != DataPack.Source.DEFAULT
+                        && pack.getSource() != DataPack.Source.BUILT_IN
+                        && pack.getSource() != DataPack.Source.FEATURE
+                        && pack.isEnabled()) {
+                    return true;
+                }
+            }
+        } catch (RuntimeException | LinkageError exception) {
+            // A server that will not say. Better to keep quiet than to warn about nothing.
+            return true;
+        }
+        return false;
+    }
+
     /** The note left in the source folder so an admin finds out what it is for. */
     public static final String README = """
             Datapacks dropped in this folder are copied into the server's world folder when the

@@ -44,7 +44,7 @@ public final class WorldAdoptionListener implements Listener {
         if (!(world.getGenerator() instanceof ArkChunkGenerator generator)) {
             return;
         }
-        plugin.worlds().get(world, generator.preset());
+        plugin.worlds().get(world, generator.preset(), generator.datapackTerrain());
         // Next tick, not now. This can run from inside WorldLoadEvent, and creating a world from
         // inside the load of another world is asking the server to re-enter something it is in the
         // middle of. A tick later it is finished and the creation is an ordinary one.

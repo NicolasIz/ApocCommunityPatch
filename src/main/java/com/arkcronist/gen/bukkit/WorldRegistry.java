@@ -25,13 +25,21 @@ public final class WorldRegistry {
     }
 
     public ArkWorld get(WorldInfo info, Preset preset) {
-        return worlds.computeIfAbsent(info.getName(),
-                name -> create(name, info.getSeed(), preset, info.getMinHeight(), info.getMaxHeight()));
+        return get(info, preset, false);
+    }
+
+    public ArkWorld get(WorldInfo info, Preset preset, boolean datapackTerrain) {
+        return worlds.computeIfAbsent(info.getName(), name -> create(name, info.getSeed(), preset,
+                info.getMinHeight(), info.getMaxHeight(), datapackTerrain));
     }
 
     public ArkWorld get(World world, Preset preset) {
-        return worlds.computeIfAbsent(world.getName(),
-                name -> create(name, world.getSeed(), preset, world.getMinHeight(), world.getMaxHeight()));
+        return get(world, preset, false);
+    }
+
+    public ArkWorld get(World world, Preset preset, boolean datapackTerrain) {
+        return worlds.computeIfAbsent(world.getName(), name -> create(name, world.getSeed(), preset,
+                world.getMinHeight(), world.getMaxHeight(), datapackTerrain));
     }
 
     public ArkWorld find(String name) {
@@ -42,10 +50,23 @@ public final class WorldRegistry {
         return worlds.values();
     }
 
-    private ArkWorld create(String name, long seed, Preset preset, int minY, int maxY) {
+    private ArkWorld create(String name, long seed, Preset preset, int minY, int maxY,
+                            boolean datapackTerrain) {
         TerrainSettings settings = plugin.arkConfig().settingsFor(preset, minY, maxY);
         ArkWorld world = new ArkWorld(name, seed, preset, settings, plugin.arkConfig().cacheSize(),
                 plugin.arkConfig().disabledStructures(), plugin.prefabs());
+
+        if (datapackTerrain) {
+            // Nothing below applies to a world this plugin does not build. Saying "preset INSANE,
+            // vanilla structures on (monument, stronghold, ancient city...)" over a world where we
+            // place none of that reads as a promise, and the pregeneration warning under it is
+            // about a pause that belongs to our generator and not to the game's.
+            plugin.getLogger().info("Registered world '" + name + "' (seed " + seed + "). Its"
+                    + " terrain, biomes and structures are the game's and its datapacks'; the "
+                    + preset + " tables are used for its hostile mobs only.");
+            return world;
+        }
+
         plugin.getLogger().info("Prepared world '" + name + "' with preset " + preset
                 + " (seed " + seed + ", y " + minY + ".." + maxY + ")"
                 + (plugin.arkConfig().vanillaStructures()
