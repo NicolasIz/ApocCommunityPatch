@@ -148,6 +148,8 @@ public final class ArkcronistPlugin extends JavaPlugin {
                 .collisions(target, results)) {
             getLogger().warning(collision);
         }
+        reportBrokenFiles(target, results);
+        reportDimensions(target, results);
 
         for (com.arkcronist.gen.bukkit.datapack.DatapackInstaller.Result result : results) {
             if (result.outcome() == com.arkcronist.gen.bukkit.datapack.DatapackInstaller
@@ -165,6 +167,80 @@ public final class ArkcronistPlugin extends JavaPlugin {
                     + " NOT apply to this run: the server builds world generation before plugins"
                     + " start. Restart the server once and they will be in effect, including for"
                     + " the Nether and End of every world this generator makes.");
+        }
+    }
+
+    /**
+     * Says which installed datapacks add dimensions, and that they cannot simply be removed again.
+     *
+     * <p>The first server start after such a pack loads writes its dimensions into the world's own
+     * level.dat. Delete the zip afterwards and the world still names dimension types that no longer
+     * exist: the server stops with "Failed to load datapacks, can't proceed with server load" and
+     * will not open the world until the pack is put back or level.dat is edited by hand. Nothing is
+     * lost and the world is fine - but it is a bad thing to find out at the moment a server will not
+     * start, and worse to find out after acting on advice to remove the pack.</p>
+     */
+    private void reportDimensions(Path target,
+            java.util.List<com.arkcronist.gen.bukkit.datapack.DatapackInstaller.Result> results) {
+        for (com.arkcronist.gen.bukkit.datapack.DatapackInstaller.Result result : results) {
+            if (result.outcome() != com.arkcronist.gen.bukkit.datapack.DatapackInstaller
+                    .Outcome.INSTALLED) {
+                // Only on the start that installs it: after that the admin has been told, and
+                // repeating it every boot is how a warning stops being read.
+                continue;
+            }
+            java.util.List<String> dimensions = com.arkcronist.gen.bukkit.datapack.DatapackInstaller
+                    .dimensions(target.resolve(result.file()));
+            if (dimensions.isEmpty()) {
+                continue;
+            }
+            getLogger().warning("'" + result.file() + "' adds " + dimensions.size()
+                    + " dimension(s) of its own (" + String.join(", ", dimensions) + "). Once the"
+                    + " server has loaded it, they are written into the world's level.dat, and"
+                    + " deleting the zip after that leaves the world naming dimensions that no"
+                    + " longer exist - the server then refuses to start until the pack is put back."
+                    + " Decide now whether you want it, because removing it later is not just"
+                    + " deleting a file.");
+        }
+    }
+
+    /**
+     * Warns about files in an installed datapack that the game will refuse to read.
+     *
+     * <p>A pack's own broken file costs that pack a feature. A broken file under
+     * {@code data/minecraft/} costs the game one: the pack has said it replaces something vanilla,
+     * the replacement will not parse, and what was there before is gone - in every world on the
+     * server, including ones the pack has nothing to do with.</p>
+     */
+    private void reportBrokenFiles(Path target,
+            java.util.List<com.arkcronist.gen.bukkit.datapack.DatapackInstaller.Result> results) {
+        for (com.arkcronist.gen.bukkit.datapack.DatapackInstaller.Result result : results) {
+            if (result.outcome() != com.arkcronist.gen.bukkit.datapack.DatapackInstaller
+                        .Outcome.INSTALLED
+                    && result.outcome() != com.arkcronist.gen.bukkit.datapack.DatapackInstaller
+                        .Outcome.PRESENT
+                    && result.outcome() != com.arkcronist.gen.bukkit.datapack.DatapackInstaller
+                        .Outcome.RETARGETED) {
+                continue;
+            }
+            com.arkcronist.gen.bukkit.datapack.DatapackInstaller.Broken broken =
+                    com.arkcronist.gen.bukkit.datapack.DatapackInstaller
+                            .brokenFiles(target.resolve(result.file()));
+            if (broken.total() == 0) {
+                continue;
+            }
+            if (!broken.vanilla().isEmpty()) {
+                getLogger().warning("'" + result.file() + "' has " + broken.vanilla().size()
+                        + " unreadable file(s) that REPLACE the game's own: "
+                        + String.join(", ", broken.vanilla()) + ". Whatever each of those replaced"
+                        + " is now missing from every world on this server, not only from worlds"
+                        + " this pack is about. Consider removing the pack.");
+            }
+            if (!broken.own().isEmpty()) {
+                getLogger().warning("'" + result.file() + "' has " + broken.own().size()
+                        + " unreadable file(s) of its own, so that much of it will not work: "
+                        + String.join(", ", broken.own()));
+            }
         }
     }
 

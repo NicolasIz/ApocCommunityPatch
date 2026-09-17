@@ -188,6 +188,90 @@ class DatapackInstallerTest {
                 "the original was modified");
     }
 
+    @Test
+    @DisplayName("unreadable files are found, and the vanilla ones are called out separately")
+    void findsBrokenFiles(@TempDir Path root) throws IOException {
+        Path zip = root.resolve("pack.zip");
+        try (java.util.zip.ZipOutputStream out =
+                     new java.util.zip.ZipOutputStream(Files.newOutputStream(zip))) {
+            entry(out, "pack.mcmeta", meta(81, 81));
+            entry(out, "data/mine/loot_table/ok.json", "{\"pools\": []}");
+            // The real shape: "Unterminated object at line 21" in a shipped loot table.
+            entry(out, "data/mine/loot_table/broken.json", "{\"pools\": [{\"entries\": [{");
+            // The one that matters. This says it replaces a recipe the game ships, and it will not
+            // parse, so that recipe is gone from every world on the server.
+            entry(out, "data/minecraft/recipe/netherite_helmet_smithing.json", "{\"result\": ");
+        }
+
+        DatapackInstaller.Broken broken = DatapackInstaller.brokenFiles(zip);
+
+        assertEquals(2, broken.total(), "one of the three files written is valid");
+        assertEquals(List.of("data/minecraft/recipe/netherite_helmet_smithing.json"),
+                broken.vanilla(), "a file replacing the game's own was not called out as such");
+        assertEquals(List.of("data/mine/loot_table/broken.json"), broken.own());
+    }
+
+    @Test
+    @DisplayName("a pack with nothing wrong with it reports nothing")
+    void noFalseAlarms(@TempDir Path root) throws IOException {
+        Path zip = root.resolve("fine.zip");
+        try (java.util.zip.ZipOutputStream out =
+                     new java.util.zip.ZipOutputStream(Files.newOutputStream(zip))) {
+            entry(out, "pack.mcmeta", meta(81, 81));
+            entry(out, "data/mine/worldgen/structure/tower.json", "{\"type\": \"minecraft:jigsaw\"}");
+            // Not JSON and not claimed to be, so not this check's business.
+            entry(out, "data/mine/structure/tower.nbt", "\u0000binary");
+            entry(out, "README.txt", "hello");
+        }
+        assertEquals(0, DatapackInstaller.brokenFiles(zip).total());
+    }
+
+    @Test
+    @DisplayName("dimensions a pack adds of its own are named, because it cannot then be deleted")
+    void findsDimensions(@TempDir Path root) throws IOException {
+        Path zip = root.resolve("pack.zip");
+        try (java.util.zip.ZipOutputStream out =
+                     new java.util.zip.ZipOutputStream(Files.newOutputStream(zip))) {
+            entry(out, "pack.mcmeta", meta(81, 81));
+            entry(out, "data/survivalplus/dimension/backrooms.json", "{}");
+            entry(out, "data/survivalplus/dimension/the_void.json", "{}");
+            entry(out, "data/survivalplus/dimension_type/backrooms_type.json", "{}");
+            // Not a dimension of its own: replacing the game's is a different thing entirely, and
+            // deleting the pack afterwards simply restores the game's own.
+            entry(out, "data/minecraft/dimension/the_nether.json", "{}");
+            // Deeper than a dimension file, and not one.
+            entry(out, "data/survivalplus/worldgen/biome/wasteland.json", "{}");
+            entry(out, "data/survivalplus/dimension/notes.txt", "not json");
+            // A leftover the game itself ignores: "Invalid path in datapack ... ignoring". Listing
+            // it would name a dimension that does not exist.
+            entry(out, "data/survivalplus/dimension/the_void - old2.json", "{}");
+        }
+
+        assertEquals(List.of("survivalplus:backrooms", "survivalplus:the_void"),
+                DatapackInstaller.dimensions(zip));
+    }
+
+    @Test
+    @DisplayName("a pack that adds no dimension of its own says so")
+    void noDimensions(@TempDir Path root) throws IOException {
+        Path zip = root.resolve("pack.zip");
+        try (java.util.zip.ZipOutputStream out =
+                     new java.util.zip.ZipOutputStream(Files.newOutputStream(zip))) {
+            entry(out, "pack.mcmeta", meta(81, 81));
+            entry(out, "data/minecraft/dimension/the_end.json", "{}");
+            entry(out, "data/mine/worldgen/structure/tower.json", "{}");
+        }
+        assertTrue(DatapackInstaller.dimensions(zip).isEmpty(),
+                "replacing the game's own dimension is not adding one");
+    }
+
+    private static void entry(java.util.zip.ZipOutputStream out, String name, String body)
+            throws IOException {
+        out.putNextEntry(new ZipEntry(name));
+        out.write(body.getBytes(StandardCharsets.UTF_8));
+        out.closeEntry();
+    }
+
     private static Outcome outcomeOf(List<Result> results, String file) {
         return results.stream()
                 .filter(result -> result.file().equals(file))

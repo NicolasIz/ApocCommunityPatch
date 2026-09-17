@@ -285,6 +285,113 @@ public final class DatapackInstaller {
         }
     }
 
+    /**
+     * The dimensions a datapack adds of its own, by name.
+     *
+     * <p>Worth saying out loud at install time, because a pack that adds one cannot simply be
+     * deleted again. The first time the server loads it, the world writes that dimension into its
+     * own {@code level.dat}; take the zip away afterwards and the world still names a dimension type
+     * that no longer exists, so the server refuses to open it and stops with "Failed to load
+     * datapacks, can't proceed with server load". The world is not damaged and nothing is lost - but
+     * the only ways out are to put the pack back or to edit {@code level.dat} by hand, and neither
+     * is something to discover on a live server at the moment it will not start.</p>
+     */
+    public static List<String> dimensions(Path zip) {
+        java.util.SortedSet<String> found = new java.util.TreeSet<>();
+        try (ZipFile file = new ZipFile(zip.toFile())) {
+            Enumeration<? extends ZipEntry> entries = file.entries();
+            while (entries.hasMoreElements()) {
+                String name = entries.nextElement().getName();
+                if (!name.endsWith(".json")) {
+                    continue;
+                }
+                // data/<namespace>/dimension/<name>.json
+                String[] parts = name.split("/");
+                if (parts.length == 4 && parts[0].equals("data") && parts[2].equals("dimension")
+                        && !parts[1].equals("minecraft")) {
+                    String id = parts[3].substring(0, parts[3].length() - 5);
+                    // The game ignores a file whose name is not a valid id - one pack ships
+                    // "final_destination - old2.json" beside the real one - and listing those as
+                    // dimensions would name dimensions that do not exist.
+                    if (validId(parts[1]) && validId(id)) {
+                        found.add(parts[1] + ":" + id);
+                    }
+                }
+            }
+        } catch (IOException | IllegalStateException | SecurityException exception) {
+            return List.of();
+        }
+        return List.copyOf(found);
+    }
+
+    /** Whether this is a name the game will accept in a resource location. */
+    private static boolean validId(String value) {
+        if (value.isEmpty()) {
+            return false;
+        }
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            boolean allowed = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+                    || c == '_' || c == '-' || c == '.' || c == '/';
+            if (!allowed) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** A datapack's files that the game will refuse to read. */
+    public record Broken(List<String> vanilla, List<String> own) {
+
+        public int total() {
+            return vanilla.size() + own.size();
+        }
+    }
+
+    /**
+     * The files in a datapack that are not valid JSON.
+     *
+     * <p>Split by whose they are, because the two are not the same kind of problem. A pack's own
+     * broken file costs that pack a feature. A broken file under {@code data/minecraft/} costs the
+     * <em>game</em> a feature: the pack has declared it is replacing something vanilla, the
+     * replacement does not parse, and what was there before is gone. One pack in the wild shipped
+     * four netherite armour recipes whose result was an empty id, and the whole server lost the
+     * ability to craft netherite armour - in every world, including ones the pack had nothing to do
+     * with. The only sign was a stack trace among two hundred startup lines.</p>
+     *
+     * <p>This catches the malformed half of that. An empty id is valid JSON and is not caught here;
+     * the game reports those itself, and the warning below tells the admin where to look.</p>
+     */
+    public static Broken brokenFiles(Path zip) {
+        List<String> vanilla = new ArrayList<>();
+        List<String> own = new ArrayList<>();
+        try (ZipFile file = new ZipFile(zip.toFile())) {
+            Enumeration<? extends ZipEntry> entries = file.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                if (entry.isDirectory() || !entry.getName().endsWith(".json")) {
+                    continue;
+                }
+                String text;
+                try (InputStream in = file.getInputStream(entry)) {
+                    text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+                } catch (IOException exception) {
+                    continue;
+                }
+                if (!JsonShape.wellFormed(text)) {
+                    if (entry.getName().startsWith("data/minecraft/")) {
+                        vanilla.add(entry.getName());
+                    } else {
+                        own.add(entry.getName());
+                    }
+                }
+            }
+        } catch (IOException | IllegalStateException | SecurityException exception) {
+            return new Broken(List.of(), List.of());
+        }
+        return new Broken(vanilla, own);
+    }
+
     /** The declared version range of a datapack zip, or null when it is not one. */
     public static PackMeta readMeta(Path zip) {
         try (ZipFile file = new ZipFile(zip.toFile())) {
