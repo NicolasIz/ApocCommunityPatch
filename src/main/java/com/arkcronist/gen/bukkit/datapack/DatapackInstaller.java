@@ -50,6 +50,48 @@ public final class DatapackInstaller {
     /** Where an admin drops the zips. */
     public static final String SOURCE_FOLDER = "datapacks";
 
+    /** Stands for every pack, whatever version it declares. */
+    public static final String EVERYTHING = "*";
+
+    /**
+     * Whether this pack was asked to be forced onto the server's version.
+     *
+     * <p>Matched without regard to case, with or without the {@code .zip}, and ignoring a browser's
+     * {@code " (1)"} on a second download. File names are the wrong thing to ask an admin to get
+     * exactly right: a pack that does not match its entry is simply not forced, which looks
+     * identical to the feature not working at all - and that is precisely what happened on a real
+     * server, with "Reds_Structure_v1.1.0 (1).zip" sitting next to an entry that said
+     * "Reds_Structure_v1.1.0.zip".</p>
+     */
+    public static boolean shouldRetarget(java.util.Set<String> retarget, String file) {
+        if (retarget.contains(EVERYTHING)) {
+            return true;
+        }
+        String bare = simplify(file);
+        for (String entry : retarget) {
+            if (simplify(entry).equals(bare)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** A file name reduced to what an admin would call the pack. */
+    private static String simplify(String name) {
+        String simple = name.trim().toLowerCase(Locale.ROOT);
+        if (simple.endsWith(".zip")) {
+            simple = simple.substring(0, simple.length() - 4);
+        }
+        int bracket = simple.lastIndexOf(" (");
+        if (bracket > 0 && simple.endsWith(")")) {
+            String inside = simple.substring(bracket + 2, simple.length() - 1);
+            if (!inside.isEmpty() && inside.chars().allMatch(Character::isDigit)) {
+                simple = simple.substring(0, bracket);
+            }
+        }
+        return simple.trim();
+    }
+
     private DatapackInstaller() {
     }
 
@@ -125,7 +167,7 @@ public final class DatapackInstaller {
 
         PackMeta.Verdict verdict = meta.verdictFor(serverFormat);
         boolean forced = serverFormat > 0 && verdict != PackMeta.Verdict.COMPATIBLE
-                && retarget.contains(name);
+                && shouldRetarget(retarget, name);
         if (serverFormat > 0 && verdict != PackMeta.Verdict.COMPATIBLE && !forced) {
             // Refusing to copy is the point. A pack the server will not load still appears in the
             // world folder and in /datapack list, which is exactly how an evening gets spent looking

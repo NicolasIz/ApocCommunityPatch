@@ -272,6 +272,46 @@ class DatapackInstallerTest {
         out.closeEntry();
     }
 
+    @Test
+    @DisplayName("the everything switch forces every pack, whatever it declares")
+    void retargetAll(@TempDir Path root) throws IOException {
+        Path source = Files.createDirectories(root.resolve("source"));
+        Path target = root.resolve("world/datapacks");
+        pack(source.resolve("future.zip"), meta(101, 101));
+        pack(source.resolve("ancient.zip"), meta(48, 60));
+        pack(source.resolve("fine.zip"), meta(81, 81));
+
+        List<Result> results = DatapackInstaller.install(source, target, SERVER,
+                java.util.Set.of(DatapackInstaller.EVERYTHING), line -> { });
+
+        assertEquals(Outcome.RETARGETED, outcomeOf(results, "future.zip"));
+        assertEquals(Outcome.RETARGETED, outcomeOf(results, "ancient.zip"),
+                "a pack built for an older game was left out");
+        // Already compatible, so there is nothing to rewrite and its own version is kept.
+        assertEquals(Outcome.INSTALLED, outcomeOf(results, "fine.zip"));
+    }
+
+    @Test
+    @DisplayName("a named pack is matched the way an admin would write its name")
+    void forgivingNames() {
+        java.util.Set<String> asked = java.util.Set.of("Reds_Structure_v1.1.0.zip");
+
+        assertTrue(DatapackInstaller.shouldRetarget(asked, "Reds_Structure_v1.1.0.zip"));
+        // What a browser does to a second download. This exact mismatch made the feature look
+        // broken on a live server.
+        assertTrue(DatapackInstaller.shouldRetarget(asked, "Reds_Structure_v1.1.0 (1).zip"));
+        assertTrue(DatapackInstaller.shouldRetarget(asked, "reds_structure_v1.1.0.ZIP"));
+        // Written without the extension, which is how people name things.
+        assertTrue(DatapackInstaller.shouldRetarget(
+                java.util.Set.of("Reds_Structure_v1.1.0"), "Reds_Structure_v1.1.0.zip"));
+
+        // A different pack is still a different pack.
+        assertFalse(DatapackInstaller.shouldRetarget(asked, "Reds_Structure_v1.1.2.zip"),
+                "a different version was matched as the same pack");
+        assertFalse(DatapackInstaller.shouldRetarget(asked, "Terralith.zip"));
+        assertFalse(DatapackInstaller.shouldRetarget(java.util.Set.of(), "anything.zip"));
+    }
+
     private static Outcome outcomeOf(List<Result> results, String file) {
         return results.stream()
                 .filter(result -> result.file().equals(file))

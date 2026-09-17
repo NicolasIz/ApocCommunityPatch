@@ -583,6 +583,18 @@ datapacks:
   # and shelves is a pack built for a newer game, and no number will fix that.
   retarget: []
 
+  # Or forget the list and force EVERY pack onto this server's version.
+  #
+  # This is the switch for "I do not care what they declare, load them all". It does exactly what
+  # the list above does, to every pack, so read the warning on the list before turning it on: the
+  # server will LOAD each pack, and whether each one WORKS is a separate question that the block
+  # report at startup answers pack by pack.
+  #
+  # Preferred over naming files, because file names are hard to get exactly right - a browser turns
+  # a second download into "pack (1).zip" - and a pack that does not match its entry is silently
+  # not forced, which looks identical to the feature being broken.
+  retarget-all: false
+
 structures:
   fill-loot: true
 

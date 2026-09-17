@@ -212,7 +212,16 @@ public final class ArkConfig {
      * at it by accident.</p>
      */
     public java.util.Set<String> retargetDatapacks() {
-        return new java.util.LinkedHashSet<>(config.getStringList("datapacks.retarget"));
+        java.util.Set<String> named =
+                new java.util.LinkedHashSet<>(config.getStringList("datapacks.retarget"));
+        if (config.getBoolean("datapacks.retarget-all", false)) {
+            // One switch instead of a list of file names, because names are the wrong thing to ask
+            // for: a browser turns a second download into "pack (1).zip", and a pack that does not
+            // match its entry is silently not forced - which looks exactly like the feature being
+            // broken.
+            named.add(com.arkcronist.gen.bukkit.datapack.DatapackInstaller.EVERYTHING);
+        }
+        return named;
     }
 
     public boolean vanillaStructures() {
