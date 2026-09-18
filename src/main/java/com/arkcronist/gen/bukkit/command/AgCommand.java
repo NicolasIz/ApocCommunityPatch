@@ -55,6 +55,7 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
             case "structures" -> structures(sender);
             case "prefabs" -> prefabs(sender);
             case "stats" -> stats(sender);
+            case "mobs" -> mobs(sender);
             case "bench" -> bench(sender, args);
             case "top" -> top(sender);
             case "reload" -> reload(sender);
@@ -75,6 +76,7 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§8 - §f/ag prefabs §7lists the .schem trees, ships and landmarks loaded");
         sender.sendMessage("§8 - §f/ag presets §7lists BASE, CHAOTIC and INSANE");
         sender.sendMessage("§8 - §f/ag stats §7cache and memory diagnostics");
+        sender.sendMessage("§8 - §f/ag mobs §7says whether the custom mobs apply where you stand");
         sender.sendMessage("§8 - §f/ag bench [preset] [chunks] §7runs a generation benchmark");
         sender.sendMessage("§8 - §f/ag top §7teleports you to the surface");
         sender.sendMessage("§8 - §f/ag reload §7reloads config.yml");
@@ -114,6 +116,77 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
         return world;
     }
 
+    /**
+     * Answers "why are there no custom mobs here", in one screen.
+     *
+     * <p>Every gate between a world and the goblins is a quiet one. The world may not be registered;
+     * its preset may not be listed; MythicMobs may be missing; the ambient list may be empty because
+     * the config on disk predates it; the player may be in creative, which the spawner skips. None
+     * of those log anything, and the symptom for all of them is identical - nothing appears - so the
+     * only way to tell them apart used to be reading the source.</p>
+     */
+    private void mobs(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(PREFIX + "§cRun this from in-game.");
+            return;
+        }
+        org.bukkit.World world = player.getWorld();
+        com.arkcronist.gen.bukkit.config.ArkConfig config = plugin.arkConfig();
+        String preset = com.arkcronist.gen.bukkit.mobs.MobWorlds.presetOf(plugin, world);
+        boolean applies = com.arkcronist.gen.bukkit.mobs.MobWorlds.applies(plugin, world);
+        boolean nether = world.getEnvironment() == org.bukkit.World.Environment.NETHER;
+
+        sender.sendMessage(PREFIX + "Custom mobs in §f" + world.getName() + " §8("
+                + world.getEnvironment() + ")");
+        sender.sendMessage(tick(config.hostileMobsEnabled()) + " hostile-mobs.enabled");
+        sender.sendMessage(tick(com.arkcronist.gen.bukkit.mobs.MythicBridge.available())
+                + " MythicMobs present");
+
+        if (preset == null) {
+            sender.sendMessage("§c ✗ this world is not one of ours. Create it with"
+                    + " §f-g ArkcronistGenerator:INSANE§c, or name it under"
+                    + " §fhostile-mobs.adopt-worlds§c.");
+        } else {
+            sender.sendMessage("§a ✔ recognised, preset §f" + preset);
+            if (!applies && !nether) {
+                sender.sendMessage("§c ✗ but §f" + preset + "§c is not in §fhostile-mobs.presets"
+                        + "§c, which is currently " + config.hostileMobPresets()
+                        + ". Add it there or nothing swaps here.");
+            }
+        }
+
+        // Which table and list actually apply on this side of the portal.
+        int table = nether ? config.netherMobTable().size() : config.hostileMobTable().size();
+        java.util.List<String> pool = nether ? config.ambientNether() : config.ambientOverworld();
+        if (nether) {
+            sender.sendMessage(tick(config.netherApplies(world.getName()))
+                    + " hostile-mobs.nether applies to this world");
+        }
+        sender.sendMessage(tick(table > 0) + " swap table has §f" + table + "§7 entr"
+                + (table == 1 ? "y" : "ies") + " §8(replaces natural spawns)");
+        sender.sendMessage(tick(config.ambientEnabled() && !pool.isEmpty())
+                + " ambient list has §f" + pool.size() + "§7 name(s) §8(the only thing that puts"
+                + " hostiles out in daylight)");
+        if (pool.isEmpty()) {
+            sender.sendMessage("§7   Empty. A config.yml written before this feature existed has no"
+                    + " §fhostile-mobs.ambient§7 section at all, and saveDefaultConfig never"
+                    + " replaces a file that is already there.");
+        }
+        sender.sendMessage("§7 Spawn reasons swapped: §f" + config.hostileMobReasons());
+        if (player.getGameMode() == org.bukkit.GameMode.CREATIVE
+                || player.getGameMode() == org.bukkit.GameMode.SPECTATOR) {
+            sender.sendMessage("§e ! you are in " + player.getGameMode()
+                    + ", and the ambient spawner skips players who are.");
+        }
+        if (world.getDifficulty() == org.bukkit.Difficulty.PEACEFUL) {
+            sender.sendMessage("§e ! difficulty is PEACEFUL, so nothing hostile spawns at all.");
+        }
+    }
+
+    private static String tick(boolean ok) {
+        return ok ? "§a ✔" : "§c ✗";
+    }
+
     private void info(CommandSender sender) {
         ArkWorld world = worldOf(sender);
         if (world == null) {
@@ -129,6 +202,15 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(PREFIX + "World §f" + world.name() + " §7preset §b" + world.preset()
                 + " §7seed §f" + world.seed());
         companions(sender, world.name());
+        if (player.getWorld().getGenerator() instanceof com.arkcronist.gen.bukkit.ArkChunkGenerator gen
+                && gen.datapackTerrain()) {
+            // Everything below comes from this generator's engine, and in datapack mode the engine
+            // built none of what the player is standing on. Printing it without saying so offers a
+            // biome and a surface height for a world that does not exist.
+            sender.sendMessage("§e This world's terrain is the game's and its datapacks', not ours."
+                    + " The figures below are what this generator WOULD have built here, and are"
+                    + " not what you are standing on.");
+        }
         sender.sendMessage("§7 Biome §f" + biome.name + " §8(" + biome.category
                 + " → " + biome.vanillaKey + ")");
         sender.sendMessage("§7 Surface §f" + surface + " §7water §f" + water
@@ -374,7 +456,7 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
         List<String> options = new ArrayList<>();
         if (args.length == 1) {
             options.addAll(List.of("help", "info", "biome", "locate", "structures", "prefabs",
-                    "presets", "stats", "bench", "top", "reload", "version"));
+                    "presets", "stats", "mobs", "bench", "top", "reload", "version"));
         } else if (args.length == 2 && args[0].equalsIgnoreCase("bench")) {
             for (Preset preset : Preset.values()) {
                 options.add(preset.name());

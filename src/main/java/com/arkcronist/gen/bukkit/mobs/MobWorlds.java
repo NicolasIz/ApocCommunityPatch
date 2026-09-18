@@ -19,7 +19,7 @@ import org.bukkit.World;
  * So a world can be named in config and adopted, and the preset named beside it decides which mob
  * table applies exactly as a generated world's own preset does.</p>
  */
-final class MobWorlds {
+public final class MobWorlds {
 
     private MobWorlds() {
     }
@@ -27,7 +27,7 @@ final class MobWorlds {
     /**
      * The preset name to treat this world as, or null when it is neither generated nor adopted.
      */
-    static String presetOf(ArkcronistPlugin plugin, World world) {
+    public static String presetOf(ArkcronistPlugin plugin, World world) {
         ArkWorld ark = plugin.worlds().find(world.getName());
         if (ark != null) {
             return ark.preset().name();
@@ -36,7 +36,7 @@ final class MobWorlds {
     }
 
     /** Whether the custom hostile mobs belong in this world at all. */
-    static boolean applies(ArkcronistPlugin plugin, World world) {
+    public static boolean applies(ArkcronistPlugin plugin, World world) {
         String preset = presetOf(plugin, world);
         return preset != null && plugin.arkConfig().hostileMobPresets().contains(preset);
     }
