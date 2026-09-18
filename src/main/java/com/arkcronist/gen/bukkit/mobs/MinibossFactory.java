@@ -117,8 +117,16 @@ public final class MinibossFactory {
         if (!config.hostileMobsEnabled() || !config.replaceStructureMobs() || !MythicBridge.available()) {
             return null;
         }
-        java.util.List<String> candidates =
-                config.hostileMobTable().get(request.entityType().toUpperCase(Locale.ROOT));
+        // A named boss gets its own table first. Without that, the only key available is the
+        // vanilla entity it is built on, which a castle lord shares with every evoker standing in a
+        // courtyard - and mapping EVOKER to a thousand-health boss turns all of them into one.
+        java.util.List<String> candidates = null;
+        if (request.miniboss() && request.name() != null) {
+            candidates = config.bossMobTable().get(request.name().toUpperCase(Locale.ROOT));
+        }
+        if (candidates == null || candidates.isEmpty()) {
+            candidates = config.hostileMobTable().get(request.entityType().toUpperCase(Locale.ROOT));
+        }
         if (candidates == null || candidates.isEmpty()) {
             return null;
         }

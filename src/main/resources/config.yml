@@ -467,6 +467,32 @@ hostile-mobs:
     PILLAGER: [cursed_archer, cursed_mage]
     EVOKER: [cursed_mage]
 
+  # nombre de jefe -> lista de nombres de MythicMobs.
+  #
+  # La tabla de arriba va por entidad vanilla, y para un jefe eso no basta: un
+  # castle_lord es un EVOKER, y un evoker cualquiera de un patio tambien. Poner
+  # EVOKER -> un mob de mil de vida convierte en jefe a todos los evokers del
+  # mundo. Un jefe es el unico mob de una estructura que conviene elegir por
+  # estructura, y su nombre ya viene en la peticion.
+  #
+  # Vacia por defecto: un jefe que no este aqui usa la tabla de arriba, que es
+  # el comportamiento de siempre.
+  #
+  # Los 13 jefes con nombre fijo del catalogo:
+  #   battle_champion   camp_chief       castle_lord      cave_horror
+  #   city_warden       deep_leviathan   fortress_marshal outpost_captain
+  #   ruin_wraith       sky_sentinel     temple_guardian  trial_warden
+  #   witch_matron
+  #
+  # Los guardianes de los prefabs .schem NO tienen nombre fijo - el suyo se
+  # construye con la carpeta de la que salio el edificio - asi que esos siempre
+  # caen en la tabla de arriba.
+  #
+  #   boss-table:
+  #     castle_lord: [cursed_knight]
+  #     deep_leviathan: [spider_elite]
+  boss-table: {}
+
   # ---------------------------------------------------------------------------
   #  El Nether
   # ---------------------------------------------------------------------------

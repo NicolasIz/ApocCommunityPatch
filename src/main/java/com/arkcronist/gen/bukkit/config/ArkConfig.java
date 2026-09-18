@@ -33,6 +33,7 @@ public final class ArkConfig {
     private final java.util.Set<String> hostileMobPresets;
     private final java.util.Set<String> hostileMobReasons;
     private final java.util.Map<String, java.util.List<String>> hostileMobTable;
+    private final java.util.Map<String, java.util.List<String>> bossMobTable;
     private final java.util.Map<String, java.util.List<String>> netherMobTable;
     private final java.util.Set<String> netherWorlds;
     private final java.util.List<String> ambientOverworld;
@@ -50,6 +51,7 @@ public final class ArkConfig {
         this.hostileMobPresets = readUpperCaseSet("hostile-mobs.presets", java.util.Set.of());
         this.hostileMobReasons = readUpperCaseSet("hostile-mobs.reasons", java.util.Set.of("NATURAL"));
         this.hostileMobTable = readMobTable("hostile-mobs.table");
+        this.bossMobTable = readMobTable("hostile-mobs.boss-table");
         this.netherMobTable = readMobTable("hostile-mobs.nether.table");
         this.netherWorlds = readLowerCaseSet("hostile-mobs.nether.worlds");
         this.ambientOverworld = readNames("hostile-mobs.ambient.overworld");
@@ -141,6 +143,24 @@ public final class ArkConfig {
             }
         }
         return java.util.Map.copyOf(table);
+    }
+
+    /**
+     * Which custom mob stands in for each of the catalogue's named bosses.
+     *
+     * <p>Keyed by the boss's own name - {@code castle_lord}, {@code deep_leviathan},
+     * {@code fortress_marshal} - rather than by the vanilla entity it is built on. That is the
+     * whole point of it existing: a castle lord is an EVOKER and so is an ordinary evoker standing
+     * in a courtyard, so the entity-type table cannot tell them apart, and mapping EVOKER to a
+     * thousand-health boss turns every evoker in the world into one. A boss is the one mob in a
+     * structure that should be chosen per structure, and its name is already in the request.</p>
+     *
+     * <p>Empty by default. Falls back to the entity-type table for any boss not named here, which
+     * is what the prefab building guardians use - their names are display text built from the folder
+     * they came from, not fixed keys.</p>
+     */
+    public java.util.Map<String, java.util.List<String>> bossMobTable() {
+        return bossMobTable;
     }
 
     public Preset defaultPreset() {
