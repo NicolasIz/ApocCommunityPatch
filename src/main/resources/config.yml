@@ -493,6 +493,36 @@ hostile-mobs:
   #     deep_leviathan: [spider_elite]
   boss-table: {}
 
+  # bioma -> lista de nombres de MythicMobs. Se consulta ANTES de la tabla de
+  # arriba y gana donde responde; un bioma que no diga nada cae en la tabla por
+  # entidad, igual que siempre.
+  #
+  # Por que existe: la tabla por entidad responde "que deberia ser un husk aqui",
+  # y para un pack construido alrededor de un SITIO esa es la pregunta
+  # equivocada. Un yeti bajo la clave VINDICATOR es un yeti en el desierto, y
+  # seis maderas de tree ent bajo HUSK son ents de sakura en la tundra. El autor
+  # del pack ya los ordeno por donde viven; una tabla por entidad tira eso.
+  #
+  # El bioma se puede escribir de las dos formas - snowy_plains o
+  # minecraft:snowy_plains - y uno de datapack por su clave completa,
+  # terralith:alpine_grove.
+  #
+  # Ejemplo con los packs de hielo y de tree ents (comentado: activalo tu):
+  #
+  #   biome-table:
+  #     snowy_plains:     [frostmite, iceologer, snowball_spirit]
+  #     ice_spikes:       [undead_ice_warrior, frozen_blaze, yeti]
+  #     snowy_taiga:      [frostmite, gnut, ice_witch]
+  #     snowy_slopes:     [iceologer, yeti]
+  #     frozen_river:     [snowball_spirit, frostmite]
+  #     cherry_grove:     [sakura_tree_ent, sakura_entling, sakura_bark_beast]
+  #     dark_forest:      [dark_oak_tree_ent, dark_oak_bark_beast, dark_oak_elder_tree_ent]
+  #     forest:           [oak_tree_ent, oak_entling]
+  #     birch_forest:     [aspen_tree_ent, aspen_entling, aspen_bark_beast]
+  #     swamp:            [blightwood_tree_ent, blightwood_bark_beast]
+  #     taiga:            [oak_tree_ent_tank, oak_ravager_tree_ent]
+  biome-table: {}
+
   # ---------------------------------------------------------------------------
   #  El Nether
   # ---------------------------------------------------------------------------
@@ -513,6 +543,15 @@ hostile-mobs:
     table:
       WITHER_SKELETON: [dSkeleton_Warrior_Cinder_em, dSkeleton_Tank_Cinder_em, dSkeleton_Halberdier_Cinder_em]
       SKELETON: [dSkeleton_footman_Cinder_em, dSkeleton_swordman_Cinder_em, dSkeleton_Archer_Cinder_em, dSkeleton_Wizard_Cinder_em]
+      # Del pack "RPG Monster Series: Howling Nether". Si no lo tienes instalado,
+      # estos nombres no existen para MythicMobs y se queda el mob vanilla.
+      #
+      # NO estan aqui a proposito: Lava_Geyser y los *_vfx son ARMOR_STAND (efectos
+      # visuales, no enemigos) y Blaze_Minion es una invocacion del Blaze_King. Meter
+      # un ARMOR_STAND en una lista de spawn te llena el mundo de soportes invisibles.
+      ZOMBIFIED_PIGLIN: [Lava_Mite, Hellhound, Dark_Imp, Nether_Mushroom]
+      BLAZE: [Fire_Imp, Lost_Soul]
+      MAGMA_CUBE: [Lava_Mite, Lava_Piranha]
 
   # ---------------------------------------------------------------------------
   #  Spawner propio: de dia Y de noche

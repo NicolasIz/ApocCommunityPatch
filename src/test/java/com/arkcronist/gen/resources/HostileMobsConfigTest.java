@@ -43,7 +43,11 @@ class HostileMobsConfigTest {
             // Dungeon Skeletons V1 - Volcanic Cinder expansion, by E-magination.
             "dSkeleton_footman_Cinder_em", "dSkeleton_swordman_Cinder_em", "dSkeleton_Archer_Cinder_em",
             "dSkeleton_Warrior_Cinder_em", "dSkeleton_Halberdier_Cinder_em", "dSkeleton_Wizard_Cinder_em",
-            "dSkeleton_Tank_Cinder_em");
+            "dSkeleton_Tank_Cinder_em",
+            // RPG Monster Series: Howling Nether. Blaze_King is a boss and belongs in boss-table,
+            // not in a list that replaces every blaze in the dimension.
+            "Lava_Mite", "Lava_Piranha", "Fire_Imp", "Nether_Mushroom", "Lost_Soul", "Hellhound",
+            "Dark_Imp");
 
     /** The Volcanic Cinder names. The whole point of them is that they stay in the Nether. */
     private static final Set<String> CINDER = Set.of(
@@ -65,6 +69,9 @@ class HostileMobsConfigTest {
      * MythicMobs will happily produce.</p>
      */
     private static final Set<String> PROPS = Set.of(
+            // Lava_Geyser is an ARMOR_STAND effect and Blaze_Minion is a summon of the Blaze_King,
+            // not something the world should be producing on its own.
+            "Lava_Geyser", "Blaze_Minion",
             "skeleton_mage_proj", "spider_trap", "spider_pois", "spdr_stomp_vfx", "spdr_stomp_vfx_small",
             "cursed_slash_vfx", "cursed_cast_vfx", "cursed_spiral_vfx", "cursed_ray_vfx",
             "cursed_flames_vfx", "cursed_hollow_vfx", "cursed_arrow_vfx", "cursed_arrow_rain_vfx");
@@ -179,11 +186,12 @@ class HostileMobsConfigTest {
         down.addAll(flatten(ambient().get("nether")));
         assertTrue(down.stream().anyMatch(CINDER::contains),
                 "nothing in the Nether lists is a volcanic skeleton, so they would never appear at all");
-        for (String name : down) {
-            assertTrue(CINDER.contains(name),
-                    name + " is in a Nether list but is not one of the volcanic skeletons; the Nether "
-                            + "was asked for those and only those");
-        }
+
+        // What is NOT asserted, and was: that the Nether holds nothing but volcanic skeletons. The
+        // instruction was that the volcanic ones appear only in the Nether, which is a rule about
+        // where they may go and says nothing about what else may live there. Written as "those and
+        // only those" it became a second rule nobody asked for, and the first Nether pack added
+        // afterwards failed a test for doing exactly what it was added to do.
     }
 
     @Test

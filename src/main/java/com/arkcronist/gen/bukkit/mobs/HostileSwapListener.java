@@ -60,8 +60,15 @@ public final class HostileSwapListener implements Listener {
             return;
         }
 
-        String vanilla = event.getEntityType().name().toUpperCase(Locale.ROOT);
-        List<String> candidates = table.get(vanilla);
+        // The biome gets asked first. A pack sorted by place - ice mobs, tree ents by wood - is
+        // wrong under an entity key: a yeti keyed to VINDICATOR is a yeti in the desert. Where a
+        // biome names nothing, this falls through to the entity table as it always did.
+        List<String> candidates = BiomeMobs.candidates(plugin.arkConfig().biomeMobTable(),
+                BiomeMobs.keyAt(bukkitWorld, event.getLocation()));
+        if (candidates == null) {
+            String vanilla = event.getEntityType().name().toUpperCase(Locale.ROOT);
+            candidates = table.get(vanilla);
+        }
         if (candidates == null || candidates.isEmpty()) {
             return;
         }

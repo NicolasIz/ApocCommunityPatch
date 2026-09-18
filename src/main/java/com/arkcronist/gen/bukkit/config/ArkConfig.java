@@ -34,6 +34,7 @@ public final class ArkConfig {
     private final java.util.Set<String> hostileMobReasons;
     private final java.util.Map<String, java.util.List<String>> hostileMobTable;
     private final java.util.Map<String, java.util.List<String>> bossMobTable;
+    private final java.util.Map<String, java.util.List<String>> biomeMobTable;
     private final java.util.Map<String, java.util.List<String>> netherMobTable;
     private final java.util.Set<String> netherWorlds;
     private final java.util.List<String> ambientOverworld;
@@ -52,6 +53,7 @@ public final class ArkConfig {
         this.hostileMobReasons = readUpperCaseSet("hostile-mobs.reasons", java.util.Set.of("NATURAL"));
         this.hostileMobTable = readMobTable("hostile-mobs.table");
         this.bossMobTable = readMobTable("hostile-mobs.boss-table");
+        this.biomeMobTable = readMobTable("hostile-mobs.biome-table");
         this.netherMobTable = readMobTable("hostile-mobs.nether.table");
         this.netherWorlds = readLowerCaseSet("hostile-mobs.nether.worlds");
         this.ambientOverworld = readNames("hostile-mobs.ambient.overworld");
@@ -161,6 +163,16 @@ public final class ArkConfig {
      */
     public java.util.Map<String, java.util.List<String>> bossMobTable() {
         return bossMobTable;
+    }
+
+    /**
+     * Which custom mobs belong to a biome rather than to a vanilla entity type.
+     *
+     * <p>Consulted before the entity table and winning where it answers. Empty by default, which
+     * leaves the entity table as the only rule, exactly as before.</p>
+     */
+    public java.util.Map<String, java.util.List<String>> biomeMobTable() {
+        return biomeMobTable;
     }
 
     public Preset defaultPreset() {

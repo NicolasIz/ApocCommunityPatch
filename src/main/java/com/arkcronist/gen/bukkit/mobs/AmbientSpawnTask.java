@@ -109,7 +109,13 @@ public final class AmbientSpawnTask implements Runnable {
                 continue;
             }
 
-            String chosen = pool.get(random.nextInt(pool.size()));
+            // Asked of the spot that was actually chosen, not of where the player stands: the
+            // point of a biome list is that walking to the edge of the snow changes what follows
+            // you, and a player standing in a forest can easily have this land in the tundra.
+            List<String> here = BiomeMobs.candidates(plugin.arkConfig().biomeMobTable(),
+                    BiomeMobs.keyAt(world, where));
+            List<String> applies = here != null ? here : pool;
+            String chosen = applies.get(random.nextInt(applies.size()));
             Entity spawned = MythicBridge.spawn(chosen, where, 1);
             if (spawned == null) {
                 // MythicMobs does not know the name, or refused. Trying the rest of the pool would
