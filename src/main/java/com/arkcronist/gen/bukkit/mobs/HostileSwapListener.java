@@ -52,6 +52,18 @@ public final class HostileSwapListener implements Listener {
         if (!plugin.arkConfig().hostileMobReasons().contains(event.getSpawnReason().name())) {
             return;
         }
+        // Only something hostile is ever stood in for, and this guard is not belt-and-braces - it is
+        // load-bearing, because CreatureSpawnEvent fires for every living thing the world makes.
+        //
+        // Two ways a cow used to become a goblin. The biome table below answers for a place rather
+        // than for an entity type, so with a biome named in it every natural spawn there was
+        // replaced - sheep, squid, bats, villagers. And auto-discovery keys the entity table on the
+        // body a pack author chose: a mob built on a WOLF for its looks would have put a WOLF entry
+        // in the table and taken every wolf in the world with it. Enemy is exactly the question
+        // worth asking, and it covers the ones Monster does not - slimes, ghasts, phantoms, hoglins.
+        if (!(event.getEntity() instanceof org.bukkit.entity.Enemy)) {
+            return;
+        }
         org.bukkit.World bukkitWorld = event.getLocation().getWorld();
         if (bukkitWorld == null) {
             return;

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -168,5 +169,23 @@ class MobClassifierTest {
     void thresholdOff() {
         assertEquals(Role.HOSTILE,
                 MobClassifier.classify(new MobFacts("big_thing", "ZOMBIE", 5000.0, "", ""), 0.0).role());
+    }
+
+    @Test
+    @DisplayName("a peaceful body is never something to stand in for")
+    void peacefulBodiesAreNotSwapKeys() {
+        // A pack author picks a body for how it looks and moves. Reading "built on a wolf" as "replace
+        // every wolf in the world" is the plugin inventing an instruction nobody gave.
+        for (String body : new String[]{"COW", "SHEEP", "WOLF", "SQUID", "BAT", "VILLAGER",
+                "IRON_GOLEM", "DOLPHIN", "STRIDER", "cow"}) {
+            assertFalse(MobClassifier.standsInFor(body), body + " was made a stand-in");
+        }
+        for (String body : new String[]{"ZOMBIE", "SKELETON", "BLAZE", "MAGMA_CUBE", "GHAST",
+                "WITHER_SKELETON", "PILLAGER", "zombie"}) {
+            assertTrue(MobClassifier.standsInFor(body), body + " cannot be stood in for");
+        }
+        // Nothing to judge is not a body either.
+        assertFalse(MobClassifier.standsInFor(""));
+        assertFalse(MobClassifier.standsInFor(null));
     }
 }

@@ -38,6 +38,12 @@ import java.util.Set;
  * <p>Props are dropped and never appear in either. A mob nothing could be learned about is dropped
  * too, and both are reported rather than silently missing. Bosses are kept apart from everything
  * that spawns on its own: a boss in an ambient pool is a boss behind every tree.</p>
+ *
+ * <p>And a peaceful body is never made a stand-in. A pack author picks a body for how it looks and
+ * moves, so a hostile built on a {@code WOLF} means "it has four legs", not "wolves should stop
+ * appearing" - and reading it the second way would empty the world of wolves. Such a mob still joins
+ * its habitat's ambient pool and turns up in the world that way; only guessing it from the body is
+ * refused. See {@link MobClassifier#standsInFor}.</p>
  */
 public final class MobDiscovery {
 
@@ -144,8 +150,10 @@ public final class MobDiscovery {
                     hostiles.computeIfAbsent(habitat, key -> new ArrayList<>()).add(mob.name());
                     // The body its author chose is the vanilla mob it stands in for - but only
                     // where the mob itself belongs, or a Nether creature ends up replacing the
-                    // zombies in a forest because both were built on a zombie.
-                    if (!mob.entityType().isBlank()) {
+                    // zombies in a forest because both were built on a zombie. And only where the
+                    // body is something hostile: a mob built on a WOLF for its looks must not take
+                    // every wolf in the world with it. It still joins the ambient pool above.
+                    if (MobClassifier.standsInFor(mob.entityType())) {
                         swap.computeIfAbsent(habitat, key -> new LinkedHashMap<>())
                                 .computeIfAbsent(mob.entityType(), key -> new ArrayList<>())
                                 .add(mob.name());

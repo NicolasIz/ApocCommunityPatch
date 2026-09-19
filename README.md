@@ -233,6 +233,37 @@ Lo que ya escribiste. Y las dos reglas son distintas a propósito:
   añade otra vez: un repetido en estas listas **es** el sistema de pesos y doblarlo en silencio lo
   falsearía.
 
+#### Qué mobs vanilla se cancelan, y qué no
+
+Esto importa más de lo que parece, así que está dicho entero:
+
+* **Solo se cancela algo hostil.** El evento de aparición salta por **toda** criatura que hace el
+  mundo — vacas, ovejas, calamares, murciélagos, aldeanos — así que hay una comprobación explícita
+  (`org.bukkit.entity.Enemy`) antes de tocar nada. Sin ella, dos caminos convertían una vaca en un
+  goblin: la `biome-table` responde por **lugar** y no por tipo de entidad, y el auto-descubrimiento
+  indexa por el cuerpo que eligió el autor del pack — un mob montado sobre un `WOLF` por su aspecto
+  habría metido una entrada `WOLF` y se habría llevado a todos los lobos del mundo por delante.
+* **Solo los tipos que estén en la tabla.** Si `CREEPER` no está en ninguna tabla, un creeper sigue
+  siendo un creeper. El auto-descubrimiento amplía esa lista a los cuerpos sobre los que tus packs
+  montan sus mobs, así que **sí, con él encendido se reemplazan más tipos vanilla que antes** — los
+  que tus packs cubran.
+* **Un cuerpo pacífico nunca se convierte en clave.** Los `COW`, `SHEEP`, `WOLF`, `SQUID`, `BAT`,
+  `VILLAGER`, `IRON_GOLEM`… están excluidos como clave de sustitución. El mob sigue apareciendo por la
+  lista ambient; lo único que se rechaza es **adivinarlo del cuerpo**.
+* **Solo por los motivos que digas.** De serie `[NATURAL, SPAWNER, REINFORCEMENTS]`. Un mob que sale
+  de un huevo, de una cría, de un dispensador o puesto por un comando se queda vanilla.
+* **Solo en los mundos que apliquen**, y en la dimensión que le toque a cada mob.
+* **`biome-table` es más amplia de lo que parece.** Responde por bioma, no por tipo, así que en un
+  bioma que nombres ahí se sustituye **todo lo hostil** que aparezca — creepers, arañas, endermen
+  incluidos. Eso es a propósito (un pack de hielo quiere mandar en la tundra entera), pero conviene
+  saberlo antes de rellenarla.
+* **Nunca deja el mundo vacío.** Primero se pide el mob de MythicMobs y **solo si aparece de verdad**
+  se cancela el vanilla. Un nombre mal escrito, un pack sin cargar o un MythicMobs ausente dejan el
+  zombi de siempre.
+
+Y el spawner de luz de día (`ambient`) **no cancela nada**: añade mobs encima de lo que el mundo ya
+hace, con tope por jugador.
+
 #### Un mob del Nether no sale en un bosque
 
 Un mob montado sobre un zombi sustituye zombis **en su dimensión y en ninguna otra**. Esto no es una
@@ -1469,6 +1500,9 @@ de que la clasificación y la mezcla sean clases puras):
 - **Encender el auto-descubrimiento no cambia una respuesta que el config.yml ya daba**: la tabla de
   swap respeta cada clave escrita y las listas ambient no duplican un nombre que ya estaba.
 - Las palabras se comparan enteras: `end` dentro de `legend` no convierte nada en mob del End.
+- **Un enemigo montado sobre un cuerpo pacífico no se lleva a todos los lobos del mundo**: no se
+  convierte en clave de sustitución, pero sigue en la lista ambient — rechazar la clave no debe
+  perder el mob.
 - `auto-discover` viene apagado en el `config.yml` que se publica, y el `hostile-mobs.end` existe con
   la misma forma que el del Nether, para que un veredicto `END` tenga dónde caer.
 

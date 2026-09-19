@@ -66,6 +66,46 @@ public final class MobClassifier {
 
     private static final Set<String> PET_WORDS = Set.of("pet", "pets", "companion", "mount", "minion");
 
+    /**
+     * Vanilla types a discovered mob must never be made the stand-in for.
+     *
+     * <p>A pack author picks a body for how it looks and moves, not to say which vanilla mob should
+     * stop appearing. A hostile built on a {@code WOLF} because it needed four legs is a real thing
+     * packs do - and keying the swap table on that body would replace every wolf in the world, which
+     * is not remotely what choosing the body meant.</p>
+     *
+     * <p>So these mobs are never stood in for. The discovered mob is still perfectly usable: it joins
+     * its habitat's ambient pool and turns up in the world that way, and it can be named by hand in
+     * {@code hostile-mobs.biome-table} or in the entity table by anybody who really does mean it. The
+     * only thing refused is guessing it from the body.</p>
+     *
+     * <p>The list is the passive and neutral half of the vanilla roster, kept here rather than asked
+     * of Bukkit so this class stays testable without a server. {@link
+     * com.arkcronist.gen.bukkit.mobs.HostileSwapListener} asks Bukkit the same question a second
+     * time, with {@code org.bukkit.entity.Enemy}, at the point where it matters.</p>
+     */
+    private static final Set<String> NEVER_STOOD_IN_FOR = Set.of(
+            // Farm and wild animals.
+            "COW", "MOOSHROOM", "SHEEP", "PIG", "CHICKEN", "RABBIT", "HORSE", "DONKEY", "MULE",
+            "SKELETON_HORSE", "ZOMBIE_HORSE", "LLAMA", "TRADER_LLAMA", "CAMEL", "GOAT", "PANDA",
+            "POLAR_BEAR", "FOX", "WOLF", "CAT", "OCELOT", "PARROT", "BEE", "SNIFFER", "ARMADILLO",
+            "TURTLE", "FROG", "TADPOLE", "AXOLOTL", "STRIDER", "HAPPY_GHAST",
+            // Water.
+            "SQUID", "GLOW_SQUID", "DOLPHIN", "COD", "SALMON", "TROPICAL_FISH", "PUFFERFISH",
+            // Bats, villagers and the built things.
+            "BAT", "VILLAGER", "WANDERING_TRADER", "IRON_GOLEM", "SNOW_GOLEM", "ALLAY",
+            "SNIFFER_EGG", "PLAYER", "NPC");
+
+    /**
+     * Whether a discovered mob built on this vanilla type may be made its stand-in.
+     *
+     * @see #NEVER_STOOD_IN_FOR
+     */
+    public static boolean standsInFor(String entityType) {
+        return entityType != null && !entityType.isBlank()
+                && !NEVER_STOOD_IN_FOR.contains(entityType.trim().toUpperCase(Locale.ROOT));
+    }
+
     private static final Set<String> BOSS_WORDS = Set.of(
             "boss", "king", "queen", "lord", "elder", "archon", "overlord", "titan", "ancient",
             "warden", "matron", "champion", "monarch", "emperor", "god", "avatar", "leviathan");

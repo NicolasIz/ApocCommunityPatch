@@ -43,6 +43,8 @@ class MobDiscoveryTest {
             new MobFacts("skeleton_mage_proj", "ARMOR_STAND", 1.0, "", ""),
             new MobFacts("cursed_arrow_vfx", "CHICKEN", 1000.0, "", ""),
             new MobFacts("oak_hurler_boulder", "WOLF", 20.0, "", ""),
+            // An enemy built on a peaceful body, which packs do for how it looks and moves.
+            new MobFacts("dire_beast", "WOLF", 40.0, "Dire Beast", ""),
             // A pet.
             new MobFacts("anubis_pet", "HUSK", 40.0, "Anubis", ""),
             // Nothing readable but a name.
@@ -140,6 +142,20 @@ class MobDiscoveryTest {
                 "a volcanic skeleton stands in for overworld spawns");
         assertTrue(result.swapFor(Habitat.END).isEmpty(),
                 "the end was given mobs nothing said belonged there");
+    }
+
+    @Test
+    @DisplayName("an enemy built on a peaceful body does not take every wolf in the world with it")
+    void peacefulBodiesAreNotStoodInFor() {
+        // "Built on a wolf" is a statement about how it looks, not an instruction to stop wolves
+        // appearing. The mob is still perfectly usable - it is in the ambient pool - so nothing is
+        // lost by refusing to guess this one.
+        MobDiscovery.Result result = sorted();
+
+        assertFalse(result.swapFor(Habitat.OVERWORLD).containsKey("WOLF"),
+                "every wolf in the world was made a dire beast");
+        assertTrue(result.hostilesFor(Habitat.OVERWORLD).contains("dire_beast"),
+                "refusing the swap key also dropped the mob, which was not the point");
     }
 
     @Test
