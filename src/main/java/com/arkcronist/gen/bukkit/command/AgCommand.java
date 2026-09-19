@@ -192,6 +192,16 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
                     + " true§7 fills it from whatever MythicMobs has loaded instead.");
         }
         sender.sendMessage("§7 Spawn reasons swapped: §f" + config.hostileMobReasons());
+        // The one number that explains "why do I still see zombies" and "why do I never see zombies",
+        // which are the same question asked from opposite sides.
+        double chance = config.replaceChance();
+        sender.sendMessage("§7 Mix: §f" + Math.round(chance * 100.0) + "%§7 of the types above become"
+                + " custom mobs, the rest stay vanilla §8(hostile-mobs.replace-chance)");
+        if (chance >= 1.0) {
+            sender.sendMessage("§7   At 100% a type in the table never appears as itself again."
+                    + " Want both? Set §freplace-chance: 0.6§7"
+                    + (config.replaceChanceConfigured() ? "." : " - your config.yml has no such key."));
+        }
         if (player.getGameMode() == org.bukkit.GameMode.CREATIVE
                 || player.getGameMode() == org.bukkit.GameMode.SPECTATOR) {
             sender.sendMessage("§e ! you are in " + player.getGameMode()

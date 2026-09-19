@@ -257,12 +257,45 @@ Esto importa más de lo que parece, así que está dicho entero:
   bioma que nombres ahí se sustituye **todo lo hostil** que aparezca — creepers, arañas, endermen
   incluidos. Eso es a propósito (un pack de hielo quiere mandar en la tundra entera), pero conviene
   saberlo antes de rellenarla.
+* **Solo la parte que diga `replace-chance`.** En `1.0` (lo que viene puesto) todos; bájalo y el resto
+  se queda como el juego lo hizo. Es el ajuste para tener las dos cosas a la vez.
 * **Nunca deja el mundo vacío.** Primero se pide el mob de MythicMobs y **solo si aparece de verdad**
   se cancela el vanilla. Un nombre mal escrito, un pack sin cargar o un MythicMobs ausente dejan el
   zombi de siempre.
 
 Y el spawner de luz de día (`ambient`) **no cancela nada**: añade mobs encima de lo que el mundo ya
 hace, con tope por jugador.
+
+#### Mobs vanilla **y** de MythicMobs a la vez
+
+Por defecto la sustitución es total: un tipo que esté en la tabla no vuelve a salir como él mismo, así
+que un servidor con `ZOMBIE` en la tabla no tiene zombis. Eso se lee bien para un tipo y mal para un
+mundo entero — y con el auto-descubrimiento rellenando todos los cuerpos que usen tus packs, «no hay
+zombis» se convierte en «no hay ningún mob hostil vanilla». Quien instaló un pack de goblins quería
+goblins **además de** zombis, no en su lugar.
+
+```yaml
+hostile-mobs:
+  replace-chance: 0.6   # 6 de cada 10 salen de MythicMobs, 4 se quedan vanilla
+```
+
+| valor | qué pasa |
+|---|---|
+| `1.0` | todo. Un tipo de la tabla no vuelve a salir como él mismo. **Es el que viene puesto.** |
+| `0.6` | seis de cada diez de MythicMobs, cuatro vanilla |
+| `0.0` | nada. La tabla no hace nada — útil para probar sin tocar el resto |
+
+Viene en `1.0` porque es lo que hacía antes y actualizar el `.jar` no debería cambiar lo que sale en tu
+mundo por su cuenta. Hay una prueba que falla si alguien baja ese valor en el `config.yml` publicado.
+
+**En las guarniciones se decide por la posición, no al azar.** El castillo al que entra un jugador
+tiene que llevar siempre los mismos guardias — se eligen por su posición justo por eso — y una moneda
+al aire aquí querría decir que el mismo castillo tiene goblins o zombis según cuándo se cargara su
+chunk. La proporción sale igual sobre un mundo entero, pero cada estructura es fija. **Un jefe con
+nombre no entra en el sorteo:** un señor del castillo que una vez de cada tres es un evocador normal no
+es una mezcla, es una estructura rota.
+
+Y el spawner de luz de día no entra en esto: **nunca cancela nada**, siempre añade encima.
 
 #### Un mob del Nether no sale en un bosque
 
@@ -1500,6 +1533,10 @@ de que la clasificación y la mezcla sean clases puras):
 - **Encender el auto-descubrimiento no cambia una respuesta que el config.yml ya daba**: la tabla de
   swap respeta cada clave escrita y las listas ambient no duplican un nombre que ya estaba.
 - Las palabras se comparan enteras: `end` dentro de `legend` no convierte nada en mob del End.
+- **`replace-chance` es exacto en los extremos**: en `1.0` sustituye siempre y en `0.0` nunca, con los
+  valores de tirada que un `>` en vez de `>=` se comería. Y en las guarniciones, el mismo sitio da
+  siempre la misma respuesta, pero sobre 3.700 sitios la proporción sale la pedida — fijo por sitio no
+  basta, si el hash favoreciera una respuesta el mundo entero saldría vanilla pareciendo estable.
 - **Un enemigo montado sobre un cuerpo pacífico no se lleva a todos los lobos del mundo**: no se
   convierte en clave de sustitución, pero sigue en la lista ambient — rechazar la clave no debe
   perder el mob.

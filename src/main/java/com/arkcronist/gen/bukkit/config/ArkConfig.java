@@ -465,6 +465,31 @@ public final class ArkConfig {
         return hostileMobReasons;
     }
 
+    /**
+     * How much of the hostile mobs the table names is actually replaced.
+     *
+     * <p>1.0, the default, is what this always did: a type in the table never appears as itself again.
+     * Lower it and the rest of the spawns are left exactly as the game made them, so a goblin pack
+     * gives goblins <em>as well as</em> zombies. Worth having as a dial rather than a switch because
+     * auto-discovery fills in every body a pack happens to use, and "no zombies" then quietly becomes
+     * "no vanilla hostile mobs anywhere".</p>
+     *
+     * @see com.arkcronist.gen.bukkit.mobs.MobMix
+     */
+    public double replaceChance() {
+        double chance = config.getDouble("hostile-mobs.replace-chance", 1.0);
+        return Math.max(0.0, Math.min(1.0, chance));
+    }
+
+    /**
+     * Whether config.yml mentions the mix at all.
+     *
+     * @see #autoDiscoverConfigured()
+     */
+    public boolean replaceChanceConfigured() {
+        return config.isSet("hostile-mobs.replace-chance");
+    }
+
     /** Whether the garrisons and bosses this generator places are swapped too. */
     public boolean replaceStructureMobs() {
         return config.getBoolean("hostile-mobs.replace-structure-mobs", true);

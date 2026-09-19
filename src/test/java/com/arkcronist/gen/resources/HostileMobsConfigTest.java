@@ -258,6 +258,18 @@ class HostileMobsConfigTest {
     }
 
     @Test
+    @DisplayName("the shipped mix is 1.0, so updating the jar does not change what spawns")
+    void theMixShipsUnchanged() {
+        // Anything below 1.0 here would mean that every server which never touched this setting
+        // suddenly saw vanilla zombies again where it had goblins. Whether that is an improvement is
+        // the operator's call, not an upgrade's.
+        Object chance = hostileMobs().get("replace-chance");
+        assertNotNull(chance, "config.yml documents no replace-chance, so nobody can find the dial");
+        assertTrue(chance instanceof Number number && number.doubleValue() == 1.0,
+                "replace-chance must ship at 1.0; got " + chance);
+    }
+
+    @Test
     @DisplayName("the End has the same shape as the Nether, so an END verdict has somewhere to land")
     void theEndIsWiredUp() {
         Object section = hostileMobs().get("end");

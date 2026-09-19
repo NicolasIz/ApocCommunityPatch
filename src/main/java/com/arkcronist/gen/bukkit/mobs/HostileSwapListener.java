@@ -85,6 +85,12 @@ public final class HostileSwapListener implements Listener {
         if (candidates == null || candidates.isEmpty()) {
             return;
         }
+        // Not every spawn of a named type, unless that is what the config asks for. Left vanilla is
+        // the same outcome as a name that could not be spawned, so nothing below has to know.
+        if (!MobMix.replaces(plugin.arkConfig().replaceChance(),
+                ThreadLocalRandom.current().nextDouble())) {
+            return;
+        }
         String chosen = candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
 
         // Stand the replacement where the vanilla mob was about to stand, keeping the facing so a

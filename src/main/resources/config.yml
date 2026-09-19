@@ -445,6 +445,33 @@ hostile-mobs:
   # lista y ya esta.
   reasons: [NATURAL, SPAWNER, REINFORCEMENTS]
 
+  # ---------------------------------------------------------------------------
+  #  Cuanto se sustituye: mobs vanilla Y de MythicMobs, o solo de MythicMobs
+  # ---------------------------------------------------------------------------
+  #  Cuanta parte de los spawns que la tabla nombra se cambia de verdad.
+  #
+  #    1.0  = todo. Un tipo que este en la tabla no vuelve a salir como el mismo:
+  #           si ZOMBIE esta en la tabla, en este mundo no hay zombis.
+  #    0.6  = seis de cada diez salen de MythicMobs y cuatro se quedan vanilla.
+  #    0.0  = nada. La tabla no hace nada (util para probar sin tocar el resto).
+  #
+  #  Si quieres que aparezcan LAS DOS COSAS -- goblins Y zombis normales -- este
+  #  es el ajuste. Ponlo en 0.5 o 0.6 y tienes las dos.
+  #
+  #  Viene en 1.0 porque es lo que hacia antes y actualizar el .jar no deberia
+  #  cambiar lo que sale en tu mundo por su cuenta. Con auto-discover encendido
+  #  es MAS importante: el descubrimiento rellena todos los cuerpos que usen tus
+  #  packs, y "no hay zombis" se convierte en "no hay ningun mob hostil vanilla".
+  #
+  #  En las guarniciones de las estructuras se decide por la POSICION y no al
+  #  azar, para que el mismo castillo tenga siempre los mismos guardias. Un jefe
+  #  con nombre no entra en el sorteo: un senor del castillo que una vez de cada
+  #  tres es un evocador normal no es una mezcla, es una estructura rota.
+  #
+  #  Lo que este ajuste NO toca: el spawner de luz de dia (ambient) no cancela
+  #  nada, siempre AnADE encima de lo que el mundo ya hace.
+  replace-chance: 1.0
+
   # Cambiar tambien las guarniciones y jefes de las estructuras del generador.
   replace-structure-mobs: true
 

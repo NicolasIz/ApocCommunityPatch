@@ -137,6 +137,14 @@ public final class MinibossFactory {
         if (candidates == null || candidates.isEmpty()) {
             return null;
         }
+        // Part of the garrison stays vanilla where the config asks for a mix - and decided from the
+        // position, not from a coin flip, because the same castle has to hold the same guards every
+        // time its chunk is generated. A named boss is exempt: a castle lord that is a plain evoker
+        // one time in three is not a mix, it is a broken structure.
+        if (!request.miniboss()
+                && !MobMix.replacesAt(config.replaceChance(), request.x(), request.y(), request.z())) {
+            return null;
+        }
         // Chosen from the position, not from a shared random: the same site must produce the same
         // garrison every time it is generated, exactly like everything else here.
         long roll = Hashing.hash3(0x60B1_1A5L, request.x(), request.y(), request.z());
