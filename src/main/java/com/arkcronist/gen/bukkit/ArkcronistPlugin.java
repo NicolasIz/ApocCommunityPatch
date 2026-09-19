@@ -40,6 +40,8 @@ public final class ArkcronistPlugin extends JavaPlugin {
     private com.arkcronist.gen.bukkit.loot.LootRules lootRules =
             com.arkcronist.gen.bukkit.loot.LootRules.none();
     private com.arkcronist.gen.bukkit.world.DimensionManager dimensions;
+    private final com.arkcronist.gen.bukkit.mythic.MobRoster roster =
+            new com.arkcronist.gen.bukkit.mythic.MobRoster();
 
     @Override
     public void onEnable() {
@@ -71,6 +73,10 @@ public final class ArkcronistPlugin extends JavaPlugin {
             WorldAdoptionListener.adopt(this, world);
         }
         startAmbientSpawner();
+        // Deferred to the first tick on purpose: MythicMobs loads its packs in its own onEnable and
+        // enable order is not ours to rely on, so asking it now finds an empty catalogue about as
+        // often as not. See MobRoster.
+        roster.scheduleFirstRead(this, arkConfig);
 
         PluginCommand command = getCommand("ag");
         if (command != null) {
@@ -410,6 +416,11 @@ public final class ArkcronistPlugin extends JavaPlugin {
         return arkConfig;
     }
 
+    /** What MythicMobs has loaded, sorted into what may spawn where. Empty when discovery is off. */
+    public com.arkcronist.gen.bukkit.mythic.MobRoster roster() {
+        return roster;
+    }
+
     /** Gives each generated world its own Nether and End. */
     public com.arkcronist.gen.bukkit.world.DimensionManager dimensions() {
         return dimensions;
@@ -449,6 +460,10 @@ public final class ArkcronistPlugin extends JavaPlugin {
         this.arkConfig = new ArkConfig(getConfig());
         this.lootRules = com.arkcronist.gen.bukkit.loot.LootRules.read(getConfig(), getLogger()::warning);
         startAmbientSpawner();
+        // Re-read here rather than only at startup: a reload is how an operator applies a new
+        // exclude list or a corrected habitat, and a roster still holding the previous verdicts
+        // would make the command report a change it had not actually made.
+        roster.refresh(arkConfig, getLogger());
         worlds.reset();
         // And straight back in. Leaving the registry empty would mean nothing recognises these as
         // our worlds until a fresh chunk is generated - which is exactly the bug that made the

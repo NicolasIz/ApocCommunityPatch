@@ -2,6 +2,7 @@ package com.arkcronist.gen.bukkit.mobs;
 
 import com.arkcronist.gen.bukkit.ArkWorld;
 import com.arkcronist.gen.bukkit.ArkcronistPlugin;
+import com.arkcronist.gen.bukkit.mythic.MobRoster;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
@@ -97,20 +98,26 @@ public final class HostileSwapListener implements Listener {
     /**
      * Which table applies in this world, or an empty one when none does.
      *
-     * <p>Two rules, and they are selected differently on purpose. An overworld is ours only if this
-     * generator made it and its preset is one the config named. The Nether is nobody's - it is the
-     * server's own vanilla world - so it cannot be recognised by preset and is recognised by being
-     * the Nether. That distinction is the whole reason the volcanic skeletons can be kept down there
-     * and nowhere else.</p>
+     * <p>Three rules, and they are selected differently on purpose. An overworld is ours only if this
+     * generator made it and its preset is one the config named. The Nether and the End are nobody's -
+     * they are the server's own vanilla worlds - so they cannot be recognised by preset and are
+     * recognised by being the Nether and the End. That distinction is the whole reason the volcanic
+     * skeletons can be kept down there and nowhere else.</p>
+     *
+     * <p>What discovery found for this side of the portal is merged in on top, and only ever into the
+     * entity types the config says nothing about - see {@link
+     * com.arkcronist.gen.bukkit.mythic.MobTables#swap}. An operator's own entry for ZOMBIE stays
+     * exactly as written.</p>
      */
     private Map<String, List<String>> tableFor(org.bukkit.World world) {
-        if (world.getEnvironment() == org.bukkit.World.Environment.NETHER) {
-            return plugin.arkConfig().netherApplies(world.getName())
-                    ? plugin.arkConfig().netherMobTable() : Map.of();
-        }
-        if (!MobWorlds.applies(plugin, world)) {
-            return Map.of();
-        }
-        return plugin.arkConfig().hostileMobTable();
+        // Already merged with whatever discovery found, and cached there: this runs on every natural
+        // spawn, so merging two maps here would allocate hundreds of times a second.
+        Map<String, List<String>> table = plugin.roster()
+                .swapTable(plugin.arkConfig(), MobRoster.habitatOf(world));
+        return switch (world.getEnvironment()) {
+            case NETHER -> plugin.arkConfig().netherApplies(world.getName()) ? table : Map.of();
+            case THE_END -> plugin.arkConfig().endApplies(world.getName()) ? table : Map.of();
+            default -> MobWorlds.applies(plugin, world) ? table : Map.of();
+        };
     }
 }

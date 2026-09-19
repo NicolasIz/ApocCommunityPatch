@@ -176,6 +176,118 @@ telaraña que pone el trapper y `spider_pois` y `spdr_stomp_vfx` son armor stand
 nombres reales que MythicMobs sacará encantado si se los pides. Hay una prueba con la lista completa
 que falla si alguien mete uno.
 
+### Auto-descubrimiento: que el plugin lea MythicMobs, no que se lo digas
+
+Todo lo de arriba tiene un coste que se nota a la tercera vez: **cada pack nuevo era una versión
+nueva del plugin**. Sus nombres había que escribirlos a mano en `hostile-mobs.table` y en
+`hostile-mobs.ambient`, y hasta que eso pasaba el pack no hacía nada en un mundo generado.
+
+Con `hostile-mobs.auto-discover.enabled: true` el plugin le pregunta a MythicMobs qué tiene cargado,
+lo clasifica solo, y se lo pasa a las mismas dos rutas que alimentan las tablas escritas a mano. Un
+`.mcmodels` nuevo en `plugins/MythicMobs/Mobs/` funciona tras un reinicio sin tocar el `config.yml`.
+
+**Viene apagado.** Es el único ajuste del archivo que puede cambiar lo que aparece en un mundo sin
+que nadie haya nombrado un solo mob, así que actualizar el `.jar` no cambia nada por su cuenta. Hay
+una prueba que falla si alguien lo deja encendido por defecto.
+
+#### Cómo clasifica
+
+Son heurísticas, y una heurística que nadie puede inspeccionar no se distingue de un bug. Por eso
+cada veredicto guarda **el motivo** por el que se tomó, y `/ag mythic <nombre>` lo dice:
+
+| veredicto | cómo se decide | qué se hace con él |
+|---|---|---|
+| `PROP` | base `ARMOR_STAND`, `MARKER`, `FALLING_BLOCK`…, o palabras como `_vfx`, `_proj`, `geyser`, `boulder`, `hitbox` | **nunca aparece** |
+| `PET` | `pet`, `companion`, `mount`, `minion` en el nombre | nunca aparece |
+| `BOSS` | vida ≥ `boss-health` (250), o `king`, `lord`, `titan`, `ancient`, `warden`… | nunca aparece solo; se listan para que **tú** los pongas en `boss-table` |
+| `HOSTILE` | lo que queda, y tiene tipo base o vida | sí aparece |
+| `UNKNOWN` | MythicMobs no dio ni tipo ni vida | nunca aparece, pero se reporta |
+
+Y el sitio, que es la otra mitad de la pregunta:
+
+| hábitat | cómo se decide |
+|---|---|
+| `NETHER` | montado sobre `BLAZE`, `WITHER_SKELETON`, `GHAST`, `PIGLIN`…; o `nether`, `lava`, `magma`, `cinder`, `demon`, `soul` en el nombre |
+| `END` | montado sobre `SHULKER`, `ENDERMITE`, `ENDER_DRAGON`; o `void`, `chorus`, `astral`, `abyss` |
+| `OVERWORLD` | todo lo demás |
+
+El tipo base pesa más que el nombre y se pregunta antes. Y las palabras se comparan **enteras**: `end`
+aparece dentro de `legend` y `defender`, `imp` dentro de `impaler`, así que el nombre se parte por
+guiones, guiones bajos, espacios y las mayúsculas del camelCase antes de mirar nada.
+
+**`PROP` es el que importa más que todos los demás juntos.** `skeleton_mage_proj` es el proyectil del
+mago: un `ARMOR_STAND` sin vida ni IA. Métele eso a una lista de spawn y el mundo se llena de soportes
+invisibles. Todos los packs traen algunos — `spdr_stomp_vfx`, `Lava_Geyser`, `cursed_arrow_vfx` — y son
+la única clase de error aquí que es fácil de cometer y caro de deshacer.
+
+#### Qué no toca
+
+Lo que ya escribiste. Y las dos reglas son distintas a propósito:
+
+* **La tabla de swap se mezcla por clave.** `ZOMBIE: [am_goblin_melee]` es una decisión sobre los
+  zombis, así que el descubrimiento no se acerca: solo rellena los tipos de entidad que tu config
+  **no menciona**. Mezclar las listas querría decir que escribir un nombre bajo `ZOMBIE` te da ese
+  nombre una vez de cada cinco, que no es lo que decía escribirlo.
+* **Las listas ambient se unen.** Son una bolsa, no un conjunto de decisiones, así que los nombres
+  configurados se quedan delante y los descubiertos se añaden detrás. Un nombre que ya estaba no se
+  añade otra vez: un repetido en estas listas **es** el sistema de pesos y doblarlo en silencio lo
+  falsearía.
+
+#### Un mob del Nether no sale en un bosque
+
+Un mob montado sobre un zombi sustituye zombis **en su dimensión y en ninguna otra**. Esto no es una
+precaución teórica: los dos packs con los que se escribió esto montan un goblin y una criatura del
+Nether sobre el mismo `ZOMBIE`, y con una sola tabla por tipo de entidad la criatura del Nether salía
+a reemplazar los zombis de un bosque. La tabla va indexada por hábitat primero y cuerpo después, y hay
+una prueba que falla si eso se rompe.
+
+#### Cuando no estés de acuerdo
+
+`/ag mythic <nombre>` dice qué regla se aplicó. Se corrige esa y solo esa:
+
+```yaml
+hostile-mobs:
+  auto-discover:
+    enabled: true
+    exclude: [Blaze_Minion, Lava_Geyser]   # nunca, pase lo que pase
+    roles:
+      hellbark_tree_ent: HOSTILE           # lo dio por boss por la vida
+    habitats:
+      frost_wraith: END                    # nada en el nombre lo decía
+```
+
+#### Comandos
+
+| comando | qué hace |
+|---|---|
+| `/ag mythic` | resumen: cuántos leyó, cuántos por hábitat, cuántos apartados |
+| `/ag mythic list` | los hostiles de cada hábitat |
+| `/ag mythic boss` · `nether` · `end` · `prop` … | un grupo concreto |
+| `/ag mythic <nombre>` | el veredicto de un mob **y el motivo** |
+| `/ag mythic models` | los blueprints que ModelEngine tiene cargados |
+| `/ag mythic refresh` | vuelve a leer MythicMobs sin reiniciar |
+| `/ag mythic export` | escribe `discovered-mobs.yml` con todo listo para copiar al config |
+
+`export` existe por los bosses: nada en un pack dice a qué estructura pertenece uno, así que el plugin
+no puede colocarlos y adivinar pondría un mob de mil de vida detrás de un árbol. Escribir los nombres
+con su hábitat convierte una decisión que no se puede automatizar en una línea de copiar.
+
+#### ModelEngine solo se lee
+
+Un pack de mobs son dos mitades: MythicMobs tiene el mob y ModelEngine el modelo que lleva puesto.
+Solo la primera decide algo sobre el spawn — un mob pelea y muere igual con modelo o sin él. Lo que
+cambia un modelo que falta es lo que **ve** el jugador: el mob sale como una caja magenta y negra, o
+como el cuerpo vanilla de debajo, y en el log no hay nada que lo diga. `/ag mythic models` responde a
+«¿cargaron los modelos de mi pack?», que es la primera pregunta cuando un mob se ve mal.
+
+#### Cuándo lo lee
+
+En el **primer tick del servidor**, no al arrancar el plugin: MythicMobs carga sus packs en su propio
+`onEnable` y el orden de arranque no es nuestro, así que preguntarle antes encuentra un catálogo vacío
+la mitad de las veces. Un pack añadido con el servidor encendido no se nota solo — no hay un evento
+portable entre MythicMobs 4.x y 5.x al que engancharse — pero `/ag mythic refresh` y `/ag reload`
+vuelven a leerlo.
+
 ### Los volcánicos, solo en el Nether
 
 El Nether **no lo genera este plugin**: es el mundo vanilla del servidor. Por eso no se puede elegir
@@ -1120,12 +1232,15 @@ NMS: todo se hace con la API de Paper, así que no hay nada que actualizar entre
 | `/ag prefabs` | Lista los `.schem` cargados: árboles, barcos y monumentos, con tamaño y número de bloques. |
 | `/ag presets` | Lista BASE, CHAOTIC e INSANE. |
 | `/ag stats` | Memoria, tamaño de caché, tasa de aciertos, colas de mobs. |
+| `/ag mobs` | Si los mobs custom aplican donde estás, y qué requisito falla si no. |
+| `/ag mythic [list\|refresh\|export\|models\|<nombre>]` | Qué leyó de MythicMobs, cómo clasificó cada mob y por qué. |
 | `/ag bench [preset] [chunks]` | Benchmark de generación en un hilo aparte. |
 | `/ag top` | Te sube a la superficie. |
 | `/ag reload` | Recarga `config.yml`. |
 | `/ag version` | Versión y estados de bloque resueltos. |
 
-Permisos: `arkcronist.command` (op) y `arkcronist.admin` (op, solo para `reload`).
+Permisos: `arkcronist.command` (op) y `arkcronist.admin` (op, para `reload`, `mythic refresh` y
+`mythic export`).
 
 ---
 
@@ -1334,6 +1449,28 @@ cubren gzip, NBT, el flujo de varints y el cargador de carpetas):
 - Una carpeta desconocida se carga pero nunca se coloca sola.
 - **Un marcador de mob o de cofre que cae fuera de los bloques de su estructura sigue llegando a su
   chunk** — antes se perdía en silencio, y afectaba también a las estructuras procedurales.
+
+Pruebas del auto-descubrimiento de mobs (todas sobre datos, sin MythicMobs ni servidor — es el motivo
+de que la clasificación y la mezcla sean clases puras):
+
+- **Ningún `PROP` llega a ninguna lista de spawn**, con las tres formas en que los packs los traen: un
+  `ARMOR_STAND`, una gallina con mil de vida y un lobo que hace de piedra lanzada.
+- Los hostiles se reparten por hábitat, y **un esqueleto volcánico no aparece en la lista del
+  overworld**.
+- Los bosses quedan fuera de todo lo que aparece por su cuenta, y se ordenan por hábitat igual que los
+  hostiles.
+- **Un cuerpo compartido por dos hábitats no filtra un mob del Nether a un bosque**: el goblin y la
+  criatura del Nether están montados los dos sobre `ZOMBIE`, y cada uno solo sustituye en su
+  dimensión. Esta prueba encontró el fallo, no lo confirmó.
+- Un mob marcado como `ANY` sí sale en todos los hábitats, sin borrar los propios de cada uno.
+- Los `PET` y los que no se pudieron juzgar se apartan **y se reportan**, no desaparecen.
+- La config puede anular cualquier veredicto, un valor mal escrito deja el veredicto en pie (aplicar
+  media errata es peor que ignorarla) y un nombre excluido no va a ninguna parte.
+- **Encender el auto-descubrimiento no cambia una respuesta que el config.yml ya daba**: la tabla de
+  swap respeta cada clave escrita y las listas ambient no duplican un nombre que ya estaba.
+- Las palabras se comparan enteras: `end` dentro de `legend` no convierte nada en mob del End.
+- `auto-discover` viene apagado en el `config.yml` que se publica, y el `hostile-mobs.end` existe con
+  la misma forma que el del Nether, para que un veredicto `END` tenga dónde caer.
 
 ---
 

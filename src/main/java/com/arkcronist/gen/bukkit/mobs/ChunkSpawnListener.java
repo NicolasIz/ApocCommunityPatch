@@ -58,9 +58,14 @@ public final class ChunkSpawnListener implements Listener {
             if (!bukkitWorld.isChunkLoaded(chunkX, chunkZ)) {
                 return;
             }
+            // Resolved once for the whole chunk: the same table every natural spawn here uses.
+            java.util.Map<String, java.util.List<String>> table = plugin.roster().swapTable(
+                    plugin.arkConfig(),
+                    com.arkcronist.gen.bukkit.mythic.MobRoster.habitatOf(bukkitWorld));
             for (MobSpawn spawn : spawns) {
                 try {
-                    MinibossFactory.spawn(bukkitWorld, spawn, plugin.arkConfig(), bossKey, tierKey);
+                    MinibossFactory.spawn(bukkitWorld, spawn, plugin.arkConfig(), table,
+                            bossKey, tierKey);
                 } catch (RuntimeException exception) {
                     plugin.getLogger().warning("Could not spawn " + spawn.entityType()
                             + ": " + exception.getMessage());

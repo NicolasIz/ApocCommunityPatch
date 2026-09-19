@@ -5,6 +5,9 @@ import com.arkcronist.gen.bukkit.loot.LootFiller;
 import com.arkcronist.gen.bukkit.ArkcronistPlugin;
 import com.arkcronist.gen.bukkit.BlockBridge;
 import com.arkcronist.gen.bukkit.mobs.MythicBridge;
+import com.arkcronist.gen.bukkit.mythic.MobClassifier;
+import com.arkcronist.gen.bukkit.mythic.MobDiscovery;
+import com.arkcronist.gen.bukkit.mythic.MobRoster;
 import com.arkcronist.gen.core.bench.TerrainBenchmark;
 import com.arkcronist.gen.core.biome.ArkBiome;
 import com.arkcronist.gen.core.biome.StructureTag;
@@ -56,6 +59,7 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
             case "prefabs" -> prefabs(sender);
             case "stats" -> stats(sender);
             case "mobs" -> mobs(sender);
+            case "mythic" -> mythic(sender, args);
             case "bench" -> bench(sender, args);
             case "top" -> top(sender);
             case "reload" -> reload(sender);
@@ -77,6 +81,8 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§8 - §f/ag presets §7lists BASE, CHAOTIC and INSANE");
         sender.sendMessage("§8 - §f/ag stats §7cache and memory diagnostics");
         sender.sendMessage("§8 - §f/ag mobs §7says whether the custom mobs apply where you stand");
+        sender.sendMessage("§8 - §f/ag mythic [list|refresh|export|models|<name>] §7what was read"
+                + " from MythicMobs and how each mob was judged");
         sender.sendMessage("§8 - §f/ag bench [preset] [chunks] §7runs a generation benchmark");
         sender.sendMessage("§8 - §f/ag top §7teleports you to the surface");
         sender.sendMessage("§8 - §f/ag reload §7reloads config.yml");
@@ -155,12 +161,24 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
             }
         }
 
-        // Which table and list actually apply on this side of the portal.
-        int table = nether ? config.netherMobTable().size() : config.hostileMobTable().size();
-        java.util.List<String> pool = nether ? config.ambientNether() : config.ambientOverworld();
+        // Which table and list actually apply on this side of the portal, discovery included -
+        // reporting only the configured counts was the reason a working setup looked broken here.
+        boolean end = world.getEnvironment() == org.bukkit.World.Environment.THE_END;
+        MobClassifier.Habitat habitat = MobRoster.habitatOf(world);
+        int table = plugin.roster().swapTable(config, habitat).size();
+        java.util.List<String> pool = plugin.roster().ambientPool(config, habitat);
         if (nether) {
             sender.sendMessage(tick(config.netherApplies(world.getName()))
                     + " hostile-mobs.nether applies to this world");
+        }
+        if (end) {
+            sender.sendMessage(tick(config.endApplies(world.getName()))
+                    + " hostile-mobs.end applies to this world");
+        }
+        if (config.autoDiscoverEnabled()) {
+            sender.sendMessage("§a ✔ auto-discovery is on: §f"
+                    + plugin.roster().discoveredFor(habitat).size()
+                    + "§7 mob(s) read for §b" + habitat + "§7. §f/ag mythic§7 for the detail.");
         }
         sender.sendMessage(tick(table > 0) + " swap table has §f" + table + "§7 entr"
                 + (table == 1 ? "y" : "ies") + " §8(replaces natural spawns)");
@@ -170,7 +188,8 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
         if (pool.isEmpty()) {
             sender.sendMessage("§7   Empty. A config.yml written before this feature existed has no"
                     + " §fhostile-mobs.ambient§7 section at all, and saveDefaultConfig never"
-                    + " replaces a file that is already there.");
+                    + " replaces a file that is already there. §fhostile-mobs.auto-discover.enabled:"
+                    + " true§7 fills it from whatever MythicMobs has loaded instead.");
         }
         sender.sendMessage("§7 Spawn reasons swapped: §f" + config.hostileMobReasons());
         if (player.getGameMode() == org.bukkit.GameMode.CREATIVE
@@ -186,6 +205,260 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
     private static String tick(boolean ok) {
         return ok ? "§a ✔" : "§c ✗";
     }
+
+    /**
+     * What was read from MythicMobs, and why each mob was judged the way it was.
+     *
+     * <p>This exists because the classification is a set of heuristics and a heuristic nobody can
+     * inspect is indistinguishable from a bug. Every verdict carries the reason it was reached, so an
+     * operator who disagrees can see which rule fired and overrule exactly that one in
+     * {@code hostile-mobs.auto-discover.roles} or {@code .habitats} rather than switching the whole
+     * feature off.</p>
+     */
+    private void mythic(CommandSender sender, String[] args) {
+        MobRoster roster = plugin.roster();
+        MobDiscovery.Result result = roster.result();
+        String what = args.length > 1 ? args[1].toLowerCase(Locale.ROOT) : "";
+
+        if (what.equals("refresh")) {
+            if (!sender.hasPermission("arkcronist.admin")) {
+                sender.sendMessage(PREFIX + "§cYou do not have permission to do that.");
+                return;
+            }
+            roster.refresh(plugin.arkConfig(), plugin.getLogger());
+            sender.sendMessage(PREFIX + "Re-read MythicMobs: §f" + roster.state());
+            return;
+        }
+        if (what.equals("export")) {
+            if (!sender.hasPermission("arkcronist.admin")) {
+                sender.sendMessage(PREFIX + "§cYou do not have permission to do that.");
+                return;
+            }
+            export(sender, result);
+            return;
+        }
+
+        if (what.equals("models")) {
+            models(sender);
+            return;
+        }
+        if (what.isEmpty()) {
+            summary(sender, roster, result);
+            return;
+        }
+        if (what.equals("list")) {
+            if (result.total() == 0) {
+                sender.sendMessage(PREFIX + "§eNothing read: " + roster.state() + ".");
+                return;
+            }
+            for (MobClassifier.Habitat habitat : MobClassifier.Habitat.values()) {
+                names(sender, habitat.name(), result.hostilesFor(habitat));
+            }
+            return;
+        }
+        // A role or a habitat names a group; anything else is taken as a mob name.
+        for (MobClassifier.Role role : MobClassifier.Role.values()) {
+            if (role.name().equalsIgnoreCase(what)) {
+                withRole(sender, result, role);
+                return;
+            }
+        }
+        for (MobClassifier.Habitat habitat : MobClassifier.Habitat.values()) {
+            if (habitat.name().equalsIgnoreCase(what)) {
+                names(sender, habitat.name() + " hostiles", result.hostilesFor(habitat));
+                names(sender, habitat.name() + " bosses", result.bossesFor(habitat));
+                return;
+            }
+        }
+        one(sender, result, args[1]);
+    }
+
+    private void summary(CommandSender sender, MobRoster roster, MobDiscovery.Result result) {
+        com.arkcronist.gen.bukkit.config.ArkConfig config = plugin.arkConfig();
+        sender.sendMessage(PREFIX + "Mob auto-discovery");
+        sender.sendMessage(tick(config.autoDiscoverEnabled())
+                + " hostile-mobs.auto-discover.enabled §8(" + roster.state() + ")");
+        if (!config.autoDiscoverEnabled()) {
+            sender.sendMessage("§7 Switched on, this reads every mob MythicMobs has loaded and sorts"
+                    + " it by itself, so a new pack needs no config.yml edit.");
+            if (!config.autoDiscoverConfigured()) {
+                // The section is absent rather than refused, which on an upgraded server is the
+                // normal case and the one that otherwise looks like a broken feature.
+                sender.sendMessage("§e Your config.yml has no §fauto-discover§e section. Add this"
+                        + " under §fhostile-mobs:§e (two spaces in):");
+                sender.sendMessage("§8   auto-discover:");
+                sender.sendMessage("§8     enabled: true");
+                sender.sendMessage("§8     boss-health: 250");
+                sender.sendMessage("§8     swap: true");
+                sender.sendMessage("§8     ambient: true");
+                sender.sendMessage("§7 Then §f/ag reload§7.");
+            }
+            return;
+        }
+        sender.sendMessage(tick(config.autoDiscoverSwap())
+                + " .swap §8(fills the entity types hostile-mobs.table does not name)");
+        sender.sendMessage(tick(config.autoDiscoverAmbient())
+                + " .ambient §8(adds to the daylight pools)");
+        sender.sendMessage("§7 Boss threshold: §f" + config.autoDiscoverBossHealth() + " health");
+        sender.sendMessage("§7 Read §f" + result.total() + "§7 mobs:");
+        for (MobClassifier.Habitat habitat : MobClassifier.Habitat.values()) {
+            int hostiles = result.hostilesFor(habitat).size();
+            int bosses = result.bossesFor(habitat).size();
+            int bodies = result.swapFor(habitat).size();
+            if (hostiles == 0 && bosses == 0) {
+                continue;
+            }
+            sender.sendMessage("§8  - §b" + habitat + "§7: §f" + hostiles + "§7 hostile, §f"
+                    + bosses + "§7 boss, standing in for §f" + bodies + "§7 vanilla type(s)");
+        }
+        sender.sendMessage("§7 Set aside: §f" + result.props().size() + "§7 props, §f"
+                + result.pets().size() + "§7 pets, §f" + result.unknown().size()
+                + "§7 undecided §8(none of these ever spawn)");
+        sender.sendMessage("§7 §f/ag mythic list§7, §f/ag mythic boss§7, §f/ag mythic nether§7,"
+                + " §f/ag mythic <name>§7 for the reason, §f/ag mythic models§7 for ModelEngine,"
+                + " §f/ag mythic export§7 to write it all out as config.");
+    }
+
+    /**
+     * Which ModelEngine blueprints loaded, which is the first question when a mob looks wrong.
+     *
+     * <p>A mob whose model failed to load still spawns and still fights - it simply turns up as a
+     * magenta box or as the bare vanilla body underneath, with nothing in the log about it. Listing
+     * what ModelEngine actually has turns that into a question with an answer.</p>
+     */
+    private void models(CommandSender sender) {
+        if (!com.arkcronist.gen.bukkit.mythic.ModelEngineModels.available()) {
+            sender.sendMessage(PREFIX + "§eModelEngine is not installed. Mobs still spawn and fight;"
+                    + " they wear the vanilla body they were built on instead of a model.");
+            return;
+        }
+        List<String> blueprints = com.arkcronist.gen.bukkit.mythic.ModelEngineModels.read();
+        sender.sendMessage(PREFIX + "ModelEngine §f"
+                + com.arkcronist.gen.bukkit.mythic.ModelEngineModels.version() + "§7 - §f"
+                + blueprints.size() + "§7 blueprint(s) loaded");
+        if (blueprints.isEmpty()) {
+            sender.sendMessage("§e None. Either no model pack is installed, or ModelEngine's API"
+                    + " could not be reached from here. A mob with no model shows up as a magenta"
+                    + " box or as its vanilla body.");
+            return;
+        }
+        names(sender, "blueprints", blueprints);
+    }
+
+    private void withRole(CommandSender sender, MobDiscovery.Result result, MobClassifier.Role role) {
+        List<String> named = new ArrayList<>();
+        result.verdicts().forEach((name, verdict) -> {
+            if (verdict.role() == role) {
+                named.add(name);
+            }
+        });
+        names(sender, role.name(), named);
+    }
+
+    /** One group, printed as a count and then the names, which is all anyone reads it for. */
+    private void names(CommandSender sender, String title, List<String> named) {
+        if (named.isEmpty()) {
+            return;
+        }
+        sender.sendMessage(PREFIX + "§b" + title + " §7(" + named.size() + ")");
+        // Wrapped by hand: a single line of 121 names is unreadable in chat and truncated in console.
+        StringBuilder line = new StringBuilder("§7 ");
+        for (String name : named) {
+            if (line.length() > 120) {
+                sender.sendMessage(line.toString());
+                line = new StringBuilder("§7 ");
+            }
+            line.append("§f").append(name).append("§8, ");
+        }
+        if (line.length() > 3) {
+            sender.sendMessage(line.substring(0, line.length() - 4));
+        }
+    }
+
+    private void one(CommandSender sender, MobDiscovery.Result result, String name) {
+        for (java.util.Map.Entry<String, MobClassifier.Verdict> entry : result.verdicts().entrySet()) {
+            if (entry.getKey().equalsIgnoreCase(name)) {
+                MobClassifier.Verdict verdict = entry.getValue();
+                sender.sendMessage(PREFIX + "§f" + entry.getKey() + " §7is §b" + verdict.role()
+                        + "§7 in §b" + verdict.habitat());
+                sender.sendMessage("§7 because " + verdict.because());
+                sender.sendMessage("§7 To change it: §fhostile-mobs.auto-discover.roles."
+                        + entry.getKey() + ": HOSTILE §7or §f.habitats." + entry.getKey()
+                        + ": NETHER");
+                return;
+            }
+        }
+        sender.sendMessage(PREFIX + "§eNo mob called '" + name + "' was read from MythicMobs.");
+        sender.sendMessage("§7 " + plugin.roster().state() + ". §f/ag mythic list§7 shows what was.");
+    }
+
+    /**
+     * Writes everything discovery found into a file the operator can paste into config.yml.
+     *
+     * <p>The point is bosses, which discovery deliberately never spawns by itself: nothing in a pack
+     * says which structure a boss belongs to, so the plugin cannot place them and guessing would put
+     * a thousand-health mob behind a tree. Writing the names out with their habitat turns a decision
+     * nobody can automate into one line of copying.</p>
+     */
+    private void export(CommandSender sender, MobDiscovery.Result result) {
+        if (result.total() == 0) {
+            sender.sendMessage(PREFIX + "§eNothing to write: " + plugin.roster().state() + ".");
+            return;
+        }
+        StringBuilder out = new StringBuilder();
+        out.append("# Written by /ag mythic export. Nothing reads this file - it is here to be\n")
+                .append("# copied into config.yml, or kept as a record of what a pack contained.\n")
+                .append("# ").append(result.total()).append(" mobs read from MythicMobs.\n\n")
+                .append("hostile-mobs:\n");
+        out.append("  ambient:\n");
+        yamlList(out, "    overworld", result.hostilesFor(MobClassifier.Habitat.OVERWORLD));
+        yamlList(out, "    nether", result.hostilesFor(MobClassifier.Habitat.NETHER));
+        yamlList(out, "    end", result.hostilesFor(MobClassifier.Habitat.END));
+        out.append("  table:  # overworld, keyed by the vanilla mob each one was built on\n");
+        result.swapFor(MobClassifier.Habitat.OVERWORLD)
+                .forEach((body, mobs) -> yamlList(out, "    " + body, mobs));
+        out.append("  nether:\n    table:\n");
+        result.swapFor(MobClassifier.Habitat.NETHER)
+                .forEach((body, mobs) -> yamlList(out, "      " + body, mobs));
+        out.append("  end:\n    table:\n");
+        result.swapFor(MobClassifier.Habitat.END)
+                .forEach((body, mobs) -> yamlList(out, "      " + body, mobs));
+        out.append("\n# Bosses are never spawned by discovery - put them under boss-table, keyed by\n")
+                .append("# the name of the structure boss they should replace.\n");
+        for (MobClassifier.Habitat habitat : MobClassifier.Habitat.values()) {
+            for (String boss : result.bossesFor(habitat)) {
+                out.append("#   ").append(boss).append("  (").append(habitat).append(")\n");
+            }
+        }
+        out.append("\n# Set aside and never spawned:\n");
+        out.append("#   props: ").append(String.join(", ", result.props())).append('\n');
+        out.append("#   pets: ").append(String.join(", ", result.pets())).append('\n');
+        out.append("#   undecided: ").append(String.join(", ", result.unknown())).append('\n');
+
+        java.nio.file.Path file = plugin.getDataFolder().toPath().resolve("discovered-mobs.yml");
+        try {
+            java.nio.file.Files.createDirectories(file.getParent());
+            java.nio.file.Files.writeString(file, out.toString());
+        } catch (java.io.IOException failure) {
+            sender.sendMessage(PREFIX + "§cCould not write " + file + ": " + failure.getMessage());
+            return;
+        }
+        sender.sendMessage(PREFIX + "Wrote §f" + result.total() + "§7 mobs to §f"
+                + file.getFileName() + " §7in the plugin folder.");
+    }
+
+    /** One YAML list, indented two spaces deeper than the key it belongs to. */
+    private static void yamlList(StringBuilder out, String key, List<String> names) {
+        if (names.isEmpty()) {
+            return;
+        }
+        String indent = " ".repeat(key.length() - key.stripLeading().length() + 2);
+        out.append(key).append(":\n");
+        for (String name : names) {
+            out.append(indent).append("- \"").append(name).append("\"\n");
+        }
+    }
+
 
     private void info(CommandSender sender) {
         ArkWorld world = worldOf(sender);
@@ -456,7 +729,15 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
         List<String> options = new ArrayList<>();
         if (args.length == 1) {
             options.addAll(List.of("help", "info", "biome", "locate", "structures", "prefabs",
-                    "presets", "stats", "mobs", "bench", "top", "reload", "version"));
+                    "presets", "stats", "mobs", "mythic", "bench", "top", "reload", "version"));
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("mythic")) {
+            options.addAll(List.of("list", "refresh", "export", "models"));
+            for (MobClassifier.Role role : MobClassifier.Role.values()) {
+                options.add(role.name().toLowerCase(Locale.ROOT));
+            }
+            for (MobClassifier.Habitat habitat : MobClassifier.Habitat.values()) {
+                options.add(habitat.name().toLowerCase(Locale.ROOT));
+            }
         } else if (args.length == 2 && args[0].equalsIgnoreCase("bench")) {
             for (Preset preset : Preset.values()) {
                 options.add(preset.name());

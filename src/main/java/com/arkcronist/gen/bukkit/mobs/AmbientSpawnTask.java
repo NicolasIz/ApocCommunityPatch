@@ -2,6 +2,7 @@ package com.arkcronist.gen.bukkit.mobs;
 
 import com.arkcronist.gen.bukkit.ArkWorld;
 import com.arkcronist.gen.bukkit.ArkcronistPlugin;
+import com.arkcronist.gen.bukkit.mythic.MobRoster;
 import org.bukkit.Difficulty;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -130,18 +131,22 @@ public final class AmbientSpawnTask implements Runnable {
     /**
      * Which list of names applies where this player is standing.
      *
-     * <p>The Nether is not a world this plugin generates - it is the server's own - so it cannot be
-     * selected the way an Arkcronist world is, by preset. It is selected by being the Nether.</p>
+     * <p>The Nether and the End are not worlds this plugin generates - they are the server's own - so
+     * they cannot be selected the way an Arkcronist world is, by preset. They are selected by being
+     * the Nether and the End.</p>
+     *
+     * <p>A pool is a pool rather than a set of decisions, so what discovery found for this dimension
+     * is added to whatever the config named instead of replacing it - the configured names keep their
+     * place at the front. See {@link com.arkcronist.gen.bukkit.mythic.MobTables#pool}.</p>
      */
     private List<String> poolFor(World world) {
-        if (world.getEnvironment() == World.Environment.NETHER) {
-            return plugin.arkConfig().netherApplies(world.getName())
-                    ? plugin.arkConfig().ambientNether() : List.of();
-        }
-        if (!MobWorlds.applies(plugin, world)) {
-            return List.of();
-        }
-        return plugin.arkConfig().ambientOverworld();
+        List<String> pool = plugin.roster()
+                .ambientPool(plugin.arkConfig(), MobRoster.habitatOf(world));
+        return switch (world.getEnvironment()) {
+            case NETHER -> plugin.arkConfig().netherApplies(world.getName()) ? pool : List.of();
+            case THE_END -> plugin.arkConfig().endApplies(world.getName()) ? pool : List.of();
+            default -> MobWorlds.applies(plugin, world) ? pool : List.of();
+        };
     }
 
     /** How many of this task's own mobs are already keeping this player company. */

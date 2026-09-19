@@ -554,6 +554,20 @@ hostile-mobs:
       MAGMA_CUBE: [Lava_Mite, Lava_Piranha]
 
   # ---------------------------------------------------------------------------
+  #  El End
+  # ---------------------------------------------------------------------------
+  #  Igual que el Nether y por lo mismo: tampoco lo genera este plugin, asi que
+  #  se elige por SER el End y no por preset.
+  #
+  #  Vacia a proposito. No hay ningun pack de mobs del End que dar por supuesto,
+  #  y ese hueco es justo lo que llena auto-discover mas abajo: un mob montado
+  #  sobre un SHULKER, o llamado "void_algo", acaba aqui sin que escribas nada.
+  end:
+    enabled: true
+    worlds: []
+    table: {}
+
+  # ---------------------------------------------------------------------------
   #  Spawner propio: de dia Y de noche
   # ---------------------------------------------------------------------------
   #  La tabla de arriba solo puede CAMBIAR un spawn que el juego iba a hacer de
@@ -604,6 +618,63 @@ hostile-mobs:
       - dSkeleton_Halberdier_Cinder_em
       - dSkeleton_Wizard_Cinder_em
       - dSkeleton_Tank_Cinder_em
+
+    # Lo que saca en el End. Vacia por lo mismo que la tabla del End.
+    end: []
+
+  # ---------------------------------------------------------------------------
+  #  Auto-descubrimiento: que el plugin lea MythicMobs en vez de que se lo digas
+  # ---------------------------------------------------------------------------
+  #  Cada pack nuevo de mobs significaba, hasta ahora, una version nueva del
+  #  plugin: sus nombres a mano en las tablas de arriba, y hasta que eso pasara
+  #  el pack no hacia nada en un mundo generado.
+  #
+  #  Con esto en true el plugin le pregunta a MythicMobs que tiene cargado, lo
+  #  clasifica solo, y se lo pasa a las mismas dos rutas que alimentan las tablas
+  #  escritas a mano. Un .mcmodels nuevo en plugins/MythicMobs/Mobs/ funciona tras
+  #  un reinicio sin tocar este archivo.
+  #
+  #  COMO CLASIFICA (son heuristicas; /ag mythic ensena el motivo de cada una):
+  #
+  #    * PROP  -> nunca aparece. Un ARMOR_STAND, o un nombre con _vfx, _proj,
+  #               geyser, boulder... es un efecto visual, no un enemigo. Meter un
+  #               ARMOR_STAND en una lista de spawn te llena el mundo de soportes
+  #               invisibles, y esta es la razon principal de que esto exista.
+  #    * PET   -> nunca aparece. pet, companion, mount, minion en el nombre.
+  #    * BOSS  -> nunca aparece solo. Vida >= boss-health, o king/lord/titan/...
+  #               en el nombre. Se listan para que TU los pongas en boss-table.
+  #    * HOSTILE -> si aparece.
+  #    * OVERWORLD / NETHER / END -> por el mob vanilla sobre el que esta montado
+  #               (BLAZE, WITHER_SKELETON... = Nether; SHULKER, ENDERMITE = End) y,
+  #               si eso no dice nada, por palabras enteras del nombre.
+  #
+  #  QUE NO TOCA: lo que ya escribiste. En la tabla de swap solo rellena los tipos
+  #  de entidad que tu config NO menciona - si pusiste ZOMBIE: [am_goblin_melee],
+  #  sigue siendo exactamente eso. En las listas ambient anade al final, sin
+  #  repetir un nombre que ya estuviera.
+  #
+  #  Un mob montado sobre un zombi solo sustituye zombis EN SU DIMENSION: un mob
+  #  del Nether montado sobre zombi no sale a reemplazar los zombis de un bosque.
+  auto-discover:
+    enabled: false
+
+    # Vida a partir de la cual se considera boss (y por tanto no aparece solo).
+    # 0 desactiva esta regla y solo cuenta el nombre.
+    boss-health: 250
+
+    # Que hace con lo que encuentra. Puedes dejar una y quitar la otra.
+    swap: true       # rellena los tipos de entidad que la tabla no nombra
+    ambient: true    # anade a las listas de luz de dia
+
+    # Nombres a ignorar siempre, pase lo que pase con la clasificacion.
+    exclude: []
+
+    # Cuando no estes de acuerdo con el veredicto. /ag mythic <nombre> dice que
+    # regla se aplico, y aqui se corrige solo esa.
+    #   roles:    PROP | PET | HOSTILE | BOSS
+    #   habitats: OVERWORLD | NETHER | END | ANY
+    roles: {}
+    habitats: {}
 
 # Datapacks
 # =========

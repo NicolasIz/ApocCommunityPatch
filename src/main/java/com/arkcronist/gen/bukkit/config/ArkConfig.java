@@ -37,9 +37,15 @@ public final class ArkConfig {
     private final java.util.Map<String, java.util.List<String>> biomeMobTable;
     private final java.util.Map<String, java.util.List<String>> netherMobTable;
     private final java.util.Set<String> netherWorlds;
+    private final java.util.Map<String, java.util.List<String>> endMobTable;
+    private final java.util.Set<String> endWorlds;
     private final java.util.List<String> ambientOverworld;
     private final java.util.List<String> ambientNether;
+    private final java.util.List<String> ambientEnd;
     private final java.util.Map<String, String> adoptedWorlds;
+    private final java.util.Set<String> autoDiscoverExclude;
+    private final java.util.Map<String, String> autoDiscoverRoles;
+    private final java.util.Map<String, String> autoDiscoverHabitats;
 
     public ArkConfig(FileConfiguration config) {
         this.config = config;
@@ -56,9 +62,32 @@ public final class ArkConfig {
         this.biomeMobTable = readMobTable("hostile-mobs.biome-table");
         this.netherMobTable = readMobTable("hostile-mobs.nether.table");
         this.netherWorlds = readLowerCaseSet("hostile-mobs.nether.worlds");
+        this.endMobTable = readMobTable("hostile-mobs.end.table");
+        this.endWorlds = readLowerCaseSet("hostile-mobs.end.worlds");
         this.ambientOverworld = readNames("hostile-mobs.ambient.overworld");
         this.ambientNether = readNames("hostile-mobs.ambient.nether");
+        this.ambientEnd = readNames("hostile-mobs.ambient.end");
         this.adoptedWorlds = readAdoptedWorlds();
+        this.autoDiscoverExclude = readUpperCaseSet("hostile-mobs.auto-discover.exclude",
+                java.util.Set.of());
+        this.autoDiscoverRoles = readWords("hostile-mobs.auto-discover.roles");
+        this.autoDiscoverHabitats = readWords("hostile-mobs.auto-discover.habitats");
+    }
+
+    /** A section of name to single word, kept as written so the reader can report a typo verbatim. */
+    private java.util.Map<String, String> readWords(String path) {
+        ConfigurationSection section = config.getConfigurationSection(path);
+        if (section == null) {
+            return java.util.Map.of();
+        }
+        java.util.Map<String, String> words = new java.util.LinkedHashMap<>();
+        for (String key : section.getKeys(false)) {
+            String value = section.getString(key);
+            if (value != null && !value.isBlank()) {
+                words.put(key.trim(), value.trim());
+            }
+        }
+        return java.util.Map.copyOf(words);
     }
 
     /**
@@ -173,6 +202,63 @@ public final class ArkConfig {
      */
     public java.util.Map<String, java.util.List<String>> biomeMobTable() {
         return biomeMobTable;
+    }
+
+    /**
+     * Whether the plugin asks MythicMobs what it has rather than being told in config.yml.
+     *
+     * <p>Off by default, and that is not timidity: it is the only setting here that can change what
+     * spawns in a world without anybody naming a single mob. An operator who has hand-built their
+     * tables gets exactly what they wrote until they ask for this.</p>
+     */
+    public boolean autoDiscoverEnabled() {
+        return config.getBoolean("hostile-mobs.auto-discover.enabled", false);
+    }
+
+    /**
+     * Whether config.yml mentions auto-discovery at all.
+     *
+     * <p>Not the same question as {@link #autoDiscoverEnabled()}, and the difference matters because
+     * {@code saveDefaultConfig()} never replaces a file that is already there: a config.yml written
+     * before this feature existed has no {@code auto-discover} section, so it reads as off without
+     * anybody having decided that. Told apart, the plugin can say once what to add instead of quietly
+     * doing nothing - which is exactly how the datapack {@code retarget} setting came to look
+     * broken.</p>
+     */
+    public boolean autoDiscoverConfigured() {
+        return config.isSet("hostile-mobs.auto-discover.enabled");
+    }
+
+    /** Health at or above which a discovered mob is treated as a boss and kept out of spawns. */
+    public double autoDiscoverBossHealth() {
+        double health = config.getDouble("hostile-mobs.auto-discover.boss-health",
+                com.arkcronist.gen.bukkit.mythic.MobClassifier.DEFAULT_BOSS_HEALTH);
+        return Math.max(0.0, health);
+    }
+
+    /** Whether discovered hostiles join the ambient pools. */
+    public boolean autoDiscoverAmbient() {
+        return config.getBoolean("hostile-mobs.auto-discover.ambient", true);
+    }
+
+    /** Whether discovered hostiles fill the entity types the swap table does not name. */
+    public boolean autoDiscoverSwap() {
+        return config.getBoolean("hostile-mobs.auto-discover.swap", true);
+    }
+
+    /** Discovered names never to use, whatever they were judged to be. */
+    public java.util.Set<String> autoDiscoverExclude() {
+        return autoDiscoverExclude;
+    }
+
+    /** Name to PROP, PET, HOSTILE or BOSS, overruling the judgement. */
+    public java.util.Map<String, String> autoDiscoverRoles() {
+        return autoDiscoverRoles;
+    }
+
+    /** Name to OVERWORLD, NETHER, END or ANY, overruling the judgement. */
+    public java.util.Map<String, String> autoDiscoverHabitats() {
+        return autoDiscoverHabitats;
     }
 
     public Preset defaultPreset() {
@@ -416,6 +502,25 @@ public final class ArkConfig {
         return netherWorlds.isEmpty() || netherWorlds.contains(worldName.toLowerCase(Locale.ROOT));
     }
 
+    /**
+     * Vanilla entity type to MythicMobs name, for the End.
+     *
+     * <p>The same shape as the Nether's and for the same reason. Empty by default - there is no
+     * catalogue of End mobs to ship a default from - which is exactly the gap auto-discovery fills:
+     * a mob built on a shulker, or named for the void, lands here without anybody writing it down.</p>
+     */
+    public java.util.Map<String, java.util.List<String>> endMobTable() {
+        return endMobTable;
+    }
+
+    /** Whether the End rules apply to the world with this name. */
+    public boolean endApplies(String worldName) {
+        if (!config.getBoolean("hostile-mobs.end.enabled", true)) {
+            return false;
+        }
+        return endWorlds.isEmpty() || endWorlds.contains(worldName.toLowerCase(Locale.ROOT));
+    }
+
     /** Whether the plugin spawns mobs itself, which is the only way to have them out in daylight. */
     public boolean ambientEnabled() {
         return config.getBoolean("hostile-mobs.ambient.enabled", false);
@@ -454,6 +559,11 @@ public final class ArkConfig {
     /** What it puts in the Nether. */
     public java.util.List<String> ambientNether() {
         return ambientNether;
+    }
+
+    /** What it puts in the End. */
+    public java.util.List<String> ambientEnd() {
+        return ambientEnd;
     }
 
     /** Whether each generated world gets a Nether and an End of its own. */

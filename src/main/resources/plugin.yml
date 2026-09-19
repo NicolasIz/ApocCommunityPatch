@@ -8,8 +8,13 @@ website: https://github.com/NicolasIz/ApocCommunityPatch
 folia-supported: false
 
 # Optional, both of them. Without MythicMobs the hostile-mobs section does nothing and the world
-# keeps its vanilla mobs; ModelEngine is what gives those mobs their models, and MythicMobs is the
-# one that asks for it, so this plugin never touches it directly.
+# keeps its vanilla mobs. ModelEngine is what gives those mobs their models, and MythicMobs is the
+# one that asks for it - this plugin only ever reads ModelEngine, so that /ag mythic models can say
+# whether a pack's models actually loaded.
+#
+# Listed here rather than under depend so that neither is required: an absent plugin costs the custom
+# mobs and nothing else. It also means both have enabled before this one, which is what makes reading
+# their catalogues possible at all.
 softdepend: [MythicMobs, ModelEngine]
 
 commands:

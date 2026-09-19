@@ -239,4 +239,33 @@ class HostileMobsConfigTest {
                 "only " + table().size() + " vanilla types are replaced, which leaves most of the "
                         + "world's mobs vanilla");
     }
+
+    @Test
+    @DisplayName("auto-discovery ships switched off, so an upgrade changes nothing by itself")
+    void autoDiscoveryIsOptIn() {
+        // This is the one setting in the file that can change what spawns in a world without anybody
+        // naming a single mob. Shipping it on would mean that updating the jar silently replaced the
+        // hand-written tables above with whatever MythicMobs happened to have loaded.
+        Object section = hostileMobs().get("auto-discover");
+        assertNotNull(section, "config.yml documents no auto-discover section");
+        Map<String, Object> discover = (Map<String, Object>) section;
+        assertEquals(Boolean.FALSE, discover.get("enabled"),
+                "auto-discovery is on by default, which changes existing servers on upgrade");
+        // A threshold of 0 turns the health rule off entirely and leaves only the name words, which
+        // would put a 4000-health mob in an ambient pool if nobody called it a king.
+        assertTrue(discover.get("boss-health") instanceof Number health && health.doubleValue() > 0.0,
+                "boss-health must be a positive number; got " + discover.get("boss-health"));
+    }
+
+    @Test
+    @DisplayName("the End has the same shape as the Nether, so an END verdict has somewhere to land")
+    void theEndIsWiredUp() {
+        Object section = hostileMobs().get("end");
+        assertNotNull(section, "config.yml has no hostile-mobs.end section, so nothing classified "
+                + "as an End mob can ever be used");
+        Map<String, Object> end = (Map<String, Object>) section;
+        assertTrue(end.containsKey("table"), "hostile-mobs.end has no table");
+        assertTrue(end.containsKey("worlds"), "hostile-mobs.end has no worlds list");
+        assertTrue(ambient().containsKey("end"), "hostile-mobs.ambient has no end pool");
+    }
 }

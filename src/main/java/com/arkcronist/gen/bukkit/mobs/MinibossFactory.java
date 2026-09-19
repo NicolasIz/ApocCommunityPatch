@@ -40,8 +40,14 @@ public final class MinibossFactory {
     private MinibossFactory() {
     }
 
-    public static Entity spawn(World world, MobSpawn request, ArkConfig config, NamespacedKey bossKey,
-                               NamespacedKey tierKey) {
+    /**
+     * @param table the swap table for this world, configured entries and discovered ones already
+     *              merged - passed in rather than read from the config so a garrison uses exactly
+     *              the same table as a natural spawn in the same world, auto-discovery included
+     */
+    public static Entity spawn(World world, MobSpawn request, ArkConfig config,
+                               java.util.Map<String, java.util.List<String>> table,
+                               NamespacedKey bossKey, NamespacedKey tierKey) {
         EntityType type;
         try {
             type = EntityType.valueOf(request.entityType().toUpperCase(Locale.ROOT));
@@ -64,7 +70,7 @@ public final class MinibossFactory {
         // configuration, and layering this generator's tier scaling on top of that would give a mob
         // with several times the health its author set. The tier is passed to MythicMobs as a level
         // and what it does with it is its business.
-        Entity custom = customFor(request, location, config);
+        Entity custom = customFor(request, location, config, table);
         if (custom != null) {
             return custom;
         }
@@ -113,7 +119,8 @@ public final class MinibossFactory {
      * <p>Same table the spawn listener uses, so a castle's guards are the same goblins a player
      * meets in the open rather than a second, separate idea of what lives in this world.</p>
      */
-    private static Entity customFor(MobSpawn request, Location location, ArkConfig config) {
+    private static Entity customFor(MobSpawn request, Location location, ArkConfig config,
+                                    java.util.Map<String, java.util.List<String>> table) {
         if (!config.hostileMobsEnabled() || !config.replaceStructureMobs() || !MythicBridge.available()) {
             return null;
         }
@@ -125,7 +132,7 @@ public final class MinibossFactory {
             candidates = config.bossMobTable().get(request.name().toUpperCase(Locale.ROOT));
         }
         if (candidates == null || candidates.isEmpty()) {
-            candidates = config.hostileMobTable().get(request.entityType().toUpperCase(Locale.ROOT));
+            candidates = table.get(request.entityType().toUpperCase(Locale.ROOT));
         }
         if (candidates == null || candidates.isEmpty()) {
             return null;
