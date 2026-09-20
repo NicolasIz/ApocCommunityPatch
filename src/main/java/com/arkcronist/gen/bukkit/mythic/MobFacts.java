@@ -13,9 +13,25 @@ package com.arkcronist.gen.bukkit.mythic;
  * @param health      its configured health, or 0 when unknown
  * @param displayName what a player sees over its head, or empty
  * @param faction     the MythicMobs faction, or empty - few packs set it
+ * @param damage      its configured damage, or {@link #UNKNOWN} when it could not be read
  */
 public record MobFacts(String name, String entityType, double health, String displayName,
-                       String faction) {
+                       String faction, double damage) {
+
+    /**
+     * What a number that could not be read looks like.
+     *
+     * <p>Zero cannot mean "unknown" here, because zero is exactly the answer that matters: a mob
+     * that deals no damage is the thing worth noticing. A version of MythicMobs with no damage
+     * getter would otherwise make every mob on the server look like scenery.</p>
+     */
+    public static final double UNKNOWN = -1.0;
+
+    /** Everything but the damage, for callers written before it was read. */
+    public MobFacts(String name, String entityType, double health, String displayName,
+                    String faction) {
+        this(name, entityType, health, displayName, faction, UNKNOWN);
+    }
 
     public MobFacts {
         name = name == null ? "" : name.trim();
@@ -26,6 +42,11 @@ public record MobFacts(String name, String entityType, double health, String dis
 
     /** Just the name, for the common case of a pack that says nothing else. */
     public static MobFacts of(String name) {
-        return new MobFacts(name, "", 0.0, "", "");
+        return new MobFacts(name, "", 0.0, "", "", UNKNOWN);
+    }
+
+    /** Whether the damage came back at all. */
+    public boolean damageKnown() {
+        return damage >= 0.0;
     }
 }

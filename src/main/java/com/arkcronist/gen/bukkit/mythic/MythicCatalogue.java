@@ -43,6 +43,7 @@ public final class MythicCatalogue {
     private static final String[] HEALTH_GETTERS = {"getHealth", "getMaxHealth", "getBaseHealth"};
     private static final String[] DISPLAY_GETTERS = {"getDisplayName", "getName"};
     private static final String[] FACTION_GETTERS = {"getFaction"};
+    private static final String[] DAMAGE_GETTERS = {"getDamage", "getBaseDamage"};
 
     private MythicCatalogue() {
     }
@@ -110,7 +111,8 @@ public final class MythicCatalogue {
                 continue;
             }
             facts.add(new MobFacts(name, text(mob, TYPE_GETTERS), number(mob, HEALTH_GETTERS),
-                    text(mob, DISPLAY_GETTERS), text(mob, FACTION_GETTERS)));
+                    text(mob, DISPLAY_GETTERS), text(mob, FACTION_GETTERS),
+                    numberOrUnknown(mob, DAMAGE_GETTERS)));
         }
         facts.sort(Comparator.comparing(f -> f.name().toLowerCase(java.util.Locale.ROOT)));
         return List.copyOf(facts);
@@ -149,6 +151,32 @@ public final class MythicCatalogue {
         // MythicMobs wraps display names in its own placeholder type, whose toString is the text.
         String text = String.valueOf(value).trim();
         return "null".equals(text) ? "" : text;
+    }
+
+    /**
+     * A getter's value as a number, or {@link MobFacts#UNKNOWN} when there was no getter.
+     *
+     * <p>The same as {@link #number} except in what it does when nothing answers. Damage needs the
+     * distinction that health does not: a mob doing no damage is a real and useful answer, so
+     * folding "it said zero" together with "nothing said anything" would turn a MythicMobs version
+     * without the getter into a server where nothing is hostile.</p>
+     */
+    private static double numberOrUnknown(Object mob, String[] names) {
+        Object value = firstResult(mob.getClass(), mob, names);
+        if (value instanceof Optional<?> maybe) {
+            value = maybe.orElse(null);
+        }
+        if (value == null) {
+            return MobFacts.UNKNOWN;
+        }
+        if (value instanceof Number figure) {
+            return Math.max(0.0, figure.doubleValue());
+        }
+        try {
+            return Math.max(0.0, Double.parseDouble(String.valueOf(value).trim()));
+        } catch (NumberFormatException ignored) {
+            return MobFacts.UNKNOWN;
+        }
     }
 
     /** A getter's value as a number, or 0 when it is not one. */

@@ -130,6 +130,38 @@ class MobClassifierTest {
     }
 
     @Test
+    @DisplayName("a harmless figure on a passive body is scenery, not a mob")
+    void decorativeNpc() {
+        // From a real pack of decorative NPCs: a pig with the AI stripped out, no damage, and a
+        // farmer model on top. Forty-five of them were judged HOSTILE and would have been spawned
+        // around players as monsters.
+        MobFacts farmer = new MobFacts("scene_farmer_ground", "PIG", 5.0, "", "", 0.0);
+        assertEquals(Role.PROP, MobClassifier.classify(farmer).role());
+
+        // Both halves have to be true. A caster does its harm through skills and still has a
+        // hostile body, so no damage on its own must not condemn it.
+        MobFacts mage = new MobFacts("skeleton_mage", "SKELETON", 30.0, "", "", 0.0);
+        assertEquals(Role.HOSTILE, MobClassifier.classify(mage).role());
+
+        // And a passive body on its own is a look, not a role: a goblin on a pig that hits back
+        // is still a goblin.
+        MobFacts goblin = new MobFacts("am_goblin_melee", "PIG", 20.0, "", "", 4.0);
+        assertEquals(Role.HOSTILE, MobClassifier.classify(goblin).role());
+    }
+
+    @Test
+    @DisplayName("a MythicMobs that will not say the damage is not taken as zero")
+    void damageUnknownIsNotZero() {
+        // The five-argument constructor is every caller written before damage was read, and the
+        // reader uses the same value when no getter answers. If unknown collapsed into zero, a
+        // MythicMobs version without the getter would turn every passive-bodied mob on the server
+        // into scenery and empty the spawn pools.
+        MobFacts sinDato = new MobFacts("am_goblin_melee", "PIG", 20.0, "", "");
+        assertEquals(MobFacts.UNKNOWN, sinDato.damage());
+        assertEquals(Role.HOSTILE, MobClassifier.classify(sinDato).role());
+    }
+
+    @Test
     @DisplayName("the Nether's own place names place a mob there")
     void habitatFromNetherBiomeName() {
         // A pack that fills the Nether biome by biome names its mobs after the biomes, and every

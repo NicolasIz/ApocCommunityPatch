@@ -174,6 +174,23 @@ public final class MobClassifier {
             return new Verdict(Role.PROP, Habitat.ANY,
                     "its author filed it under faction " + facts.faction() + ", which is scenery");
         }
+
+        // Scenery that nobody bothered to label. A decorative NPC pack builds its figures on a
+        // passive body, gives them no damage, strips their AI and makes them invincible - a farmer
+        // bent over a crop, a townsfolk sitting on a bench. Nothing in the name says so: a mob
+        // called scene_farmer_ground reads as hostile to every rule below, and forty-five of them
+        // went straight into an overworld spawn pool on a real server before this existed.
+        //
+        // Both halves are needed. Damage alone would catch a caster that does all its harm through
+        // skills; a passive body alone is a look, not a role, and a goblin built on a pig is still
+        // a goblin. Together they describe something that cannot hurt anyone and was not built to
+        // look like it could. And when MythicMobs would not say what the damage is, this says
+        // nothing at all rather than guessing - see MobFacts.UNKNOWN.
+        if (facts.damageKnown() && facts.damage() == 0.0 && !standsInFor(facts.entityType())) {
+            return new Verdict(Role.PROP, Habitat.ANY,
+                    "it does no damage and is built on " + facts.entityType()
+                            + ", which is decoration rather than a mob");
+        }
         if (PROP_TYPES.contains(facts.entityType())) {
             return new Verdict(Role.PROP, Habitat.ANY,
                     "built on " + facts.entityType() + ", which is scenery rather than a creature");
