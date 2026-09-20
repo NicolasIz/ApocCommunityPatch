@@ -172,6 +172,29 @@ class MobClassifierTest {
     }
 
     @Test
+    @DisplayName("an interface part is scenery however alive its body looks")
+    void interfacePartsAreProps() {
+        // A health bar pack builds its bar out of an invisible, invincible, AI-less mob that follows
+        // its owner. Nothing about the body says so - the one this was written for is a VEX, which
+        // is a perfectly ordinary enemy elsewhere - and before the faction was read, discovery put
+        // it in the ambient pool.
+        MobFacts bar = new MobFacts("Healthbar_base_em_template", "VEX", 0.0, "xd", "GUI");
+        MobClassifier.Verdict v = MobClassifier.classify(bar);
+        assertEquals(Role.PROP, v.role(), "a GUI part was judged " + v.role() + ": " + v.because());
+        assertTrue(v.because().contains("GUI"), "the reason did not name the faction: " + v.because());
+
+        // The name alone is enough too, for a pack that files nothing under a faction.
+        for (String name : new String[]{"boss_healthbar", "mob_nameplate", "shop_gui_anchor",
+                "skeleton_template"}) {
+            assertEquals(Role.PROP, MobClassifier.classify(
+                    new MobFacts(name, "VEX", 40.0, "", "")).role(), name + " was not caught");
+        }
+        // And an ordinary faction is not a refusal.
+        assertNotEquals(Role.PROP, MobClassifier.classify(
+                new MobFacts("am_goblin_melee", "ZOMBIE", 30.0, "Goblin", "Skeleton")).role());
+    }
+
+    @Test
     @DisplayName("a peaceful body is never something to stand in for")
     void peacefulBodiesAreNotSwapKeys() {
         // A pack author picks a body for how it looks and moves. Reading "built on a wolf" as "replace

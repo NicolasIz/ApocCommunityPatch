@@ -62,7 +62,22 @@ public final class MobClassifier {
     private static final Set<String> PROP_WORDS = Set.of(
             "vfx", "fx", "proj", "projectile", "marker", "hitbox", "collider", "trap", "aura",
             "beam", "ray", "trail", "spawner", "controller", "dummy", "decoy", "stump", "rubble",
-            "boulder", "geyser", "crate", "extras", "showcase");
+            "boulder", "geyser", "crate", "extras", "showcase",
+            // Interface parts. A health bar pack builds its bar out of an invisible, invincible,
+            // AI-less mob that follows its owner around, and nothing about the body it uses says
+            // so - the one this was added for is a VEX.
+            "healthbar", "healthbars", "gui", "hud", "hologram", "nameplate", "template");
+
+    /**
+     * Factions that mean "this is scenery", whatever it is built on.
+     *
+     * <p>The strongest signal there is, and the cheapest: a pack author who files a mob under
+     * {@code Faction: GUI} has already said it is not an enemy. It beats guessing from the body,
+     * which for interface parts is meaningless - a health bar is a VEX because a VEX floats, not
+     * because it is a vex.</p>
+     */
+    private static final Set<String> PROP_FACTIONS = Set.of(
+            "GUI", "PROP", "PROPS", "VFX", "FX", "DISPLAY", "HOLOGRAM", "MARKER", "INTERNAL");
 
     private static final Set<String> PET_WORDS = Set.of("pet", "pets", "companion", "mount", "minion");
 
@@ -147,6 +162,11 @@ public final class MobClassifier {
 
         // Props first and unconditionally. Everything below this assumes it is looking at something
         // alive, and the cost of getting this one wrong is a world full of invisible armour stands.
+        if (!facts.faction().isBlank()
+                && PROP_FACTIONS.contains(facts.faction().trim().toUpperCase(Locale.ROOT))) {
+            return new Verdict(Role.PROP, Habitat.ANY,
+                    "its author filed it under faction " + facts.faction() + ", which is scenery");
+        }
         if (PROP_TYPES.contains(facts.entityType())) {
             return new Verdict(Role.PROP, Habitat.ANY,
                     "built on " + facts.entityType() + ", which is scenery rather than a creature");
