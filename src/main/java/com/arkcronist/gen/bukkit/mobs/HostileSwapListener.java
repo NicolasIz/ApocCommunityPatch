@@ -110,6 +110,15 @@ public final class HostileSwapListener implements Listener {
         if (replacement instanceof LivingEntity living && !living.isValid()) {
             return;
         }
+        // The game proved that a husk fitted here, and then we put something else in its place.
+        // Packs scale their mobs, so the replacement can be a head taller than the mob whose room
+        // was measured, and a cave with two blocks of headroom buries it. Undoing costs nothing at
+        // this point - the vanilla spawn has not been cancelled yet - so a replacement that cannot
+        // stand here is dropped and the world keeps the mob it was going to have.
+        if (!MobFit.settle(replacement)) {
+            replacement.remove();
+            return;
+        }
         event.setCancelled(true);
     }
 

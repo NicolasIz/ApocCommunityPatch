@@ -72,6 +72,14 @@ public final class MinibossFactory {
         // and what it does with it is its business.
         Entity custom = customFor(request, location, config, table);
         if (custom != null) {
+            // The column above was searched for the height this request asked for, which came from
+            // the structure and describes the vanilla mob it was written for. A custom stand-in can
+            // be taller, so it is asked its own size now that it has one. A guard that cannot stand
+            // here is not left to suffocate in the wall of its own castle.
+            if (!MobFit.settle(custom)) {
+                custom.remove();
+                return null;
+            }
             return custom;
         }
 

@@ -123,6 +123,12 @@ public final class AmbientSpawnTask implements Runnable {
                 // just be a slower way to find that out.
                 return;
             }
+            // The column was searched for two blocks of headroom, which is what a zombie needs
+            // and not what every custom mob is. Now that it exists it can be asked its real size.
+            if (!MobFit.settle(spawned)) {
+                spawned.remove();
+                continue;
+            }
             spawned.getPersistentDataContainer().set(mark, PersistentDataType.BYTE, (byte) 1);
             return;
         }
