@@ -130,6 +130,24 @@ class MobClassifierTest {
     }
 
     @Test
+    @DisplayName("the Nether's own place names place a mob there")
+    void habitatFromNetherBiomeName() {
+        // A pack that fills the Nether biome by biome names its mobs after the biomes, and every
+        // one of those names reads as overworld to the words above: a forest, a valley, a waste.
+        // An enderman expansion doing exactly that is what put these here.
+        assertEquals(Habitat.NETHER, homeOf("enderman_crimson_forest", "ENDERMAN"));
+        assertEquals(Habitat.NETHER, homeOf("enderman_warped_forest", "ENDERMAN"));
+        assertEquals(Habitat.NETHER, homeOf("enderman_soulsand_valley", "ENDERMAN"));
+        assertEquals(Habitat.NETHER, homeOf("basalt_crawler", "SPIDER"));
+        assertEquals(Habitat.NETHER, homeOf("bastion_raider", "VINDICATOR"));
+        // And the overworld biomes keep theirs, which is the whole point of adding only the names
+        // that belong to one place and no other.
+        assertEquals(Habitat.OVERWORLD, homeOf("enderman_dark_oak", "ENDERMAN"));
+        assertEquals(Habitat.OVERWORLD, homeOf("enderman_flower_fields", "ENDERMAN"));
+        assertEquals(Habitat.OVERWORLD, homeOf("enderman_ice_spikes", "ENDERMAN"));
+    }
+
+    @Test
     @DisplayName("a word inside another word is not that word")
     void wholeWordsOnly() {
         // This is where a substring match quietly ruins everything: 'end' lives inside 'legend' and

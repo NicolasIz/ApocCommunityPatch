@@ -135,7 +135,14 @@ public final class MobClassifier {
 
     private static final Set<String> NETHER_WORDS = Set.of(
             "nether", "lava", "hell", "hellish", "magma", "blaze", "infernal", "inferno", "ember",
-            "cinder", "brimstone", "flame", "fire", "scorch", "ash", "demon", "imp", "soul");
+            "cinder", "brimstone", "flame", "fire", "scorch", "ash", "demon", "imp", "soul",
+            // The place names, which is how a pack that fills in the Nether biome by biome writes
+            // its mobs: "crimson_forest", "warped_forest", "soulsand_valley". Those read as
+            // overworld to every rule above - a forest and a valley - and the mob ends up offered
+            // in a birch wood. "soul" alone does not catch "soulsand" either, because a name is
+            // split on its separators and matched whole, so "soulsand" is one word.
+            "crimson", "warped", "soulsand", "basalt", "blackstone", "netherrack", "bastion",
+            "piglin", "hoglin");
 
     private static final Set<String> END_WORDS = Set.of(
             "end", "ender", "void", "chorus", "shulker", "astral", "abyss", "cosmic", "starlit");
