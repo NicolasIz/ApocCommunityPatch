@@ -75,8 +75,11 @@ public final class AmbientSpawnTask implements Runnable {
                 || player.getGameMode() == GameMode.CREATIVE) {
             return;
         }
+        if (!applies(world)) {
+            return;
+        }
         List<String> pool = poolFor(world);
-        if (pool.isEmpty()) {
+        if (pool.isEmpty() && plugin.roster().placement().byBiome().isEmpty()) {
             return;
         }
         int cap = plugin.arkConfig().ambientCap();
@@ -113,9 +116,18 @@ public final class AmbientSpawnTask implements Runnable {
             // Asked of the spot that was actually chosen, not of where the player stands: the
             // point of a biome list is that walking to the edge of the snow changes what follows
             // you, and a player standing in a forest can easily have this land in the tundra.
-            List<String> here = BiomeMobs.candidates(plugin.arkConfig().biomeMobTable(),
-                    BiomeMobs.keyAt(world, where));
+            // Then what discovery gave the biome from the mobs' own names - for a share of the
+            // spawns, so the place keeps some of the general mix too.
+            String biome = BiomeMobs.keyAt(world, where);
+            List<String> here = BiomeMobs.candidates(plugin.arkConfig().biomeMobTable(), biome);
+            if (here == null) {
+                here = BiomeMobs.discovered(plugin.roster().biomeMobs(biome),
+                        plugin.arkConfig().autoDiscoverBiomeShare(), random.nextDouble());
+            }
             List<String> applies = here != null ? here : pool;
+            if (applies.isEmpty()) {
+                continue;
+            }
             String chosen = applies.get(random.nextInt(applies.size()));
             Entity spawned = MythicBridge.spawn(chosen, where, 1);
             if (spawned == null) {
@@ -146,12 +158,17 @@ public final class AmbientSpawnTask implements Runnable {
      * place at the front. See {@link com.arkcronist.gen.bukkit.mythic.MobTables#pool}.</p>
      */
     private List<String> poolFor(World world) {
-        List<String> pool = plugin.roster()
-                .ambientPool(plugin.arkConfig(), MobRoster.habitatOf(world));
+        return applies(world)
+                ? plugin.roster().ambientPool(plugin.arkConfig(), MobRoster.habitatOf(world))
+                : List.of();
+    }
+
+    /** Whether this world gets custom mobs at all. */
+    private boolean applies(World world) {
         return switch (world.getEnvironment()) {
-            case NETHER -> plugin.arkConfig().netherApplies(world.getName()) ? pool : List.of();
-            case THE_END -> plugin.arkConfig().endApplies(world.getName()) ? pool : List.of();
-            default -> MobWorlds.applies(plugin, world) ? pool : List.of();
+            case NETHER -> plugin.arkConfig().netherApplies(world.getName());
+            case THE_END -> plugin.arkConfig().endApplies(world.getName());
+            default -> MobWorlds.applies(plugin, world);
         };
     }
 

@@ -75,4 +75,44 @@ public final class MobTables {
         }
         return List.copyOf(merged);
     }
+
+    /**
+     * A pool without the mobs that have biomes of their own.
+     *
+     * <p>A yeti given the snowy biomes must not also sit in the general pool, or it turns up in the
+     * desert anyway - one pick in twenty instead of every pick, which is still a yeti in the
+     * desert.</p>
+     */
+    public static List<String> without(List<String> pool, Set<String> placed) {
+        if (pool == null || pool.isEmpty() || placed == null || placed.isEmpty()) {
+            return pool == null ? List.of() : pool;
+        }
+        Set<String> lower = new java.util.HashSet<>();
+        for (String name : placed) {
+            lower.add(name.toLowerCase(java.util.Locale.ROOT));
+        }
+        List<String> kept = new ArrayList<>();
+        for (String name : pool) {
+            if (!lower.contains(name.toLowerCase(java.util.Locale.ROOT))) {
+                kept.add(name);
+            }
+        }
+        return List.copyOf(kept);
+    }
+
+    /** A swap table without the mobs that have biomes of their own; emptied entries go. */
+    public static Map<String, List<String>> without(Map<String, List<String>> table,
+                                                    Set<String> placed) {
+        if (table == null || table.isEmpty() || placed == null || placed.isEmpty()) {
+            return table == null ? Map.of() : table;
+        }
+        Map<String, List<String>> kept = new LinkedHashMap<>();
+        table.forEach((body, names) -> {
+            List<String> left = without(names, placed);
+            if (!left.isEmpty()) {
+                kept.put(body, left);
+            }
+        });
+        return Map.copyOf(kept);
+    }
 }

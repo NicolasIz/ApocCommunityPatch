@@ -46,6 +46,7 @@ public final class ArkConfig {
     private final java.util.Set<String> autoDiscoverExclude;
     private final java.util.Map<String, String> autoDiscoverRoles;
     private final java.util.Map<String, String> autoDiscoverHabitats;
+    private final java.util.Map<String, java.util.List<String>> autoDiscoverBiomeOverrides;
 
     public ArkConfig(FileConfiguration config) {
         this.config = config;
@@ -72,6 +73,7 @@ public final class ArkConfig {
                 java.util.Set.of());
         this.autoDiscoverRoles = readWords("hostile-mobs.auto-discover.roles");
         this.autoDiscoverHabitats = readWords("hostile-mobs.auto-discover.habitats");
+        this.autoDiscoverBiomeOverrides = readMobTable("hostile-mobs.auto-discover.biomes.overrides");
     }
 
     /** A section of name to single word, kept as written so the reader can report a typo verbatim. */
@@ -259,6 +261,33 @@ public final class ArkConfig {
     /** Name to OVERWORLD, NETHER, END or ANY, overruling the judgement. */
     public java.util.Map<String, String> autoDiscoverHabitats() {
         return autoDiscoverHabitats;
+    }
+
+    /**
+     * Whether discovered hostiles are given biomes from their names, by reading every biome the
+     * server has - the game's own and every datapack's, Terralith included.
+     *
+     * <p>Off unless config.yml says so. The config.yml this plugin ships turns it on, so a new
+     * install has it; a server updating the jar keeps the config it already has, which does not
+     * mention it, and so keeps spawning exactly as it did - a mob it already had in every biome is
+     * not moved to three of them by a jar update nobody asked to change that.</p>
+     */
+    public boolean autoDiscoverBiomes() {
+        return config.getBoolean("hostile-mobs.auto-discover.biomes.enabled", false);
+    }
+
+    /**
+     * In a biome that has mobs of its own, the share of spawns that use them; the rest use the
+     * general mix, so a snowy forest has its yetis and still the odd goblin.
+     */
+    public double autoDiscoverBiomeShare() {
+        double share = config.getDouble("hostile-mobs.auto-discover.biomes.share", 0.7);
+        return Math.max(0.0, Math.min(1.0, share));
+    }
+
+    /** Mob name to the biomes an operator chose for it, or [ANY] to keep it everywhere. */
+    public java.util.Map<String, java.util.List<String>> autoDiscoverBiomeOverrides() {
+        return autoDiscoverBiomeOverrides;
     }
 
     public Preset defaultPreset() {

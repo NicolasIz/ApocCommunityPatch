@@ -76,6 +76,7 @@ public final class ArkcronistPlugin extends JavaPlugin {
         // Deferred to the first tick on purpose: MythicMobs loads its packs in its own onEnable and
         // enable order is not ours to rely on, so asking it now finds an empty catalogue about as
         // often as not. See MobRoster.
+        roster.biomeSource(this::readBiomes);
         roster.scheduleFirstRead(this, arkConfig);
 
         PluginCommand command = getCommand("ag");
@@ -417,6 +418,34 @@ public final class ArkcronistPlugin extends JavaPlugin {
     }
 
     /** What MythicMobs has loaded, sorted into what may spawn where. Empty when discovery is off. */
+    /**
+     * Every biome the server has, for giving discovered mobs their biomes: the game's own, every
+     * datapack's from the world folders (Terralith and the like, read from their files for their
+     * climate and tags), and anything else the registry lists by name alone.
+     */
+    private java.util.List<com.arkcronist.gen.bukkit.mythic.BiomeProfile> readBiomes() {
+        java.util.List<Path> folders = new java.util.ArrayList<>();
+        for (org.bukkit.World world : getServer().getWorlds()) {
+            Path folder = world.getWorldFolder().toPath().resolve("datapacks");
+            if (!folders.contains(folder)) {
+                folders.add(folder);
+            }
+        }
+        folders.add(getDataFolder().toPath().resolve(
+                com.arkcronist.gen.bukkit.datapack.DatapackInstaller.SOURCE_FOLDER));
+        java.util.List<String> registry = new java.util.ArrayList<>();
+        try {
+            for (org.bukkit.block.Biome biome : org.bukkit.Registry.BIOME) {
+                registry.add(biome.getKey().toString());
+            }
+        } catch (RuntimeException | LinkageError unsupported) {
+            // A server that will not list its biomes still has the files and the game's own list.
+        }
+        return com.arkcronist.gen.bukkit.mythic.DatapackBiomes.merge(
+                com.arkcronist.gen.bukkit.mythic.VanillaBiomes.all(),
+                com.arkcronist.gen.bukkit.mythic.DatapackBiomes.read(folders), registry);
+    }
+
     public com.arkcronist.gen.bukkit.mythic.MobRoster roster() {
         return roster;
     }

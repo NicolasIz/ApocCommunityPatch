@@ -52,6 +52,26 @@ public final class BiomeMobs {
         return null;
     }
 
+    /**
+     * The list discovery gave a biome, used for this spawn or not.
+     *
+     * <p>Only a share of the spawns in a biome with mobs of its own use them; the rest come from the
+     * general mix. A snowy forest is then mostly yetis and frost mites, and still has the odd goblin
+     * - which is how a pack sorted by place reads: the place's mobs are what it is known for, not
+     * the only thing in it.</p>
+     *
+     * @param discovered what discovery gave this biome, or null
+     * @param share      the share of spawns that use it, 0 to 1
+     * @param roll       a random number in [0, 1)
+     * @return the list to use, or null to fall through to the general mix
+     */
+    public static List<String> discovered(List<String> discovered, double share, double roll) {
+        if (discovered == null || discovered.isEmpty() || roll >= share) {
+            return null;
+        }
+        return discovered;
+    }
+
     /** The biome key at a location, or null when the world will not say. */
     public static String keyAt(org.bukkit.World world, org.bukkit.Location where) {
         try {

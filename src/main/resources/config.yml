@@ -703,6 +703,48 @@ hostile-mobs:
     roles: {}
     habitats: {}
 
+    # -------------------------------------------------------------------------
+    #  Biomas: cada mob nuevo en los biomas que le tocan
+    # -------------------------------------------------------------------------
+    #  Al leer MythicMobs, el plugin lee tambien TODOS los biomas del servidor:
+    #  los del juego y los de cada datapack de la carpeta datapacks del mundo
+    #  (Terralith incluido), con su temperatura y sus etiquetas (c:is_snowy,
+    #  c:is_forest, c:is_swamp...). Luego mira el NOMBRE de cada mob hostil
+    #  descubierto y lo pone solo en los biomas que encajan:
+    #
+    #    frostmite, yeti, iceologer   -> los biomas frios (45 con Terralith)
+    #    sakura_tree_ent              -> cherry_grove, terralith:sakura_grove...
+    #    dark_oak_tree_ent            -> dark_forest
+    #    swamp_hag, blightwood_...    -> swamp, mangrove_swamp, terralith:orchid_swamp
+    #    desert_mummy                 -> los desiertos
+    #    crimson_...  (Nether)        -> crimson_forest
+    #
+    #  Un mob cuyo nombre no dice ningun sitio (am_goblin_melee, skeleton_archer)
+    #  sigue saliendo en todas partes, como siempre. Un mob con bioma YA NO sale
+    #  en el resto del mundo: el yeti deja de aparecer en el desierto.
+    #
+    #  Se hace solo al arrancar y con /ag mythic refresh. /ag mythic biomes dice
+    #  a donde fue cada uno y por que.
+    #
+    #  Si actualizas el .jar y tu config.yml no tiene este bloque, esto va
+    #  APAGADO y todo sale como antes. Para encenderlo, copia estas lineas bajo
+    #  auto-discover: y haz /ag reload.
+    biomes:
+      enabled: true
+
+      # En un bioma con mobs propios, que parte de los spawns son de esos mobs.
+      # El resto sigue siendo la mezcla general, para que un bosque nevado sea
+      # sobre todo yetis pero con algun goblin. 1.0 = solo los suyos.
+      share: 0.7
+
+      # Cuando no estes de acuerdo: nombre del mob -> lista de biomas, o [ANY]
+      # para que salga en todas partes. Biomas vanilla sin prefijo, los de un
+      # datapack con el suyo.
+      #   overrides:
+      #     yeti: [snowy_plains, ice_spikes, terralith:alpine_grove]
+      #     elf_ranger: [ANY]
+      overrides: {}
+
 # Datapacks
 # =========
 # Drop datapack zips in plugins/ArkcronistGenerator/datapacks/ and they are copied into the

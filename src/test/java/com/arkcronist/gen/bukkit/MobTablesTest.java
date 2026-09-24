@@ -85,4 +85,16 @@ class MobTablesTest {
         assertTrue(MobTables.swap(null, null).isEmpty());
         assertTrue(MobTables.pool(null, null).isEmpty());
     }
+
+    @Test
+    @DisplayName("a mob given biomes of its own leaves the general pool and the swap table")
+    void placedMobsLeaveTheGeneralMix() {
+        java.util.Set<String> placed = java.util.Set.of("Yeti");
+        assertEquals(List.of("am_goblin_melee"),
+                MobTables.without(List.of("yeti", "am_goblin_melee"), placed));
+        assertEquals(Map.of("ZOMBIE", List.of("am_goblin_melee")),
+                MobTables.without(Map.of("ZOMBIE", List.of("yeti", "am_goblin_melee"),
+                        "VINDICATOR", List.of("yeti")), placed));
+        assertEquals(List.of("a"), MobTables.without(List.of("a"), java.util.Set.of()));
+    }
 }

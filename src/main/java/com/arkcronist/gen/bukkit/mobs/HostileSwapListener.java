@@ -68,16 +68,23 @@ public final class HostileSwapListener implements Listener {
         if (bukkitWorld == null) {
             return;
         }
-        Map<String, List<String>> table = tableFor(bukkitWorld);
-        if (table.isEmpty()) {
+        if (!applies(bukkitWorld)) {
             return;
         }
+        Map<String, List<String>> table = tableFor(bukkitWorld);
 
         // The biome gets asked first. A pack sorted by place - ice mobs, tree ents by wood - is
         // wrong under an entity key: a yeti keyed to VINDICATOR is a yeti in the desert. Where a
         // biome names nothing, this falls through to the entity table as it always did.
-        List<String> candidates = BiomeMobs.candidates(plugin.arkConfig().biomeMobTable(),
-                BiomeMobs.keyAt(bukkitWorld, event.getLocation()));
+        String biome = BiomeMobs.keyAt(bukkitWorld, event.getLocation());
+        List<String> candidates = BiomeMobs.candidates(plugin.arkConfig().biomeMobTable(), biome);
+        if (candidates == null) {
+            // Then what discovery gave this biome from the mobs' own names, for a share of the
+            // spawns - the rest keep the general mix.
+            candidates = BiomeMobs.discovered(plugin.roster().biomeMobs(biome),
+                    plugin.arkConfig().autoDiscoverBiomeShare(),
+                    ThreadLocalRandom.current().nextDouble());
+        }
         if (candidates == null) {
             String vanilla = event.getEntityType().name().toUpperCase(Locale.ROOT);
             candidates = table.get(vanilla);
@@ -139,12 +146,17 @@ public final class HostileSwapListener implements Listener {
     private Map<String, List<String>> tableFor(org.bukkit.World world) {
         // Already merged with whatever discovery found, and cached there: this runs on every natural
         // spawn, so merging two maps here would allocate hundreds of times a second.
-        Map<String, List<String>> table = plugin.roster()
-                .swapTable(plugin.arkConfig(), MobRoster.habitatOf(world));
+        return applies(world)
+                ? plugin.roster().swapTable(plugin.arkConfig(), MobRoster.habitatOf(world))
+                : Map.of();
+    }
+
+    /** Whether this world gets custom mobs at all. */
+    private boolean applies(org.bukkit.World world) {
         return switch (world.getEnvironment()) {
-            case NETHER -> plugin.arkConfig().netherApplies(world.getName()) ? table : Map.of();
-            case THE_END -> plugin.arkConfig().endApplies(world.getName()) ? table : Map.of();
-            default -> MobWorlds.applies(plugin, world) ? table : Map.of();
+            case NETHER -> plugin.arkConfig().netherApplies(world.getName());
+            case THE_END -> plugin.arkConfig().endApplies(world.getName());
+            default -> MobWorlds.applies(plugin, world);
         };
     }
 }

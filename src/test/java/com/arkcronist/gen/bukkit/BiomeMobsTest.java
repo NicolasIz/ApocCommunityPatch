@@ -62,4 +62,15 @@ class BiomeMobsTest {
         // An entry left empty by half an edit must not win and then spawn nothing.
         assertNull(BiomeMobs.candidates(Map.of("SNOWY_PLAINS", List.of()), "minecraft:snowy_plains"));
     }
+
+    @Test
+    @DisplayName("a discovered biome list is used for its share of spawns and no more")
+    void discoveredShare() {
+        List<String> yetis = List.of("yeti");
+        assertEquals(yetis, BiomeMobs.discovered(yetis, 0.7, 0.2));
+        assertNull(BiomeMobs.discovered(yetis, 0.7, 0.7));
+        assertNull(BiomeMobs.discovered(null, 1.0, 0.0));
+        assertNull(BiomeMobs.discovered(List.of(), 1.0, 0.0));
+        assertEquals(yetis, BiomeMobs.discovered(yetis, 1.0, 0.999));
+    }
 }

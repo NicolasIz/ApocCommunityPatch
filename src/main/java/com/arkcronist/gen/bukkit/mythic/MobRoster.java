@@ -60,6 +60,8 @@ public final class MobRoster {
     private volatile String state = "not read yet";
     private volatile boolean on;
     private volatile Merged merged;
+    private volatile BiomeThemes.Result placement = BiomeThemes.Result.NONE;
+    private volatile java.util.function.Supplier<List<BiomeProfile>> biomeSource;
 
     /** The habitat a world counts as, which is the whole of how a verdict reaches a world. */
     public static Habitat habitatOf(World world) {
@@ -89,6 +91,7 @@ public final class MobRoster {
     }
 
     private void read(ArkConfig config, Logger logger) {
+        placement = BiomeThemes.Result.NONE;
         if (!on) {
             result = NOTHING;
             if (config.autoDiscoverConfigured()) {
@@ -136,6 +139,74 @@ public final class MobRoster {
                 + ", Nether " + result.hostilesFor(Habitat.NETHER).size()
                 + ", End " + result.hostilesFor(Habitat.END).size() + "."
                 + " Run /ag mythic to see every verdict.");
+        placement = place(config, facts, logger);
+    }
+
+    /**
+     * Where the biomes come from. Set by the plugin, which knows the server and its folders; left
+     * unset, discovery simply places nothing by biome.
+     */
+    public void biomeSource(java.util.function.Supplier<List<BiomeProfile>> source) {
+        this.biomeSource = source;
+    }
+
+    /**
+     * Gives the discovered hostiles biomes from their names.
+     *
+     * <p>Never throws: a biome list that cannot be read leaves every mob where it was before this
+     * existed - in its dimension's general mix.</p>
+     */
+    private BiomeThemes.Result place(ArkConfig config, List<MobFacts> facts, Logger logger) {
+        java.util.function.Supplier<List<BiomeProfile>> source = biomeSource;
+        if (!config.autoDiscoverBiomes() || source == null) {
+            return BiomeThemes.Result.NONE;
+        }
+        List<BiomeProfile> biomes;
+        try {
+            biomes = source.get();
+        } catch (RuntimeException | LinkageError failure) {
+            logger.warning("Could not read the server's biomes (" + failure
+                    + "); discovered mobs are not given biomes.");
+            return BiomeThemes.Result.NONE;
+        }
+        if (biomes == null || biomes.isEmpty()) {
+            return BiomeThemes.Result.NONE;
+        }
+        Map<String, String> shown = new java.util.HashMap<>();
+        for (MobFacts mob : facts) {
+            shown.put(mob.name(), mob.displayName());
+        }
+        List<BiomeThemes.Candidate> candidates = new java.util.ArrayList<>();
+        for (Habitat habitat : new Habitat[] {Habitat.OVERWORLD, Habitat.NETHER, Habitat.END}) {
+            for (String name : result.hostiles().getOrDefault(habitat, List.of())) {
+                candidates.add(new BiomeThemes.Candidate(name, shown.getOrDefault(name, ""),
+                        habitat));
+            }
+        }
+        BiomeThemes.Result placed = BiomeThemes.assign(candidates, biomes,
+                config.autoDiscoverBiomeOverrides());
+        logger.info("Biomes: read " + biomes.size() + " (the game's and every datapack's). "
+                + placed.themed().size() + " of " + candidates.size()
+                + " discovered hostiles were given biomes from their names; the rest spawn"
+                + " anywhere in their dimension. /ag mythic biomes lists them.");
+        return placed;
+    }
+
+    /** Which discovered mobs were given which biomes. Empty when none were. */
+    public BiomeThemes.Result placement() {
+        return placement;
+    }
+
+    /**
+     * The discovered mobs that belong to this biome, or null when none do.
+     *
+     * @param biomeKey the biome's namespaced key, e.g. {@code terralith:alpine_grove}
+     */
+    public List<String> biomeMobs(String biomeKey) {
+        if (biomeKey == null || placement.byBiome().isEmpty()) {
+            return null;
+        }
+        return placement.byBiome().get(biomeKey.toLowerCase(java.util.Locale.ROOT));
     }
 
     /** Defers the first read to the first server tick, after every plugin has enabled. */
@@ -203,13 +274,17 @@ public final class MobRoster {
         Map<Habitat, List<String>> pools = new EnumMap<>(Habitat.class);
         boolean useSwap = on && config.autoDiscoverSwap();
         boolean useAmbient = on && config.autoDiscoverAmbient();
+        // A mob given biomes of its own is left out of the general mix, or it would still turn up
+        // everywhere else - less often, but a yeti in the desert all the same.
+        java.util.Set<String> placed = placement.themed();
         for (Habitat habitat : Habitat.values()) {
             Map<String, List<String>> configured = configuredSwap(config, habitat);
             List<String> pool = configuredPool(config, habitat);
             swap.put(habitat, MobTables.swap(configured,
-                    useSwap ? result.swapFor(habitat) : Map.of()));
+                    useSwap ? MobTables.without(result.swapFor(habitat), placed) : Map.of()));
             pools.put(habitat, MobTables.pool(pool,
-                    useAmbient ? result.hostilesFor(habitat) : List.of()));
+                    useAmbient ? MobTables.without(result.hostilesFor(habitat), placed)
+                            : List.of()));
         }
         return new Merged(config, Map.copyOf(swap), Map.copyOf(pools));
     }

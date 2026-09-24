@@ -81,7 +81,7 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§8 - §f/ag presets §7lists BASE, CHAOTIC and INSANE");
         sender.sendMessage("§8 - §f/ag stats §7cache and memory diagnostics");
         sender.sendMessage("§8 - §f/ag mobs §7says whether the custom mobs apply where you stand");
-        sender.sendMessage("§8 - §f/ag mythic [list|refresh|export|models|<name>] §7what was read"
+        sender.sendMessage("§8 - §f/ag mythic [list|refresh|export|models|biomes|<name>] §7what was read"
                 + " from MythicMobs and how each mob was judged");
         sender.sendMessage("§8 - §f/ag bench [preset] [chunks] §7runs a generation benchmark");
         sender.sendMessage("§8 - §f/ag top §7teleports you to the surface");
@@ -252,6 +252,10 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
             models(sender);
             return;
         }
+        if (what.equals("biomes")) {
+            biomes(sender, roster);
+            return;
+        }
         if (what.isEmpty()) {
             summary(sender, roster, result);
             return;
@@ -321,6 +325,12 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("§8  - §b" + habitat + "§7: §f" + hostiles + "§7 hostile, §f"
                     + bosses + "§7 boss, standing in for §f" + bodies + "§7 vanilla type(s)");
         }
+        com.arkcronist.gen.bukkit.mythic.BiomeThemes.Result placed = roster.placement();
+        String biomeNote = placed.biomesRead() == 0 ? "no biomes read"
+                : placed.themed().size() + " mob(s) given biomes from their names, out of "
+                        + placed.biomesRead() + " biomes read";
+        sender.sendMessage(tick(config.autoDiscoverBiomes()) + " .biomes §8(" + biomeNote
+                + "; §f/ag mythic biomes§8)");
         sender.sendMessage("§7 Set aside: §f" + result.props().size() + "§7 props, §f"
                 + result.pets().size() + "§7 pets, §f" + result.unknown().size()
                 + "§7 undecided §8(none of these ever spawn)");
@@ -385,6 +395,44 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    /**
+     * Which discovered mobs were given which biomes, from their names.
+     *
+     * <p>The first thing to look at when a mob turns up somewhere odd, or never turns up: every
+     * placement says why, and a wrong one is corrected with one line under
+     * {@code auto-discover.biomes.overrides}.</p>
+     */
+    private void biomes(CommandSender sender, MobRoster roster) {
+        com.arkcronist.gen.bukkit.mythic.BiomeThemes.Result placed = roster.placement();
+        if (placed.biomesRead() == 0) {
+            sender.sendMessage(PREFIX + "§eNo biomes were read. §7" + roster.state()
+                    + (plugin.arkConfig().autoDiscoverBiomes() ? ""
+                            : "; hostile-mobs.auto-discover.biomes.enabled is false"));
+            return;
+        }
+        sender.sendMessage(PREFIX + "Biomes read: §f" + placed.biomesRead() + "§7. Mobs with"
+                + " biomes of their own (§f" + (int) Math.round(
+                        plugin.arkConfig().autoDiscoverBiomeShare() * 100)
+                + "%§7 of the spawns there):");
+        java.util.List<String> anywhere = new java.util.ArrayList<>();
+        for (java.util.Map.Entry<String, com.arkcronist.gen.bukkit.mythic.BiomeThemes.Placement>
+                entry : new java.util.TreeMap<>(placed.byMob()).entrySet()) {
+            java.util.List<String> keys = entry.getValue().biomes();
+            if (keys.isEmpty()) {
+                anywhere.add(entry.getKey());
+                continue;
+            }
+            String shown = keys.size() <= 4 ? String.join(", ", keys)
+                    : String.join(", ", keys.subList(0, 4)) + " +" + (keys.size() - 4);
+            sender.sendMessage("§8 - §f" + entry.getKey() + "§7: §b" + shown
+                    + " §8(" + entry.getValue().why() + ")");
+        }
+        sender.sendMessage("§7 Anywhere in their dimension (§f" + anywhere.size() + "§7): §f"
+                + String.join("§7, §f", anywhere));
+        sender.sendMessage("§7 To correct one: §fhostile-mobs.auto-discover.biomes.overrides."
+                + "<mob>: [snowy_plains, terralith:alpine_grove]§7, or §f[ANY]§7 for everywhere.");
+    }
+
     private void one(CommandSender sender, MobDiscovery.Result result, String name) {
         for (java.util.Map.Entry<String, MobClassifier.Verdict> entry : result.verdicts().entrySet()) {
             if (entry.getKey().equalsIgnoreCase(name)) {
@@ -392,6 +440,15 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage(PREFIX + "§f" + entry.getKey() + " §7is §b" + verdict.role()
                         + "§7 in §b" + verdict.habitat());
                 sender.sendMessage("§7 because " + verdict.because());
+                com.arkcronist.gen.bukkit.mythic.BiomeThemes.Placement placed =
+                        plugin.roster().placement().byMob().get(entry.getKey());
+                if (placed != null) {
+                    sender.sendMessage(placed.biomes().isEmpty()
+                            ? "§7 Biomes: §fanywhere in its dimension §8(" + placed.why() + ")"
+                            : "§7 Biomes: §f" + placed.biomes().size() + "§7 - §b"
+                                    + String.join("§7, §b", placed.biomes())
+                                    + " §8(" + placed.why() + ")");
+                }
                 sender.sendMessage("§7 To change it: §fhostile-mobs.auto-discover.roles."
                         + entry.getKey() + ": HOSTILE §7or §f.habitats." + entry.getKey()
                         + ": NETHER");
@@ -741,7 +798,7 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
             options.addAll(List.of("help", "info", "biome", "locate", "structures", "prefabs",
                     "presets", "stats", "mobs", "mythic", "bench", "top", "reload", "version"));
         } else if (args.length == 2 && args[0].equalsIgnoreCase("mythic")) {
-            options.addAll(List.of("list", "refresh", "export", "models"));
+            options.addAll(List.of("list", "refresh", "export", "models", "biomes"));
             for (MobClassifier.Role role : MobClassifier.Role.values()) {
                 options.add(role.name().toLowerCase(Locale.ROOT));
             }
