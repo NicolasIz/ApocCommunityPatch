@@ -19,3 +19,6 @@ groups:
   FABLED:
     global-color: "&c"
     group-name: "Fabuloso"
+  CURSE:
+    global-color: "&4"
+    group-name: "Maldito"

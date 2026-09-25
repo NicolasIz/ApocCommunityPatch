@@ -59,6 +59,7 @@ public final class ArkEnchants extends JavaPlugin {
         pm.registerEvents(new MiscListener(engine), this);
         pm.registerEvents(new BookListener(this), this);
         pm.registerEvents(enchanter, this);
+        pm.registerEvents(new com.arkcronist.enchants.listener.LootListener(this), this);
         jumps = new JumpListener(settings.passiveInterval);
         pm.registerEvents(jumps, this);
         jumpTask = getServer().getScheduler().runTaskTimer(this, jumps, 4, 4);
@@ -112,6 +113,35 @@ public final class ArkEnchants extends JavaPlugin {
         }
     }
 
+    /** enchantments.yml first, then the bundled sets that are switched on, then any other enchantments-*.yml. */
+    private java.util.List<File> enchantFiles() {
+        java.util.List<File> out = new java.util.ArrayList<>();
+        File main = new File(getDataFolder(), "enchantments.yml");
+        if (main.isFile()) {
+            out.add(main);
+        }
+        java.util.Map<String, Boolean> bundled = java.util.Map.of("enchantments-extra.yml", settings.setExtra,
+                "enchantments-advanced.yml", settings.setAdvanced);
+        for (String name : new String[]{"enchantments-extra.yml", "enchantments-advanced.yml"}) {
+            File f = new File(getDataFolder(), name);
+            if (bundled.get(name)) {
+                if (!f.exists() && getResource(name) != null) {
+                    saveResource(name, false);
+                }
+                if (f.isFile()) {
+                    out.add(f);
+                }
+            }
+        }
+        File[] others = getDataFolder().listFiles((d, n) -> n.startsWith("enchantments-") && n.endsWith(".yml")
+                && !bundled.containsKey(n));
+        if (others != null) {
+            java.util.Arrays.sort(others);
+            out.addAll(java.util.List.of(others));
+        }
+        return out;
+    }
+
     private void copy(File from, File to) {
         try {
             Files.createDirectories(to.getParentFile().toPath());
@@ -128,9 +158,20 @@ public final class ArkEnchants extends JavaPlugin {
         YamlConfiguration groupsYml = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "groups.yml"));
         Map<String, Group> groups = EnchantLoader.groups(groupsYml.getConfigurationSection("groups"),
                 getConfig().getConfigurationSection("groups"));
-        YamlConfiguration enchYml = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "enchantments.yml"));
         EnchantLoader.Report report = new EnchantLoader.Report();
-        Map<String, Enchant> enchants = EnchantLoader.enchants(enchYml, report);
+        Map<String, Enchant> enchants = new java.util.LinkedHashMap<>();
+        for (File f : enchantFiles()) {
+            Map<String, Enchant> part = EnchantLoader.enchants(YamlConfiguration.loadConfiguration(f), report);
+            int added = 0;
+            for (var en : part.entrySet()) {
+                if (enchants.putIfAbsent(en.getKey(), en.getValue()) == null) {
+                    added++;
+                } else {
+                    report.broken.add(en.getKey() + " (" + f.getName() + "): the name is already used, skipped");
+                }
+            }
+            getLogger().info(f.getName() + ": " + added + " enchantments");
+        }
         registry = new EnchantRegistry(enchants, groups);
         Items.configure(registry, settings);
         if (engine != null) {

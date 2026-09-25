@@ -41,7 +41,7 @@ public final class EnchanterMenu implements Listener {
 
     public void open(Player p) {
         List<Group> groups = new ArrayList<>(plugin.registry().groups());
-        groups.removeIf(g -> plugin.registry().inGroup(g.id()).isEmpty());
+        groups.removeIf(g -> !g.inEnchanter() || plugin.registry().inGroup(g.id()).isEmpty());
         int rows = Math.max(1, Math.min(6, (groups.size() + 8) / 9 + 2));
         Holder h = new Holder();
         Inventory inv = Bukkit.createInventory(h, rows * 9, Colors.of(plugin.settings().enchanterTitle));

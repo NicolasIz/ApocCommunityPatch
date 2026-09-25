@@ -5,6 +5,23 @@
 # arranque usa en su lugar los de plugins/AdvancedEnchantments (solo si aqui todavia no hay ninguno).
 import-advancedenchantments: false
 
+# Sets de encantamientos incluidos (ademas de enchantments.yml, que son los 55 propios).
+# Si pones false, ese set no se carga. Tambien puedes anadir tus propios archivos enchantments-loquesea.yml.
+sets:
+  extra: true               # enchantments-extra.yml: 360 encantamientos (292 buenos + 68 maldiciones)
+  advancedenchantments: true  # enchantments-advanced.yml: los 182 de AdvancedEnchantments
+
+# Botin: armas, armaduras y herramientas que salen en cofres de dungeons y estructuras
+# (se generan al abrirlos por primera vez) pueden venir encantadas, o malditas.
+loot:
+  enabled: true
+  chance: 40              # % de que un objeto del cofre salga encantado
+  max-enchants: 3         # cuantos encantamientos puede traer como mucho
+  curse-chance: 20        # % de que ademas traiga una maldicion
+  worlds: []              # vacio = todos los mundos
+  # Cuanto sale cada rareza (mas alto = mas comun). 0 = nunca sale en cofres.
+  group-weights: {SIMPLE: 40, UNIQUE: 25, ELITE: 15, ULTIMATE: 10, LEGENDARY: 6, FABLED: 2}
+
 # Los items encantados con AdvancedEnchantments llevan los encantamientos escritos en el lore
 # ("Harvest III"). Si esta activo, al entrar o al coger el item se convierten solos a ArkEnchants.
 convert-advancedenchantments-lore: true
@@ -75,6 +92,7 @@ groups:
   ULTIMATE:  {success: 25-100, destroy: 5-45, cost: 25}
   LEGENDARY: {success: 20-100, destroy: 5-50, cost: 35}
   FABLED:    {success: 15-100, destroy: 10-60, cost: 50}
+  CURSE:     {success: 100-100, destroy: 0-0, cost: 0, enchanter: false}
 
 messages:
   prefix: '&5&lArkEnchants &8» &7'
@@ -103,3 +121,5 @@ messages:
   tracker-applied: '&aEl arma ahora cuenta almas.'
   charging: '&7Cargando %bar% &f%percent%%'
   charged: '&d&l¡CARGADO! &7Golpea ahora'
+  random-done: '&aEl item recibio &f%count% &aencantamientos al azar.'
+  random-none: '&cEse item no puede recibir encantamientos (o ya tiene).'

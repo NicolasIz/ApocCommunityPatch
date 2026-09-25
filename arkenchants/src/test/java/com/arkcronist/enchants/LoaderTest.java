@@ -48,11 +48,41 @@ class LoaderTest {
     }
 
     @Test
+    void extraSetIs360WithCursesAndKnownEffects() {
+        EnchantLoader.Report r = new EnchantLoader.Report();
+        Map<String, Enchant> m = EnchantLoader.enchants(resource("enchantments-extra.yml"), r);
+        assertEquals(360, m.size());
+        assertTrue(r.broken.isEmpty(), r.broken.toString());
+        assertTrue(r.unknownTriggers.isEmpty(), r.unknownTriggers.toString());
+        long curses = m.values().stream().filter(e -> e.group().equals("CURSE")).count();
+        assertEquals(68, curses);
+        for (Enchant e : m.values()) {
+            e.levels().values().forEach(l -> l.effects().forEach(fx ->
+                    assertTrue(Effects.KNOWN.contains(fx.name()), e.id() + ": " + fx.raw())));
+            if (e.group().equals("CURSE")) {
+                assertTrue(!e.inEnchanter() && !e.removable(), e.id());
+            }
+        }
+    }
+
+    @Test
+    void lootLevelsFavourLowLevels() {
+        java.util.Random r = new java.util.Random(7);
+        int[] count = new int[4];
+        for (int i = 0; i < 10000; i++) {
+            count[com.arkcronist.enchants.item.LootEnchanterAccess.level(3, r)]++;
+        }
+        assertTrue(count[1] > count[2] && count[2] > count[3] && count[3] > 0, java.util.Arrays.toString(count));
+    }
+
+    @Test
     void groupsMergeColourFromGroupsYmlWithBookSettings() {
         YamlConfiguration cfg = resource("config.yml");
         Map<String, Group> g = EnchantLoader.groups(resource("groups.yml").getConfigurationSection("groups"),
                 cfg.getConfigurationSection("groups"));
-        assertEquals(6, g.size());
+        assertEquals(7, g.size());
+        assertTrue(g.get("CURSE").curse());
+        assertTrue(!g.get("CURSE").inEnchanter());
         assertEquals("&6", g.get("LEGENDARY").color());
         assertEquals(35, g.get("LEGENDARY").enchanterCost());
         assertEquals(20, g.get("LEGENDARY").successMin());

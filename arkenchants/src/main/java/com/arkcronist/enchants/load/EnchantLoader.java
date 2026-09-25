@@ -115,8 +115,11 @@ public final class EnchantLoader {
             int[] success = range(o == null ? null : o.getString("success"), 25, 100);
             int[] destroy = range(o == null ? null : o.getString("destroy"), 0, 50);
             out.put(id, new Group(id, color, name, o == null ? 10 : o.getInt("weight", 10),
-                    success[0], success[1], destroy[0], destroy[1], o == null ? 10 : o.getInt("cost", 10)));
+                    success[0], success[1], destroy[0], destroy[1], o == null ? 10 : o.getInt("cost", 10),
+                    o == null ? !id.equals("CURSE") : o.getBoolean("enchanter", !id.equals("CURSE"))));
         }
+        // curses always have a group, even with an old groups.yml
+        out.putIfAbsent("CURSE", new Group("CURSE", "&4", "Maldito", 20, 100, 100, 0, 0, 0, false));
         return out;
     }
 

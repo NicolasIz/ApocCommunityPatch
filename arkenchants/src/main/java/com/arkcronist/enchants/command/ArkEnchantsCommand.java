@@ -60,6 +60,15 @@ public final class ArkEnchantsCommand implements TabExecutor {
             case "apply" -> apply(s, a);
             case "remove" -> remove(s, a);
             case "info" -> info(s);
+            case "random" -> {
+                if (s instanceof Player p) {
+                    ItemStack hand = p.getInventory().getItemInMainHand();
+                    int n = com.arkcronist.enchants.item.LootEnchanter.roll(hand, plugin.registry(), plugin.settings(),
+                            java.util.concurrent.ThreadLocalRandom.current(), true);
+                    p.getInventory().setItemInMainHand(hand);
+                    plugin.send(s, n > 0 ? "random-done" : "random-none", "%count%", String.valueOf(n));
+                }
+            }
             case "enchanter" -> {
                 if (s instanceof Player p) {
                     plugin.enchanter().open(p);
@@ -80,6 +89,7 @@ public final class ArkEnchantsCommand implements TabExecutor {
             "&d/" + label + " tracker [jugador] &7- rastreador de almas",
             "&d/" + label + " list [grupo] &7- lista de encantamientos",
             "&d/" + label + " info &7- encantamientos del item de la mano",
+            "&d/" + label + " random &7- encantar al azar el item de la mano (como el botin)",
             "&d/" + label + " reload &7- recargar configuracion",
             "&d/enchanter &7- abrir el encantador"};
         for (String l : lines) {

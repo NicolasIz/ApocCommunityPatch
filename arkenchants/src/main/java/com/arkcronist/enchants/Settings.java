@@ -29,6 +29,14 @@ public final class Settings {
     public final List<String> extraMaterials;
     public final boolean convertLegacyLore;
     public final double chargeSeconds;
+    public final boolean setExtra;
+    public final boolean setAdvanced;
+    public final boolean lootEnabled;
+    public final double lootChance;
+    public final int lootMax;
+    public final double lootCurseChance;
+    public final java.util.Map<String, Integer> lootWeights = new java.util.LinkedHashMap<>();
+    public final Set<String> lootWorlds;
     public final double chargeReadySeconds;
     private final FileConfiguration cfg;
 
@@ -55,6 +63,24 @@ public final class Settings {
         extraMaterials = c.getStringList("apply.extra-materials");
         convertLegacyLore = c.getBoolean("convert-advancedenchantments-lore", true);
         chargeSeconds = c.getDouble("charge.seconds", 1.2);
+        setExtra = c.getBoolean("sets.extra", true);
+        setAdvanced = c.getBoolean("sets.advancedenchantments", true);
+        lootEnabled = c.getBoolean("loot.enabled", true);
+        lootChance = c.getDouble("loot.chance", 40);
+        lootMax = Math.max(1, c.getInt("loot.max-enchants", 3));
+        lootCurseChance = c.getDouble("loot.curse-chance", 20);
+        var w = c.getConfigurationSection("loot.group-weights");
+        if (w != null) {
+            for (String k : w.getKeys(false)) {
+                lootWeights.put(k.toUpperCase(java.util.Locale.ROOT), w.getInt(k));
+            }
+        }
+        if (lootWeights.isEmpty()) {
+            // an older config.yml without the section still gets sensible odds
+            lootWeights.putAll(java.util.Map.of("SIMPLE", 40, "UNIQUE", 25, "ELITE", 15, "ULTIMATE", 10, "LEGENDARY", 6, "FABLED", 2));
+        }
+        lootWorlds = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        lootWorlds.addAll(c.getStringList("loot.worlds"));
         chargeReadySeconds = c.getDouble("charge.ready-seconds", 4);
     }
 

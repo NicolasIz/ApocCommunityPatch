@@ -8,3 +8,5 @@ target/
 .settings/
 .classpath
 .project
+# AdvancedEnchantments' own enchantment list: packed into private builds, not published
+arkenchants/src/main/resources/enchantments-advanced.yml

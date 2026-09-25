@@ -1,0 +1,8197 @@
+# Generado por tools/generar_encantamientos.py: 360 encantamientos por familias (incluye maldiciones).
+# Puedes editarlo a mano; si vuelves a ejecutar el script se sobrescribe.
+espada_fuego:
+  display: '%group-color%Filo Igneo'
+  description: Prende fuego al enemigo.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: SIMPLE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 4
+      effects:
+      - BURN:60 @Victim
+      - PARTICLE:FLAME:15:0.02 @Victim
+    2:
+      chance: 6
+      effects:
+      - BURN:80 @Victim
+      - PARTICLE:FLAME:15:0.02 @Victim
+    3:
+      chance: 8
+      effects:
+      - BURN:100 @Victim
+      - PARTICLE:FLAME:15:0.02 @Victim
+espada_hielo:
+  display: '%group-color%Filo Gelido'
+  description: Ralentiza al enemigo.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:SLOW:0:60 @Victim
+      - PARTICLE:SNOWFLAKE:15:0.02 @Victim
+    2:
+      chance: 6
+      effects:
+      - POTION:SLOW:1:80 @Victim
+      - PARTICLE:SNOWFLAKE:15:0.02 @Victim
+    3:
+      chance: 8
+      effects:
+      - POTION:SLOW:2:100 @Victim
+      - PARTICLE:SNOWFLAKE:15:0.02 @Victim
+espada_veneno:
+  display: '%group-color%Filo Venenoso'
+  description: Envenena al enemigo.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:POISON:0:80 @Victim
+      - PARTICLE:ITEM_SLIME:12:0.05 @Victim
+    2:
+      chance: 6
+      effects:
+      - POTION:POISON:1:100 @Victim
+      - PARTICLE:ITEM_SLIME:12:0.05 @Victim
+    3:
+      chance: 8
+      effects:
+      - POTION:POISON:2:120 @Victim
+      - PARTICLE:ITEM_SLIME:12:0.05 @Victim
+espada_viento:
+  display: '%group-color%Filo Huracanado'
+  description: Empuja lejos al enemigo.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: SIMPLE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 4
+      effects:
+      - PULL_AWAY:0.9 @Victim
+      - PARTICLE:CLOUD:12:0.05 @Victim
+    2:
+      chance: 6
+      effects:
+      - PULL_AWAY:1.2 @Victim
+      - PARTICLE:CLOUD:12:0.05 @Victim
+    3:
+      chance: 8
+      effects:
+      - PULL_AWAY:1.5 @Victim
+      - PARTICLE:CLOUD:12:0.05 @Victim
+espada_sangre:
+  display: '%group-color%Filo Sangriento'
+  description: Hace dano extra y sangrar.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: ELITE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 4
+      effects:
+      - DO_HARM:1 @Victim
+      - BLOOD @Victim
+    2:
+      chance: 6
+      effects:
+      - DO_HARM:2 @Victim
+      - BLOOD @Victim
+    3:
+      chance: 8
+      effects:
+      - DO_HARM:3 @Victim
+      - BLOOD @Victim
+espada_sombra:
+  display: '%group-color%Filo Sombrio'
+  description: Ciega y frena al enemigo.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: ELITE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 4
+      cooldown: 4
+      effects:
+      - POTION:BLINDNESS:0:30 @Victim
+      - POTION:SLOW:0:40 @Victim
+      - PARTICLE:SQUID_INK:12:0.05 @Victim
+    2:
+      chance: 6
+      cooldown: 4
+      effects:
+      - POTION:BLINDNESS:0:40 @Victim
+      - POTION:SLOW:0:40 @Victim
+      - PARTICLE:SQUID_INK:12:0.05 @Victim
+    3:
+      chance: 8
+      cooldown: 4
+      effects:
+      - POTION:BLINDNESS:0:50 @Victim
+      - POTION:SLOW:0:40 @Victim
+      - PARTICLE:SQUID_INK:12:0.05 @Victim
+espada_arcano:
+  display: '%group-color%Filo Arcano'
+  description: Debilita al enemigo.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: ULTIMATE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:WEAKNESS:0:80 @Victim
+      - PARTICLE:WITCH:15:0.05 @Victim
+    2:
+      chance: 6
+      effects:
+      - POTION:WEAKNESS:1:100 @Victim
+      - PARTICLE:WITCH:15:0.05 @Victim
+    3:
+      chance: 8
+      effects:
+      - POTION:WEAKNESS:2:120 @Victim
+      - PARTICLE:WITCH:15:0.05 @Victim
+espada_ruina:
+  display: '%group-color%Filo Putrido'
+  description: Marchita al enemigo.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: ULTIMATE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:WITHER:0:60 @Victim
+      - PARTICLE:SMOKE:15:0.02 @Victim
+    2:
+      chance: 6
+      effects:
+      - POTION:WITHER:1:80 @Victim
+      - PARTICLE:SMOKE:15:0.02 @Victim
+    3:
+      chance: 8
+      effects:
+      - POTION:WITHER:2:100 @Victim
+      - PARTICLE:SMOKE:15:0.02 @Victim
+espada_trueno:
+  display: '%group-color%Filo Tronante'
+  description: Invoca un rayo sobre el enemigo.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: LEGENDARY
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 4
+      cooldown: 6
+      effects:
+      - LIGHTNING:3 @Victim
+    2:
+      chance: 6
+      cooldown: 6
+      effects:
+      - LIGHTNING:4 @Victim
+    3:
+      chance: 8
+      cooldown: 6
+      effects:
+      - LIGHTNING:5 @Victim
+hacha_fuego:
+  display: '%group-color%Tajo Igneo'
+  description: Prende fuego al enemigo.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: SIMPLE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - BURN:60 @Victim
+      - PARTICLE:FLAME:15:0.02 @Victim
+    2:
+      chance: 6
+      effects:
+      - BURN:80 @Victim
+      - PARTICLE:FLAME:15:0.02 @Victim
+    3:
+      chance: 8
+      effects:
+      - BURN:100 @Victim
+      - PARTICLE:FLAME:15:0.02 @Victim
+hacha_hielo:
+  display: '%group-color%Tajo Gelido'
+  description: Ralentiza al enemigo.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:SLOW:0:60 @Victim
+      - PARTICLE:SNOWFLAKE:15:0.02 @Victim
+    2:
+      chance: 6
+      effects:
+      - POTION:SLOW:1:80 @Victim
+      - PARTICLE:SNOWFLAKE:15:0.02 @Victim
+    3:
+      chance: 8
+      effects:
+      - POTION:SLOW:2:100 @Victim
+      - PARTICLE:SNOWFLAKE:15:0.02 @Victim
+hacha_veneno:
+  display: '%group-color%Tajo Venenoso'
+  description: Envenena al enemigo.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:POISON:0:80 @Victim
+      - PARTICLE:ITEM_SLIME:12:0.05 @Victim
+    2:
+      chance: 6
+      effects:
+      - POTION:POISON:1:100 @Victim
+      - PARTICLE:ITEM_SLIME:12:0.05 @Victim
+    3:
+      chance: 8
+      effects:
+      - POTION:POISON:2:120 @Victim
+      - PARTICLE:ITEM_SLIME:12:0.05 @Victim
+hacha_viento:
+  display: '%group-color%Tajo Huracanado'
+  description: Empuja lejos al enemigo.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: SIMPLE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - PULL_AWAY:0.9 @Victim
+      - PARTICLE:CLOUD:12:0.05 @Victim
+    2:
+      chance: 6
+      effects:
+      - PULL_AWAY:1.2 @Victim
+      - PARTICLE:CLOUD:12:0.05 @Victim
+    3:
+      chance: 8
+      effects:
+      - PULL_AWAY:1.5 @Victim
+      - PARTICLE:CLOUD:12:0.05 @Victim
+hacha_sangre:
+  display: '%group-color%Tajo Sangriento'
+  description: Hace dano extra y sangrar.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: ELITE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - DO_HARM:1 @Victim
+      - BLOOD @Victim
+    2:
+      chance: 6
+      effects:
+      - DO_HARM:2 @Victim
+      - BLOOD @Victim
+    3:
+      chance: 8
+      effects:
+      - DO_HARM:3 @Victim
+      - BLOOD @Victim
+hacha_sombra:
+  display: '%group-color%Tajo Sombrio'
+  description: Ciega y frena al enemigo.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: ELITE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 4
+      cooldown: 4
+      effects:
+      - POTION:BLINDNESS:0:30 @Victim
+      - POTION:SLOW:0:40 @Victim
+      - PARTICLE:SQUID_INK:12:0.05 @Victim
+    2:
+      chance: 6
+      cooldown: 4
+      effects:
+      - POTION:BLINDNESS:0:40 @Victim
+      - POTION:SLOW:0:40 @Victim
+      - PARTICLE:SQUID_INK:12:0.05 @Victim
+    3:
+      chance: 8
+      cooldown: 4
+      effects:
+      - POTION:BLINDNESS:0:50 @Victim
+      - POTION:SLOW:0:40 @Victim
+      - PARTICLE:SQUID_INK:12:0.05 @Victim
+hacha_arcano:
+  display: '%group-color%Tajo Arcano'
+  description: Debilita al enemigo.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: ULTIMATE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:WEAKNESS:0:80 @Victim
+      - PARTICLE:WITCH:15:0.05 @Victim
+    2:
+      chance: 6
+      effects:
+      - POTION:WEAKNESS:1:100 @Victim
+      - PARTICLE:WITCH:15:0.05 @Victim
+    3:
+      chance: 8
+      effects:
+      - POTION:WEAKNESS:2:120 @Victim
+      - PARTICLE:WITCH:15:0.05 @Victim
+hacha_ruina:
+  display: '%group-color%Tajo Putrido'
+  description: Marchita al enemigo.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: ULTIMATE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:WITHER:0:60 @Victim
+      - PARTICLE:SMOKE:15:0.02 @Victim
+    2:
+      chance: 6
+      effects:
+      - POTION:WITHER:1:80 @Victim
+      - PARTICLE:SMOKE:15:0.02 @Victim
+    3:
+      chance: 8
+      effects:
+      - POTION:WITHER:2:100 @Victim
+      - PARTICLE:SMOKE:15:0.02 @Victim
+hacha_trueno:
+  display: '%group-color%Tajo Tronante'
+  description: Invoca un rayo sobre el enemigo.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: LEGENDARY
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 4
+      cooldown: 6
+      effects:
+      - LIGHTNING:3 @Victim
+    2:
+      chance: 6
+      cooldown: 6
+      effects:
+      - LIGHTNING:4 @Victim
+    3:
+      chance: 8
+      cooldown: 6
+      effects:
+      - LIGHTNING:5 @Victim
+maza_fuego:
+  display: '%group-color%Golpe Igneo'
+  description: Prende fuego al enemigo.
+  applies-to: Mazas
+  type: ATTACK;ATTACK_MOB
+  group: SIMPLE
+  applies:
+  - MACE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - BURN:60 @Victim
+      - PARTICLE:FLAME:15:0.02 @Victim
+    2:
+      chance: 6
+      effects:
+      - BURN:80 @Victim
+      - PARTICLE:FLAME:15:0.02 @Victim
+    3:
+      chance: 8
+      effects:
+      - BURN:100 @Victim
+      - PARTICLE:FLAME:15:0.02 @Victim
+maza_hielo:
+  display: '%group-color%Golpe Gelido'
+  description: Ralentiza al enemigo.
+  applies-to: Mazas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - MACE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:SLOW:0:60 @Victim
+      - PARTICLE:SNOWFLAKE:15:0.02 @Victim
+    2:
+      chance: 6
+      effects:
+      - POTION:SLOW:1:80 @Victim
+      - PARTICLE:SNOWFLAKE:15:0.02 @Victim
+    3:
+      chance: 8
+      effects:
+      - POTION:SLOW:2:100 @Victim
+      - PARTICLE:SNOWFLAKE:15:0.02 @Victim
+maza_veneno:
+  display: '%group-color%Golpe Venenoso'
+  description: Envenena al enemigo.
+  applies-to: Mazas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - MACE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:POISON:0:80 @Victim
+      - PARTICLE:ITEM_SLIME:12:0.05 @Victim
+    2:
+      chance: 6
+      effects:
+      - POTION:POISON:1:100 @Victim
+      - PARTICLE:ITEM_SLIME:12:0.05 @Victim
+    3:
+      chance: 8
+      effects:
+      - POTION:POISON:2:120 @Victim
+      - PARTICLE:ITEM_SLIME:12:0.05 @Victim
+maza_viento:
+  display: '%group-color%Golpe Huracanado'
+  description: Empuja lejos al enemigo.
+  applies-to: Mazas
+  type: ATTACK;ATTACK_MOB
+  group: SIMPLE
+  applies:
+  - MACE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - PULL_AWAY:0.9 @Victim
+      - PARTICLE:CLOUD:12:0.05 @Victim
+    2:
+      chance: 6
+      effects:
+      - PULL_AWAY:1.2 @Victim
+      - PARTICLE:CLOUD:12:0.05 @Victim
+    3:
+      chance: 8
+      effects:
+      - PULL_AWAY:1.5 @Victim
+      - PARTICLE:CLOUD:12:0.05 @Victim
+maza_sangre:
+  display: '%group-color%Golpe Sangriento'
+  description: Hace dano extra y sangrar.
+  applies-to: Mazas
+  type: ATTACK;ATTACK_MOB
+  group: ELITE
+  applies:
+  - MACE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - DO_HARM:1 @Victim
+      - BLOOD @Victim
+    2:
+      chance: 6
+      effects:
+      - DO_HARM:2 @Victim
+      - BLOOD @Victim
+    3:
+      chance: 8
+      effects:
+      - DO_HARM:3 @Victim
+      - BLOOD @Victim
+maza_sombra:
+  display: '%group-color%Golpe Sombrio'
+  description: Ciega y frena al enemigo.
+  applies-to: Mazas
+  type: ATTACK;ATTACK_MOB
+  group: ELITE
+  applies:
+  - MACE
+  levels:
+    1:
+      chance: 4
+      cooldown: 4
+      effects:
+      - POTION:BLINDNESS:0:30 @Victim
+      - POTION:SLOW:0:40 @Victim
+      - PARTICLE:SQUID_INK:12:0.05 @Victim
+    2:
+      chance: 6
+      cooldown: 4
+      effects:
+      - POTION:BLINDNESS:0:40 @Victim
+      - POTION:SLOW:0:40 @Victim
+      - PARTICLE:SQUID_INK:12:0.05 @Victim
+    3:
+      chance: 8
+      cooldown: 4
+      effects:
+      - POTION:BLINDNESS:0:50 @Victim
+      - POTION:SLOW:0:40 @Victim
+      - PARTICLE:SQUID_INK:12:0.05 @Victim
+maza_arcano:
+  display: '%group-color%Golpe Arcano'
+  description: Debilita al enemigo.
+  applies-to: Mazas
+  type: ATTACK;ATTACK_MOB
+  group: ULTIMATE
+  applies:
+  - MACE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:WEAKNESS:0:80 @Victim
+      - PARTICLE:WITCH:15:0.05 @Victim
+    2:
+      chance: 6
+      effects:
+      - POTION:WEAKNESS:1:100 @Victim
+      - PARTICLE:WITCH:15:0.05 @Victim
+    3:
+      chance: 8
+      effects:
+      - POTION:WEAKNESS:2:120 @Victim
+      - PARTICLE:WITCH:15:0.05 @Victim
+maza_ruina:
+  display: '%group-color%Golpe Putrido'
+  description: Marchita al enemigo.
+  applies-to: Mazas
+  type: ATTACK;ATTACK_MOB
+  group: ULTIMATE
+  applies:
+  - MACE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:WITHER:0:60 @Victim
+      - PARTICLE:SMOKE:15:0.02 @Victim
+    2:
+      chance: 6
+      effects:
+      - POTION:WITHER:1:80 @Victim
+      - PARTICLE:SMOKE:15:0.02 @Victim
+    3:
+      chance: 8
+      effects:
+      - POTION:WITHER:2:100 @Victim
+      - PARTICLE:SMOKE:15:0.02 @Victim
+maza_trueno:
+  display: '%group-color%Golpe Tronante'
+  description: Invoca un rayo sobre el enemigo.
+  applies-to: Mazas
+  type: ATTACK;ATTACK_MOB
+  group: LEGENDARY
+  applies:
+  - MACE
+  levels:
+    1:
+      chance: 4
+      cooldown: 6
+      effects:
+      - LIGHTNING:3 @Victim
+    2:
+      chance: 6
+      cooldown: 6
+      effects:
+      - LIGHTNING:4 @Victim
+    3:
+      chance: 8
+      cooldown: 6
+      effects:
+      - LIGHTNING:5 @Victim
+arco_fuego:
+  display: '%group-color%Flecha Ignea'
+  description: Prende fuego al enemigo.
+  applies-to: Arcos
+  type: SHOOT;SHOOT_MOB
+  group: SIMPLE
+  applies:
+  - BOW
+  levels:
+    1:
+      chance: 6
+      effects:
+      - BURN:60 @Victim
+      - PARTICLE:FLAME:15:0.02 @Victim
+    2:
+      chance: 9
+      effects:
+      - BURN:80 @Victim
+      - PARTICLE:FLAME:15:0.02 @Victim
+    3:
+      chance: 12
+      effects:
+      - BURN:100 @Victim
+      - PARTICLE:FLAME:15:0.02 @Victim
+arco_hielo:
+  display: '%group-color%Flecha Gelida'
+  description: Ralentiza al enemigo.
+  applies-to: Arcos
+  type: SHOOT;SHOOT_MOB
+  group: UNIQUE
+  applies:
+  - BOW
+  levels:
+    1:
+      chance: 6
+      effects:
+      - POTION:SLOW:0:60 @Victim
+      - PARTICLE:SNOWFLAKE:15:0.02 @Victim
+    2:
+      chance: 9
+      effects:
+      - POTION:SLOW:1:80 @Victim
+      - PARTICLE:SNOWFLAKE:15:0.02 @Victim
+    3:
+      chance: 12
+      effects:
+      - POTION:SLOW:2:100 @Victim
+      - PARTICLE:SNOWFLAKE:15:0.02 @Victim
+arco_veneno:
+  display: '%group-color%Flecha Venenosa'
+  description: Envenena al enemigo.
+  applies-to: Arcos
+  type: SHOOT;SHOOT_MOB
+  group: UNIQUE
+  applies:
+  - BOW
+  levels:
+    1:
+      chance: 6
+      effects:
+      - POTION:POISON:0:80 @Victim
+      - PARTICLE:ITEM_SLIME:12:0.05 @Victim
+    2:
+      chance: 9
+      effects:
+      - POTION:POISON:1:100 @Victim
+      - PARTICLE:ITEM_SLIME:12:0.05 @Victim
+    3:
+      chance: 12
+      effects:
+      - POTION:POISON:2:120 @Victim
+      - PARTICLE:ITEM_SLIME:12:0.05 @Victim
+arco_viento:
+  display: '%group-color%Flecha Huracanada'
+  description: Empuja lejos al enemigo.
+  applies-to: Arcos
+  type: SHOOT;SHOOT_MOB
+  group: SIMPLE
+  applies:
+  - BOW
+  levels:
+    1:
+      chance: 6
+      effects:
+      - PULL_AWAY:0.9 @Victim
+      - PARTICLE:CLOUD:12:0.05 @Victim
+    2:
+      chance: 9
+      effects:
+      - PULL_AWAY:1.2 @Victim
+      - PARTICLE:CLOUD:12:0.05 @Victim
+    3:
+      chance: 12
+      effects:
+      - PULL_AWAY:1.5 @Victim
+      - PARTICLE:CLOUD:12:0.05 @Victim
+arco_sangre:
+  display: '%group-color%Flecha Sangrienta'
+  description: Hace dano extra y sangrar.
+  applies-to: Arcos
+  type: SHOOT;SHOOT_MOB
+  group: ELITE
+  applies:
+  - BOW
+  levels:
+    1:
+      chance: 6
+      effects:
+      - DO_HARM:1 @Victim
+      - BLOOD @Victim
+    2:
+      chance: 9
+      effects:
+      - DO_HARM:2 @Victim
+      - BLOOD @Victim
+    3:
+      chance: 12
+      effects:
+      - DO_HARM:3 @Victim
+      - BLOOD @Victim
+arco_sombra:
+  display: '%group-color%Flecha Sombria'
+  description: Ciega y frena al enemigo.
+  applies-to: Arcos
+  type: SHOOT;SHOOT_MOB
+  group: ELITE
+  applies:
+  - BOW
+  levels:
+    1:
+      chance: 6
+      cooldown: 4
+      effects:
+      - POTION:BLINDNESS:0:30 @Victim
+      - POTION:SLOW:0:40 @Victim
+      - PARTICLE:SQUID_INK:12:0.05 @Victim
+    2:
+      chance: 9
+      cooldown: 4
+      effects:
+      - POTION:BLINDNESS:0:40 @Victim
+      - POTION:SLOW:0:40 @Victim
+      - PARTICLE:SQUID_INK:12:0.05 @Victim
+    3:
+      chance: 12
+      cooldown: 4
+      effects:
+      - POTION:BLINDNESS:0:50 @Victim
+      - POTION:SLOW:0:40 @Victim
+      - PARTICLE:SQUID_INK:12:0.05 @Victim
+arco_arcano:
+  display: '%group-color%Flecha Arcana'
+  description: Debilita al enemigo.
+  applies-to: Arcos
+  type: SHOOT;SHOOT_MOB
+  group: ULTIMATE
+  applies:
+  - BOW
+  levels:
+    1:
+      chance: 6
+      effects:
+      - POTION:WEAKNESS:0:80 @Victim
+      - PARTICLE:WITCH:15:0.05 @Victim
+    2:
+      chance: 9
+      effects:
+      - POTION:WEAKNESS:1:100 @Victim
+      - PARTICLE:WITCH:15:0.05 @Victim
+    3:
+      chance: 12
+      effects:
+      - POTION:WEAKNESS:2:120 @Victim
+      - PARTICLE:WITCH:15:0.05 @Victim
+arco_ruina:
+  display: '%group-color%Flecha Putrida'
+  description: Marchita al enemigo.
+  applies-to: Arcos
+  type: SHOOT;SHOOT_MOB
+  group: ULTIMATE
+  applies:
+  - BOW
+  levels:
+    1:
+      chance: 6
+      effects:
+      - POTION:WITHER:0:60 @Victim
+      - PARTICLE:SMOKE:15:0.02 @Victim
+    2:
+      chance: 9
+      effects:
+      - POTION:WITHER:1:80 @Victim
+      - PARTICLE:SMOKE:15:0.02 @Victim
+    3:
+      chance: 12
+      effects:
+      - POTION:WITHER:2:100 @Victim
+      - PARTICLE:SMOKE:15:0.02 @Victim
+arco_trueno:
+  display: '%group-color%Flecha Tronante'
+  description: Invoca un rayo sobre el enemigo.
+  applies-to: Arcos
+  type: SHOOT;SHOOT_MOB
+  group: LEGENDARY
+  applies:
+  - BOW
+  levels:
+    1:
+      chance: 6
+      cooldown: 6
+      effects:
+      - LIGHTNING:3 @Victim
+    2:
+      chance: 9
+      cooldown: 6
+      effects:
+      - LIGHTNING:4 @Victim
+    3:
+      chance: 12
+      cooldown: 6
+      effects:
+      - LIGHTNING:5 @Victim
+ballesta_fuego:
+  display: '%group-color%Virote Igneo'
+  description: Prende fuego al enemigo.
+  applies-to: Ballestas
+  type: SHOOT;SHOOT_MOB
+  group: SIMPLE
+  applies:
+  - CROSSBOW
+  levels:
+    1:
+      chance: 6
+      effects:
+      - BURN:60 @Victim
+      - PARTICLE:FLAME:15:0.02 @Victim
+    2:
+      chance: 9
+      effects:
+      - BURN:80 @Victim
+      - PARTICLE:FLAME:15:0.02 @Victim
+    3:
+      chance: 12
+      effects:
+      - BURN:100 @Victim
+      - PARTICLE:FLAME:15:0.02 @Victim
+ballesta_hielo:
+  display: '%group-color%Virote Gelido'
+  description: Ralentiza al enemigo.
+  applies-to: Ballestas
+  type: SHOOT;SHOOT_MOB
+  group: UNIQUE
+  applies:
+  - CROSSBOW
+  levels:
+    1:
+      chance: 6
+      effects:
+      - POTION:SLOW:0:60 @Victim
+      - PARTICLE:SNOWFLAKE:15:0.02 @Victim
+    2:
+      chance: 9
+      effects:
+      - POTION:SLOW:1:80 @Victim
+      - PARTICLE:SNOWFLAKE:15:0.02 @Victim
+    3:
+      chance: 12
+      effects:
+      - POTION:SLOW:2:100 @Victim
+      - PARTICLE:SNOWFLAKE:15:0.02 @Victim
+ballesta_veneno:
+  display: '%group-color%Virote Venenoso'
+  description: Envenena al enemigo.
+  applies-to: Ballestas
+  type: SHOOT;SHOOT_MOB
+  group: UNIQUE
+  applies:
+  - CROSSBOW
+  levels:
+    1:
+      chance: 6
+      effects:
+      - POTION:POISON:0:80 @Victim
+      - PARTICLE:ITEM_SLIME:12:0.05 @Victim
+    2:
+      chance: 9
+      effects:
+      - POTION:POISON:1:100 @Victim
+      - PARTICLE:ITEM_SLIME:12:0.05 @Victim
+    3:
+      chance: 12
+      effects:
+      - POTION:POISON:2:120 @Victim
+      - PARTICLE:ITEM_SLIME:12:0.05 @Victim
+ballesta_viento:
+  display: '%group-color%Virote Huracanado'
+  description: Empuja lejos al enemigo.
+  applies-to: Ballestas
+  type: SHOOT;SHOOT_MOB
+  group: SIMPLE
+  applies:
+  - CROSSBOW
+  levels:
+    1:
+      chance: 6
+      effects:
+      - PULL_AWAY:0.9 @Victim
+      - PARTICLE:CLOUD:12:0.05 @Victim
+    2:
+      chance: 9
+      effects:
+      - PULL_AWAY:1.2 @Victim
+      - PARTICLE:CLOUD:12:0.05 @Victim
+    3:
+      chance: 12
+      effects:
+      - PULL_AWAY:1.5 @Victim
+      - PARTICLE:CLOUD:12:0.05 @Victim
+ballesta_sangre:
+  display: '%group-color%Virote Sangriento'
+  description: Hace dano extra y sangrar.
+  applies-to: Ballestas
+  type: SHOOT;SHOOT_MOB
+  group: ELITE
+  applies:
+  - CROSSBOW
+  levels:
+    1:
+      chance: 6
+      effects:
+      - DO_HARM:1 @Victim
+      - BLOOD @Victim
+    2:
+      chance: 9
+      effects:
+      - DO_HARM:2 @Victim
+      - BLOOD @Victim
+    3:
+      chance: 12
+      effects:
+      - DO_HARM:3 @Victim
+      - BLOOD @Victim
+ballesta_sombra:
+  display: '%group-color%Virote Sombrio'
+  description: Ciega y frena al enemigo.
+  applies-to: Ballestas
+  type: SHOOT;SHOOT_MOB
+  group: ELITE
+  applies:
+  - CROSSBOW
+  levels:
+    1:
+      chance: 6
+      cooldown: 4
+      effects:
+      - POTION:BLINDNESS:0:30 @Victim
+      - POTION:SLOW:0:40 @Victim
+      - PARTICLE:SQUID_INK:12:0.05 @Victim
+    2:
+      chance: 9
+      cooldown: 4
+      effects:
+      - POTION:BLINDNESS:0:40 @Victim
+      - POTION:SLOW:0:40 @Victim
+      - PARTICLE:SQUID_INK:12:0.05 @Victim
+    3:
+      chance: 12
+      cooldown: 4
+      effects:
+      - POTION:BLINDNESS:0:50 @Victim
+      - POTION:SLOW:0:40 @Victim
+      - PARTICLE:SQUID_INK:12:0.05 @Victim
+ballesta_arcano:
+  display: '%group-color%Virote Arcano'
+  description: Debilita al enemigo.
+  applies-to: Ballestas
+  type: SHOOT;SHOOT_MOB
+  group: ULTIMATE
+  applies:
+  - CROSSBOW
+  levels:
+    1:
+      chance: 6
+      effects:
+      - POTION:WEAKNESS:0:80 @Victim
+      - PARTICLE:WITCH:15:0.05 @Victim
+    2:
+      chance: 9
+      effects:
+      - POTION:WEAKNESS:1:100 @Victim
+      - PARTICLE:WITCH:15:0.05 @Victim
+    3:
+      chance: 12
+      effects:
+      - POTION:WEAKNESS:2:120 @Victim
+      - PARTICLE:WITCH:15:0.05 @Victim
+ballesta_ruina:
+  display: '%group-color%Virote Putrido'
+  description: Marchita al enemigo.
+  applies-to: Ballestas
+  type: SHOOT;SHOOT_MOB
+  group: ULTIMATE
+  applies:
+  - CROSSBOW
+  levels:
+    1:
+      chance: 6
+      effects:
+      - POTION:WITHER:0:60 @Victim
+      - PARTICLE:SMOKE:15:0.02 @Victim
+    2:
+      chance: 9
+      effects:
+      - POTION:WITHER:1:80 @Victim
+      - PARTICLE:SMOKE:15:0.02 @Victim
+    3:
+      chance: 12
+      effects:
+      - POTION:WITHER:2:100 @Victim
+      - PARTICLE:SMOKE:15:0.02 @Victim
+ballesta_trueno:
+  display: '%group-color%Virote Tronante'
+  description: Invoca un rayo sobre el enemigo.
+  applies-to: Ballestas
+  type: SHOOT;SHOOT_MOB
+  group: LEGENDARY
+  applies:
+  - CROSSBOW
+  levels:
+    1:
+      chance: 6
+      cooldown: 6
+      effects:
+      - LIGHTNING:3 @Victim
+    2:
+      chance: 9
+      cooldown: 6
+      effects:
+      - LIGHTNING:4 @Victim
+    3:
+      chance: 12
+      cooldown: 6
+      effects:
+      - LIGHTNING:5 @Victim
+tridente_fuego:
+  display: '%group-color%Arpon Igneo'
+  description: Prende fuego al enemigo.
+  applies-to: Tridentes
+  type: SHOOT;SHOOT_MOB
+  group: SIMPLE
+  applies:
+  - TRIDENT
+  levels:
+    1:
+      chance: 6
+      effects:
+      - BURN:60 @Victim
+      - PARTICLE:FLAME:15:0.02 @Victim
+    2:
+      chance: 9
+      effects:
+      - BURN:80 @Victim
+      - PARTICLE:FLAME:15:0.02 @Victim
+    3:
+      chance: 12
+      effects:
+      - BURN:100 @Victim
+      - PARTICLE:FLAME:15:0.02 @Victim
+tridente_hielo:
+  display: '%group-color%Arpon Gelido'
+  description: Ralentiza al enemigo.
+  applies-to: Tridentes
+  type: SHOOT;SHOOT_MOB
+  group: UNIQUE
+  applies:
+  - TRIDENT
+  levels:
+    1:
+      chance: 6
+      effects:
+      - POTION:SLOW:0:60 @Victim
+      - PARTICLE:SNOWFLAKE:15:0.02 @Victim
+    2:
+      chance: 9
+      effects:
+      - POTION:SLOW:1:80 @Victim
+      - PARTICLE:SNOWFLAKE:15:0.02 @Victim
+    3:
+      chance: 12
+      effects:
+      - POTION:SLOW:2:100 @Victim
+      - PARTICLE:SNOWFLAKE:15:0.02 @Victim
+tridente_veneno:
+  display: '%group-color%Arpon Venenoso'
+  description: Envenena al enemigo.
+  applies-to: Tridentes
+  type: SHOOT;SHOOT_MOB
+  group: UNIQUE
+  applies:
+  - TRIDENT
+  levels:
+    1:
+      chance: 6
+      effects:
+      - POTION:POISON:0:80 @Victim
+      - PARTICLE:ITEM_SLIME:12:0.05 @Victim
+    2:
+      chance: 9
+      effects:
+      - POTION:POISON:1:100 @Victim
+      - PARTICLE:ITEM_SLIME:12:0.05 @Victim
+    3:
+      chance: 12
+      effects:
+      - POTION:POISON:2:120 @Victim
+      - PARTICLE:ITEM_SLIME:12:0.05 @Victim
+tridente_viento:
+  display: '%group-color%Arpon Huracanado'
+  description: Empuja lejos al enemigo.
+  applies-to: Tridentes
+  type: SHOOT;SHOOT_MOB
+  group: SIMPLE
+  applies:
+  - TRIDENT
+  levels:
+    1:
+      chance: 6
+      effects:
+      - PULL_AWAY:0.9 @Victim
+      - PARTICLE:CLOUD:12:0.05 @Victim
+    2:
+      chance: 9
+      effects:
+      - PULL_AWAY:1.2 @Victim
+      - PARTICLE:CLOUD:12:0.05 @Victim
+    3:
+      chance: 12
+      effects:
+      - PULL_AWAY:1.5 @Victim
+      - PARTICLE:CLOUD:12:0.05 @Victim
+tridente_sangre:
+  display: '%group-color%Arpon Sangriento'
+  description: Hace dano extra y sangrar.
+  applies-to: Tridentes
+  type: SHOOT;SHOOT_MOB
+  group: ELITE
+  applies:
+  - TRIDENT
+  levels:
+    1:
+      chance: 6
+      effects:
+      - DO_HARM:1 @Victim
+      - BLOOD @Victim
+    2:
+      chance: 9
+      effects:
+      - DO_HARM:2 @Victim
+      - BLOOD @Victim
+    3:
+      chance: 12
+      effects:
+      - DO_HARM:3 @Victim
+      - BLOOD @Victim
+tridente_sombra:
+  display: '%group-color%Arpon Sombrio'
+  description: Ciega y frena al enemigo.
+  applies-to: Tridentes
+  type: SHOOT;SHOOT_MOB
+  group: ELITE
+  applies:
+  - TRIDENT
+  levels:
+    1:
+      chance: 6
+      cooldown: 4
+      effects:
+      - POTION:BLINDNESS:0:30 @Victim
+      - POTION:SLOW:0:40 @Victim
+      - PARTICLE:SQUID_INK:12:0.05 @Victim
+    2:
+      chance: 9
+      cooldown: 4
+      effects:
+      - POTION:BLINDNESS:0:40 @Victim
+      - POTION:SLOW:0:40 @Victim
+      - PARTICLE:SQUID_INK:12:0.05 @Victim
+    3:
+      chance: 12
+      cooldown: 4
+      effects:
+      - POTION:BLINDNESS:0:50 @Victim
+      - POTION:SLOW:0:40 @Victim
+      - PARTICLE:SQUID_INK:12:0.05 @Victim
+tridente_arcano:
+  display: '%group-color%Arpon Arcano'
+  description: Debilita al enemigo.
+  applies-to: Tridentes
+  type: SHOOT;SHOOT_MOB
+  group: ULTIMATE
+  applies:
+  - TRIDENT
+  levels:
+    1:
+      chance: 6
+      effects:
+      - POTION:WEAKNESS:0:80 @Victim
+      - PARTICLE:WITCH:15:0.05 @Victim
+    2:
+      chance: 9
+      effects:
+      - POTION:WEAKNESS:1:100 @Victim
+      - PARTICLE:WITCH:15:0.05 @Victim
+    3:
+      chance: 12
+      effects:
+      - POTION:WEAKNESS:2:120 @Victim
+      - PARTICLE:WITCH:15:0.05 @Victim
+tridente_ruina:
+  display: '%group-color%Arpon Putrido'
+  description: Marchita al enemigo.
+  applies-to: Tridentes
+  type: SHOOT;SHOOT_MOB
+  group: ULTIMATE
+  applies:
+  - TRIDENT
+  levels:
+    1:
+      chance: 6
+      effects:
+      - POTION:WITHER:0:60 @Victim
+      - PARTICLE:SMOKE:15:0.02 @Victim
+    2:
+      chance: 9
+      effects:
+      - POTION:WITHER:1:80 @Victim
+      - PARTICLE:SMOKE:15:0.02 @Victim
+    3:
+      chance: 12
+      effects:
+      - POTION:WITHER:2:100 @Victim
+      - PARTICLE:SMOKE:15:0.02 @Victim
+tridente_trueno:
+  display: '%group-color%Arpon Tronante'
+  description: Invoca un rayo sobre el enemigo.
+  applies-to: Tridentes
+  type: SHOOT;SHOOT_MOB
+  group: LEGENDARY
+  applies:
+  - TRIDENT
+  levels:
+    1:
+      chance: 6
+      cooldown: 6
+      effects:
+      - LIGHTNING:3 @Victim
+    2:
+      chance: 9
+      cooldown: 6
+      effects:
+      - LIGHTNING:4 @Victim
+    3:
+      chance: 12
+      cooldown: 6
+      effects:
+      - LIGHTNING:5 @Victim
+espada_sanador:
+  display: '%group-color%Filo Sanador'
+  description: Al matar recuperas vida.
+  applies-to: Espadas
+  type: KILL_MOB;KILL_PLAYER
+  group: UNIQUE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 35
+      effects:
+      - ADD_HEALTH:2
+    2:
+      chance: 45
+      effects:
+      - ADD_HEALTH:3
+    3:
+      chance: 55
+      effects:
+      - ADD_HEALTH:4
+espada_veloz:
+  display: '%group-color%Filo Veloz'
+  description: Al matar ganas velocidad.
+  applies-to: Espadas
+  type: KILL_MOB;KILL_PLAYER
+  group: SIMPLE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 40
+      effects:
+      - POTION:SPEED:0:80
+    2:
+      chance: 50
+      effects:
+      - POTION:SPEED:1:100
+    3:
+      chance: 60
+      effects:
+      - POTION:SPEED:2:120
+espada_protector:
+  display: '%group-color%Filo Protector'
+  description: Al matar ganas corazones extra.
+  applies-to: Espadas
+  type: KILL_MOB;KILL_PLAYER
+  group: ELITE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 30
+      effects:
+      - POTION:ABSORPTION:0:120
+    2:
+      chance: 40
+      effects:
+      - POTION:ABSORPTION:1:140
+    3:
+      chance: 50
+      effects:
+      - POTION:ABSORPTION:2:160
+espada_furioso:
+  display: '%group-color%Filo Furioso'
+  description: Al matar ganas fuerza un momento.
+  applies-to: Espadas
+  type: KILL_MOB;KILL_PLAYER
+  group: ULTIMATE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 20
+      effects:
+      - POTION:INCREASE_DAMAGE:0:60
+    2:
+      chance: 25
+      effects:
+      - POTION:INCREASE_DAMAGE:0:80
+    3:
+      chance: 30
+      effects:
+      - POTION:INCREASE_DAMAGE:0:100
+espada_renovador:
+  display: '%group-color%Filo Renovador'
+  description: Al matar te regeneras.
+  applies-to: Espadas
+  type: KILL_MOB;KILL_PLAYER
+  group: ELITE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 30
+      effects:
+      - POTION:REGENERATION:0:80
+    2:
+      chance: 35
+      effects:
+      - POTION:REGENERATION:1:100
+    3:
+      chance: 40
+      effects:
+      - POTION:REGENERATION:2:120
+espada_gloton:
+  display: '%group-color%Filo Gloton'
+  description: Al matar recuperas comida.
+  applies-to: Espadas
+  type: KILL_MOB;KILL_PLAYER
+  group: SIMPLE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 40
+      effects:
+      - ADD_FOOD:2
+    2:
+      chance: 50
+      effects:
+      - ADD_FOOD:3
+    3:
+      chance: 60
+      effects:
+      - ADD_FOOD:4
+hacha_sanador:
+  display: '%group-color%Tajo Sanador'
+  description: Al matar recuperas vida.
+  applies-to: Hachas
+  type: KILL_MOB;KILL_PLAYER
+  group: UNIQUE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 35
+      effects:
+      - ADD_HEALTH:2
+    2:
+      chance: 45
+      effects:
+      - ADD_HEALTH:3
+    3:
+      chance: 55
+      effects:
+      - ADD_HEALTH:4
+hacha_veloz:
+  display: '%group-color%Tajo Veloz'
+  description: Al matar ganas velocidad.
+  applies-to: Hachas
+  type: KILL_MOB;KILL_PLAYER
+  group: SIMPLE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 40
+      effects:
+      - POTION:SPEED:0:80
+    2:
+      chance: 50
+      effects:
+      - POTION:SPEED:1:100
+    3:
+      chance: 60
+      effects:
+      - POTION:SPEED:2:120
+hacha_protector:
+  display: '%group-color%Tajo Protector'
+  description: Al matar ganas corazones extra.
+  applies-to: Hachas
+  type: KILL_MOB;KILL_PLAYER
+  group: ELITE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 30
+      effects:
+      - POTION:ABSORPTION:0:120
+    2:
+      chance: 40
+      effects:
+      - POTION:ABSORPTION:1:140
+    3:
+      chance: 50
+      effects:
+      - POTION:ABSORPTION:2:160
+hacha_furioso:
+  display: '%group-color%Tajo Furioso'
+  description: Al matar ganas fuerza un momento.
+  applies-to: Hachas
+  type: KILL_MOB;KILL_PLAYER
+  group: ULTIMATE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 20
+      effects:
+      - POTION:INCREASE_DAMAGE:0:60
+    2:
+      chance: 25
+      effects:
+      - POTION:INCREASE_DAMAGE:0:80
+    3:
+      chance: 30
+      effects:
+      - POTION:INCREASE_DAMAGE:0:100
+hacha_renovador:
+  display: '%group-color%Tajo Renovador'
+  description: Al matar te regeneras.
+  applies-to: Hachas
+  type: KILL_MOB;KILL_PLAYER
+  group: ELITE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 30
+      effects:
+      - POTION:REGENERATION:0:80
+    2:
+      chance: 35
+      effects:
+      - POTION:REGENERATION:1:100
+    3:
+      chance: 40
+      effects:
+      - POTION:REGENERATION:2:120
+hacha_gloton:
+  display: '%group-color%Tajo Gloton'
+  description: Al matar recuperas comida.
+  applies-to: Hachas
+  type: KILL_MOB;KILL_PLAYER
+  group: SIMPLE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 40
+      effects:
+      - ADD_FOOD:2
+    2:
+      chance: 50
+      effects:
+      - ADD_FOOD:3
+    3:
+      chance: 60
+      effects:
+      - ADD_FOOD:4
+maza_sanador:
+  display: '%group-color%Golpe Sanador'
+  description: Al matar recuperas vida.
+  applies-to: Mazas
+  type: KILL_MOB;KILL_PLAYER
+  group: UNIQUE
+  applies:
+  - MACE
+  levels:
+    1:
+      chance: 35
+      effects:
+      - ADD_HEALTH:2
+    2:
+      chance: 45
+      effects:
+      - ADD_HEALTH:3
+    3:
+      chance: 55
+      effects:
+      - ADD_HEALTH:4
+maza_veloz:
+  display: '%group-color%Golpe Veloz'
+  description: Al matar ganas velocidad.
+  applies-to: Mazas
+  type: KILL_MOB;KILL_PLAYER
+  group: SIMPLE
+  applies:
+  - MACE
+  levels:
+    1:
+      chance: 40
+      effects:
+      - POTION:SPEED:0:80
+    2:
+      chance: 50
+      effects:
+      - POTION:SPEED:1:100
+    3:
+      chance: 60
+      effects:
+      - POTION:SPEED:2:120
+maza_protector:
+  display: '%group-color%Golpe Protector'
+  description: Al matar ganas corazones extra.
+  applies-to: Mazas
+  type: KILL_MOB;KILL_PLAYER
+  group: ELITE
+  applies:
+  - MACE
+  levels:
+    1:
+      chance: 30
+      effects:
+      - POTION:ABSORPTION:0:120
+    2:
+      chance: 40
+      effects:
+      - POTION:ABSORPTION:1:140
+    3:
+      chance: 50
+      effects:
+      - POTION:ABSORPTION:2:160
+maza_furioso:
+  display: '%group-color%Golpe Furioso'
+  description: Al matar ganas fuerza un momento.
+  applies-to: Mazas
+  type: KILL_MOB;KILL_PLAYER
+  group: ULTIMATE
+  applies:
+  - MACE
+  levels:
+    1:
+      chance: 20
+      effects:
+      - POTION:INCREASE_DAMAGE:0:60
+    2:
+      chance: 25
+      effects:
+      - POTION:INCREASE_DAMAGE:0:80
+    3:
+      chance: 30
+      effects:
+      - POTION:INCREASE_DAMAGE:0:100
+maza_renovador:
+  display: '%group-color%Golpe Renovador'
+  description: Al matar te regeneras.
+  applies-to: Mazas
+  type: KILL_MOB;KILL_PLAYER
+  group: ELITE
+  applies:
+  - MACE
+  levels:
+    1:
+      chance: 30
+      effects:
+      - POTION:REGENERATION:0:80
+    2:
+      chance: 35
+      effects:
+      - POTION:REGENERATION:1:100
+    3:
+      chance: 40
+      effects:
+      - POTION:REGENERATION:2:120
+maza_gloton:
+  display: '%group-color%Golpe Gloton'
+  description: Al matar recuperas comida.
+  applies-to: Mazas
+  type: KILL_MOB;KILL_PLAYER
+  group: SIMPLE
+  applies:
+  - MACE
+  levels:
+    1:
+      chance: 40
+      effects:
+      - ADD_FOOD:2
+    2:
+      chance: 50
+      effects:
+      - ADD_FOOD:3
+    3:
+      chance: 60
+      effects:
+      - ADD_FOOD:4
+arco_sanador:
+  display: '%group-color%Flecha Sanadora'
+  description: Al matar recuperas vida.
+  applies-to: Arcos
+  type: KILL_MOB;KILL_PLAYER
+  group: UNIQUE
+  applies:
+  - BOW
+  levels:
+    1:
+      chance: 35
+      effects:
+      - ADD_HEALTH:2
+    2:
+      chance: 45
+      effects:
+      - ADD_HEALTH:3
+    3:
+      chance: 55
+      effects:
+      - ADD_HEALTH:4
+arco_veloz:
+  display: '%group-color%Flecha Veloz'
+  description: Al matar ganas velocidad.
+  applies-to: Arcos
+  type: KILL_MOB;KILL_PLAYER
+  group: SIMPLE
+  applies:
+  - BOW
+  levels:
+    1:
+      chance: 40
+      effects:
+      - POTION:SPEED:0:80
+    2:
+      chance: 50
+      effects:
+      - POTION:SPEED:1:100
+    3:
+      chance: 60
+      effects:
+      - POTION:SPEED:2:120
+arco_protector:
+  display: '%group-color%Flecha Protectora'
+  description: Al matar ganas corazones extra.
+  applies-to: Arcos
+  type: KILL_MOB;KILL_PLAYER
+  group: ELITE
+  applies:
+  - BOW
+  levels:
+    1:
+      chance: 30
+      effects:
+      - POTION:ABSORPTION:0:120
+    2:
+      chance: 40
+      effects:
+      - POTION:ABSORPTION:1:140
+    3:
+      chance: 50
+      effects:
+      - POTION:ABSORPTION:2:160
+arco_furioso:
+  display: '%group-color%Flecha Furiosa'
+  description: Al matar ganas fuerza un momento.
+  applies-to: Arcos
+  type: KILL_MOB;KILL_PLAYER
+  group: ULTIMATE
+  applies:
+  - BOW
+  levels:
+    1:
+      chance: 20
+      effects:
+      - POTION:INCREASE_DAMAGE:0:60
+    2:
+      chance: 25
+      effects:
+      - POTION:INCREASE_DAMAGE:0:80
+    3:
+      chance: 30
+      effects:
+      - POTION:INCREASE_DAMAGE:0:100
+arco_renovador:
+  display: '%group-color%Flecha Renovadora'
+  description: Al matar te regeneras.
+  applies-to: Arcos
+  type: KILL_MOB;KILL_PLAYER
+  group: ELITE
+  applies:
+  - BOW
+  levels:
+    1:
+      chance: 30
+      effects:
+      - POTION:REGENERATION:0:80
+    2:
+      chance: 35
+      effects:
+      - POTION:REGENERATION:1:100
+    3:
+      chance: 40
+      effects:
+      - POTION:REGENERATION:2:120
+arco_gloton:
+  display: '%group-color%Flecha Glotona'
+  description: Al matar recuperas comida.
+  applies-to: Arcos
+  type: KILL_MOB;KILL_PLAYER
+  group: SIMPLE
+  applies:
+  - BOW
+  levels:
+    1:
+      chance: 40
+      effects:
+      - ADD_FOOD:2
+    2:
+      chance: 50
+      effects:
+      - ADD_FOOD:3
+    3:
+      chance: 60
+      effects:
+      - ADD_FOOD:4
+ballesta_sanador:
+  display: '%group-color%Virote Sanador'
+  description: Al matar recuperas vida.
+  applies-to: Ballestas
+  type: KILL_MOB;KILL_PLAYER
+  group: UNIQUE
+  applies:
+  - CROSSBOW
+  levels:
+    1:
+      chance: 35
+      effects:
+      - ADD_HEALTH:2
+    2:
+      chance: 45
+      effects:
+      - ADD_HEALTH:3
+    3:
+      chance: 55
+      effects:
+      - ADD_HEALTH:4
+ballesta_veloz:
+  display: '%group-color%Virote Veloz'
+  description: Al matar ganas velocidad.
+  applies-to: Ballestas
+  type: KILL_MOB;KILL_PLAYER
+  group: SIMPLE
+  applies:
+  - CROSSBOW
+  levels:
+    1:
+      chance: 40
+      effects:
+      - POTION:SPEED:0:80
+    2:
+      chance: 50
+      effects:
+      - POTION:SPEED:1:100
+    3:
+      chance: 60
+      effects:
+      - POTION:SPEED:2:120
+ballesta_protector:
+  display: '%group-color%Virote Protector'
+  description: Al matar ganas corazones extra.
+  applies-to: Ballestas
+  type: KILL_MOB;KILL_PLAYER
+  group: ELITE
+  applies:
+  - CROSSBOW
+  levels:
+    1:
+      chance: 30
+      effects:
+      - POTION:ABSORPTION:0:120
+    2:
+      chance: 40
+      effects:
+      - POTION:ABSORPTION:1:140
+    3:
+      chance: 50
+      effects:
+      - POTION:ABSORPTION:2:160
+ballesta_furioso:
+  display: '%group-color%Virote Furioso'
+  description: Al matar ganas fuerza un momento.
+  applies-to: Ballestas
+  type: KILL_MOB;KILL_PLAYER
+  group: ULTIMATE
+  applies:
+  - CROSSBOW
+  levels:
+    1:
+      chance: 20
+      effects:
+      - POTION:INCREASE_DAMAGE:0:60
+    2:
+      chance: 25
+      effects:
+      - POTION:INCREASE_DAMAGE:0:80
+    3:
+      chance: 30
+      effects:
+      - POTION:INCREASE_DAMAGE:0:100
+ballesta_renovador:
+  display: '%group-color%Virote Renovador'
+  description: Al matar te regeneras.
+  applies-to: Ballestas
+  type: KILL_MOB;KILL_PLAYER
+  group: ELITE
+  applies:
+  - CROSSBOW
+  levels:
+    1:
+      chance: 30
+      effects:
+      - POTION:REGENERATION:0:80
+    2:
+      chance: 35
+      effects:
+      - POTION:REGENERATION:1:100
+    3:
+      chance: 40
+      effects:
+      - POTION:REGENERATION:2:120
+ballesta_gloton:
+  display: '%group-color%Virote Gloton'
+  description: Al matar recuperas comida.
+  applies-to: Ballestas
+  type: KILL_MOB;KILL_PLAYER
+  group: SIMPLE
+  applies:
+  - CROSSBOW
+  levels:
+    1:
+      chance: 40
+      effects:
+      - ADD_FOOD:2
+    2:
+      chance: 50
+      effects:
+      - ADD_FOOD:3
+    3:
+      chance: 60
+      effects:
+      - ADD_FOOD:4
+tridente_sanador:
+  display: '%group-color%Arpon Sanador'
+  description: Al matar recuperas vida.
+  applies-to: Tridentes
+  type: KILL_MOB;KILL_PLAYER
+  group: UNIQUE
+  applies:
+  - TRIDENT
+  levels:
+    1:
+      chance: 35
+      effects:
+      - ADD_HEALTH:2
+    2:
+      chance: 45
+      effects:
+      - ADD_HEALTH:3
+    3:
+      chance: 55
+      effects:
+      - ADD_HEALTH:4
+tridente_veloz:
+  display: '%group-color%Arpon Veloz'
+  description: Al matar ganas velocidad.
+  applies-to: Tridentes
+  type: KILL_MOB;KILL_PLAYER
+  group: SIMPLE
+  applies:
+  - TRIDENT
+  levels:
+    1:
+      chance: 40
+      effects:
+      - POTION:SPEED:0:80
+    2:
+      chance: 50
+      effects:
+      - POTION:SPEED:1:100
+    3:
+      chance: 60
+      effects:
+      - POTION:SPEED:2:120
+tridente_protector:
+  display: '%group-color%Arpon Protector'
+  description: Al matar ganas corazones extra.
+  applies-to: Tridentes
+  type: KILL_MOB;KILL_PLAYER
+  group: ELITE
+  applies:
+  - TRIDENT
+  levels:
+    1:
+      chance: 30
+      effects:
+      - POTION:ABSORPTION:0:120
+    2:
+      chance: 40
+      effects:
+      - POTION:ABSORPTION:1:140
+    3:
+      chance: 50
+      effects:
+      - POTION:ABSORPTION:2:160
+tridente_furioso:
+  display: '%group-color%Arpon Furioso'
+  description: Al matar ganas fuerza un momento.
+  applies-to: Tridentes
+  type: KILL_MOB;KILL_PLAYER
+  group: ULTIMATE
+  applies:
+  - TRIDENT
+  levels:
+    1:
+      chance: 20
+      effects:
+      - POTION:INCREASE_DAMAGE:0:60
+    2:
+      chance: 25
+      effects:
+      - POTION:INCREASE_DAMAGE:0:80
+    3:
+      chance: 30
+      effects:
+      - POTION:INCREASE_DAMAGE:0:100
+tridente_renovador:
+  display: '%group-color%Arpon Renovador'
+  description: Al matar te regeneras.
+  applies-to: Tridentes
+  type: KILL_MOB;KILL_PLAYER
+  group: ELITE
+  applies:
+  - TRIDENT
+  levels:
+    1:
+      chance: 30
+      effects:
+      - POTION:REGENERATION:0:80
+    2:
+      chance: 35
+      effects:
+      - POTION:REGENERATION:1:100
+    3:
+      chance: 40
+      effects:
+      - POTION:REGENERATION:2:120
+tridente_gloton:
+  display: '%group-color%Arpon Gloton'
+  description: Al matar recuperas comida.
+  applies-to: Tridentes
+  type: KILL_MOB;KILL_PLAYER
+  group: SIMPLE
+  applies:
+  - TRIDENT
+  levels:
+    1:
+      chance: 40
+      effects:
+      - ADD_FOOD:2
+    2:
+      chance: 50
+      effects:
+      - ADD_FOOD:3
+    3:
+      chance: 60
+      effects:
+      - ADD_FOOD:4
+espada_contra_zombis:
+  display: '%group-color%Azote de Zombis'
+  description: Mas dano contra zombis.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: SIMPLE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains ZOMBIE || %mob type% contains HUSK : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains ZOMBIE || %mob type% contains HUSK : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains ZOMBIE || %mob type% contains HUSK : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+espada_contra_esqueletos:
+  display: '%group-color%Azote de Esqueletos'
+  description: Mas dano contra esqueletos.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: SIMPLE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains SKELETON || %mob type% contains STRAY || %mob type% contains BOGGED : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains SKELETON || %mob type% contains STRAY || %mob type% contains BOGGED : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains SKELETON || %mob type% contains STRAY || %mob type% contains BOGGED : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+espada_contra_aranas:
+  display: '%group-color%Azote de Aranas'
+  description: Mas dano contra aranas.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: SIMPLE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains SPIDER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains SPIDER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains SPIDER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+espada_contra_creepers:
+  display: '%group-color%Azote de Creepers'
+  description: Mas dano contra creepers.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains CREEPER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains CREEPER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains CREEPER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+espada_contra_endermans:
+  display: '%group-color%Azote de Endermans'
+  description: Mas dano contra endermans.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains ENDERMAN || %mob type% contains ENDERMITE : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains ENDERMAN || %mob type% contains ENDERMITE : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains ENDERMAN || %mob type% contains ENDERMITE : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+espada_contra_piglins:
+  display: '%group-color%Azote de Piglins'
+  description: Mas dano contra piglins.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains PIGLIN || %mob type% contains HOGLIN || %mob type% contains ZOGLIN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains PIGLIN || %mob type% contains HOGLIN || %mob type% contains ZOGLIN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains PIGLIN || %mob type% contains HOGLIN || %mob type% contains ZOGLIN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+espada_contra_blazes:
+  display: '%group-color%Azote de Blazes'
+  description: Mas dano contra blazes.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: ELITE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains BLAZE || %mob type% contains GHAST : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains BLAZE || %mob type% contains GHAST : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains BLAZE || %mob type% contains GHAST : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+espada_contra_brujas:
+  display: '%group-color%Azote de Brujas'
+  description: Mas dano contra brujas.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains WITCH : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains WITCH : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains WITCH : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+espada_contra_illagers:
+  display: '%group-color%Azote de Illagers'
+  description: Mas dano contra illagers.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: ELITE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains PILLAGER || %mob type% contains VINDICATOR || %mob type% contains EVOKER || %mob type% contains RAVAGER || %mob type% contains VEX : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains PILLAGER || %mob type% contains VINDICATOR || %mob type% contains EVOKER || %mob type% contains RAVAGER || %mob type% contains VEX : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains PILLAGER || %mob type% contains VINDICATOR || %mob type% contains EVOKER || %mob type% contains RAVAGER || %mob type% contains VEX : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+espada_contra_slimes:
+  display: '%group-color%Azote de Slimes'
+  description: Mas dano contra slimes.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: SIMPLE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains SLIME || %mob type% contains MAGMA_CUBE : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains SLIME || %mob type% contains MAGMA_CUBE : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains SLIME || %mob type% contains MAGMA_CUBE : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+espada_contra_fantasmas:
+  display: '%group-color%Azote de Fantasmas'
+  description: Mas dano contra fantasmas.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains PHANTOM : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains PHANTOM : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains PHANTOM : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+espada_contra_guardianes:
+  display: '%group-color%Azote de Guardianes'
+  description: Mas dano contra guardianes.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: ELITE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains GUARDIAN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains GUARDIAN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains GUARDIAN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+espada_contra_ahogados:
+  display: '%group-color%Azote de Ahogados'
+  description: Mas dano contra ahogados.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: SIMPLE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains DROWNED : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains DROWNED : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains DROWNED : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+espada_contra_jefes:
+  display: '%group-color%Azote de Jefes'
+  description: Mas dano contra jefes.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: LEGENDARY
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains WITHER || %mob type% contains ENDER_DRAGON || %mob type% contains WARDEN || %mob type% contains ELDER_GUARDIAN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains WITHER || %mob type% contains ENDER_DRAGON || %mob type% contains WARDEN || %mob type% contains ELDER_GUARDIAN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains WITHER || %mob type% contains ENDER_DRAGON || %mob type% contains WARDEN || %mob type% contains ELDER_GUARDIAN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+espada_contra_jugadores:
+  display: '%group-color%Azote de Jugadores'
+  description: Mas dano contra jugadores.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: ULTIMATE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains PLAYER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:5
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains PLAYER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains PLAYER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:15
+hacha_contra_zombis:
+  display: '%group-color%Verdugo de Zombis'
+  description: Mas dano contra zombis.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: SIMPLE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains ZOMBIE || %mob type% contains HUSK : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains ZOMBIE || %mob type% contains HUSK : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains ZOMBIE || %mob type% contains HUSK : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+hacha_contra_esqueletos:
+  display: '%group-color%Verdugo de Esqueletos'
+  description: Mas dano contra esqueletos.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: SIMPLE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains SKELETON || %mob type% contains STRAY || %mob type% contains BOGGED : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains SKELETON || %mob type% contains STRAY || %mob type% contains BOGGED : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains SKELETON || %mob type% contains STRAY || %mob type% contains BOGGED : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+hacha_contra_aranas:
+  display: '%group-color%Verdugo de Aranas'
+  description: Mas dano contra aranas.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: SIMPLE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains SPIDER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains SPIDER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains SPIDER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+hacha_contra_creepers:
+  display: '%group-color%Verdugo de Creepers'
+  description: Mas dano contra creepers.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains CREEPER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains CREEPER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains CREEPER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+hacha_contra_endermans:
+  display: '%group-color%Verdugo de Endermans'
+  description: Mas dano contra endermans.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains ENDERMAN || %mob type% contains ENDERMITE : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains ENDERMAN || %mob type% contains ENDERMITE : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains ENDERMAN || %mob type% contains ENDERMITE : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+hacha_contra_piglins:
+  display: '%group-color%Verdugo de Piglins'
+  description: Mas dano contra piglins.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains PIGLIN || %mob type% contains HOGLIN || %mob type% contains ZOGLIN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains PIGLIN || %mob type% contains HOGLIN || %mob type% contains ZOGLIN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains PIGLIN || %mob type% contains HOGLIN || %mob type% contains ZOGLIN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+hacha_contra_blazes:
+  display: '%group-color%Verdugo de Blazes'
+  description: Mas dano contra blazes.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: ELITE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains BLAZE || %mob type% contains GHAST : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains BLAZE || %mob type% contains GHAST : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains BLAZE || %mob type% contains GHAST : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+hacha_contra_brujas:
+  display: '%group-color%Verdugo de Brujas'
+  description: Mas dano contra brujas.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains WITCH : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains WITCH : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains WITCH : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+hacha_contra_illagers:
+  display: '%group-color%Verdugo de Illagers'
+  description: Mas dano contra illagers.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: ELITE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains PILLAGER || %mob type% contains VINDICATOR || %mob type% contains EVOKER || %mob type% contains RAVAGER || %mob type% contains VEX : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains PILLAGER || %mob type% contains VINDICATOR || %mob type% contains EVOKER || %mob type% contains RAVAGER || %mob type% contains VEX : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains PILLAGER || %mob type% contains VINDICATOR || %mob type% contains EVOKER || %mob type% contains RAVAGER || %mob type% contains VEX : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+hacha_contra_slimes:
+  display: '%group-color%Verdugo de Slimes'
+  description: Mas dano contra slimes.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: SIMPLE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains SLIME || %mob type% contains MAGMA_CUBE : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains SLIME || %mob type% contains MAGMA_CUBE : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains SLIME || %mob type% contains MAGMA_CUBE : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+hacha_contra_fantasmas:
+  display: '%group-color%Verdugo de Fantasmas'
+  description: Mas dano contra fantasmas.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains PHANTOM : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains PHANTOM : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains PHANTOM : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+hacha_contra_guardianes:
+  display: '%group-color%Verdugo de Guardianes'
+  description: Mas dano contra guardianes.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: ELITE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains GUARDIAN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains GUARDIAN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains GUARDIAN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+hacha_contra_ahogados:
+  display: '%group-color%Verdugo de Ahogados'
+  description: Mas dano contra ahogados.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: SIMPLE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains DROWNED : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains DROWNED : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains DROWNED : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+hacha_contra_jefes:
+  display: '%group-color%Verdugo de Jefes'
+  description: Mas dano contra jefes.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: LEGENDARY
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains WITHER || %mob type% contains ENDER_DRAGON || %mob type% contains WARDEN || %mob type% contains ELDER_GUARDIAN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains WITHER || %mob type% contains ENDER_DRAGON || %mob type% contains WARDEN || %mob type% contains ELDER_GUARDIAN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains WITHER || %mob type% contains ENDER_DRAGON || %mob type% contains WARDEN || %mob type% contains ELDER_GUARDIAN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+hacha_contra_jugadores:
+  display: '%group-color%Verdugo de Jugadores'
+  description: Mas dano contra jugadores.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: ULTIMATE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains PLAYER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:5
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains PLAYER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains PLAYER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:15
+arco_contra_zombis:
+  display: '%group-color%Cazador de Zombis'
+  description: Mas dano contra zombis.
+  applies-to: Arcos y ballestas
+  type: SHOOT;SHOOT_MOB
+  group: SIMPLE
+  applies:
+  - BOW
+  - CROSSBOW
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains ZOMBIE || %mob type% contains HUSK : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains ZOMBIE || %mob type% contains HUSK : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains ZOMBIE || %mob type% contains HUSK : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+arco_contra_esqueletos:
+  display: '%group-color%Cazador de Esqueletos'
+  description: Mas dano contra esqueletos.
+  applies-to: Arcos y ballestas
+  type: SHOOT;SHOOT_MOB
+  group: SIMPLE
+  applies:
+  - BOW
+  - CROSSBOW
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains SKELETON || %mob type% contains STRAY || %mob type% contains BOGGED : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains SKELETON || %mob type% contains STRAY || %mob type% contains BOGGED : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains SKELETON || %mob type% contains STRAY || %mob type% contains BOGGED : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+arco_contra_aranas:
+  display: '%group-color%Cazador de Aranas'
+  description: Mas dano contra aranas.
+  applies-to: Arcos y ballestas
+  type: SHOOT;SHOOT_MOB
+  group: SIMPLE
+  applies:
+  - BOW
+  - CROSSBOW
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains SPIDER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains SPIDER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains SPIDER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+arco_contra_creepers:
+  display: '%group-color%Cazador de Creepers'
+  description: Mas dano contra creepers.
+  applies-to: Arcos y ballestas
+  type: SHOOT;SHOOT_MOB
+  group: UNIQUE
+  applies:
+  - BOW
+  - CROSSBOW
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains CREEPER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains CREEPER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains CREEPER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+arco_contra_endermans:
+  display: '%group-color%Cazador de Endermans'
+  description: Mas dano contra endermans.
+  applies-to: Arcos y ballestas
+  type: SHOOT;SHOOT_MOB
+  group: UNIQUE
+  applies:
+  - BOW
+  - CROSSBOW
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains ENDERMAN || %mob type% contains ENDERMITE : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains ENDERMAN || %mob type% contains ENDERMITE : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains ENDERMAN || %mob type% contains ENDERMITE : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+arco_contra_piglins:
+  display: '%group-color%Cazador de Piglins'
+  description: Mas dano contra piglins.
+  applies-to: Arcos y ballestas
+  type: SHOOT;SHOOT_MOB
+  group: UNIQUE
+  applies:
+  - BOW
+  - CROSSBOW
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains PIGLIN || %mob type% contains HOGLIN || %mob type% contains ZOGLIN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains PIGLIN || %mob type% contains HOGLIN || %mob type% contains ZOGLIN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains PIGLIN || %mob type% contains HOGLIN || %mob type% contains ZOGLIN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+arco_contra_blazes:
+  display: '%group-color%Cazador de Blazes'
+  description: Mas dano contra blazes.
+  applies-to: Arcos y ballestas
+  type: SHOOT;SHOOT_MOB
+  group: ELITE
+  applies:
+  - BOW
+  - CROSSBOW
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains BLAZE || %mob type% contains GHAST : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains BLAZE || %mob type% contains GHAST : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains BLAZE || %mob type% contains GHAST : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+arco_contra_brujas:
+  display: '%group-color%Cazador de Brujas'
+  description: Mas dano contra brujas.
+  applies-to: Arcos y ballestas
+  type: SHOOT;SHOOT_MOB
+  group: UNIQUE
+  applies:
+  - BOW
+  - CROSSBOW
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains WITCH : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains WITCH : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains WITCH : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+arco_contra_illagers:
+  display: '%group-color%Cazador de Illagers'
+  description: Mas dano contra illagers.
+  applies-to: Arcos y ballestas
+  type: SHOOT;SHOOT_MOB
+  group: ELITE
+  applies:
+  - BOW
+  - CROSSBOW
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains PILLAGER || %mob type% contains VINDICATOR || %mob type% contains EVOKER || %mob type% contains RAVAGER || %mob type% contains VEX : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains PILLAGER || %mob type% contains VINDICATOR || %mob type% contains EVOKER || %mob type% contains RAVAGER || %mob type% contains VEX : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains PILLAGER || %mob type% contains VINDICATOR || %mob type% contains EVOKER || %mob type% contains RAVAGER || %mob type% contains VEX : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+arco_contra_slimes:
+  display: '%group-color%Cazador de Slimes'
+  description: Mas dano contra slimes.
+  applies-to: Arcos y ballestas
+  type: SHOOT;SHOOT_MOB
+  group: SIMPLE
+  applies:
+  - BOW
+  - CROSSBOW
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains SLIME || %mob type% contains MAGMA_CUBE : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains SLIME || %mob type% contains MAGMA_CUBE : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains SLIME || %mob type% contains MAGMA_CUBE : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+arco_contra_fantasmas:
+  display: '%group-color%Cazador de Fantasmas'
+  description: Mas dano contra fantasmas.
+  applies-to: Arcos y ballestas
+  type: SHOOT;SHOOT_MOB
+  group: UNIQUE
+  applies:
+  - BOW
+  - CROSSBOW
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains PHANTOM : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains PHANTOM : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains PHANTOM : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+arco_contra_guardianes:
+  display: '%group-color%Cazador de Guardianes'
+  description: Mas dano contra guardianes.
+  applies-to: Arcos y ballestas
+  type: SHOOT;SHOOT_MOB
+  group: ELITE
+  applies:
+  - BOW
+  - CROSSBOW
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains GUARDIAN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains GUARDIAN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains GUARDIAN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+arco_contra_ahogados:
+  display: '%group-color%Cazador de Ahogados'
+  description: Mas dano contra ahogados.
+  applies-to: Arcos y ballestas
+  type: SHOOT;SHOOT_MOB
+  group: SIMPLE
+  applies:
+  - BOW
+  - CROSSBOW
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains DROWNED : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains DROWNED : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains DROWNED : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+arco_contra_jefes:
+  display: '%group-color%Cazador de Jefes'
+  description: Mas dano contra jefes.
+  applies-to: Arcos y ballestas
+  type: SHOOT;SHOOT_MOB
+  group: LEGENDARY
+  applies:
+  - BOW
+  - CROSSBOW
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains WITHER || %mob type% contains ENDER_DRAGON || %mob type% contains WARDEN || %mob type% contains ELDER_GUARDIAN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains WITHER || %mob type% contains ENDER_DRAGON || %mob type% contains WARDEN || %mob type% contains ELDER_GUARDIAN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains WITHER || %mob type% contains ENDER_DRAGON || %mob type% contains WARDEN || %mob type% contains ELDER_GUARDIAN : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+arco_contra_jugadores:
+  display: '%group-color%Cazador de Jugadores'
+  description: Mas dano contra jugadores.
+  applies-to: Arcos y ballestas
+  type: SHOOT;SHOOT_MOB
+  group: ULTIMATE
+  applies:
+  - BOW
+  - CROSSBOW
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%mob type% contains PLAYER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:5
+    2:
+      chance: 100
+      conditions:
+      - '%mob type% contains PLAYER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    3:
+      chance: 100
+      conditions:
+      - '%mob type% contains PLAYER : %allow%'
+      effects:
+      - INCREASE_DAMAGE:15
+espada_sigiloso:
+  display: '%group-color%Filo Sigiloso'
+  description: Mas dano atacando agachado.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%player is sneaking% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:15
+    2:
+      chance: 100
+      conditions:
+      - '%player is sneaking% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:27
+    3:
+      chance: 100
+      conditions:
+      - '%player is sneaking% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:39
+espada_certero:
+  display: '%group-color%Filo Certero'
+  description: Mas dano en golpes criticos.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: ELITE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%is critical% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%is critical% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%is critical% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+espada_nocturno:
+  display: '%group-color%Filo Nocturno'
+  description: Mas dano de noche.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: SIMPLE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%is night% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%is night% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%is night% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+espada_marino:
+  display: '%group-color%Filo Marino'
+  description: Mas dano bajo el agua.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%is under water% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:15
+    2:
+      chance: 100
+      conditions:
+      - '%is under water% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:27
+    3:
+      chance: 100
+      conditions:
+      - '%is under water% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:39
+espada_madrugador:
+  display: '%group-color%Filo Madrugador'
+  description: Mas dano en el primer golpe.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: ELITE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%victim health percent% < 95 : %stop%'
+      effects:
+      - INCREASE_DAMAGE:20
+    2:
+      chance: 100
+      conditions:
+      - '%victim health percent% < 95 : %stop%'
+      effects:
+      - INCREASE_DAMAGE:35
+    3:
+      chance: 100
+      conditions:
+      - '%victim health percent% < 95 : %stop%'
+      effects:
+      - INCREASE_DAMAGE:50
+espada_encadenado:
+  display: '%group-color%Filo Encadenado'
+  description: Mas dano a partir del tercer golpe seguido.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: ULTIMATE
+  applies:
+  - ALL_SWORD
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%combo% < 3 : %stop%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%combo% < 3 : %stop%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%combo% < 3 : %stop%'
+      effects:
+      - INCREASE_DAMAGE:30
+hacha_sigiloso:
+  display: '%group-color%Tajo Sigiloso'
+  description: Mas dano atacando agachado.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%player is sneaking% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:15
+    2:
+      chance: 100
+      conditions:
+      - '%player is sneaking% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:27
+    3:
+      chance: 100
+      conditions:
+      - '%player is sneaking% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:39
+hacha_certero:
+  display: '%group-color%Tajo Certero'
+  description: Mas dano en golpes criticos.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: ELITE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%is critical% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%is critical% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%is critical% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+hacha_nocturno:
+  display: '%group-color%Tajo Nocturno'
+  description: Mas dano de noche.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: SIMPLE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%is night% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%is night% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%is night% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+hacha_marino:
+  display: '%group-color%Tajo Marino'
+  description: Mas dano bajo el agua.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%is under water% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:15
+    2:
+      chance: 100
+      conditions:
+      - '%is under water% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:27
+    3:
+      chance: 100
+      conditions:
+      - '%is under water% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:39
+hacha_madrugador:
+  display: '%group-color%Tajo Madrugador'
+  description: Mas dano en el primer golpe.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: ELITE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%victim health percent% < 95 : %stop%'
+      effects:
+      - INCREASE_DAMAGE:20
+    2:
+      chance: 100
+      conditions:
+      - '%victim health percent% < 95 : %stop%'
+      effects:
+      - INCREASE_DAMAGE:35
+    3:
+      chance: 100
+      conditions:
+      - '%victim health percent% < 95 : %stop%'
+      effects:
+      - INCREASE_DAMAGE:50
+hacha_encadenado:
+  display: '%group-color%Tajo Encadenado'
+  description: Mas dano a partir del tercer golpe seguido.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: ULTIMATE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%combo% < 3 : %stop%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%combo% < 3 : %stop%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%combo% < 3 : %stop%'
+      effects:
+      - INCREASE_DAMAGE:30
+maza_sigiloso:
+  display: '%group-color%Golpe Sigiloso'
+  description: Mas dano atacando agachado.
+  applies-to: Mazas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - MACE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%player is sneaking% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:15
+    2:
+      chance: 100
+      conditions:
+      - '%player is sneaking% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:27
+    3:
+      chance: 100
+      conditions:
+      - '%player is sneaking% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:39
+maza_certero:
+  display: '%group-color%Golpe Certero'
+  description: Mas dano en golpes criticos.
+  applies-to: Mazas
+  type: ATTACK;ATTACK_MOB
+  group: ELITE
+  applies:
+  - MACE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%is critical% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%is critical% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%is critical% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+maza_nocturno:
+  display: '%group-color%Golpe Nocturno'
+  description: Mas dano de noche.
+  applies-to: Mazas
+  type: ATTACK;ATTACK_MOB
+  group: SIMPLE
+  applies:
+  - MACE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%is night% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%is night% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%is night% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:30
+maza_marino:
+  display: '%group-color%Golpe Marino'
+  description: Mas dano bajo el agua.
+  applies-to: Mazas
+  type: ATTACK;ATTACK_MOB
+  group: UNIQUE
+  applies:
+  - MACE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%is under water% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:15
+    2:
+      chance: 100
+      conditions:
+      - '%is under water% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:27
+    3:
+      chance: 100
+      conditions:
+      - '%is under water% = true : %allow%'
+      effects:
+      - INCREASE_DAMAGE:39
+maza_madrugador:
+  display: '%group-color%Golpe Madrugador'
+  description: Mas dano en el primer golpe.
+  applies-to: Mazas
+  type: ATTACK;ATTACK_MOB
+  group: ELITE
+  applies:
+  - MACE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%victim health percent% < 95 : %stop%'
+      effects:
+      - INCREASE_DAMAGE:20
+    2:
+      chance: 100
+      conditions:
+      - '%victim health percent% < 95 : %stop%'
+      effects:
+      - INCREASE_DAMAGE:35
+    3:
+      chance: 100
+      conditions:
+      - '%victim health percent% < 95 : %stop%'
+      effects:
+      - INCREASE_DAMAGE:50
+maza_encadenado:
+  display: '%group-color%Golpe Encadenado'
+  description: Mas dano a partir del tercer golpe seguido.
+  applies-to: Mazas
+  type: ATTACK;ATTACK_MOB
+  group: ULTIMATE
+  applies:
+  - MACE
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%combo% < 3 : %stop%'
+      effects:
+      - INCREASE_DAMAGE:10
+    2:
+      chance: 100
+      conditions:
+      - '%combo% < 3 : %stop%'
+      effects:
+      - INCREASE_DAMAGE:20
+    3:
+      chance: 100
+      conditions:
+      - '%combo% < 3 : %stop%'
+      effects:
+      - INCREASE_DAMAGE:30
+yelmo_brasas:
+  display: '%group-color%Yelmo de Brasas'
+  description: Quema a quien te golpea.
+  applies-to: Cascos
+  type: DEFENSE;DEFENSE_MOB
+  group: SIMPLE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 4
+      effects:
+      - BURN:60 @Attacker
+    2:
+      chance: 7
+      effects:
+      - BURN:80 @Attacker
+    3:
+      chance: 10
+      effects:
+      - BURN:100 @Attacker
+yelmo_escarcha:
+  display: '%group-color%Yelmo de Escarcha'
+  description: Ralentiza a quien te golpea.
+  applies-to: Cascos
+  type: DEFENSE;DEFENSE_MOB
+  group: SIMPLE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:SLOW:0:60 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:SLOW:1:60 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:SLOW:2:60 @Attacker
+yelmo_puas:
+  display: '%group-color%Yelmo de Puas'
+  description: Pincha a quien te golpea.
+  applies-to: Cascos
+  type: DEFENSE;DEFENSE_MOB
+  group: SIMPLE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 4
+      effects:
+      - CACTUS:1.0 @Attacker
+    2:
+      chance: 7
+      effects:
+      - CACTUS:1.5 @Attacker
+    3:
+      chance: 10
+      effects:
+      - CACTUS:2.0 @Attacker
+yelmo_toxina:
+  display: '%group-color%Yelmo de Toxina'
+  description: Envenena a quien te golpea.
+  applies-to: Cascos
+  type: DEFENSE;DEFENSE_MOB
+  group: UNIQUE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:POISON:0:60 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:POISON:1:60 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:POISON:2:60 @Attacker
+yelmo_niebla:
+  display: '%group-color%Yelmo de Niebla'
+  description: Ciega a quien te golpea.
+  applies-to: Cascos
+  type: DEFENSE;DEFENSE_MOB
+  group: ELITE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:BLINDNESS:0:30 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:BLINDNESS:0:40 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:BLINDNESS:0:50 @Attacker
+yelmo_vendaval:
+  display: '%group-color%Yelmo de Vendaval'
+  description: Aparta a quien te golpea.
+  applies-to: Cascos
+  type: DEFENSE;DEFENSE_MOB
+  group: UNIQUE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 4
+      effects:
+      - PULL_AWAY:0.8 @Attacker
+    2:
+      chance: 7
+      effects:
+      - PULL_AWAY:1.1 @Attacker
+    3:
+      chance: 10
+      effects:
+      - PULL_AWAY:1.4 @Attacker
+yelmo_plomo:
+  display: '%group-color%Yelmo de Plomo'
+  description: Debilita a quien te golpea.
+  applies-to: Cascos
+  type: DEFENSE;DEFENSE_MOB
+  group: ELITE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:WEAKNESS:0:80 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:WEAKNESS:1:80 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:WEAKNESS:2:80 @Attacker
+yelmo_ruina:
+  display: '%group-color%Yelmo de Ruina'
+  description: Marchita a quien te golpea.
+  applies-to: Cascos
+  type: DEFENSE;DEFENSE_MOB
+  group: ULTIMATE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:WITHER:0:60 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:WITHER:0:80 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:WITHER:0:100 @Attacker
+yelmo_vacio:
+  display: '%group-color%Yelmo del Vacio'
+  description: Hace levitar a quien te golpea.
+  applies-to: Cascos
+  type: DEFENSE;DEFENSE_MOB
+  group: LEGENDARY
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:LEVITATION:0:20 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:LEVITATION:0:30 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:LEVITATION:0:40 @Attacker
+coraza_brasas:
+  display: '%group-color%Coraza de Brasas'
+  description: Quema a quien te golpea.
+  applies-to: Pecheras
+  type: DEFENSE;DEFENSE_MOB
+  group: SIMPLE
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - BURN:60 @Attacker
+    2:
+      chance: 7
+      effects:
+      - BURN:80 @Attacker
+    3:
+      chance: 10
+      effects:
+      - BURN:100 @Attacker
+coraza_escarcha:
+  display: '%group-color%Coraza de Escarcha'
+  description: Ralentiza a quien te golpea.
+  applies-to: Pecheras
+  type: DEFENSE;DEFENSE_MOB
+  group: SIMPLE
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:SLOW:0:60 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:SLOW:1:60 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:SLOW:2:60 @Attacker
+coraza_puas:
+  display: '%group-color%Coraza de Puas'
+  description: Pincha a quien te golpea.
+  applies-to: Pecheras
+  type: DEFENSE;DEFENSE_MOB
+  group: SIMPLE
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - CACTUS:1.0 @Attacker
+    2:
+      chance: 7
+      effects:
+      - CACTUS:1.5 @Attacker
+    3:
+      chance: 10
+      effects:
+      - CACTUS:2.0 @Attacker
+coraza_toxina:
+  display: '%group-color%Coraza de Toxina'
+  description: Envenena a quien te golpea.
+  applies-to: Pecheras
+  type: DEFENSE;DEFENSE_MOB
+  group: UNIQUE
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:POISON:0:60 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:POISON:1:60 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:POISON:2:60 @Attacker
+coraza_niebla:
+  display: '%group-color%Coraza de Niebla'
+  description: Ciega a quien te golpea.
+  applies-to: Pecheras
+  type: DEFENSE;DEFENSE_MOB
+  group: ELITE
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:BLINDNESS:0:30 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:BLINDNESS:0:40 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:BLINDNESS:0:50 @Attacker
+coraza_vendaval:
+  display: '%group-color%Coraza de Vendaval'
+  description: Aparta a quien te golpea.
+  applies-to: Pecheras
+  type: DEFENSE;DEFENSE_MOB
+  group: UNIQUE
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - PULL_AWAY:0.8 @Attacker
+    2:
+      chance: 7
+      effects:
+      - PULL_AWAY:1.1 @Attacker
+    3:
+      chance: 10
+      effects:
+      - PULL_AWAY:1.4 @Attacker
+coraza_plomo:
+  display: '%group-color%Coraza de Plomo'
+  description: Debilita a quien te golpea.
+  applies-to: Pecheras
+  type: DEFENSE;DEFENSE_MOB
+  group: ELITE
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:WEAKNESS:0:80 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:WEAKNESS:1:80 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:WEAKNESS:2:80 @Attacker
+coraza_ruina:
+  display: '%group-color%Coraza de Ruina'
+  description: Marchita a quien te golpea.
+  applies-to: Pecheras
+  type: DEFENSE;DEFENSE_MOB
+  group: ULTIMATE
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:WITHER:0:60 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:WITHER:0:80 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:WITHER:0:100 @Attacker
+coraza_vacio:
+  display: '%group-color%Coraza del Vacio'
+  description: Hace levitar a quien te golpea.
+  applies-to: Pecheras
+  type: DEFENSE;DEFENSE_MOB
+  group: LEGENDARY
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:LEVITATION:0:20 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:LEVITATION:0:30 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:LEVITATION:0:40 @Attacker
+grebas_brasas:
+  display: '%group-color%Grebas de Brasas'
+  description: Quema a quien te golpea.
+  applies-to: Pantalones
+  type: DEFENSE;DEFENSE_MOB
+  group: SIMPLE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 4
+      effects:
+      - BURN:60 @Attacker
+    2:
+      chance: 7
+      effects:
+      - BURN:80 @Attacker
+    3:
+      chance: 10
+      effects:
+      - BURN:100 @Attacker
+grebas_escarcha:
+  display: '%group-color%Grebas de Escarcha'
+  description: Ralentiza a quien te golpea.
+  applies-to: Pantalones
+  type: DEFENSE;DEFENSE_MOB
+  group: SIMPLE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:SLOW:0:60 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:SLOW:1:60 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:SLOW:2:60 @Attacker
+grebas_puas:
+  display: '%group-color%Grebas de Puas'
+  description: Pincha a quien te golpea.
+  applies-to: Pantalones
+  type: DEFENSE;DEFENSE_MOB
+  group: SIMPLE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 4
+      effects:
+      - CACTUS:1.0 @Attacker
+    2:
+      chance: 7
+      effects:
+      - CACTUS:1.5 @Attacker
+    3:
+      chance: 10
+      effects:
+      - CACTUS:2.0 @Attacker
+grebas_toxina:
+  display: '%group-color%Grebas de Toxina'
+  description: Envenena a quien te golpea.
+  applies-to: Pantalones
+  type: DEFENSE;DEFENSE_MOB
+  group: UNIQUE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:POISON:0:60 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:POISON:1:60 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:POISON:2:60 @Attacker
+grebas_niebla:
+  display: '%group-color%Grebas de Niebla'
+  description: Ciega a quien te golpea.
+  applies-to: Pantalones
+  type: DEFENSE;DEFENSE_MOB
+  group: ELITE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:BLINDNESS:0:30 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:BLINDNESS:0:40 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:BLINDNESS:0:50 @Attacker
+grebas_vendaval:
+  display: '%group-color%Grebas de Vendaval'
+  description: Aparta a quien te golpea.
+  applies-to: Pantalones
+  type: DEFENSE;DEFENSE_MOB
+  group: UNIQUE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 4
+      effects:
+      - PULL_AWAY:0.8 @Attacker
+    2:
+      chance: 7
+      effects:
+      - PULL_AWAY:1.1 @Attacker
+    3:
+      chance: 10
+      effects:
+      - PULL_AWAY:1.4 @Attacker
+grebas_plomo:
+  display: '%group-color%Grebas de Plomo'
+  description: Debilita a quien te golpea.
+  applies-to: Pantalones
+  type: DEFENSE;DEFENSE_MOB
+  group: ELITE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:WEAKNESS:0:80 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:WEAKNESS:1:80 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:WEAKNESS:2:80 @Attacker
+grebas_ruina:
+  display: '%group-color%Grebas de Ruina'
+  description: Marchita a quien te golpea.
+  applies-to: Pantalones
+  type: DEFENSE;DEFENSE_MOB
+  group: ULTIMATE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:WITHER:0:60 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:WITHER:0:80 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:WITHER:0:100 @Attacker
+grebas_vacio:
+  display: '%group-color%Grebas del Vacio'
+  description: Hace levitar a quien te golpea.
+  applies-to: Pantalones
+  type: DEFENSE;DEFENSE_MOB
+  group: LEGENDARY
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:LEVITATION:0:20 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:LEVITATION:0:30 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:LEVITATION:0:40 @Attacker
+botas_brasas:
+  display: '%group-color%Botas de Brasas'
+  description: Quema a quien te golpea.
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB
+  group: SIMPLE
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 4
+      effects:
+      - BURN:60 @Attacker
+    2:
+      chance: 7
+      effects:
+      - BURN:80 @Attacker
+    3:
+      chance: 10
+      effects:
+      - BURN:100 @Attacker
+botas_escarcha:
+  display: '%group-color%Botas de Escarcha'
+  description: Ralentiza a quien te golpea.
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB
+  group: SIMPLE
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:SLOW:0:60 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:SLOW:1:60 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:SLOW:2:60 @Attacker
+botas_puas:
+  display: '%group-color%Botas de Puas'
+  description: Pincha a quien te golpea.
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB
+  group: SIMPLE
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 4
+      effects:
+      - CACTUS:1.0 @Attacker
+    2:
+      chance: 7
+      effects:
+      - CACTUS:1.5 @Attacker
+    3:
+      chance: 10
+      effects:
+      - CACTUS:2.0 @Attacker
+botas_toxina:
+  display: '%group-color%Botas de Toxina'
+  description: Envenena a quien te golpea.
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB
+  group: UNIQUE
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:POISON:0:60 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:POISON:1:60 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:POISON:2:60 @Attacker
+botas_niebla:
+  display: '%group-color%Botas de Niebla'
+  description: Ciega a quien te golpea.
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB
+  group: ELITE
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:BLINDNESS:0:30 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:BLINDNESS:0:40 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:BLINDNESS:0:50 @Attacker
+botas_vendaval:
+  display: '%group-color%Botas de Vendaval'
+  description: Aparta a quien te golpea.
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB
+  group: UNIQUE
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 4
+      effects:
+      - PULL_AWAY:0.8 @Attacker
+    2:
+      chance: 7
+      effects:
+      - PULL_AWAY:1.1 @Attacker
+    3:
+      chance: 10
+      effects:
+      - PULL_AWAY:1.4 @Attacker
+botas_plomo:
+  display: '%group-color%Botas de Plomo'
+  description: Debilita a quien te golpea.
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB
+  group: ELITE
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:WEAKNESS:0:80 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:WEAKNESS:1:80 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:WEAKNESS:2:80 @Attacker
+botas_ruina:
+  display: '%group-color%Botas de Ruina'
+  description: Marchita a quien te golpea.
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB
+  group: ULTIMATE
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:WITHER:0:60 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:WITHER:0:80 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:WITHER:0:100 @Attacker
+botas_vacio:
+  display: '%group-color%Botas del Vacio'
+  description: Hace levitar a quien te golpea.
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB
+  group: LEGENDARY
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 4
+      effects:
+      - POTION:LEVITATION:0:20 @Attacker
+    2:
+      chance: 7
+      effects:
+      - POTION:LEVITATION:0:30 @Attacker
+    3:
+      chance: 10
+      effects:
+      - POTION:LEVITATION:0:40 @Attacker
+yelmo_tenacidad:
+  display: '%group-color%Yelmo de Tenacidad'
+  description: Con poca vida resistes mas.
+  applies-to: Cascos
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: ELITE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:DAMAGE_RESISTANCE:0:80
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:DAMAGE_RESISTANCE:1:100
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:DAMAGE_RESISTANCE:1:120
+yelmo_vitalidad:
+  display: '%group-color%Yelmo de Vitalidad'
+  description: Con poca vida te regeneras.
+  applies-to: Cascos
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: ELITE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:REGENERATION:0:80
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:REGENERATION:1:100
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:REGENERATION:2:120
+yelmo_huida:
+  display: '%group-color%Yelmo de Huida'
+  description: Con poca vida corres mas.
+  applies-to: Cascos
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: UNIQUE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:SPEED:1:80
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:SPEED:2:100
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:SPEED:3:120
+yelmo_egida:
+  display: '%group-color%Yelmo de Egida'
+  description: Con poca vida te cubre un escudo.
+  applies-to: Cascos
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: ULTIMATE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:ABSORPTION:0:160
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:ABSORPTION:1:160
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:ABSORPTION:2:160
+yelmo_penumbra:
+  display: '%group-color%Yelmo de Penumbra'
+  description: Con poca vida te vuelves invisible.
+  applies-to: Cascos
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: LEGENDARY
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:INVISIBILITY:0:60
+      - PARTICLE:LARGE_SMOKE:20:0.02 @Self
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:INVISIBILITY:0:80
+      - PARTICLE:LARGE_SMOKE:20:0.02 @Self
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:INVISIBILITY:0:100
+      - PARTICLE:LARGE_SMOKE:20:0.02 @Self
+yelmo_furia:
+  display: '%group-color%Yelmo de Furia'
+  description: Con poca vida pegas mas fuerte.
+  applies-to: Cascos
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: LEGENDARY
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:INCREASE_DAMAGE:0:80
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:INCREASE_DAMAGE:0:100
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:INCREASE_DAMAGE:0:120
+coraza_tenacidad:
+  display: '%group-color%Coraza de Tenacidad'
+  description: Con poca vida resistes mas.
+  applies-to: Pecheras
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: ELITE
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:DAMAGE_RESISTANCE:0:80
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:DAMAGE_RESISTANCE:1:100
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:DAMAGE_RESISTANCE:1:120
+coraza_vitalidad:
+  display: '%group-color%Coraza de Vitalidad'
+  description: Con poca vida te regeneras.
+  applies-to: Pecheras
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: ELITE
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:REGENERATION:0:80
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:REGENERATION:1:100
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:REGENERATION:2:120
+coraza_huida:
+  display: '%group-color%Coraza de Huida'
+  description: Con poca vida corres mas.
+  applies-to: Pecheras
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: UNIQUE
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:SPEED:1:80
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:SPEED:2:100
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:SPEED:3:120
+coraza_egida:
+  display: '%group-color%Coraza de Egida'
+  description: Con poca vida te cubre un escudo.
+  applies-to: Pecheras
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: ULTIMATE
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:ABSORPTION:0:160
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:ABSORPTION:1:160
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:ABSORPTION:2:160
+coraza_penumbra:
+  display: '%group-color%Coraza de Penumbra'
+  description: Con poca vida te vuelves invisible.
+  applies-to: Pecheras
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: LEGENDARY
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:INVISIBILITY:0:60
+      - PARTICLE:LARGE_SMOKE:20:0.02 @Self
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:INVISIBILITY:0:80
+      - PARTICLE:LARGE_SMOKE:20:0.02 @Self
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:INVISIBILITY:0:100
+      - PARTICLE:LARGE_SMOKE:20:0.02 @Self
+coraza_furia:
+  display: '%group-color%Coraza de Furia'
+  description: Con poca vida pegas mas fuerte.
+  applies-to: Pecheras
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: LEGENDARY
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:INCREASE_DAMAGE:0:80
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:INCREASE_DAMAGE:0:100
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:INCREASE_DAMAGE:0:120
+grebas_tenacidad:
+  display: '%group-color%Grebas de Tenacidad'
+  description: Con poca vida resistes mas.
+  applies-to: Pantalones
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: ELITE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:DAMAGE_RESISTANCE:0:80
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:DAMAGE_RESISTANCE:1:100
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:DAMAGE_RESISTANCE:1:120
+grebas_vitalidad:
+  display: '%group-color%Grebas de Vitalidad'
+  description: Con poca vida te regeneras.
+  applies-to: Pantalones
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: ELITE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:REGENERATION:0:80
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:REGENERATION:1:100
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:REGENERATION:2:120
+grebas_huida:
+  display: '%group-color%Grebas de Huida'
+  description: Con poca vida corres mas.
+  applies-to: Pantalones
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: UNIQUE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:SPEED:1:80
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:SPEED:2:100
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:SPEED:3:120
+grebas_egida:
+  display: '%group-color%Grebas de Egida'
+  description: Con poca vida te cubre un escudo.
+  applies-to: Pantalones
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: ULTIMATE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:ABSORPTION:0:160
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:ABSORPTION:1:160
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:ABSORPTION:2:160
+grebas_penumbra:
+  display: '%group-color%Grebas de Penumbra'
+  description: Con poca vida te vuelves invisible.
+  applies-to: Pantalones
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: LEGENDARY
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:INVISIBILITY:0:60
+      - PARTICLE:LARGE_SMOKE:20:0.02 @Self
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:INVISIBILITY:0:80
+      - PARTICLE:LARGE_SMOKE:20:0.02 @Self
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:INVISIBILITY:0:100
+      - PARTICLE:LARGE_SMOKE:20:0.02 @Self
+grebas_furia:
+  display: '%group-color%Grebas de Furia'
+  description: Con poca vida pegas mas fuerte.
+  applies-to: Pantalones
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: LEGENDARY
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:INCREASE_DAMAGE:0:80
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:INCREASE_DAMAGE:0:100
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:INCREASE_DAMAGE:0:120
+botas_tenacidad:
+  display: '%group-color%Botas de Tenacidad'
+  description: Con poca vida resistes mas.
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: ELITE
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:DAMAGE_RESISTANCE:0:80
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:DAMAGE_RESISTANCE:1:100
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:DAMAGE_RESISTANCE:1:120
+botas_vitalidad:
+  display: '%group-color%Botas de Vitalidad'
+  description: Con poca vida te regeneras.
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: ELITE
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:REGENERATION:0:80
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:REGENERATION:1:100
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:REGENERATION:2:120
+botas_huida:
+  display: '%group-color%Botas de Huida'
+  description: Con poca vida corres mas.
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: UNIQUE
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:SPEED:1:80
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:SPEED:2:100
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:SPEED:3:120
+botas_egida:
+  display: '%group-color%Botas de Egida'
+  description: Con poca vida te cubre un escudo.
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: ULTIMATE
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:ABSORPTION:0:160
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:ABSORPTION:1:160
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:ABSORPTION:2:160
+botas_penumbra:
+  display: '%group-color%Botas de Penumbra'
+  description: Con poca vida te vuelves invisible.
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: LEGENDARY
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:INVISIBILITY:0:60
+      - PARTICLE:LARGE_SMOKE:20:0.02 @Self
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:INVISIBILITY:0:80
+      - PARTICLE:LARGE_SMOKE:20:0.02 @Self
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:INVISIBILITY:0:100
+      - PARTICLE:LARGE_SMOKE:20:0.02 @Self
+botas_furia:
+  display: '%group-color%Botas de Furia'
+  description: Con poca vida pegas mas fuerte.
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: LEGENDARY
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 100
+      cooldown: 60
+      conditions:
+      - '%player health percent% > 30 : %stop%'
+      effects:
+      - POTION:INCREASE_DAMAGE:0:80
+    2:
+      chance: 100
+      cooldown: 50
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - POTION:INCREASE_DAMAGE:0:100
+    3:
+      chance: 100
+      cooldown: 40
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - POTION:INCREASE_DAMAGE:0:120
+yelmo_muralla:
+  display: '%group-color%Yelmo de Muralla'
+  description: Menos dano de proyectiles.
+  applies-to: Cascos
+  type: DEFENSE_PROJECTILE
+  group: SIMPLE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:5
+    2:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:10
+    3:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:15
+yelmo_bunker:
+  display: '%group-color%Yelmo de Bunker'
+  description: Menos dano de explosiones.
+  applies-to: Cascos
+  type: EXPLOSION
+  group: UNIQUE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:8
+    2:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:16
+    3:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:24
+yelmo_salamandra:
+  display: '%group-color%Yelmo de Salamandra'
+  description: Menos dano de fuego y lava.
+  applies-to: Cascos
+  type: FIRE
+  group: UNIQUE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:8
+    2:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:16
+    3:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:24
+yelmo_pluma:
+  display: '%group-color%Yelmo de Pluma'
+  description: Menos dano de caidas.
+  applies-to: Cascos
+  type: FALL_DAMAGE
+  group: UNIQUE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:8
+    2:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:16
+    3:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:24
+coraza_muralla:
+  display: '%group-color%Coraza de Muralla'
+  description: Menos dano de proyectiles.
+  applies-to: Pecheras
+  type: DEFENSE_PROJECTILE
+  group: SIMPLE
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:5
+    2:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:10
+    3:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:15
+coraza_bunker:
+  display: '%group-color%Coraza de Bunker'
+  description: Menos dano de explosiones.
+  applies-to: Pecheras
+  type: EXPLOSION
+  group: UNIQUE
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:8
+    2:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:16
+    3:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:24
+coraza_salamandra:
+  display: '%group-color%Coraza de Salamandra'
+  description: Menos dano de fuego y lava.
+  applies-to: Pecheras
+  type: FIRE
+  group: UNIQUE
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:8
+    2:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:16
+    3:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:24
+coraza_pluma:
+  display: '%group-color%Coraza de Pluma'
+  description: Menos dano de caidas.
+  applies-to: Pecheras
+  type: FALL_DAMAGE
+  group: UNIQUE
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:8
+    2:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:16
+    3:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:24
+grebas_muralla:
+  display: '%group-color%Grebas de Muralla'
+  description: Menos dano de proyectiles.
+  applies-to: Pantalones
+  type: DEFENSE_PROJECTILE
+  group: SIMPLE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:5
+    2:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:10
+    3:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:15
+grebas_bunker:
+  display: '%group-color%Grebas de Bunker'
+  description: Menos dano de explosiones.
+  applies-to: Pantalones
+  type: EXPLOSION
+  group: UNIQUE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:8
+    2:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:16
+    3:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:24
+grebas_salamandra:
+  display: '%group-color%Grebas de Salamandra'
+  description: Menos dano de fuego y lava.
+  applies-to: Pantalones
+  type: FIRE
+  group: UNIQUE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:8
+    2:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:16
+    3:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:24
+grebas_pluma:
+  display: '%group-color%Grebas de Pluma'
+  description: Menos dano de caidas.
+  applies-to: Pantalones
+  type: FALL_DAMAGE
+  group: UNIQUE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:8
+    2:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:16
+    3:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:24
+botas_muralla:
+  display: '%group-color%Botas de Muralla'
+  description: Menos dano de proyectiles.
+  applies-to: Botas
+  type: DEFENSE_PROJECTILE
+  group: SIMPLE
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:5
+    2:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:10
+    3:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:15
+botas_bunker:
+  display: '%group-color%Botas de Bunker'
+  description: Menos dano de explosiones.
+  applies-to: Botas
+  type: EXPLOSION
+  group: UNIQUE
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:8
+    2:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:16
+    3:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:24
+botas_salamandra:
+  display: '%group-color%Botas de Salamandra'
+  description: Menos dano de fuego y lava.
+  applies-to: Botas
+  type: FIRE
+  group: UNIQUE
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:8
+    2:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:16
+    3:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:24
+botas_pluma:
+  display: '%group-color%Botas de Pluma'
+  description: Menos dano de caidas.
+  applies-to: Botas
+  type: FALL_DAMAGE
+  group: UNIQUE
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:8
+    2:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:16
+    3:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:24
+zancada_veloz:
+  display: '%group-color%Zancada Veloz'
+  description: Efecto permanente mientras lo llevas puesto (speed).
+  applies-to: Botas
+  type: EFFECT_STATIC
+  group: UNIQUE
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:SPEED:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:SPEED:1:120
+trote_ligero:
+  display: '%group-color%Trote Ligero'
+  description: Efecto permanente mientras lo llevas puesto (speed).
+  applies-to: Pantalones
+  type: EFFECT_STATIC
+  group: SIMPLE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:SPEED:0:120
+sangre_agil:
+  display: '%group-color%Sangre Agil'
+  description: Efecto permanente mientras lo llevas puesto (speed).
+  applies-to: Pecheras
+  type: EFFECT_STATIC
+  group: UNIQUE
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:SPEED:0:120
+brinco:
+  display: '%group-color%Brinco'
+  description: Efecto permanente mientras lo llevas puesto (jump).
+  applies-to: Botas
+  type: EFFECT_STATIC
+  group: SIMPLE
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:JUMP:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:JUMP:1:120
+resorte:
+  display: '%group-color%Resorte'
+  description: Efecto permanente mientras lo llevas puesto (jump).
+  applies-to: Pantalones
+  type: EFFECT_STATIC
+  group: SIMPLE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:JUMP:0:120
+descenso_suave:
+  display: '%group-color%Descenso Suave'
+  description: Efecto permanente mientras lo llevas puesto (slow falling).
+  applies-to: Botas
+  type: EFFECT_STATIC
+  group: ELITE
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:SLOW_FALLING:0:120
+aleta_de_delfin:
+  display: '%group-color%Aleta de Delfin'
+  description: Efecto permanente mientras lo llevas puesto (dolphins grace).
+  applies-to: Botas
+  type: EFFECT_STATIC
+  group: ULTIMATE
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:DOLPHINS_GRACE:0:120
+corriente_marina:
+  display: '%group-color%Corriente Marina'
+  description: Efecto permanente mientras lo llevas puesto (dolphins grace).
+  applies-to: Pantalones
+  type: EFFECT_STATIC
+  group: ELITE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:DOLPHINS_GRACE:0:120
+brazo_minero:
+  display: '%group-color%Brazo Minero'
+  description: Efecto permanente mientras lo llevas puesto (fast digging).
+  applies-to: Pecheras
+  type: EFFECT_STATIC
+  group: ELITE
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:FAST_DIGGING:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:FAST_DIGGING:1:120
+mente_obrera:
+  display: '%group-color%Mente Obrera'
+  description: Efecto permanente mientras lo llevas puesto (fast digging).
+  applies-to: Cascos
+  type: EFFECT_STATIC
+  group: UNIQUE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:FAST_DIGGING:0:120
+ritmo_minero:
+  display: '%group-color%Ritmo Minero'
+  description: Efecto permanente mientras lo llevas puesto (fast digging).
+  applies-to: Pantalones
+  type: EFFECT_STATIC
+  group: SIMPLE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:FAST_DIGGING:0:120
+vigor_del_titan:
+  display: '%group-color%Vigor del Titan'
+  description: Efecto permanente mientras lo llevas puesto (increase damage).
+  applies-to: Pecheras
+  type: EFFECT_STATIC
+  group: LEGENDARY
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:INCREASE_DAMAGE:0:120
+piel_de_piedra:
+  display: '%group-color%Piel de Piedra'
+  description: Efecto permanente mientras lo llevas puesto (damage resistance).
+  applies-to: Pecheras
+  type: EFFECT_STATIC
+  group: LEGENDARY
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:DAMAGE_RESISTANCE:0:120
+muslos_de_hierro:
+  display: '%group-color%Muslos de Hierro'
+  description: Efecto permanente mientras lo llevas puesto (damage resistance).
+  applies-to: Pantalones
+  type: EFFECT_STATIC
+  group: ULTIMATE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:DAMAGE_RESISTANCE:0:120
+latido_eterno:
+  display: '%group-color%Latido Eterno'
+  description: Efecto permanente mientras lo llevas puesto (regeneration).
+  applies-to: Pecheras
+  type: EFFECT_STATIC
+  group: LEGENDARY
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:REGENERATION:0:120
+mente_serena:
+  display: '%group-color%Mente Serena'
+  description: Efecto permanente mientras lo llevas puesto (regeneration).
+  applies-to: Cascos
+  type: EFFECT_STATIC
+  group: ULTIMATE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:REGENERATION:0:120
+piel_de_salamandra:
+  display: '%group-color%Piel de Salamandra'
+  description: Efecto permanente mientras lo llevas puesto (fire resistance).
+  applies-to: Pantalones
+  type: EFFECT_STATIC
+  group: ELITE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:FIRE_RESISTANCE:0:120
+pasos_de_ceniza:
+  display: '%group-color%Pasos de Ceniza'
+  description: Efecto permanente mientras lo llevas puesto (fire resistance).
+  applies-to: Botas
+  type: EFFECT_STATIC
+  group: ELITE
+  applies:
+  - ALL_BOOTS
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:FIRE_RESISTANCE:0:120
+corona_de_brasas:
+  display: '%group-color%Corona de Brasas'
+  description: Efecto permanente mientras lo llevas puesto (fire resistance).
+  applies-to: Cascos
+  type: EFFECT_STATIC
+  group: ELITE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:FIRE_RESISTANCE:0:120
+trebol_de_cuatro_hojas:
+  display: '%group-color%Trebol de Cuatro Hojas'
+  description: Efecto permanente mientras lo llevas puesto (luck).
+  applies-to: Cascos
+  type: EFFECT_STATIC
+  group: SIMPLE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:LUCK:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:LUCK:1:120
+heroe_del_pueblo:
+  display: '%group-color%Heroe del Pueblo'
+  description: Efecto permanente mientras lo llevas puesto (hero of the village).
+  applies-to: Cascos
+  type: EFFECT_STATIC
+  group: UNIQUE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:HERO_OF_THE_VILLAGE:0:120
+corazon_del_mar:
+  display: '%group-color%Corazon del Mar'
+  description: Efecto permanente mientras lo llevas puesto (conduit power).
+  applies-to: Cascos
+  type: EFFECT_STATIC
+  group: ULTIMATE
+  applies:
+  - ALL_HELMET
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:CONDUIT_POWER:0:120
+pulmones_de_pez:
+  display: '%group-color%Pulmones de Pez'
+  description: Efecto permanente mientras lo llevas puesto (water breathing).
+  applies-to: Pecheras
+  type: EFFECT_STATIC
+  group: SIMPLE
+  applies:
+  - ALL_CHESTPLATE
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:WATER_BREATHING:0:120
+agallas:
+  display: '%group-color%Agallas'
+  description: Efecto permanente mientras lo llevas puesto (water breathing).
+  applies-to: Pantalones
+  type: EFFECT_STATIC
+  group: SIMPLE
+  applies:
+  - ALL_LEGGINGS
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:WATER_BREATHING:0:120
+aura_ignea:
+  display: '%group-color%Aura Ignea'
+  description: Quema a los monstruos cercanos.
+  applies-to: Pecheras
+  type: REPEATING
+  group: LEGENDARY
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    not-applyable-with:
+    - aura_gelida
+    - aura_toxica
+    - aura_debilitante
+    - aura_repelente
+    - aura_sagrada
+  levels:
+    1:
+      chance: 100
+      effects:
+      - BURN:40 @Aoe{radius=3,target=hostile}
+      - PARTICLE:FLAME:10:0.02 @Self
+    2:
+      chance: 100
+      effects:
+      - BURN:40 @Aoe{radius=4,target=hostile}
+      - PARTICLE:FLAME:10:0.02 @Self
+    3:
+      chance: 100
+      effects:
+      - BURN:40 @Aoe{radius=5,target=hostile}
+      - PARTICLE:FLAME:10:0.02 @Self
+aura_gelida:
+  display: '%group-color%Aura Gelida'
+  description: Frena a los monstruos cercanos.
+  applies-to: Pecheras
+  type: REPEATING
+  group: LEGENDARY
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    not-applyable-with:
+    - aura_ignea
+    - aura_toxica
+    - aura_debilitante
+    - aura_repelente
+    - aura_sagrada
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:SLOW:0:60 @Aoe{radius=3,target=hostile}
+      - PARTICLE:SNOWFLAKE:10:0.02 @Self
+    2:
+      chance: 100
+      effects:
+      - POTION:SLOW:0:60 @Aoe{radius=4,target=hostile}
+      - PARTICLE:SNOWFLAKE:10:0.02 @Self
+    3:
+      chance: 100
+      effects:
+      - POTION:SLOW:0:60 @Aoe{radius=5,target=hostile}
+      - PARTICLE:SNOWFLAKE:10:0.02 @Self
+aura_toxica:
+  display: '%group-color%Aura Toxica'
+  description: Envenena a los monstruos cercanos.
+  applies-to: Pecheras
+  type: REPEATING
+  group: FABLED
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    not-applyable-with:
+    - aura_ignea
+    - aura_gelida
+    - aura_debilitante
+    - aura_repelente
+    - aura_sagrada
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:POISON:0:60 @Aoe{radius=3,target=hostile}
+      - PARTICLE:ITEM_SLIME:8:0.02 @Self
+    2:
+      chance: 100
+      effects:
+      - POTION:POISON:0:60 @Aoe{radius=4,target=hostile}
+      - PARTICLE:ITEM_SLIME:8:0.02 @Self
+    3:
+      chance: 100
+      effects:
+      - POTION:POISON:0:60 @Aoe{radius=5,target=hostile}
+      - PARTICLE:ITEM_SLIME:8:0.02 @Self
+aura_debilitante:
+  display: '%group-color%Aura Debilitante'
+  description: Debilita a los monstruos cercanos.
+  applies-to: Pecheras
+  type: REPEATING
+  group: ULTIMATE
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    not-applyable-with:
+    - aura_ignea
+    - aura_gelida
+    - aura_toxica
+    - aura_repelente
+    - aura_sagrada
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:WEAKNESS:0:60 @Aoe{radius=3,target=hostile}
+    2:
+      chance: 100
+      effects:
+      - POTION:WEAKNESS:0:60 @Aoe{radius=4,target=hostile}
+    3:
+      chance: 100
+      effects:
+      - POTION:WEAKNESS:0:60 @Aoe{radius=5,target=hostile}
+aura_repelente:
+  display: '%group-color%Aura Repelente'
+  description: Aparta a los monstruos cercanos.
+  applies-to: Pecheras
+  type: REPEATING
+  group: ULTIMATE
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    not-applyable-with:
+    - aura_ignea
+    - aura_gelida
+    - aura_toxica
+    - aura_debilitante
+    - aura_sagrada
+  levels:
+    1:
+      chance: 100
+      effects:
+      - PULL_AWAY:0.5 @Aoe{radius=3,target=hostile}
+    2:
+      chance: 100
+      effects:
+      - PULL_AWAY:0.5 @Aoe{radius=4,target=hostile}
+    3:
+      chance: 100
+      effects:
+      - PULL_AWAY:0.5 @Aoe{radius=5,target=hostile}
+aura_sagrada:
+  display: '%group-color%Aura Sagrada'
+  description: Te cura poco a poco.
+  applies-to: Pecheras
+  type: REPEATING
+  group: FABLED
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    not-applyable-with:
+    - aura_ignea
+    - aura_gelida
+    - aura_toxica
+    - aura_debilitante
+    - aura_repelente
+  levels:
+    1:
+      chance: 100
+      effects:
+      - ADD_HEALTH:1
+      - PARTICLE:HEART:2:0.05 @Self
+    2:
+      chance: 100
+      effects:
+      - ADD_HEALTH:1
+      - PARTICLE:HEART:2:0.05 @Self
+    3:
+      chance: 100
+      effects:
+      - ADD_HEALTH:1
+      - PARTICLE:HEART:2:0.05 @Self
+punta_frenetica:
+  display: '%group-color%Punta Frenetica'
+  description: Al romper bloques a veces te da prisa minera.
+  applies-to: Picos
+  type: MINING
+  group: UNIQUE
+  applies:
+  - ALL_PICKAXE
+  levels:
+    1:
+      chance: 8
+      effects:
+      - POTION:FAST_DIGGING:0:80 @Self
+    2:
+      chance: 11
+      effects:
+      - POTION:FAST_DIGGING:1:100 @Self
+    3:
+      chance: 14
+      effects:
+      - POTION:FAST_DIGGING:2:120 @Self
+punta_erudita:
+  display: '%group-color%Punta Erudita'
+  description: Experiencia extra al romper bloques.
+  applies-to: Picos
+  type: MINING
+  group: SIMPLE
+  applies:
+  - ALL_PICKAXE
+  levels:
+    1:
+      chance: 15
+      effects:
+      - EXP:1
+    2:
+      chance: 20
+      effects:
+      - EXP:2
+    3:
+      chance: 25
+      effects:
+      - EXP:3
+punta_buscadora:
+  display: '%group-color%Punta Buscadora'
+  description: A veces encuentra algo util.
+  applies-to: Picos
+  type: MINING
+  group: ELITE
+  applies:
+  - ALL_PICKAXE
+  levels:
+    1:
+      chance: 0.5
+      conditions:
+      - '%block natural% = false : %stop%'
+      effects:
+      - DROP_ITEM:<random word>DIAMOND,EMERALD,GOLD_INGOT,LAPIS_LAZULI,REDSTONE</random word>:1 @Block
+    2:
+      chance: 1.0
+      conditions:
+      - '%block natural% = false : %stop%'
+      effects:
+      - DROP_ITEM:<random word>DIAMOND,EMERALD,GOLD_INGOT,LAPIS_LAZULI,REDSTONE</random word>:1 @Block
+    3:
+      chance: 1.5
+      conditions:
+      - '%block natural% = false : %stop%'
+      effects:
+      - DROP_ITEM:<random word>DIAMOND,EMERALD,GOLD_INGOT,LAPIS_LAZULI,REDSTONE</random word>:1 @Block
+punta_viva:
+  display: '%group-color%Punta Viva'
+  description: Se repara sola al trabajar.
+  applies-to: Picos
+  type: MINING
+  group: ULTIMATE
+  applies:
+  - ALL_PICKAXE
+  levels:
+    1:
+      chance: 10
+      effects:
+      - ADD_DURABILITY_ITEM:1
+    2:
+      chance: 20
+      effects:
+      - ADD_DURABILITY_ITEM:2
+    3:
+      chance: 30
+      effects:
+      - ADD_DURABILITY_ITEM:3
+punta_ligera:
+  display: '%group-color%Punta Ligera'
+  description: Al trabajar a veces corres mas.
+  applies-to: Picos
+  type: MINING
+  group: SIMPLE
+  applies:
+  - ALL_PICKAXE
+  levels:
+    1:
+      chance: 12
+      effects:
+      - POTION:SPEED:0:60 @Self
+    2:
+      chance: 16
+      effects:
+      - POTION:SPEED:1:60 @Self
+    3:
+      chance: 20
+      effects:
+      - POTION:SPEED:2:60 @Self
+punta_nutritiva:
+  display: '%group-color%Punta Nutritiva'
+  description: Al trabajar a veces recuperas comida.
+  applies-to: Picos
+  type: MINING
+  group: UNIQUE
+  applies:
+  - ALL_PICKAXE
+  levels:
+    1:
+      chance: 5
+      effects:
+      - ADD_FOOD:1
+    2:
+      chance: 7
+      effects:
+      - ADD_FOOD:1
+    3:
+      chance: 9
+      effects:
+      - ADD_FOOD:1
+hoja_frenetica:
+  display: '%group-color%Hoja Frenetica'
+  description: Al romper bloques a veces te da prisa minera.
+  applies-to: Hachas
+  type: MINING
+  group: UNIQUE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 8
+      effects:
+      - POTION:FAST_DIGGING:0:80 @Self
+    2:
+      chance: 11
+      effects:
+      - POTION:FAST_DIGGING:1:100 @Self
+    3:
+      chance: 14
+      effects:
+      - POTION:FAST_DIGGING:2:120 @Self
+hoja_erudita:
+  display: '%group-color%Hoja Erudita'
+  description: Experiencia extra al romper bloques.
+  applies-to: Hachas
+  type: MINING
+  group: SIMPLE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 15
+      effects:
+      - EXP:1
+    2:
+      chance: 20
+      effects:
+      - EXP:2
+    3:
+      chance: 25
+      effects:
+      - EXP:3
+hoja_buscadora:
+  display: '%group-color%Hoja Buscadora'
+  description: A veces encuentra algo util.
+  applies-to: Hachas
+  type: MINING
+  group: ELITE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 0.5
+      conditions:
+      - '%block natural% = false : %stop%'
+      effects:
+      - DROP_ITEM:<random word>APPLE,STICK,GOLDEN_APPLE,OAK_SAPLING</random word>:1 @Block
+    2:
+      chance: 1.0
+      conditions:
+      - '%block natural% = false : %stop%'
+      effects:
+      - DROP_ITEM:<random word>APPLE,STICK,GOLDEN_APPLE,OAK_SAPLING</random word>:1 @Block
+    3:
+      chance: 1.5
+      conditions:
+      - '%block natural% = false : %stop%'
+      effects:
+      - DROP_ITEM:<random word>APPLE,STICK,GOLDEN_APPLE,OAK_SAPLING</random word>:1 @Block
+hoja_viva:
+  display: '%group-color%Hoja Viva'
+  description: Se repara sola al trabajar.
+  applies-to: Hachas
+  type: MINING
+  group: ULTIMATE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 10
+      effects:
+      - ADD_DURABILITY_ITEM:1
+    2:
+      chance: 20
+      effects:
+      - ADD_DURABILITY_ITEM:2
+    3:
+      chance: 30
+      effects:
+      - ADD_DURABILITY_ITEM:3
+hoja_ligera:
+  display: '%group-color%Hoja Ligera'
+  description: Al trabajar a veces corres mas.
+  applies-to: Hachas
+  type: MINING
+  group: SIMPLE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 12
+      effects:
+      - POTION:SPEED:0:60 @Self
+    2:
+      chance: 16
+      effects:
+      - POTION:SPEED:1:60 @Self
+    3:
+      chance: 20
+      effects:
+      - POTION:SPEED:2:60 @Self
+hoja_nutritiva:
+  display: '%group-color%Hoja Nutritiva'
+  description: Al trabajar a veces recuperas comida.
+  applies-to: Hachas
+  type: MINING
+  group: UNIQUE
+  applies:
+  - ALL_AXE
+  levels:
+    1:
+      chance: 5
+      effects:
+      - ADD_FOOD:1
+    2:
+      chance: 7
+      effects:
+      - ADD_FOOD:1
+    3:
+      chance: 9
+      effects:
+      - ADD_FOOD:1
+pala_frenetica:
+  display: '%group-color%Pala Frenetica'
+  description: Al romper bloques a veces te da prisa minera.
+  applies-to: Palas
+  type: MINING
+  group: UNIQUE
+  applies:
+  - ALL_SHOVEL
+  levels:
+    1:
+      chance: 8
+      effects:
+      - POTION:FAST_DIGGING:0:80 @Self
+    2:
+      chance: 11
+      effects:
+      - POTION:FAST_DIGGING:1:100 @Self
+    3:
+      chance: 14
+      effects:
+      - POTION:FAST_DIGGING:2:120 @Self
+pala_erudita:
+  display: '%group-color%Pala Erudita'
+  description: Experiencia extra al romper bloques.
+  applies-to: Palas
+  type: MINING
+  group: SIMPLE
+  applies:
+  - ALL_SHOVEL
+  levels:
+    1:
+      chance: 15
+      effects:
+      - EXP:1
+    2:
+      chance: 20
+      effects:
+      - EXP:2
+    3:
+      chance: 25
+      effects:
+      - EXP:3
+pala_buscadora:
+  display: '%group-color%Pala Buscadora'
+  description: A veces encuentra algo util.
+  applies-to: Palas
+  type: MINING
+  group: ELITE
+  applies:
+  - ALL_SHOVEL
+  levels:
+    1:
+      chance: 0.5
+      conditions:
+      - '%block natural% = false : %stop%'
+      effects:
+      - DROP_ITEM:<random word>FLINT,CLAY_BALL,GOLD_NUGGET,BONE</random word>:1 @Block
+    2:
+      chance: 1.0
+      conditions:
+      - '%block natural% = false : %stop%'
+      effects:
+      - DROP_ITEM:<random word>FLINT,CLAY_BALL,GOLD_NUGGET,BONE</random word>:1 @Block
+    3:
+      chance: 1.5
+      conditions:
+      - '%block natural% = false : %stop%'
+      effects:
+      - DROP_ITEM:<random word>FLINT,CLAY_BALL,GOLD_NUGGET,BONE</random word>:1 @Block
+pala_viva:
+  display: '%group-color%Pala Viva'
+  description: Se repara sola al trabajar.
+  applies-to: Palas
+  type: MINING
+  group: ULTIMATE
+  applies:
+  - ALL_SHOVEL
+  levels:
+    1:
+      chance: 10
+      effects:
+      - ADD_DURABILITY_ITEM:1
+    2:
+      chance: 20
+      effects:
+      - ADD_DURABILITY_ITEM:2
+    3:
+      chance: 30
+      effects:
+      - ADD_DURABILITY_ITEM:3
+pala_ligera:
+  display: '%group-color%Pala Ligera'
+  description: Al trabajar a veces corres mas.
+  applies-to: Palas
+  type: MINING
+  group: SIMPLE
+  applies:
+  - ALL_SHOVEL
+  levels:
+    1:
+      chance: 12
+      effects:
+      - POTION:SPEED:0:60 @Self
+    2:
+      chance: 16
+      effects:
+      - POTION:SPEED:1:60 @Self
+    3:
+      chance: 20
+      effects:
+      - POTION:SPEED:2:60 @Self
+pala_nutritiva:
+  display: '%group-color%Pala Nutritiva'
+  description: Al trabajar a veces recuperas comida.
+  applies-to: Palas
+  type: MINING
+  group: UNIQUE
+  applies:
+  - ALL_SHOVEL
+  levels:
+    1:
+      chance: 5
+      effects:
+      - ADD_FOOD:1
+    2:
+      chance: 7
+      effects:
+      - ADD_FOOD:1
+    3:
+      chance: 9
+      effects:
+      - ADD_FOOD:1
+azada_frenetica:
+  display: '%group-color%Azada Frenetica'
+  description: Al romper bloques a veces te da prisa minera.
+  applies-to: Azadas
+  type: MINING
+  group: UNIQUE
+  applies:
+  - ALL_HOE
+  levels:
+    1:
+      chance: 8
+      effects:
+      - POTION:FAST_DIGGING:0:80 @Self
+    2:
+      chance: 11
+      effects:
+      - POTION:FAST_DIGGING:1:100 @Self
+    3:
+      chance: 14
+      effects:
+      - POTION:FAST_DIGGING:2:120 @Self
+azada_erudita:
+  display: '%group-color%Azada Erudita'
+  description: Experiencia extra al romper bloques.
+  applies-to: Azadas
+  type: MINING
+  group: SIMPLE
+  applies:
+  - ALL_HOE
+  levels:
+    1:
+      chance: 15
+      effects:
+      - EXP:1
+    2:
+      chance: 20
+      effects:
+      - EXP:2
+    3:
+      chance: 25
+      effects:
+      - EXP:3
+azada_buscadora:
+  display: '%group-color%Azada Buscadora'
+  description: A veces encuentra algo util.
+  applies-to: Azadas
+  type: MINING
+  group: ELITE
+  applies:
+  - ALL_HOE
+  levels:
+    1:
+      chance: 0.5
+      conditions:
+      - '%block natural% = false : %stop%'
+      effects:
+      - DROP_ITEM:<random word>WHEAT_SEEDS,CARROT,POTATO,BEETROOT_SEEDS,MELON_SEEDS</random word>:1 @Block
+    2:
+      chance: 1.0
+      conditions:
+      - '%block natural% = false : %stop%'
+      effects:
+      - DROP_ITEM:<random word>WHEAT_SEEDS,CARROT,POTATO,BEETROOT_SEEDS,MELON_SEEDS</random word>:1 @Block
+    3:
+      chance: 1.5
+      conditions:
+      - '%block natural% = false : %stop%'
+      effects:
+      - DROP_ITEM:<random word>WHEAT_SEEDS,CARROT,POTATO,BEETROOT_SEEDS,MELON_SEEDS</random word>:1 @Block
+azada_viva:
+  display: '%group-color%Azada Viva'
+  description: Se repara sola al trabajar.
+  applies-to: Azadas
+  type: MINING
+  group: ULTIMATE
+  applies:
+  - ALL_HOE
+  levels:
+    1:
+      chance: 10
+      effects:
+      - ADD_DURABILITY_ITEM:1
+    2:
+      chance: 20
+      effects:
+      - ADD_DURABILITY_ITEM:2
+    3:
+      chance: 30
+      effects:
+      - ADD_DURABILITY_ITEM:3
+azada_ligera:
+  display: '%group-color%Azada Ligera'
+  description: Al trabajar a veces corres mas.
+  applies-to: Azadas
+  type: MINING
+  group: SIMPLE
+  applies:
+  - ALL_HOE
+  levels:
+    1:
+      chance: 12
+      effects:
+      - POTION:SPEED:0:60 @Self
+    2:
+      chance: 16
+      effects:
+      - POTION:SPEED:1:60 @Self
+    3:
+      chance: 20
+      effects:
+      - POTION:SPEED:2:60 @Self
+azada_nutritiva:
+  display: '%group-color%Azada Nutritiva'
+  description: Al trabajar a veces recuperas comida.
+  applies-to: Azadas
+  type: MINING
+  group: UNIQUE
+  applies:
+  - ALL_HOE
+  levels:
+    1:
+      chance: 5
+      effects:
+      - ADD_FOOD:1
+    2:
+      chance: 7
+      effects:
+      - ADD_FOOD:1
+    3:
+      chance: 9
+      effects:
+      - ADD_FOOD:1
+cebo_dorado:
+  display: '%group-color%Cebo Dorado'
+  description: Experiencia extra al pescar.
+  applies-to: Canas de pescar
+  type: CATCH_FISH
+  group: SIMPLE
+  applies:
+  - FISHING_ROD
+  levels:
+    1:
+      chance: 100
+      effects:
+      - EXP:2
+    2:
+      chance: 100
+      effects:
+      - EXP:4
+    3:
+      chance: 100
+      effects:
+      - EXP:6
+sedal_curativo:
+  display: '%group-color%Sedal Curativo'
+  description: Pescar te cura.
+  applies-to: Canas de pescar
+  type: CATCH_FISH
+  group: UNIQUE
+  applies:
+  - FISHING_ROD
+  levels:
+    1:
+      chance: 60
+      effects:
+      - ADD_HEALTH:2
+    2:
+      chance: 80
+      effects:
+      - ADD_HEALTH:3
+pescador_hambriento:
+  display: '%group-color%Pescador Hambriento'
+  description: Pescar te llena el estomago.
+  applies-to: Canas de pescar
+  type: CATCH_FISH
+  group: SIMPLE
+  applies:
+  - FISHING_ROD
+  levels:
+    1:
+      chance: 50
+      effects:
+      - ADD_FOOD:2
+    2:
+      chance: 50
+      effects:
+      - ADD_FOOD:3
+marea_de_suerte:
+  display: '%group-color%Marea de Suerte'
+  description: A veces pescas un tesoro extra.
+  applies-to: Canas de pescar
+  type: CATCH_FISH
+  group: LEGENDARY
+  applies:
+  - FISHING_ROD
+  levels:
+    1:
+      chance: 2
+      effects:
+      - DROP_ITEM:<random word>NAUTILUS_SHELL,PRISMARINE_CRYSTALS,GOLD_INGOT,EMERALD,DIAMOND</random word>:1 @Self
+    2:
+      chance: 4
+      effects:
+      - DROP_ITEM:<random word>NAUTILUS_SHELL,PRISMARINE_CRYSTALS,GOLD_INGOT,EMERALD,DIAMOND</random word>:1 @Self
+    3:
+      chance: 6
+      effects:
+      - DROP_ITEM:<random word>NAUTILUS_SHELL,PRISMARINE_CRYSTALS,GOLD_INGOT,EMERALD,DIAMOND</random word>:1 @Self
+arponero:
+  display: '%group-color%Arponero'
+  description: Atrae hacia ti lo que enganchas.
+  applies-to: Canas de pescar
+  type: HOOK_ENTITY
+  group: UNIQUE
+  applies:
+  - FISHING_ROD
+  levels:
+    1:
+      chance: 100
+      effects:
+      - PULL_CLOSER:1.0 @Victim
+    2:
+      chance: 100
+      effects:
+      - PULL_CLOSER:1.4 @Victim
+vuelo_sanador:
+  display: '%group-color%Vuelo Sanador'
+  description: Volar con elitros te cura.
+  applies-to: Elitros
+  type: ELYTRA_FLY
+  group: ULTIMATE
+  applies:
+  - ELYTRA
+  levels:
+    1:
+      chance: 75
+      effects:
+      - ADD_HEALTH:1
+    2:
+      chance: 100
+      effects:
+      - ADD_HEALTH:1
+ala_dorada:
+  display: '%group-color%Ala Dorada'
+  description: Los elitros se reparan mientras vuelas.
+  applies-to: Elitros
+  type: ELYTRA_FLY
+  group: LEGENDARY
+  applies:
+  - ELYTRA
+  levels:
+    1:
+      chance: 100
+      effects:
+      - ADD_DURABILITY_ITEM:1
+    2:
+      chance: 100
+      effects:
+      - ADD_DURABILITY_ITEM:2
+estela_luminosa:
+  display: '%group-color%Estela Luminosa'
+  description: Dejas una estela de chispas al volar.
+  applies-to: Elitros
+  type: ELYTRA_FLY
+  group: SIMPLE
+  applies:
+  - ELYTRA
+  levels:
+    1:
+      chance: 100
+      effects:
+      - PARTICLE:FIREWORK:10:0.05 @Self
+ojo_de_halcon:
+  display: '%group-color%Ojo de Halcon'
+  description: Desde el aire ves a los monstruos brillar.
+  applies-to: Elitros
+  type: ELYTRA_FLY
+  group: ELITE
+  applies:
+  - ELYTRA
+  levels:
+    1:
+      chance: 100
+      effects:
+      - REVEAL:30:3
+    2:
+      chance: 100
+      effects:
+      - REVEAL:40:3
+maldicion_pesadez_yelmo:
+  display: '%group-color%Pesadez del Yelmo'
+  description: 'Maldicion: Te vuelve lento.'
+  applies-to: Yelmo
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_HELMET
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:SLOW:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:SLOW:1:120
+maldicion_pesadez_coraza:
+  display: '%group-color%Pesadez de la Coraza'
+  description: 'Maldicion: Te vuelve lento.'
+  applies-to: Coraza
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:SLOW:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:SLOW:1:120
+maldicion_pesadez_grebas:
+  display: '%group-color%Pesadez de las Grebas'
+  description: 'Maldicion: Te vuelve lento.'
+  applies-to: Grebas
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_LEGGINGS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:SLOW:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:SLOW:1:120
+maldicion_pesadez_botas:
+  display: '%group-color%Pesadez de las Botas'
+  description: 'Maldicion: Te vuelve lento.'
+  applies-to: Botas
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_BOOTS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:SLOW:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:SLOW:1:120
+maldicion_pesadez_espada:
+  display: '%group-color%Pesadez de la Espada'
+  description: 'Maldicion: Te vuelve lento.'
+  applies-to: Espada
+  type: HELD
+  group: CURSE
+  applies:
+  - ALL_SWORD
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:SLOW:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:SLOW:1:120
+maldicion_pesadez_hacha:
+  display: '%group-color%Pesadez del Hacha'
+  description: 'Maldicion: Te vuelve lento.'
+  applies-to: Hacha
+  type: HELD
+  group: CURSE
+  applies:
+  - ALL_AXE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:SLOW:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:SLOW:1:120
+maldicion_pesadez_pico:
+  display: '%group-color%Pesadez del Pico'
+  description: 'Maldicion: Te vuelve lento.'
+  applies-to: Pico
+  type: HELD
+  group: CURSE
+  applies:
+  - ALL_PICKAXE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:SLOW:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:SLOW:1:120
+maldicion_hambre_yelmo:
+  display: '%group-color%Hambre del Yelmo'
+  description: 'Maldicion: Te da hambre constantemente.'
+  applies-to: Yelmo
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_HELMET
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:HUNGER:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:HUNGER:1:120
+maldicion_hambre_coraza:
+  display: '%group-color%Hambre de la Coraza'
+  description: 'Maldicion: Te da hambre constantemente.'
+  applies-to: Coraza
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:HUNGER:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:HUNGER:1:120
+maldicion_hambre_grebas:
+  display: '%group-color%Hambre de las Grebas'
+  description: 'Maldicion: Te da hambre constantemente.'
+  applies-to: Grebas
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_LEGGINGS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:HUNGER:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:HUNGER:1:120
+maldicion_hambre_botas:
+  display: '%group-color%Hambre de las Botas'
+  description: 'Maldicion: Te da hambre constantemente.'
+  applies-to: Botas
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_BOOTS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:HUNGER:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:HUNGER:1:120
+maldicion_hambre_espada:
+  display: '%group-color%Hambre de la Espada'
+  description: 'Maldicion: Te da hambre constantemente.'
+  applies-to: Espada
+  type: HELD
+  group: CURSE
+  applies:
+  - ALL_SWORD
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:HUNGER:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:HUNGER:1:120
+maldicion_hambre_hacha:
+  display: '%group-color%Hambre del Hacha'
+  description: 'Maldicion: Te da hambre constantemente.'
+  applies-to: Hacha
+  type: HELD
+  group: CURSE
+  applies:
+  - ALL_AXE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:HUNGER:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:HUNGER:1:120
+maldicion_hambre_pico:
+  display: '%group-color%Hambre del Pico'
+  description: 'Maldicion: Te da hambre constantemente.'
+  applies-to: Pico
+  type: HELD
+  group: CURSE
+  applies:
+  - ALL_PICKAXE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:HUNGER:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:HUNGER:1:120
+maldicion_fragilidad_espada:
+  display: '%group-color%Fragilidad de la Espada'
+  description: 'Maldicion: Se desgasta solo.'
+  applies-to: Espada
+  type: REPEATING
+  group: CURSE
+  applies:
+  - ALL_SWORD
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 50
+      effects:
+      - ADD_DURABILITY_ITEM:-1
+    2:
+      chance: 50
+      effects:
+      - ADD_DURABILITY_ITEM:-2
+maldicion_fragilidad_hacha:
+  display: '%group-color%Fragilidad del Hacha'
+  description: 'Maldicion: Se desgasta solo.'
+  applies-to: Hacha
+  type: REPEATING
+  group: CURSE
+  applies:
+  - ALL_AXE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 50
+      effects:
+      - ADD_DURABILITY_ITEM:-1
+    2:
+      chance: 50
+      effects:
+      - ADD_DURABILITY_ITEM:-2
+maldicion_fragilidad_arco:
+  display: '%group-color%Fragilidad del Arco'
+  description: 'Maldicion: Se desgasta solo.'
+  applies-to: Arco
+  type: REPEATING
+  group: CURSE
+  applies:
+  - BOW
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 50
+      effects:
+      - ADD_DURABILITY_ITEM:-1
+    2:
+      chance: 50
+      effects:
+      - ADD_DURABILITY_ITEM:-2
+maldicion_fragilidad_pico:
+  display: '%group-color%Fragilidad del Pico'
+  description: 'Maldicion: Se desgasta solo.'
+  applies-to: Pico
+  type: REPEATING
+  group: CURSE
+  applies:
+  - ALL_PICKAXE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 50
+      effects:
+      - ADD_DURABILITY_ITEM:-1
+    2:
+      chance: 50
+      effects:
+      - ADD_DURABILITY_ITEM:-2
+maldicion_fragilidad_pala:
+  display: '%group-color%Fragilidad de la Pala'
+  description: 'Maldicion: Se desgasta solo.'
+  applies-to: Pala
+  type: REPEATING
+  group: CURSE
+  applies:
+  - ALL_SHOVEL
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 50
+      effects:
+      - ADD_DURABILITY_ITEM:-1
+    2:
+      chance: 50
+      effects:
+      - ADD_DURABILITY_ITEM:-2
+maldicion_fragilidad_coraza:
+  display: '%group-color%Fragilidad de la Coraza'
+  description: 'Maldicion: Se desgasta solo.'
+  applies-to: Coraza
+  type: REPEATING
+  group: CURSE
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 50
+      effects:
+      - ADD_DURABILITY_ITEM:-1
+    2:
+      chance: 50
+      effects:
+      - ADD_DURABILITY_ITEM:-2
+maldicion_fragilidad_botas:
+  display: '%group-color%Fragilidad de las Botas'
+  description: 'Maldicion: Se desgasta solo.'
+  applies-to: Botas
+  type: REPEATING
+  group: CURSE
+  applies:
+  - ALL_BOOTS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 50
+      effects:
+      - ADD_DURABILITY_ITEM:-1
+    2:
+      chance: 50
+      effects:
+      - ADD_DURABILITY_ITEM:-2
+maldicion_fragilidad_tridente:
+  display: '%group-color%Fragilidad del Tridente'
+  description: 'Maldicion: Se desgasta solo.'
+  applies-to: Tridente
+  type: REPEATING
+  group: CURSE
+  applies:
+  - TRIDENT
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 50
+      effects:
+      - ADD_DURABILITY_ITEM:-1
+    2:
+      chance: 50
+      effects:
+      - ADD_DURABILITY_ITEM:-2
+maldicion_torpeza_espada:
+  display: '%group-color%Torpeza de la Espada'
+  description: 'Maldicion: Haces menos dano.'
+  applies-to: Espada
+  type: ATTACK;ATTACK_MOB
+  group: CURSE
+  applies:
+  - ALL_SWORD
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:10
+    2:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:20
+maldicion_torpeza_hacha:
+  display: '%group-color%Torpeza del Hacha'
+  description: 'Maldicion: Haces menos dano.'
+  applies-to: Hacha
+  type: ATTACK;ATTACK_MOB
+  group: CURSE
+  applies:
+  - ALL_AXE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:10
+    2:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:20
+maldicion_torpeza_maza:
+  display: '%group-color%Torpeza de la Maza'
+  description: 'Maldicion: Haces menos dano.'
+  applies-to: Maza
+  type: ATTACK;ATTACK_MOB
+  group: CURSE
+  applies:
+  - MACE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:10
+    2:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:20
+maldicion_punteria_arco:
+  display: '%group-color%Mala Punteria del Arco'
+  description: 'Maldicion: Tus disparos hacen menos dano.'
+  applies-to: Arco
+  type: SHOOT;SHOOT_MOB
+  group: CURSE
+  applies:
+  - BOW
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:15
+    2:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:30
+maldicion_punteria_ballesta:
+  display: '%group-color%Mala Punteria de la Ballesta'
+  description: 'Maldicion: Tus disparos hacen menos dano.'
+  applies-to: Ballesta
+  type: SHOOT;SHOOT_MOB
+  group: CURSE
+  applies:
+  - CROSSBOW
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:15
+    2:
+      chance: 100
+      effects:
+      - DECREASE_DAMAGE:30
+maldicion_vulnerabilidad_yelmo:
+  display: '%group-color%Vulnerabilidad del Yelmo'
+  description: 'Maldicion: Recibes mas dano.'
+  applies-to: Yelmo
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: CURSE
+  applies:
+  - ALL_HELMET
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - INCREASE_DAMAGE:5
+    2:
+      chance: 100
+      effects:
+      - INCREASE_DAMAGE:10
+maldicion_vulnerabilidad_coraza:
+  display: '%group-color%Vulnerabilidad de la Coraza'
+  description: 'Maldicion: Recibes mas dano.'
+  applies-to: Coraza
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: CURSE
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - INCREASE_DAMAGE:5
+    2:
+      chance: 100
+      effects:
+      - INCREASE_DAMAGE:10
+maldicion_vulnerabilidad_grebas:
+  display: '%group-color%Vulnerabilidad de las Grebas'
+  description: 'Maldicion: Recibes mas dano.'
+  applies-to: Grebas
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: CURSE
+  applies:
+  - ALL_LEGGINGS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - INCREASE_DAMAGE:5
+    2:
+      chance: 100
+      effects:
+      - INCREASE_DAMAGE:10
+maldicion_vulnerabilidad_botas:
+  display: '%group-color%Vulnerabilidad de las Botas'
+  description: 'Maldicion: Recibes mas dano.'
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: CURSE
+  applies:
+  - ALL_BOOTS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - INCREASE_DAMAGE:5
+    2:
+      chance: 100
+      effects:
+      - INCREASE_DAMAGE:10
+maldicion_resbaladizo_espada:
+  display: '%group-color%Resbaladizo de la Espada'
+  description: 'Maldicion: A veces se te escapa de la mano.'
+  applies-to: Espada
+  type: ATTACK;ATTACK_MOB
+  group: CURSE
+  applies:
+  - ALL_SWORD
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 1.5
+      effects:
+      - DISARM @Attacker
+      - MESSAGE:&c¡Se te resbalo el arma! @Attacker
+    2:
+      chance: 3.0
+      effects:
+      - DISARM @Attacker
+      - MESSAGE:&c¡Se te resbalo el arma! @Attacker
+maldicion_resbaladizo_hacha:
+  display: '%group-color%Resbaladizo del Hacha'
+  description: 'Maldicion: A veces se te escapa de la mano.'
+  applies-to: Hacha
+  type: ATTACK;ATTACK_MOB
+  group: CURSE
+  applies:
+  - ALL_AXE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 1.5
+      effects:
+      - DISARM @Attacker
+      - MESSAGE:&c¡Se te resbalo el arma! @Attacker
+    2:
+      chance: 3.0
+      effects:
+      - DISARM @Attacker
+      - MESSAGE:&c¡Se te resbalo el arma! @Attacker
+maldicion_resbaladizo_maza:
+  display: '%group-color%Resbaladizo de la Maza'
+  description: 'Maldicion: A veces se te escapa de la mano.'
+  applies-to: Maza
+  type: ATTACK;ATTACK_MOB
+  group: CURSE
+  applies:
+  - MACE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 1.5
+      effects:
+      - DISARM @Attacker
+      - MESSAGE:&c¡Se te resbalo el arma! @Attacker
+    2:
+      chance: 3.0
+      effects:
+      - DISARM @Attacker
+      - MESSAGE:&c¡Se te resbalo el arma! @Attacker
+maldicion_autolesion_espada:
+  display: '%group-color%Autolesion de la Espada'
+  description: 'Maldicion: A veces te hieres tu.'
+  applies-to: Espada
+  type: ATTACK;ATTACK_MOB
+  group: CURSE
+  applies:
+  - ALL_SWORD
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 3
+      effects:
+      - DO_HARM:1 @Attacker
+    2:
+      chance: 6
+      effects:
+      - DO_HARM:2 @Attacker
+maldicion_autolesion_hacha:
+  display: '%group-color%Autolesion del Hacha'
+  description: 'Maldicion: A veces te hieres tu.'
+  applies-to: Hacha
+  type: ATTACK;ATTACK_MOB
+  group: CURSE
+  applies:
+  - ALL_AXE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 3
+      effects:
+      - DO_HARM:1 @Attacker
+    2:
+      chance: 6
+      effects:
+      - DO_HARM:2 @Attacker
+maldicion_autolesion_maza:
+  display: '%group-color%Autolesion de la Maza'
+  description: 'Maldicion: A veces te hieres tu.'
+  applies-to: Maza
+  type: ATTACK;ATTACK_MOB
+  group: CURSE
+  applies:
+  - MACE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 3
+      effects:
+      - DO_HARM:1 @Attacker
+    2:
+      chance: 6
+      effects:
+      - DO_HARM:2 @Attacker
+maldicion_autolesion_tridente:
+  display: '%group-color%Autolesion del Tridente'
+  description: 'Maldicion: A veces te hieres tu.'
+  applies-to: Tridente
+  type: ATTACK;ATTACK_MOB
+  group: CURSE
+  applies:
+  - TRIDENT
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 3
+      effects:
+      - DO_HARM:1 @Attacker
+    2:
+      chance: 6
+      effects:
+      - DO_HARM:2 @Attacker
+maldicion_nausea_yelmo:
+  display: '%group-color%Nausea del Yelmo'
+  description: 'Maldicion: Al recibir golpes te mareas.'
+  applies-to: Yelmo
+  type: DEFENSE;DEFENSE_MOB
+  group: CURSE
+  applies:
+  - ALL_HELMET
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 3
+      effects:
+      - POTION:CONFUSION:0:100 @Victim
+    2:
+      chance: 6
+      effects:
+      - POTION:CONFUSION:0:140 @Victim
+maldicion_nausea_coraza:
+  display: '%group-color%Nausea de la Coraza'
+  description: 'Maldicion: Al recibir golpes te mareas.'
+  applies-to: Coraza
+  type: DEFENSE;DEFENSE_MOB
+  group: CURSE
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 3
+      effects:
+      - POTION:CONFUSION:0:100 @Victim
+    2:
+      chance: 6
+      effects:
+      - POTION:CONFUSION:0:140 @Victim
+maldicion_nausea_grebas:
+  display: '%group-color%Nausea de las Grebas'
+  description: 'Maldicion: Al recibir golpes te mareas.'
+  applies-to: Grebas
+  type: DEFENSE;DEFENSE_MOB
+  group: CURSE
+  applies:
+  - ALL_LEGGINGS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 3
+      effects:
+      - POTION:CONFUSION:0:100 @Victim
+    2:
+      chance: 6
+      effects:
+      - POTION:CONFUSION:0:140 @Victim
+maldicion_nausea_botas:
+  display: '%group-color%Nausea de las Botas'
+  description: 'Maldicion: Al recibir golpes te mareas.'
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB
+  group: CURSE
+  applies:
+  - ALL_BOOTS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 3
+      effects:
+      - POTION:CONFUSION:0:100 @Victim
+    2:
+      chance: 6
+      effects:
+      - POTION:CONFUSION:0:140 @Victim
+maldicion_debilidad_yelmo:
+  display: '%group-color%Debilidad del Yelmo'
+  description: 'Maldicion: Te deja sin fuerzas.'
+  applies-to: Yelmo
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_HELMET
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:WEAKNESS:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:WEAKNESS:1:120
+maldicion_debilidad_coraza:
+  display: '%group-color%Debilidad de la Coraza'
+  description: 'Maldicion: Te deja sin fuerzas.'
+  applies-to: Coraza
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:WEAKNESS:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:WEAKNESS:1:120
+maldicion_debilidad_grebas:
+  display: '%group-color%Debilidad de las Grebas'
+  description: 'Maldicion: Te deja sin fuerzas.'
+  applies-to: Grebas
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_LEGGINGS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:WEAKNESS:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:WEAKNESS:1:120
+maldicion_debilidad_botas:
+  display: '%group-color%Debilidad de las Botas'
+  description: 'Maldicion: Te deja sin fuerzas.'
+  applies-to: Botas
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_BOOTS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:WEAKNESS:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:WEAKNESS:1:120
+maldicion_fatiga_pico:
+  display: '%group-color%Fatiga del Pico'
+  description: 'Maldicion: Al trabajar te cansas.'
+  applies-to: Pico
+  type: MINING
+  group: CURSE
+  applies:
+  - ALL_PICKAXE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 5
+      effects:
+      - POTION:SLOW_DIGGING:0:100 @Self
+    2:
+      chance: 10
+      effects:
+      - POTION:SLOW_DIGGING:1:100 @Self
+maldicion_fatiga_pala:
+  display: '%group-color%Fatiga de la Pala'
+  description: 'Maldicion: Al trabajar te cansas.'
+  applies-to: Pala
+  type: MINING
+  group: CURSE
+  applies:
+  - ALL_SHOVEL
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 5
+      effects:
+      - POTION:SLOW_DIGGING:0:100 @Self
+    2:
+      chance: 10
+      effects:
+      - POTION:SLOW_DIGGING:1:100 @Self
+maldicion_fatiga_hacha:
+  display: '%group-color%Fatiga del Hacha'
+  description: 'Maldicion: Al trabajar te cansas.'
+  applies-to: Hacha
+  type: MINING
+  group: CURSE
+  applies:
+  - ALL_AXE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 5
+      effects:
+      - POTION:SLOW_DIGGING:0:100 @Self
+    2:
+      chance: 10
+      effects:
+      - POTION:SLOW_DIGGING:1:100 @Self
+maldicion_fatiga_azada:
+  display: '%group-color%Fatiga de la Azada'
+  description: 'Maldicion: Al trabajar te cansas.'
+  applies-to: Azada
+  type: MINING
+  group: CURSE
+  applies:
+  - ALL_HOE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 5
+      effects:
+      - POTION:SLOW_DIGGING:0:100 @Self
+    2:
+      chance: 10
+      effects:
+      - POTION:SLOW_DIGGING:1:100 @Self
+maldicion_infortunio_yelmo:
+  display: '%group-color%Infortunio del Yelmo'
+  description: 'Maldicion: Te da mala suerte.'
+  applies-to: Yelmo
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_HELMET
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:UNLUCK:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:UNLUCK:1:120
+maldicion_infortunio_coraza:
+  display: '%group-color%Infortunio de la Coraza'
+  description: 'Maldicion: Te da mala suerte.'
+  applies-to: Coraza
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:UNLUCK:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:UNLUCK:1:120
+maldicion_infortunio_grebas:
+  display: '%group-color%Infortunio de las Grebas'
+  description: 'Maldicion: Te da mala suerte.'
+  applies-to: Grebas
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_LEGGINGS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:UNLUCK:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:UNLUCK:1:120
+maldicion_infortunio_botas:
+  display: '%group-color%Infortunio de las Botas'
+  description: 'Maldicion: Te da mala suerte.'
+  applies-to: Botas
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_BOOTS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:UNLUCK:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:UNLUCK:1:120
+maldicion_combustion_yelmo:
+  display: '%group-color%Combustion del Yelmo'
+  description: 'Maldicion: Al recibir golpes a veces ardes.'
+  applies-to: Yelmo
+  type: DEFENSE;DEFENSE_MOB
+  group: CURSE
+  applies:
+  - ALL_HELMET
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 3
+      effects:
+      - BURN:40 @Victim
+    2:
+      chance: 6
+      effects:
+      - BURN:80 @Victim
+maldicion_combustion_coraza:
+  display: '%group-color%Combustion de la Coraza'
+  description: 'Maldicion: Al recibir golpes a veces ardes.'
+  applies-to: Coraza
+  type: DEFENSE;DEFENSE_MOB
+  group: CURSE
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 3
+      effects:
+      - BURN:40 @Victim
+    2:
+      chance: 6
+      effects:
+      - BURN:80 @Victim
+maldicion_combustion_grebas:
+  display: '%group-color%Combustion de las Grebas'
+  description: 'Maldicion: Al recibir golpes a veces ardes.'
+  applies-to: Grebas
+  type: DEFENSE;DEFENSE_MOB
+  group: CURSE
+  applies:
+  - ALL_LEGGINGS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 3
+      effects:
+      - BURN:40 @Victim
+    2:
+      chance: 6
+      effects:
+      - BURN:80 @Victim
+maldicion_combustion_botas:
+  display: '%group-color%Combustion de las Botas'
+  description: 'Maldicion: Al recibir golpes a veces ardes.'
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB
+  group: CURSE
+  applies:
+  - ALL_BOOTS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 3
+      effects:
+      - BURN:40 @Victim
+    2:
+      chance: 6
+      effects:
+      - BURN:80 @Victim
+maldicion_ingravidez_yelmo:
+  display: '%group-color%Ingravidez del Yelmo'
+  description: 'Maldicion: Al recibir golpes a veces flotas.'
+  applies-to: Yelmo
+  type: DEFENSE;DEFENSE_MOB
+  group: CURSE
+  applies:
+  - ALL_HELMET
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 2
+      effects:
+      - POTION:LEVITATION:0:30 @Victim
+    2:
+      chance: 4
+      effects:
+      - POTION:LEVITATION:0:40 @Victim
+maldicion_ingravidez_coraza:
+  display: '%group-color%Ingravidez de la Coraza'
+  description: 'Maldicion: Al recibir golpes a veces flotas.'
+  applies-to: Coraza
+  type: DEFENSE;DEFENSE_MOB
+  group: CURSE
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 2
+      effects:
+      - POTION:LEVITATION:0:30 @Victim
+    2:
+      chance: 4
+      effects:
+      - POTION:LEVITATION:0:40 @Victim
+maldicion_ingravidez_grebas:
+  display: '%group-color%Ingravidez de las Grebas'
+  description: 'Maldicion: Al recibir golpes a veces flotas.'
+  applies-to: Grebas
+  type: DEFENSE;DEFENSE_MOB
+  group: CURSE
+  applies:
+  - ALL_LEGGINGS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 2
+      effects:
+      - POTION:LEVITATION:0:30 @Victim
+    2:
+      chance: 4
+      effects:
+      - POTION:LEVITATION:0:40 @Victim
+maldicion_ingravidez_botas:
+  display: '%group-color%Ingravidez de las Botas'
+  description: 'Maldicion: Al recibir golpes a veces flotas.'
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB
+  group: CURSE
+  applies:
+  - ALL_BOOTS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 2
+      effects:
+      - POTION:LEVITATION:0:30 @Victim
+    2:
+      chance: 4
+      effects:
+      - POTION:LEVITATION:0:40 @Victim
+maldicion_faro_yelmo:
+  display: '%group-color%Faro del Yelmo'
+  description: 'Maldicion: Brillas y todos te ven.'
+  applies-to: Yelmo
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_HELMET
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:GLOWING:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:GLOWING:0:120
+maldicion_faro_coraza:
+  display: '%group-color%Faro de la Coraza'
+  description: 'Maldicion: Brillas y todos te ven.'
+  applies-to: Coraza
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:GLOWING:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:GLOWING:0:120
+maldicion_faro_grebas:
+  display: '%group-color%Faro de las Grebas'
+  description: 'Maldicion: Brillas y todos te ven.'
+  applies-to: Grebas
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_LEGGINGS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:GLOWING:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:GLOWING:0:120
+maldicion_faro_botas:
+  display: '%group-color%Faro de las Botas'
+  description: 'Maldicion: Brillas y todos te ven.'
+  applies-to: Botas
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_BOOTS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:GLOWING:0:120
+    2:
+      chance: 100
+      effects:
+      - POTION:GLOWING:0:120
+maldicion_tinieblas_yelmo:
+  display: '%group-color%Tinieblas del Yelmo'
+  description: 'Maldicion: De noche se te nubla la vista.'
+  applies-to: Yelmo
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_HELMET
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%is night% = true : %allow%'
+      effects:
+      - POTION:DARKNESS:0:100
+    2:
+      chance: 100
+      conditions:
+      - '%is night% = true : %allow%'
+      effects:
+      - POTION:DARKNESS:0:140
+maldicion_tinieblas_coraza:
+  display: '%group-color%Tinieblas de la Coraza'
+  description: 'Maldicion: De noche se te nubla la vista.'
+  applies-to: Coraza
+  type: EFFECT_STATIC
+  group: CURSE
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%is night% = true : %allow%'
+      effects:
+      - POTION:DARKNESS:0:100
+    2:
+      chance: 100
+      conditions:
+      - '%is night% = true : %allow%'
+      effects:
+      - POTION:DARKNESS:0:140
