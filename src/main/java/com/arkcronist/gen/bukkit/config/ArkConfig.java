@@ -296,6 +296,37 @@ public final class ArkConfig {
         return config.getBoolean("hostile-mobs.despawn-like-vanilla", true);
     }
 
+    /**
+     * Whether the plugin stops adding MythicMobs mobs where there are already enough. On unless
+     * config.yml turns it off, with the numbers below.
+     */
+    public boolean spawnLimitEnabled() {
+        return config.getBoolean("hostile-mobs.limit.enabled", true);
+    }
+
+    /** How many of the plugin's mobs may be within {@link #spawnLimitRadius()} of a spot; 0 = no limit. */
+    public int spawnLimitNear() {
+        return Math.max(0, config.getInt("hostile-mobs.limit.near", 16));
+    }
+
+    /** The radius, in blocks, the near limit counts within. */
+    public int spawnLimitRadius() {
+        return Math.max(8, Math.min(128, config.getInt("hostile-mobs.limit.radius", 48)));
+    }
+
+    /** How many of the plugin's mobs one world may hold at once; 0 = no limit. */
+    public int spawnLimitPerWorld() {
+        return Math.max(0, config.getInt("hostile-mobs.limit.per-world", 150));
+    }
+
+    /**
+     * What happens to a natural spawn when the limit is reached: false leaves it as the vanilla mob
+     * the game meant, true cancels it so nothing spawns there at all.
+     */
+    public boolean spawnLimitCancelVanilla() {
+        return config.getBoolean("hostile-mobs.limit.cancel-vanilla-when-full", false);
+    }
+
     /** Mob name to the biomes an operator chose for it, or [ANY] to keep it everywhere. */
     public java.util.Map<String, java.util.List<String>> autoDiscoverBiomeOverrides() {
         return autoDiscoverBiomeOverrides;

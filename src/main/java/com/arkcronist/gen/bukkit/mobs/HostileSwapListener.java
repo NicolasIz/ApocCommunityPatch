@@ -98,6 +98,14 @@ public final class HostileSwapListener implements Listener {
                 ThreadLocalRandom.current().nextDouble())) {
             return;
         }
+        // Enough of ours here already. The game's own mob stays - or, if the config asks, not even
+        // that - so a hillside cannot fill up with custom mobs however many spawns it gets.
+        if (plugin.spawnedMobs().full(event.getLocation())) {
+            if (plugin.arkConfig().spawnLimitCancelVanilla()) {
+                event.setCancelled(true);
+            }
+            return;
+        }
         String chosen = candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
 
         // Stand the replacement where the vanilla mob was about to stand, keeping the facing so a
@@ -131,6 +139,7 @@ public final class HostileSwapListener implements Listener {
         // spawn and the night never stops adding them. See SpawnedMobs.
         SpawnedMobs.released(plugin, replacement, SpawnedMobs.SWAP_MARK,
                 plugin.arkConfig().spawnedMobsDespawn());
+        plugin.spawnedMobs().added(bukkitWorld);
         event.setCancelled(true);
     }
 

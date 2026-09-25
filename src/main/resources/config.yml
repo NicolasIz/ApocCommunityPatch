@@ -487,6 +487,23 @@ hostile-mobs:
   # se tocan. Para limpiar los que ya haya: /ag mobs purge
   despawn-like-vanilla: true
 
+  # ---------------------------------------------------------------------------
+  #  LIMITADOR: cuantos mobs de MythicMobs puede poner el plugin
+  # ---------------------------------------------------------------------------
+  #  Cuenta los mobs que puso ESTE plugin (los que sustituyen spawns naturales y
+  #  los de luz de dia). Cuando se llega al tope, deja de poner mas: el spawn
+  #  natural se queda como el mob vanilla que iba a salir (o no sale nada, si
+  #  cancel-vanilla-when-full es true), y el spawner de dia espera.
+  #
+  #  Los jefes y los guardias de las estructuras NO cuentan ni se limitan.
+  #  /ag mobs te dice cuantos hay cerca de ti y en el mundo.
+  limit:
+    enabled: true
+    near: 16            # como mucho estos a menos de 'radius' bloques de un punto
+    radius: 48
+    per-world: 150      # como mucho estos en todo el mundo. 0 = sin limite
+    cancel-vanilla-when-full: false
+
   # vanilla -> lista de nombres de MythicMobs.
   #
   # Los nombres de abajo son los de los packs "Goblin Mobs" y "Skeleton Mobs"

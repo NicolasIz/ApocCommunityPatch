@@ -69,6 +69,60 @@ public final class SpawnedMobs implements Listener {
         }
     }
 
+    /** How many of this plugin's mobs each world had at the last count, by world id. */
+    private final java.util.Map<java.util.UUID, Integer> perWorld =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * Counts this plugin's mobs in every world. Run every few seconds rather than on each spawn,
+     * because walking every entity in a world hundreds of times a second is the kind of cost a
+     * limiter must not add; between counts, {@link #added} keeps the figure from going stale.
+     */
+    public void recount(Collection<? extends org.bukkit.World> worlds) {
+        for (org.bukkit.World world : worlds) {
+            int count = 0;
+            for (Entity entity : world.getEntities()) {
+                if (ours(entity)) {
+                    count++;
+                }
+            }
+            perWorld.put(world.getUID(), count);
+        }
+    }
+
+    /** One more of ours in this world, until the next count. */
+    public void added(org.bukkit.World world) {
+        perWorld.merge(world.getUID(), 1, Integer::sum);
+    }
+
+    /** This plugin's mobs within a radius of a spot. */
+    public int near(org.bukkit.Location where, double radius) {
+        org.bukkit.World world = where.getWorld();
+        if (world == null || radius <= 0) {
+            return 0;
+        }
+        return world.getNearbyEntities(where, radius, radius, radius, this::ours).size();
+    }
+
+    /**
+     * Whether a spot has as many of this plugin's mobs as the config allows.
+     * See {@link SpawnLimit}.
+     */
+    public boolean full(org.bukkit.Location where) {
+        if (!(plugin instanceof com.arkcronist.gen.bukkit.ArkcronistPlugin ark)
+                || !ark.arkConfig().spawnLimitEnabled() || where.getWorld() == null) {
+            return false;
+        }
+        com.arkcronist.gen.bukkit.config.ArkConfig config = ark.arkConfig();
+        int world = perWorld.getOrDefault(where.getWorld().getUID(), 0);
+        if (SpawnLimit.full(0, world, 0, config.spawnLimitPerWorld())) {
+            return true;
+        }
+        return config.spawnLimitNear() > 0
+                && SpawnLimit.full(near(where, config.spawnLimitRadius()), 0,
+                config.spawnLimitNear(), 0);
+    }
+
     /** Whether this plugin made the entity for a natural spawn or the daylight spawner. */
     public boolean ours(Entity entity) {
         return entity.getPersistentDataContainer().has(swap, PersistentDataType.BYTE)

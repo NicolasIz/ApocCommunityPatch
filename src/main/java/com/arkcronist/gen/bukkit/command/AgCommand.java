@@ -171,6 +171,10 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
                 + " loaded chunks. Bosses and structure guards were left alone.");
     }
 
+    private static String limit(int value) {
+        return value <= 0 ? "no limit" : String.valueOf(value);
+    }
+
     private void mobs(CommandSender sender) {
         if (!(sender instanceof Player player)) {
             sender.sendMessage(PREFIX + "§cRun this from in-game.");
@@ -184,6 +188,23 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
 
         sender.sendMessage(PREFIX + "Custom mobs in §f" + world.getName() + " §8("
                 + world.getEnvironment() + ")");
+        if (config.spawnLimitEnabled()) {
+            com.arkcronist.gen.bukkit.mobs.SpawnedMobs spawned = plugin.spawnedMobs();
+            spawned.recount(java.util.List.of(world));
+            int here = spawned.near(player.getLocation(), config.spawnLimitRadius());
+            int total = 0;
+            for (org.bukkit.entity.Entity entity : world.getEntities()) {
+                if (spawned.ours(entity)) {
+                    total++;
+                }
+            }
+            sender.sendMessage("§7 Limit: §f" + here + "§7/" + limit(config.spawnLimitNear())
+                    + " within " + config.spawnLimitRadius() + " blocks of you, §f" + total
+                    + "§7/" + limit(config.spawnLimitPerWorld()) + " in this world"
+                    + " §8(hostile-mobs.limit; §f/ag mobs purge§8 to clear)");
+        } else {
+            sender.sendMessage("§7 Limit: §coff §8(hostile-mobs.limit.enabled)");
+        }
         sender.sendMessage(tick(config.hostileMobsEnabled()) + " hostile-mobs.enabled");
         sender.sendMessage(tick(com.arkcronist.gen.bukkit.mobs.MythicBridge.available())
                 + " MythicMobs present");

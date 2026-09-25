@@ -112,6 +112,9 @@ public final class AmbientSpawnTask implements Runnable {
             if (where == null || where.distanceSquared(eye) < (double) min * min) {
                 continue;
             }
+            if (plugin.spawnedMobs().full(where)) {
+                return;
+            }
 
             // Asked of the spot that was actually chosen, not of where the player stands: the
             // point of a biome list is that walking to the edge of the snow changes what follows
@@ -145,6 +148,7 @@ public final class AmbientSpawnTask implements Runnable {
             if (plugin.arkConfig().spawnedMobsDespawn()) {
                 SpawnedMobs.release(spawned);
             }
+            plugin.spawnedMobs().added(world);
             return;
         }
     }

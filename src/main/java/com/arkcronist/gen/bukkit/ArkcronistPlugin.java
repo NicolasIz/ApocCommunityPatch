@@ -76,6 +76,9 @@ public final class ArkcronistPlugin extends JavaPlugin {
             WorldAdoptionListener.adopt(this, world);
         }
         startAmbientSpawner();
+        // The per-world count the spawn limit reads, refreshed every five seconds. See SpawnedMobs.
+        getServer().getScheduler().runTaskTimer(this,
+                () -> spawnedMobs.recount(getServer().getWorlds()), 40L, 100L);
         // Deferred to the first tick on purpose: MythicMobs loads its packs in its own onEnable and
         // enable order is not ours to rely on, so asking it now finds an empty catalogue about as
         // often as not. See MobRoster.
