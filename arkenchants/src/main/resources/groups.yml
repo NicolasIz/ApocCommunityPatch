@@ -1,0 +1,21 @@
+# Grupos (rarezas). Mismo formato que AdvancedEnchantments: global-color y group-name.
+# El orden importa: los de abajo son mas raros y salen primero en el lore del item.
+groups:
+  SIMPLE:
+    global-color: "&7"
+    group-name: "Simple"
+  UNIQUE:
+    global-color: "&a"
+    group-name: "Unico"
+  ELITE:
+    global-color: "&b"
+    group-name: "Elite"
+  ULTIMATE:
+    global-color: "&e"
+    group-name: "Supremo"
+  LEGENDARY:
+    global-color: "&6"
+    group-name: "Legendario"
+  FABLED:
+    global-color: "&c"
+    group-name: "Fabuloso"

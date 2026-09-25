@@ -1,0 +1,98 @@
+# ArkEnchants - encantamientos personalizados que leen el formato de AdvancedEnchantments.
+# No usa paquetes ni resource pack: los items de ItemsAdder conservan su textura y su lore.
+
+# En el primer arranque copia plugins/AdvancedEnchantments/enchantments.yml y groups.yml
+# (solo si aqui todavia no existen).
+import-advancedenchantments: true
+
+# Los items encantados con AdvancedEnchantments llevan los encantamientos escritos en el lore
+# ("Harvest III"). Si esta activo, al entrar o al coger el item se convierten solos a ArkEnchants.
+convert-advancedenchantments-lore: true
+
+# Mundos donde ningun encantamiento se activa.
+disabled-worlds: []
+
+# Cada cuantos ticks se aplican los efectos pasivos (EFFECT_STATIC, HELD, REPEATING, ELYTRA_FLY).
+passive-interval-ticks: 40
+
+lore:
+  # %group-color% %display% %level% (numero romano) %level-number%
+  format: '%group-color%%display% %level%'
+  souls: '&cAlmas: &f%souls%'
+
+apply:
+  # Cuantos encantamientos distintos puede tener un item.
+  max-enchants: 9
+  # Aplicar un libro del mismo nivel que ya tiene el item lo sube un nivel (hasta el maximo).
+  upgrade-on-same-level: true
+
+books:
+  material: ENCHANTED_BOOK
+  name: '%group-color%&l%display% %level%'
+  lore:
+    - '&7%description%'
+    - ''
+    - '&a%success%% &7probabilidad de exito'
+    - '&c%destroy%% &7probabilidad de romper el item'
+    - ''
+    - '&7Aplica a: &f%applies-to%'
+    - '&8Arrastralo encima del item para aplicarlo.'
+
+mystery-books:
+  material: BOOK
+  name: '%group-color%&lLibro %group-name% &7(Clic derecho)'
+  lore:
+    - '&7Clic derecho para recibir un encantamiento'
+    - '%group-color%%group-name% &7al azar.'
+    - '&7Exito: &a%success-min%-%success-max%% &8| &7Romper: &c%destroy-min%-%destroy-max%%'
+
+soul-tracker:
+  material: PAPER
+  name: '&f&lRastreador de almas'
+  lore:
+    - '&7Arrastralo encima de un arma para que'
+    - '&7cuente las almas de los jugadores que mates.'
+
+enchanter:
+  title: '&8Encantador'
+  icon-lore:
+    - '&7Encantamientos en este grupo: &f%count%'
+    - '&7Precio: &a%cost% niveles de experiencia'
+    - '&eClic para comprar'
+
+# Ajustes de libros por grupo. Colores y nombres salen de groups.yml.
+# success / destroy: rango del porcentaje que sale al abrir un libro misterioso.
+# cost: niveles de experiencia en /enchanter.
+groups:
+  SIMPLE:    {success: 40-100, destroy: 0-30, cost: 5}
+  UNIQUE:    {success: 35-100, destroy: 0-35, cost: 10}
+  ELITE:     {success: 30-100, destroy: 0-40, cost: 18}
+  ULTIMATE:  {success: 25-100, destroy: 5-45, cost: 25}
+  LEGENDARY: {success: 20-100, destroy: 5-50, cost: 35}
+  FABLED:    {success: 15-100, destroy: 10-60, cost: 50}
+
+messages:
+  prefix: '&5&lArkEnchants &8» &7'
+  no-permission: '&cNo tienes permiso.'
+  reloaded: '&aRecargado: &f%count% &aencantamientos.'
+  usage: '&cUso: &7%usage%'
+  player-not-found: '&cJugador no encontrado.'
+  unknown-enchant: '&cNo existe el encantamiento &f%enchant%&c.'
+  unknown-group: '&cNo existe el grupo &f%group%&c.'
+  hold-item: '&cTen un item en la mano.'
+  given: '&aEntregado a &f%player%&a.'
+  applied: '&aAplicado: %enchant%'
+  removed: '&aEncantamiento quitado.'
+  no-enchants: '&7Este item no tiene encantamientos personalizados.'
+  not-applicable: '&cEse libro no sirve para este item. &7(Aplica a: %applies-to%)'
+  already-has: '&cEl item ya tiene ese encantamiento a ese nivel o mas.'
+  conflict: '&cNo es compatible con &f%enchant%&c.'
+  requires: '&cNecesita antes &f%enchant%&c.'
+  no-slots: '&cEl item ya tiene el maximo de &f%max% &cencantamientos.'
+  failed: '&cEl libro fallo y se perdio.'
+  destroyed: '&4&lEl libro fallo y el item se rompio.'
+  mystery-opened: '&aHas obtenido: %enchant%'
+  empty-group: '&cEse grupo no tiene encantamientos.'
+  not-enough-xp: '&cNecesitas &f%cost% &cniveles de experiencia.'
+  bought: '&aHas comprado un libro %group% &apor &f%cost% &aniveles.'
+  tracker-applied: '&aEl arma ahora cuenta almas.'

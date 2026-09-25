@@ -1,0 +1,23 @@
+name: ArkEnchants
+version: '${project.version}'
+main: com.arkcronist.enchants.ArkEnchants
+api-version: '1.21'
+author: Arkcronist
+description: Encantamientos personalizados (formato AdvancedEnchantments) compatibles con ItemsAdder.
+softdepend: [ItemsAdder]
+commands:
+  arkenchants:
+    description: Administrar ArkEnchants
+    aliases: [ake, aenchants]
+    usage: /arkenchants help
+  enchanter:
+    description: Abrir el encantador
+    aliases: [ce]
+    permission: arkenchants.enchanter
+permissions:
+  arkenchants.admin:
+    description: Comandos de administracion
+    default: op
+  arkenchants.enchanter:
+    description: Usar /enchanter
+    default: true
