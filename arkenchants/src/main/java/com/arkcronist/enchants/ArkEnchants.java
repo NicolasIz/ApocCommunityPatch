@@ -40,6 +40,7 @@ public final class ArkEnchants extends JavaPlugin {
     private EnchantRegistry registry;
     private Engine engine;
     private EnchanterMenu enchanter;
+    private com.arkcronist.enchants.gui.Menus menus;
     private BukkitTask passive;
     private BukkitTask jumpTask;
     private JumpListener jumps;
@@ -59,6 +60,8 @@ public final class ArkEnchants extends JavaPlugin {
         pm.registerEvents(new MiscListener(engine), this);
         pm.registerEvents(new BookListener(this), this);
         pm.registerEvents(enchanter, this);
+        menus = new com.arkcronist.enchants.gui.Menus(this);
+        pm.registerEvents(new com.arkcronist.enchants.gui.Menu.Clicks(), this);
         pm.registerEvents(new com.arkcronist.enchants.listener.LootListener(this), this);
         jumps = new JumpListener(settings.passiveInterval);
         pm.registerEvents(jumps, this);
@@ -227,6 +230,10 @@ public final class ArkEnchants extends JavaPlugin {
 
     public EnchantRegistry registry() {
         return registry;
+    }
+
+    public com.arkcronist.enchants.gui.Menus menus() {
+        return menus;
     }
 
     public EnchanterMenu enchanter() {

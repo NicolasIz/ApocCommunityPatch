@@ -84,10 +84,27 @@ turned into ArkEnchants data when a player joins or picks the item (`convert-adv
 Not included: armor sets, custom weapons, gkits, tinkerer, alchemist, scrolls/dust, slot increasers, the HORN
 type and REMOVE_ENCHANT.
 
+## Menu
+
+`/ake` with nothing after it opens a menu, so nothing has to be typed:
+
+- **Everyone:** the enchanter, a catalogue of every enchantment by rarity (what it does, what it goes on, levels,
+  when it triggers) and the enchantments on the item in hand.
+- **Admins** (`arkenchants.admin`) also get:
+  - **Sacar libros:** pick a rarity, then an enchantment. Left click gives the max level at 100%; right click
+    opens a picker for level and success (100/75/50/25/10/1/0.1%, or random within the rarity's range).
+  - **Libros misteriosos:** click gives 1, right click gives 16.
+  - **Pergaminos:** each scroll at 100% (click) or a random rate (right click), plus the soul tracker.
+  - **Encantar la mano:** put any enchantment, at any level, straight onto the held item.
+  - **Encantar al azar:** roll the held item as if it came from a loot chest.
+  - **Quitar encantamientos:** remove one, or all with a right click.
+  - **Recargar:** reload the config and enchantments.
+
 ## Commands
 
 | Command | Permission |
 | --- | --- |
+| `/ake` (`/arkenchants menu`) | everyone (admin section needs arkenchants.admin) |
 | `/arkenchants give <player> <enchant> [level] [success] [destroy]` | arkenchants.admin |
 | `/arkenchants mystery <player> <group> [amount]` | arkenchants.admin |
 | `/arkenchants apply <enchant> [level]` / `remove <enchant\|all>` | arkenchants.admin |

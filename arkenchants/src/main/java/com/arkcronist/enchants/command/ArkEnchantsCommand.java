@@ -21,7 +21,7 @@ import org.bukkit.inventory.ItemStack;
 public final class ArkEnchantsCommand implements TabExecutor {
 
     private static final List<String> SUBS = List.of("help", "reload", "list", "give", "mystery", "tracker", "apply", "remove",
-            "info", "enchanter", "random", "scroll");
+            "info", "enchanter", "random", "scroll", "menu");
     private final ArkEnchants plugin;
 
     public ArkEnchantsCommand(ArkEnchants plugin) {
@@ -36,8 +36,16 @@ public final class ArkEnchantsCommand implements TabExecutor {
             }
             return true;
         }
-        String sub = a.length == 0 ? "help" : a[0].toLowerCase(Locale.ROOT);
-        if (!sub.equals("enchanter") && !sub.equals("info") && !s.hasPermission("arkenchants.admin")) {
+        if (a.length == 0 || a[0].equalsIgnoreCase("menu")) {
+            if (s instanceof Player p) {
+                plugin.menus().main(p);
+            } else {
+                help(s, label);
+            }
+            return true;
+        }
+        String sub = a[0].toLowerCase(Locale.ROOT);
+        if (!sub.equals("enchanter") && !sub.equals("info") && !sub.equals("help") && !s.hasPermission("arkenchants.admin")) {
             plugin.send(s, "no-permission");
             return true;
         }
@@ -100,6 +108,7 @@ public final class ArkEnchantsCommand implements TabExecutor {
     private void help(CommandSender s, String label) {
         String[] lines = {
             "&5&lArkEnchants &7- comandos",
+            "&d/" + label + " &7- abrir el menu (todo con clics)",
             "&d/" + label + " give <jugador> <encanto> [nivel] [exito] [destruccion] &7- libro",
             "&d/" + label + " mystery <jugador> <grupo> [cantidad] &7- libro misterioso",
             "&d/" + label + " apply <encanto> [nivel] &7- en el item de la mano",
