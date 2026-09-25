@@ -157,4 +157,47 @@ public final class MythicBridge {
             return null;
         }
     }
+
+    /**
+     * The MythicMobs name of an entity, or null when it is not one of MythicMobs' mobs or the API
+     * will not say. Used to tidy up mobs this plugin put in the world before it marked them.
+     */
+    public static String nameOf(Entity entity) {
+        Object helper = apiHelper;
+        if (helper == null || entity == null) {
+            return null;
+        }
+        try {
+            Method instance = helper.getClass().getMethod("getMythicMobInstance", Entity.class);
+            instance.setAccessible(true);
+            Object active = instance.invoke(helper, entity);
+            if (active == null) {
+                return null;
+            }
+            for (String getter : new String[] {"getMobType"}) {
+                try {
+                    Method method = active.getClass().getMethod(getter);
+                    method.setAccessible(true);
+                    Object name = method.invoke(active);
+                    if (name instanceof String text && !text.isBlank()) {
+                        return text;
+                    }
+                } catch (ReflectiveOperationException ignored) {
+                    // Try the older way below.
+                }
+            }
+            Method type = active.getClass().getMethod("getType");
+            type.setAccessible(true);
+            Object mobType = type.invoke(active);
+            if (mobType == null) {
+                return null;
+            }
+            Method internal = mobType.getClass().getMethod("getInternalName");
+            internal.setAccessible(true);
+            Object name = internal.invoke(mobType);
+            return name instanceof String text ? text : null;
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError exception) {
+            return null;
+        }
+    }
 }

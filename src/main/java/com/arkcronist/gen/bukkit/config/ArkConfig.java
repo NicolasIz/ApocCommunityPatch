@@ -285,6 +285,17 @@ public final class ArkConfig {
         return Math.max(0.0, Math.min(1.0, share));
     }
 
+    /**
+     * Whether the mobs this plugin puts in for natural spawns and by daylight may despawn like the
+     * vanilla ones. On unless config.yml turns it off: a pack mob written with {@code Despawn:
+     * false} that stands in for a zombie is not counted against the monster cap, so the game keeps
+     * spawning into the slot it frees, and a night fills a hillside with mobs that never leave.
+     * See {@link com.arkcronist.gen.bukkit.mobs.SpawnedMobs}.
+     */
+    public boolean spawnedMobsDespawn() {
+        return config.getBoolean("hostile-mobs.despawn-like-vanilla", true);
+    }
+
     /** Mob name to the biomes an operator chose for it, or [ANY] to keep it everywhere. */
     public java.util.Map<String, java.util.List<String>> autoDiscoverBiomeOverrides() {
         return autoDiscoverBiomeOverrides;

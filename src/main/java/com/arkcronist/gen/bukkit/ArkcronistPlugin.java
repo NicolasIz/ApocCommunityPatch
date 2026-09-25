@@ -40,6 +40,8 @@ public final class ArkcronistPlugin extends JavaPlugin {
     private com.arkcronist.gen.bukkit.loot.LootRules lootRules =
             com.arkcronist.gen.bukkit.loot.LootRules.none();
     private com.arkcronist.gen.bukkit.world.DimensionManager dimensions;
+    private final com.arkcronist.gen.bukkit.mobs.SpawnedMobs spawnedMobs =
+            new com.arkcronist.gen.bukkit.mobs.SpawnedMobs(this);
     private final com.arkcronist.gen.bukkit.mythic.MobRoster roster =
             new com.arkcronist.gen.bukkit.mythic.MobRoster();
 
@@ -60,6 +62,7 @@ public final class ArkcronistPlugin extends JavaPlugin {
         com.arkcronist.gen.bukkit.mobs.MythicBridge.initialize(getLogger());
         installBiomeColours();
         getServer().getPluginManager().registerEvents(new ChunkSpawnListener(this), this);
+        getServer().getPluginManager().registerEvents(spawnedMobs, this);
         getServer().getPluginManager().registerEvents(
                 new com.arkcronist.gen.bukkit.mobs.HostileSwapListener(this), this);
         getServer().getPluginManager().registerEvents(new WorldAdoptionListener(this), this);
@@ -444,6 +447,10 @@ public final class ArkcronistPlugin extends JavaPlugin {
         return com.arkcronist.gen.bukkit.mythic.DatapackBiomes.merge(
                 com.arkcronist.gen.bukkit.mythic.VanillaBiomes.all(),
                 com.arkcronist.gen.bukkit.mythic.DatapackBiomes.read(folders), registry);
+    }
+
+    public com.arkcronist.gen.bukkit.mobs.SpawnedMobs spawnedMobs() {
+        return spawnedMobs;
     }
 
     public com.arkcronist.gen.bukkit.mythic.MobRoster roster() {

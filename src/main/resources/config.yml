@@ -475,6 +475,18 @@ hostile-mobs:
   # Cambiar tambien las guarniciones y jefes de las estructuras del generador.
   replace-structure-mobs: true
 
+  # Que los mobs que pone el plugin (los que sustituyen a los spawns naturales
+  # y los de luz de dia) desaparezcan como los vanilla cuando no hay nadie
+  # cerca, y cuenten en el tope de monstruos del juego.
+  #
+  # MUY IMPORTANTE dejarlo en true. Muchos packs ponen Despawn: false en sus
+  # mobs (todos los tree ents del pack Tree Ents, por ejemplo), y el juego NO
+  # cuenta esos mobs en su tope: cada sustitucion deja el hueco libre, sale
+  # otro zombi, se sustituye tambien... y en una noche hay cientos en una
+  # ladera que no se van nunca. Los jefes y las guarniciones de estructuras no
+  # se tocan. Para limpiar los que ya haya: /ag mobs purge
+  despawn-like-vanilla: true
+
   # vanilla -> lista de nombres de MythicMobs.
   #
   # Los nombres de abajo son los de los packs "Goblin Mobs" y "Skeleton Mobs"

@@ -142,6 +142,9 @@ public final class AmbientSpawnTask implements Runnable {
                 continue;
             }
             spawned.getPersistentDataContainer().set(mark, PersistentDataType.BYTE, (byte) 1);
+            if (plugin.arkConfig().spawnedMobsDespawn()) {
+                SpawnedMobs.release(spawned);
+            }
             return;
         }
     }

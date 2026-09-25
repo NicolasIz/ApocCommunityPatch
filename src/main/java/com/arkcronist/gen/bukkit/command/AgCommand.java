@@ -58,7 +58,13 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
             case "structures" -> structures(sender);
             case "prefabs" -> prefabs(sender);
             case "stats" -> stats(sender);
-            case "mobs" -> mobs(sender);
+            case "mobs" -> {
+                if (args.length > 1 && args[1].equalsIgnoreCase("purge")) {
+                    purge(sender);
+                } else {
+                    mobs(sender);
+                }
+            }
             case "mythic" -> mythic(sender, args);
             case "bench" -> bench(sender, args);
             case "top" -> top(sender);
@@ -81,6 +87,7 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§8 - §f/ag presets §7lists BASE, CHAOTIC and INSANE");
         sender.sendMessage("§8 - §f/ag stats §7cache and memory diagnostics");
         sender.sendMessage("§8 - §f/ag mobs §7says whether the custom mobs apply where you stand");
+        sender.sendMessage("§8 - §f/ag mobs purge §7removes the mobs this plugin spawned (not bosses)");
         sender.sendMessage("§8 - §f/ag mythic [list|refresh|export|models|biomes|<name>] §7what was read"
                 + " from MythicMobs and how each mob was judged");
         sender.sendMessage("§8 - §f/ag bench [preset] [chunks] §7runs a generation benchmark");
@@ -131,6 +138,39 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
      * of those log anything, and the symptom for all of them is identical - nothing appears - so the
      * only way to tell them apart used to be reading the source.</p>
      */
+    /**
+     * Removes the mobs this plugin put in the world for natural spawns and by daylight.
+     *
+     * <p>For the flood a pack mob written never to despawn used to cause, and for anyone who wants a
+     * clean slate. Marked mobs go, and so do unmarked MythicMobs mobs whose names are in the pools
+     * this plugin spawns from - the ones placed before the mark existed. Bosses are in no such
+     * pool, so a boss somebody summoned by hand stays; structure garrisons are not marked and stay
+     * too. Only loaded chunks are reached; a far-off one is purged by running this near it.</p>
+     */
+    private void purge(CommandSender sender) {
+        if (!sender.hasPermission("arkcronist.admin")) {
+            sender.sendMessage(PREFIX + "§cYou do not have permission to do that.");
+            return;
+        }
+        com.arkcronist.gen.bukkit.config.ArkConfig config = plugin.arkConfig();
+        MobRoster roster = plugin.roster();
+        java.util.Set<String> names = new java.util.HashSet<>();
+        java.util.function.Consumer<java.util.Collection<String>> add = list -> {
+            for (String name : list) {
+                names.add(name.toLowerCase(Locale.ROOT));
+            }
+        };
+        for (MobClassifier.Habitat habitat : MobClassifier.Habitat.values()) {
+            add.accept(roster.ambientPool(config, habitat));
+            roster.swapTable(config, habitat).values().forEach(add);
+        }
+        roster.placement().byBiome().values().forEach(add);
+        config.biomeMobTable().values().forEach(add);
+        int removed = plugin.spawnedMobs().purge(plugin.getServer().getWorlds(), names);
+        sender.sendMessage(PREFIX + "Removed §f" + removed + "§7 mob(s) this plugin had spawned, in"
+                + " loaded chunks. Bosses and structure guards were left alone.");
+    }
+
     private void mobs(CommandSender sender) {
         if (!(sender instanceof Player player)) {
             sender.sendMessage(PREFIX + "§cRun this from in-game.");
@@ -805,6 +845,8 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
             for (MobClassifier.Habitat habitat : MobClassifier.Habitat.values()) {
                 options.add(habitat.name().toLowerCase(Locale.ROOT));
             }
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("mobs")) {
+            options.add("purge");
         } else if (args.length == 2 && args[0].equalsIgnoreCase("bench")) {
             for (Preset preset : Preset.values()) {
                 options.add(preset.name());

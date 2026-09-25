@@ -126,6 +126,11 @@ public final class HostileSwapListener implements Listener {
             replacement.remove();
             return;
         }
+        // As disposable as the zombie it replaced. A pack mob written never to despawn is left out
+        // of the game's monster count, so without this every replacement frees a slot for the next
+        // spawn and the night never stops adding them. See SpawnedMobs.
+        SpawnedMobs.released(plugin, replacement, SpawnedMobs.SWAP_MARK,
+                plugin.arkConfig().spawnedMobsDespawn());
         event.setCancelled(true);
     }
 
