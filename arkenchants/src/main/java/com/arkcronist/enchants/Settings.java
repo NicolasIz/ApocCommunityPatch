@@ -29,6 +29,12 @@ public final class Settings {
     public final List<String> extraMaterials;
     public final boolean convertLegacyLore;
     public final double chargeSeconds;
+    public final String protectedLore;
+    public final java.util.Map<String, Scroll> scrolls = new java.util.LinkedHashMap<>();
+
+    /** One kind of scroll: looks, the success range it is sold/given with, and its /enchanter price in levels. */
+    public record Scroll(String kind, Material material, String name, List<String> lore, double min, double max, int cost) {
+    }
     public final boolean setExtra;
     public final boolean setAdvanced;
     public final boolean lootEnabled;
@@ -63,6 +69,18 @@ public final class Settings {
         extraMaterials = c.getStringList("apply.extra-materials");
         convertLegacyLore = c.getBoolean("convert-advancedenchantments-lore", true);
         chargeSeconds = c.getDouble("charge.seconds", 1.2);
+        protectedLore = c.getString("lore.protected", "&f&lPROTEGIDO");
+        String[][] defaults = {
+            {"extract", "INK_SAC", "&8&lPergamino de Extraccion &7(%success%%)", "25-100", "30"},
+            {"protect", "PAPER", "&f&lPergamino de Proteccion", "100", "25"},
+            {"purify", "GLOW_INK_SAC", "&b&lPergamino de Purificacion &7(%success%%)", "25-100", "35"}};
+        for (String[] d : defaults) {
+            String base = "scrolls." + d[0] + ".";
+            double[] range = com.arkcronist.enchants.load.EnchantLoader.range(c.getString(base + "success", d[3]), 100, 100);
+            List<String> lore = c.getStringList(base + "lore");
+            scrolls.put(d[0], new Scroll(d[0], material(c.getString(base + "material", d[1]), Material.PAPER),
+                    c.getString(base + "name", d[2]), lore, range[0], range[1], c.getInt(base + "cost", Integer.parseInt(d[4]))));
+        }
         setExtra = c.getBoolean("sets.extra", true);
         setAdvanced = c.getBoolean("sets.advancedenchantments", true);
         lootEnabled = c.getBoolean("loot.enabled", true);

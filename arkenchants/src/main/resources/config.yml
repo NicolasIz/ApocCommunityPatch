@@ -41,6 +41,7 @@ lore:
   # %group-color% %display% %level% (numero romano) %level-number%
   format: '%group-color%%display% %level%'
   souls: '&cAlmas: &f%souls%'
+  protected: '&f&l✦ PROTEGIDO &7(no se pierde al morir)'
 
 apply:
   # Cuantos encantamientos distintos puede tener un item.
@@ -68,6 +69,41 @@ mystery-books:
     - '%group-color%%group-name% &7al azar.'
     - '&7Exito: &a%success-min%-%success-max%% &8| &7Romper: &c%destroy-min%-%destroy-max%%'
 
+# Pergaminos: se arrastran encima del item, igual que los libros.
+#   extract: quita un encantamiento al azar y te lo devuelve como libro (las maldiciones no se pueden extraer).
+#   protect: el item no se pierde al morir ni se rompe si falla un libro (la proteccion se gasta al salvarlo).
+#   purify:  quita una maldicion al azar.
+# success: rango del % de exito con que sale cada pergamino (acepta decimales, p. ej. 0.1-100).
+# cost: precio en niveles en /enchanter (0 = no se vende).
+scrolls:
+  extract:
+    material: INK_SAC
+    name: '&8&lPergamino de Extraccion &7(%success%%)'
+    lore:
+      - '&7Arrastralo encima de un item para sacarle'
+      - '&7un encantamiento al azar como libro.'
+      - '&a%success%% &7de exito'
+    success: 25-100
+    cost: 30
+  protect:
+    material: PAPER
+    name: '&f&lPergamino de Proteccion'
+    lore:
+      - '&7Arrastralo encima de un item: no lo perderas'
+      - '&7al morir ni se rompera si falla un libro.'
+      - '&8Se gasta al salvar el item una vez.'
+    success: 100
+    cost: 25
+  purify:
+    material: GLOW_INK_SAC
+    name: '&b&lPergamino de Purificacion &7(%success%%)'
+    lore:
+      - '&7Arrastralo encima de un item para'
+      - '&7quitarle una maldicion al azar.'
+      - '&a%success%% &7de exito'
+    success: 25-100
+    cost: 35
+
 soul-tracker:
   material: PAPER
   name: '&f&lRastreador de almas'
@@ -81,17 +117,22 @@ enchanter:
     - '&7Encantamientos en este grupo: &f%count%'
     - '&7Precio: &a%cost% niveles de experiencia'
     - '&eClic para comprar'
+  scroll-lore:
+    - '&7Exito: &a%min%-%max%%'
+    - '&7Precio: &a%cost% niveles de experiencia'
+    - '&eClic para comprar'
 
 # Ajustes de libros por grupo. Colores y nombres salen de groups.yml.
-# success / destroy: rango del porcentaje que sale al abrir un libro misterioso.
+# success / destroy: rango del porcentaje que sale al abrir un libro misterioso. Acepta decimales:
+# con 0.1-100 un libro puede salir con 0.1% de exito.
 # cost: niveles de experiencia en /enchanter.
 groups:
   SIMPLE:    {success: 40-100, destroy: 0-30, cost: 5}
-  UNIQUE:    {success: 35-100, destroy: 0-35, cost: 10}
-  ELITE:     {success: 30-100, destroy: 0-40, cost: 18}
-  ULTIMATE:  {success: 25-100, destroy: 5-45, cost: 25}
-  LEGENDARY: {success: 20-100, destroy: 5-50, cost: 35}
-  FABLED:    {success: 15-100, destroy: 10-60, cost: 50}
+  UNIQUE:    {success: 30-100, destroy: 0-35, cost: 10}
+  ELITE:     {success: 20-100, destroy: 0-40, cost: 18}
+  ULTIMATE:  {success: 10-100, destroy: 5-45, cost: 25}
+  LEGENDARY: {success: 1-100, destroy: 5-50, cost: 35}
+  FABLED:    {success: 0.1-100, destroy: 10-60, cost: 50}
   CURSE:     {success: 100-100, destroy: 0-0, cost: 0, enchanter: false}
 
 messages:
@@ -112,14 +153,23 @@ messages:
   conflict: '&cNo es compatible con &f%enchant%&c.'
   requires: '&cNecesita antes &f%enchant%&c.'
   no-slots: '&cEl item ya tiene el maximo de &f%max% &cencantamientos.'
-  failed: '&cEl libro fallo y se perdio.'
+  failed: '&cEl libro fallo (&f%success%% &cde exito) y se perdio.'
   destroyed: '&4&lEl libro fallo y el item se rompio.'
-  mystery-opened: '&aHas obtenido: %enchant%'
+  mystery-opened: '&aHas obtenido: %enchant% &7(&a%success%% &7de exito)'
   empty-group: '&cEse grupo no tiene encantamientos.'
   not-enough-xp: '&cNecesitas &f%cost% &cniveles de experiencia.'
   bought: '&aHas comprado un libro %group% &apor &f%cost% &aniveles.'
   tracker-applied: '&aEl arma ahora cuenta almas.'
   charging: '&7Cargando %bar% &f%percent%%'
   charged: '&d&l¡CARGADO! &7Golpea ahora'
+  protected: '&aEl item esta protegido.'
+  already-protected: '&cEse item ya esta protegido.'
+  protection-saved: '&eEl libro fallo, pero la proteccion salvo tu item (se gasto).'
+  protection-death: '&eLa proteccion salvo &f%count% &eitem(s); los recuperas al reaparecer.'
+  extracted: '&aExtraido: %enchant% &7(te llega como libro)'
+  purified: '&bMaldicion eliminada: %enchant%'
+  scroll-failed: '&cEl pergamino fallo (&f%success%% &cde exito) y se perdio.'
+  nothing-to-extract: '&cEse item no tiene encantamientos que se puedan extraer.'
+  no-curse: '&cEse item no tiene maldiciones.'
   random-done: '&aEl item recibio &f%count% &aencantamientos al azar.'
   random-none: '&cEse item no puede recibir encantamientos (o ya tiene).'

@@ -265,6 +265,23 @@ public final class CombatListener implements Listener {
     public void onPlayerDeath(PlayerDeathEvent e) {
         Player dead = e.getEntity();
         engine.clones.removeAll(dead);
+        if (!e.getKeepInventory()) {
+            // protection scrolls: the item stays with the player, and the protection is used up
+            List<ItemStack> saved = new ArrayList<>();
+            for (var it = e.getDrops().iterator(); it.hasNext(); ) {
+                ItemStack d = it.next();
+                if (Items.isProtected(d)) {
+                    Items.setProtected(d, false);
+                    saved.add(d);
+                    it.remove();
+                }
+            }
+            if (!saved.isEmpty()) {
+                kept.computeIfAbsent(dead.getUniqueId(), k -> new ArrayList<>()).addAll(saved);
+                dead.sendMessage(com.arkcronist.enchants.text.Colors.of(engine.settings().prefix()
+                        + engine.settings().msg("protection-death").replace("%count%", String.valueOf(saved.size()))));
+            }
+        }
         List<ItemStack> keep = pendingKeep.remove(dead.getUniqueId());
         if (keep != null && !e.getKeepInventory()) {
             List<ItemStack> saved = new ArrayList<>();
@@ -280,7 +297,7 @@ public final class CombatListener implements Listener {
                 }
             }
             if (!saved.isEmpty()) {
-                kept.put(dead.getUniqueId(), saved);
+                kept.computeIfAbsent(dead.getUniqueId(), k -> new ArrayList<>()).addAll(saved);
             }
         }
         Player killer = dead.getKiller();

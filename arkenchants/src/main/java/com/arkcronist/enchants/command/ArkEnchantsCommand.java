@@ -21,7 +21,7 @@ import org.bukkit.inventory.ItemStack;
 public final class ArkEnchantsCommand implements TabExecutor {
 
     private static final List<String> SUBS = List.of("help", "reload", "list", "give", "mystery", "tracker", "apply", "remove",
-            "info", "enchanter");
+            "info", "enchanter", "random", "scroll");
     private final ArkEnchants plugin;
 
     public ArkEnchantsCommand(ArkEnchants plugin) {
@@ -60,6 +60,24 @@ public final class ArkEnchantsCommand implements TabExecutor {
             case "apply" -> apply(s, a);
             case "remove" -> remove(s, a);
             case "info" -> info(s);
+            case "scroll" -> {
+                if (a.length < 3 || !plugin.settings().scrolls.containsKey(a[2].toLowerCase(Locale.ROOT))) {
+                    plugin.send(s, "usage", "%usage%", "/arkenchants scroll <jugador> <extract|protect|purify> [cantidad] [exito%]");
+                    return true;
+                }
+                Player t = Bukkit.getPlayerExact(a[1]);
+                if (t == null) {
+                    plugin.send(s, "player-not-found");
+                    return true;
+                }
+                var sc = plugin.settings().scrolls.get(a[2].toLowerCase(Locale.ROOT));
+                double rate = a.length > 4 ? com.arkcronist.enchants.text.Percent.parse(a[4], sc.max())
+                        : com.arkcronist.enchants.text.Percent.roll(sc.min(), sc.max(), java.util.concurrent.ThreadLocalRandom.current());
+                ItemStack it = Items.scroll(sc.kind(), Math.max(0, Math.min(100, rate)));
+                it.setAmount(Math.max(1, Math.min(64, a.length > 3 ? parse(a[3], 1) : 1)));
+                give(t, it);
+                plugin.send(s, "given", "%player%", t.getName());
+            }
             case "random" -> {
                 if (s instanceof Player p) {
                     ItemStack hand = p.getInventory().getItemInMainHand();
@@ -87,6 +105,7 @@ public final class ArkEnchantsCommand implements TabExecutor {
             "&d/" + label + " apply <encanto> [nivel] &7- en el item de la mano",
             "&d/" + label + " remove <encanto> &7- quitarlo del item de la mano",
             "&d/" + label + " tracker [jugador] &7- rastreador de almas",
+            "&d/" + label + " scroll <jugador> <extract|protect|purify> [cantidad] [exito%] &7- pergaminos",
             "&d/" + label + " list [grupo] &7- lista de encantamientos",
             "&d/" + label + " info &7- encantamientos del item de la mano",
             "&d/" + label + " random &7- encantar al azar el item de la mano (como el botin)",
@@ -126,8 +145,8 @@ public final class ArkEnchantsCommand implements TabExecutor {
             return;
         }
         int lvl = a.length > 3 ? parse(a[3], 1) : e.maxLevel();
-        int success = a.length > 4 ? parse(a[4], 100) : 100;
-        int destroy = a.length > 5 ? parse(a[5], 0) : 0;
+        double success = a.length > 4 ? com.arkcronist.enchants.text.Percent.parse(a[4], 100) : 100;
+        double destroy = a.length > 5 ? com.arkcronist.enchants.text.Percent.parse(a[5], 0) : 0;
         give(t, Items.book(e, Math.max(1, Math.min(lvl, e.maxLevel())), success, destroy));
         plugin.send(s, "given", "%player%", t.getName());
     }
@@ -225,7 +244,9 @@ public final class ArkEnchantsCommand implements TabExecutor {
         List<String> out = new ArrayList<>();
         if (a.length == 1) {
             out.addAll(SUBS);
-        } else if (a.length == 2 && List.of("give", "mystery", "tracker").contains(a[0].toLowerCase(Locale.ROOT))) {
+        } else if (a.length == 3 && a[0].equalsIgnoreCase("scroll")) {
+            out.addAll(plugin.settings().scrolls.keySet());
+        } else if (a.length == 2 && List.of("give", "mystery", "tracker", "scroll").contains(a[0].toLowerCase(Locale.ROOT))) {
             Bukkit.getOnlinePlayers().forEach(p -> out.add(p.getName()));
         } else if (a.length == 3 && a[0].equalsIgnoreCase("give") || a.length == 2 && List.of("apply", "remove").contains(a[0].toLowerCase(Locale.ROOT))) {
             plugin.registry().all().forEach(e -> out.add(e.id()));

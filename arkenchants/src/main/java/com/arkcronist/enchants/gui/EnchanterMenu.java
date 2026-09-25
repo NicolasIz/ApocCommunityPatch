@@ -31,6 +31,7 @@ public final class EnchanterMenu implements Listener {
 
     private static final class Holder implements InventoryHolder {
         final List<Group> slots = new ArrayList<>();
+        final java.util.Map<Integer, String> scrolls = new java.util.HashMap<>();
         Inventory inv;
 
         @Override
@@ -42,7 +43,7 @@ public final class EnchanterMenu implements Listener {
     public void open(Player p) {
         List<Group> groups = new ArrayList<>(plugin.registry().groups());
         groups.removeIf(g -> !g.inEnchanter() || plugin.registry().inGroup(g.id()).isEmpty());
-        int rows = Math.max(1, Math.min(6, (groups.size() + 8) / 9 + 2));
+        int rows = Math.max(1, Math.min(6, (groups.size() + 8) / 9 + 3));
         Holder h = new Holder();
         Inventory inv = Bukkit.createInventory(h, rows * 9, Colors.of(plugin.settings().enchanterTitle));
         h.inv = inv;
@@ -74,6 +75,27 @@ public final class EnchanterMenu implements Listener {
             inv.setItem(slot, icon);
             h.slots.set(slot, g);
         }
+        // scrolls on the last row
+        var scrolls = plugin.settings().scrolls.values().stream().filter(sc -> sc.cost() > 0).toList();
+        int first = inv.getSize() - 9 + Math.max(0, (9 - scrolls.size() * 2 + 1) / 2);
+        for (int i = 0; i < scrolls.size(); i++) {
+            var sc = scrolls.get(i);
+            int slot = first + i * 2;
+            ItemStack icon = Items.scroll(sc.kind(), sc.max());
+            ItemMeta m = icon.getItemMeta();
+            List<Component> lore = new ArrayList<>(m.lore() == null ? List.of() : m.lore());
+            lore.add(Component.empty());
+            for (String l : plugin.getConfig().getStringList("enchanter.scroll-lore")) {
+                lore.add(Colors.of(l.replace("%cost%", String.valueOf(sc.cost()))
+                        .replace("%min%", com.arkcronist.enchants.text.Percent.fmt(sc.min()))
+                        .replace("%max%", com.arkcronist.enchants.text.Percent.fmt(sc.max()))));
+            }
+            m.lore(lore);
+            m.displayName(Colors.of(sc.name().replace(" &7(%success%%)", "").replace("%success%", "?")));
+            icon.setItemMeta(m);
+            inv.setItem(slot, icon);
+            h.scrolls.put(slot, sc.kind());
+        }
         p.openInventory(inv);
     }
 
@@ -87,6 +109,19 @@ public final class EnchanterMenu implements Listener {
             return;
         }
         int slot = e.getRawSlot();
+        String kind = h.scrolls.get(slot);
+        if (kind != null) {
+            var sc = plugin.settings().scrolls.get(kind);
+            if (!pay(p, sc.cost())) {
+                return;
+            }
+            double rate = com.arkcronist.enchants.text.Percent.roll(sc.min(), sc.max(), java.util.concurrent.ThreadLocalRandom.current());
+            p.getInventory().addItem(Items.scroll(kind, rate)).values().forEach(rest -> p.getWorld().dropItemNaturally(p.getLocation(), rest));
+            p.playSound(p.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1, 1.3f);
+            plugin.send(p, "bought", "%group%", sc.name().replace(" &7(%success%%)", "").replace("%success%", ""), "%cost%",
+                    String.valueOf(sc.cost()));
+            return;
+        }
         Group g = slot >= 0 && slot < h.slots.size() ? h.slots.get(slot) : null;
         if (g == null) {
             return;
@@ -103,6 +138,19 @@ public final class EnchanterMenu implements Listener {
         p.getInventory().addItem(Items.mystery(g)).values().forEach(rest -> p.getWorld().dropItemNaturally(p.getLocation(), rest));
         p.playSound(p.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1, 1);
         plugin.send(p, "bought", "%group%", g.color() + g.name(), "%cost%", String.valueOf(cost));
+    }
+
+    private boolean pay(Player p, int cost) {
+        if (p.getGameMode() == org.bukkit.GameMode.CREATIVE) {
+            return true;
+        }
+        if (p.getLevel() < cost) {
+            p.playSound(p.getLocation(), Sound.ENTITY_VILLAGER_NO, 1, 1);
+            plugin.send(p, "not-enough-xp", "%cost%", String.valueOf(cost));
+            return false;
+        }
+        p.setLevel(p.getLevel() - cost);
+        return true;
     }
 
     @EventHandler

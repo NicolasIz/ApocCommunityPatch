@@ -5,7 +5,7 @@ ItemsAdder. It is a separate plugin from ArkcronistGenerator and builds on its o
 
 ```
 cd arkenchants
-mvn package        # target/ArkEnchants-1.2.0.jar
+mvn package        # target/ArkEnchants-1.3.0.jar
 ```
 
 ## Why it does not break ItemsAdder
@@ -39,6 +39,20 @@ Extra variables: %victim health percent%, %player health percent%, %victim is ma
 
 Each set can be switched off under `sets:` in config.yml, and any other `enchantments-*.yml` in the plugin
 folder is loaded too.
+
+## Books and scrolls
+
+Book success and destroy chances keep decimals (a FABLED book can roll 0.1%). Scrolls are dragged onto an item
+like books:
+
+- Extraction (`extract`): takes a random enchant off the item and gives it back as a book. Curses and
+  enchants marked not removable stay.
+- Protection (`protect`): the item is kept on death and survives a book that would destroy it; the
+  protection is used up the first time it saves the item.
+- Purification (`purify`): takes a random curse off.
+
+Extraction and purification have their own success chance. All three are sold in `/enchanter` and given with
+`/arkenchants scroll <player> <extract|protect|purify> [amount] [success%]`.
 
 ## Enchanted loot
 

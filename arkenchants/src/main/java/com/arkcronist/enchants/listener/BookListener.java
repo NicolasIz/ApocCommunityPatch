@@ -5,7 +5,10 @@ import com.arkcronist.enchants.item.Applying;
 import com.arkcronist.enchants.item.Items;
 import com.arkcronist.enchants.model.Enchant;
 import com.arkcronist.enchants.model.Group;
+import com.arkcronist.enchants.text.Percent;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import org.bukkit.GameMode;
@@ -24,7 +27,10 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
-/** Dropping a book (or soul tracker) on an item, opening mystery books, merging enchanted items on an anvil. */
+/**
+ * Dropping something on an item in the inventory: books (apply an enchant), the soul tracker, and scrolls
+ * (extract an enchant back into a book, protect the item, purify a curse). Also mystery books and anvils.
+ */
 public final class BookListener implements Listener {
 
     private final ArkEnchants plugin;
@@ -44,35 +50,30 @@ public final class BookListener implements Listener {
         }
         ItemStack cursor = e.getCursor();
         ItemStack target = e.getCurrentItem();
-        if (Items.empty(cursor) || Items.empty(target)) {
+        if (Items.empty(cursor) || Items.empty(target) || target.getAmount() != 1 || Items.readBook(target) != null
+                || Items.scrollKind(target) != null || Items.mysteryGroup(target) != null) {
             return;
         }
-        if (Items.isTracker(cursor)) {
-            if (Items.tracks(target) || target.getType().getMaxStackSize() > 1) {
-                return;
-            }
-            e.setCancelled(true);
-            Items.setSouls(target, 0, true);
-            e.setCurrentItem(target);
-            consume(e, cursor);
-            p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1, 1.4f);
-            plugin.send(p, "tracker-applied");
+        String kind = Items.scrollKind(cursor);
+        if (kind != null) {
+            scroll(e, p, kind, cursor, target);
             return;
         }
-        Object[] book = Items.readBook(cursor);
-        if (book == null || Items.readBook(target) != null || target.getAmount() != 1) {
-            return;
+        Items.Book book = Items.readBook(cursor);
+        if (book != null) {
+            book(e, p, book, cursor, target);
         }
-        Enchant ench = plugin.registry().get((String) book[0]);
+    }
+
+    // ------------------------------------------------------------------ books
+    private void book(InventoryClickEvent e, Player p, Items.Book book, ItemStack cursor, ItemStack target) {
+        Enchant ench = plugin.registry().get(book.enchant());
         if (ench == null) {
             return;
         }
         e.setCancelled(true);
-        int level = (Integer) book[1];
-        int success = (Integer) book[2];
-        int destroy = (Integer) book[3];
         Map<String, Integer> current = new LinkedHashMap<>(Items.enchants(target));
-        Applying.Outcome o = Applying.check(ench, level, current, Items.applicable(ench, target),
+        Applying.Outcome o = Applying.check(ench, book.level(), current, Items.applicable(ench, target),
                 plugin.settings().maxEnchants, plugin.settings().upgradeOnSameLevel);
         switch (o.result()) {
             case NOT_APPLICABLE -> plugin.send(p, "not-applicable", "%applies-to%", ench.appliesTo());
@@ -82,23 +83,118 @@ public final class BookListener implements Listener {
             case NO_SLOTS -> plugin.send(p, "no-slots", "%max%", o.detail());
             case OK -> {
                 consume(e, cursor);
-                if (ThreadLocalRandom.current().nextInt(100) < success) {
+                ThreadLocalRandom r = ThreadLocalRandom.current();
+                if (Percent.chance(book.success(), r)) {
                     current.put(ench.id(), o.newLevel());
                     Items.setEnchants(target, current);
                     e.setCurrentItem(target);
-                    p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1, 1);
-                    p.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, p.getLocation().add(0, 1, 0), 25, 0.4, 0.6, 0.4);
+                    good(p);
                     plugin.send(p, "applied", "%enchant%", Items.format("%group-color%%display% %level%", ench, o.newLevel()));
-                } else if (ThreadLocalRandom.current().nextInt(100) < destroy) {
-                    e.setCurrentItem(null);
-                    p.playSound(p.getLocation(), Sound.ENTITY_ITEM_BREAK, 1, 0.7f);
-                    plugin.send(p, "destroyed");
+                } else if (Percent.chance(book.destroy(), r)) {
+                    if (Items.isProtected(target)) {
+                        Items.setProtected(target, false);
+                        e.setCurrentItem(target);
+                        bad(p);
+                        plugin.send(p, "protection-saved");
+                    } else {
+                        e.setCurrentItem(null);
+                        p.playSound(p.getLocation(), Sound.ENTITY_ITEM_BREAK, 1, 0.7f);
+                        plugin.send(p, "destroyed");
+                    }
                 } else {
-                    p.playSound(p.getLocation(), Sound.BLOCK_ANVIL_LAND, 0.6f, 1.2f);
-                    plugin.send(p, "failed");
+                    bad(p);
+                    plugin.send(p, "failed", "%success%", Percent.fmt(book.success()));
                 }
             }
         }
+    }
+
+    // ------------------------------------------------------------------ scrolls
+    private void scroll(InventoryClickEvent e, Player p, String kind, ItemStack cursor, ItemStack target) {
+        ThreadLocalRandom r = ThreadLocalRandom.current();
+        switch (kind) {
+            case "soul_tracker" -> {
+                if (Items.tracks(target) || target.getType().getMaxStackSize() > 1) {
+                    return;
+                }
+                e.setCancelled(true);
+                Items.setSouls(target, 0, true);
+                e.setCurrentItem(target);
+                consume(e, cursor);
+                good(p);
+                plugin.send(p, "tracker-applied");
+            }
+            case "protect" -> {
+                if (target.getType().getMaxStackSize() > 1) {
+                    return;
+                }
+                e.setCancelled(true);
+                if (Items.isProtected(target)) {
+                    plugin.send(p, "already-protected");
+                    return;
+                }
+                consume(e, cursor);
+                Items.setProtected(target, true);
+                e.setCurrentItem(target);
+                good(p);
+                plugin.send(p, "protected");
+            }
+            case "extract", "purify" -> {
+                boolean curse = kind.equals("purify");
+                Map<String, Integer> current = new LinkedHashMap<>(Items.enchants(target));
+                List<String> options = new ArrayList<>();
+                for (String id : current.keySet()) {
+                    Enchant en = plugin.registry().get(id);
+                    boolean isCurse = en != null && en.group().equals("CURSE");
+                    // extraction takes only removable enchants; purifying takes only curses
+                    if (en == null || (curse ? isCurse : !isCurse && en.removable())) {
+                        options.add(id);
+                    }
+                }
+                if (current.isEmpty()) {
+                    return;
+                }
+                e.setCancelled(true);
+                if (options.isEmpty()) {
+                    plugin.send(p, curse ? "no-curse" : "nothing-to-extract");
+                    return;
+                }
+                consume(e, cursor);
+                double rate = Items.scrollRate(cursor);
+                if (!Percent.chance(rate, r)) {
+                    bad(p);
+                    plugin.send(p, "scroll-failed", "%success%", Percent.fmt(rate));
+                    return;
+                }
+                String id = options.get(r.nextInt(options.size()));
+                int level = current.remove(id);
+                Items.setEnchants(target, current);
+                e.setCurrentItem(target);
+                good(p);
+                Enchant en = plugin.registry().get(id);
+                if (curse || en == null) {
+                    plugin.send(p, "purified", "%enchant%", en == null ? id : Items.format("%group-color%%display% %level%", en, level));
+                    return;
+                }
+                Group g = plugin.registry().group(en.group());
+                ItemStack b = Items.book(en, level, Percent.roll(g.successMin(), g.successMax(), r),
+                        Percent.roll(g.destroyMin(), g.destroyMax(), r));
+                p.getInventory().addItem(b).values().forEach(rest -> p.getWorld().dropItemNaturally(p.getLocation(), rest));
+                plugin.send(p, "extracted", "%enchant%", Items.format("%group-color%%display% %level%", en, level));
+            }
+            default -> {
+            }
+        }
+    }
+
+    private static void good(Player p) {
+        p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1, 1);
+        p.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, p.getLocation().add(0, 1, 0), 25, 0.4, 0.6, 0.4);
+    }
+
+    private static void bad(Player p) {
+        p.playSound(p.getLocation(), Sound.BLOCK_ANVIL_LAND, 0.6f, 1.2f);
+        p.getWorld().spawnParticle(Particle.SMOKE, p.getLocation().add(0, 1, 0), 20, 0.3, 0.5, 0.3, 0.02);
     }
 
     private static void consume(InventoryClickEvent e, ItemStack cursor) {
@@ -110,6 +206,7 @@ public final class BookListener implements Listener {
         }
     }
 
+    // ------------------------------------------------------------------ mystery books
     @EventHandler(priority = EventPriority.HIGH)
     public void onOpenMystery(PlayerInteractEvent e) {
         if (e.getHand() != EquipmentSlot.HAND || (e.getAction() != Action.RIGHT_CLICK_AIR && e.getAction() != Action.RIGHT_CLICK_BLOCK)) {
@@ -130,15 +227,16 @@ public final class BookListener implements Listener {
         }
         ThreadLocalRandom r = ThreadLocalRandom.current();
         int level = 1 + r.nextInt(Math.max(1, ench.maxLevel()));
-        int success = g.successMin() + r.nextInt(g.successMax() - g.successMin() + 1);
-        int destroy = g.destroyMin() + r.nextInt(g.destroyMax() - g.destroyMin() + 1);
+        double success = Percent.roll(g.successMin(), g.successMax(), r);
+        double destroy = Percent.roll(g.destroyMin(), g.destroyMax(), r);
         if (p.getGameMode() != GameMode.CREATIVE || hand.getAmount() > 1) {
             hand.setAmount(hand.getAmount() - 1);
         }
         p.getInventory().addItem(Items.book(ench, level, success, destroy)).values()
                 .forEach(rest -> p.getWorld().dropItemNaturally(p.getLocation(), rest));
         p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1, 1.6f);
-        plugin.send(p, "mystery-opened", "%enchant%", Items.format("%group-color%%display% %level%", ench, level));
+        plugin.send(p, "mystery-opened", "%enchant%", Items.format("%group-color%%display% %level%", ench, level),
+                "%success%", Percent.fmt(success));
     }
 
     /** Two items with ArkEnchants on an anvil: the result keeps both, equal levels go one up. */

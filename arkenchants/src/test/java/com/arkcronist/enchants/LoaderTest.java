@@ -85,7 +85,8 @@ class LoaderTest {
         assertTrue(!g.get("CURSE").inEnchanter());
         assertEquals("&6", g.get("LEGENDARY").color());
         assertEquals(35, g.get("LEGENDARY").enchanterCost());
-        assertEquals(20, g.get("LEGENDARY").successMin());
+        assertEquals(1, g.get("LEGENDARY").successMin());
+        assertEquals(0.1, g.get("FABLED").successMin());
     }
 
     @Test

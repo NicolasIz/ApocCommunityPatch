@@ -18,6 +18,8 @@ public final class Keys {
     public static NamespacedKey SCROLL;
     public static NamespacedKey GUARD;
     public static NamespacedKey CLONE;
+    public static NamespacedKey PROTECTED;
+    public static NamespacedKey SCROLL_RATE;
     public static NamespacedKey MARK;
     public static NamespacedKey JUMP;
     public static NamespacedKey JUMP_TIME;
@@ -38,6 +40,8 @@ public final class Keys {
         SCROLL = new NamespacedKey(plugin, "scroll");
         GUARD = new NamespacedKey(plugin, "guard");
         CLONE = new NamespacedKey(plugin, "clone");
+        PROTECTED = new NamespacedKey(plugin, "protected");
+        SCROLL_RATE = new NamespacedKey(plugin, "scroll_rate");
         MARK = new NamespacedKey(plugin, "mark");
         JUMP = new NamespacedKey(plugin, "double_jump");
         JUMP_TIME = new NamespacedKey(plugin, "double_jump_time");

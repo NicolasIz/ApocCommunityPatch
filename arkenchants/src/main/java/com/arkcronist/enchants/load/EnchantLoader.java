@@ -112,8 +112,8 @@ public final class EnchantLoader {
             ConfigurationSection o = ours == null ? null : ours.getConfigurationSection(raw);
             String color = pick(o, a, "color", "global-color", "&7");
             String name = pick(o, a, "name", "group-name", id.charAt(0) + id.substring(1).toLowerCase(Locale.ROOT));
-            int[] success = range(o == null ? null : o.getString("success"), 25, 100);
-            int[] destroy = range(o == null ? null : o.getString("destroy"), 0, 50);
+            double[] success = range(o == null ? null : o.getString("success"), 25, 100);
+            double[] destroy = range(o == null ? null : o.getString("destroy"), 0, 50);
             out.put(id, new Group(id, color, name, o == null ? 10 : o.getInt("weight", 10),
                     success[0], success[1], destroy[0], destroy[1], o == null ? 10 : o.getInt("cost", 10),
                     o == null ? !id.equals("CURSE") : o.getBoolean("enchanter", !id.equals("CURSE"))));
@@ -133,17 +133,18 @@ public final class EnchantLoader {
         return def;
     }
 
-    static int[] range(String s, int lo, int hi) {
+    /** "0.1-100", "40-100" or "50" (decimals with '.' or ','). */
+    public static double[] range(String s, double lo, double hi) {
         if (s == null) {
-            return new int[]{lo, hi};
+            return new double[]{lo, hi};
         }
         String[] p = s.split("-");
         try {
-            int a = Integer.parseInt(p[0].trim());
-            int b = p.length > 1 ? Integer.parseInt(p[1].trim()) : a;
-            return new int[]{Math.min(a, b), Math.max(a, b)};
+            double a = Double.parseDouble(p[0].replace(',', '.').trim());
+            double b = p.length > 1 ? Double.parseDouble(p[1].replace(',', '.').trim()) : a;
+            return new double[]{Math.max(0, Math.min(a, b)), Math.min(100, Math.max(a, b))};
         } catch (NumberFormatException e) {
-            return new int[]{lo, hi};
+            return new double[]{lo, hi};
         }
     }
 

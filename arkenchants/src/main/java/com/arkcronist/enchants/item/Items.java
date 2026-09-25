@@ -71,7 +71,7 @@ public final class Items {
         }
         ItemMeta meta = item.getItemMeta();
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
-        if (!pdc.has(Keys.ENCHANTS) && !pdc.has(Keys.SOUL_TRACKER)) {
+        if (!pdc.has(Keys.ENCHANTS) && !pdc.has(Keys.SOUL_TRACKER) && !pdc.has(Keys.PROTECTED)) {
             return false;
         }
         List<String> want = lines(pdc);
@@ -155,6 +155,9 @@ public final class Items {
             int souls = pdc.getOrDefault(Keys.SOULS, PersistentDataType.INTEGER, 0);
             out.add(settings.soulsLore.replace("%souls%", String.valueOf(souls)));
         }
+        if (pdc.has(Keys.PROTECTED)) {
+            out.add(settings.protectedLore);
+        }
         return out;
     }
 
@@ -187,28 +190,32 @@ public final class Items {
     }
 
     // ------------------------------------------------------------------ books
-    public static ItemStack book(Enchant e, int level, int success, int destroy) {
+    /** An ArkEnchants book: enchant, level and its success/destroy chances in percent. */
+    public record Book(String enchant, int level, double success, double destroy) {
+    }
+
+    public static ItemStack book(Enchant e, int level, double success, double destroy) {
         ItemStack it = new ItemStack(settings.bookMaterial);
         ItemMeta meta = it.getItemMeta();
         meta.displayName(Colors.of(format(settings.bookName, e, level)));
         List<Component> lore = new ArrayList<>();
         for (String l : settings.bookLore) {
-            lore.add(Colors.of(format(l, e, level).replace("%success%", String.valueOf(success))
-                    .replace("%destroy%", String.valueOf(destroy))));
+            lore.add(Colors.of(format(l, e, level).replace("%success%", com.arkcronist.enchants.text.Percent.fmt(success))
+                    .replace("%destroy%", com.arkcronist.enchants.text.Percent.fmt(destroy))));
         }
         meta.lore(lore);
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         pdc.set(Keys.BOOK, PersistentDataType.STRING, e.id() + ":" + level);
-        pdc.set(Keys.SUCCESS, PersistentDataType.INTEGER, success);
-        pdc.set(Keys.DESTROY, PersistentDataType.INTEGER, destroy);
+        pdc.set(Keys.SUCCESS, PersistentDataType.DOUBLE, success);
+        pdc.set(Keys.DESTROY, PersistentDataType.DOUBLE, destroy);
         meta.setEnchantmentGlintOverride(true);
         meta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP, ItemFlag.HIDE_ENCHANTS);
         it.setItemMeta(meta);
         return it;
     }
 
-    /** {enchantId, level, success, destroy} or null when the item is not an ArkEnchants book. */
-    public static Object[] readBook(ItemStack item) {
+    /** The book on this item, or null when it is not an ArkEnchants book. */
+    public static Book readBook(ItemStack item) {
         if (empty(item) || !item.hasItemMeta()) {
             return null;
         }
@@ -222,8 +229,18 @@ public final class Items {
             return null;
         }
         var e = m.entrySet().iterator().next();
-        return new Object[]{e.getKey(), e.getValue(), pdc.getOrDefault(Keys.SUCCESS, PersistentDataType.INTEGER, 100),
-                pdc.getOrDefault(Keys.DESTROY, PersistentDataType.INTEGER, 0)};
+        return new Book(e.getKey(), e.getValue(), percent(pdc, Keys.SUCCESS, 100), percent(pdc, Keys.DESTROY, 0));
+    }
+
+    /** Books from 1.0-1.2 kept whole numbers; newer ones keep decimals. */
+    static double percent(PersistentDataContainer pdc, org.bukkit.NamespacedKey key, double def) {
+        if (pdc.has(key, PersistentDataType.DOUBLE)) {
+            return pdc.get(key, PersistentDataType.DOUBLE);
+        }
+        if (pdc.has(key, PersistentDataType.INTEGER)) {
+            return pdc.get(key, PersistentDataType.INTEGER);
+        }
+        return def;
     }
 
     public static ItemStack mystery(Group g) {
@@ -250,9 +267,61 @@ public final class Items {
 
     public static String groupText(String s, Group g) {
         return s.replace("%group-color%", g.color()).replace("%group-name%", g.name())
-                .replace("%success-min%", String.valueOf(g.successMin())).replace("%success-max%", String.valueOf(g.successMax()))
-                .replace("%destroy-min%", String.valueOf(g.destroyMin())).replace("%destroy-max%", String.valueOf(g.destroyMax()))
+                .replace("%success-min%", com.arkcronist.enchants.text.Percent.fmt(g.successMin()))
+                .replace("%success-max%", com.arkcronist.enchants.text.Percent.fmt(g.successMax()))
+                .replace("%destroy-min%", com.arkcronist.enchants.text.Percent.fmt(g.destroyMin()))
+                .replace("%destroy-max%", com.arkcronist.enchants.text.Percent.fmt(g.destroyMax()))
                 .replace("%cost%", String.valueOf(g.enchanterCost()));
+    }
+
+    // ------------------------------------------------------------------ scrolls and protection
+    /** Kinds of scroll: extract (enchant back to a book), protect, purify (removes a curse). */
+    public static ItemStack scroll(String kind, double rate) {
+        Settings.Scroll sc = settings.scrolls.get(kind);
+        ItemStack it = new ItemStack(sc.material());
+        ItemMeta meta = it.getItemMeta();
+        String pct = com.arkcronist.enchants.text.Percent.fmt(rate);
+        meta.displayName(Colors.of(sc.name().replace("%success%", pct)));
+        List<Component> lore = new ArrayList<>();
+        for (String l : sc.lore()) {
+            lore.add(Colors.of(l.replace("%success%", pct)));
+        }
+        meta.lore(lore);
+        meta.getPersistentDataContainer().set(Keys.SCROLL, PersistentDataType.STRING, kind);
+        meta.getPersistentDataContainer().set(Keys.SCROLL_RATE, PersistentDataType.DOUBLE, rate);
+        meta.setEnchantmentGlintOverride(true);
+        it.setItemMeta(meta);
+        return it;
+    }
+
+    /** "extract", "protect", "purify", "soul_tracker" or null. */
+    public static String scrollKind(ItemStack item) {
+        if (empty(item) || !item.hasItemMeta()) {
+            return null;
+        }
+        return item.getItemMeta().getPersistentDataContainer().get(Keys.SCROLL, PersistentDataType.STRING);
+    }
+
+    public static double scrollRate(ItemStack item) {
+        return item.getItemMeta().getPersistentDataContainer().getOrDefault(Keys.SCROLL_RATE, PersistentDataType.DOUBLE, 100.0);
+    }
+
+    public static boolean isProtected(ItemStack item) {
+        return !empty(item) && item.hasItemMeta() && item.getItemMeta().getPersistentDataContainer().has(Keys.PROTECTED);
+    }
+
+    public static void setProtected(ItemStack item, boolean on) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) {
+            return;
+        }
+        if (on) {
+            meta.getPersistentDataContainer().set(Keys.PROTECTED, PersistentDataType.BYTE, (byte) 1);
+        } else {
+            meta.getPersistentDataContainer().remove(Keys.PROTECTED);
+        }
+        render(meta);
+        item.setItemMeta(meta);
     }
 
     // ------------------------------------------------------------------ souls
