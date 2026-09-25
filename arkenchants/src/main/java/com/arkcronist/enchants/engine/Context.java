@@ -32,6 +32,7 @@ public final class Context {
     public int exp;
     public Entity caught;
     public Entity hook;
+    public Entity projectile;
     // mining / kill results picked up by the listeners after the effects ran
     public int moreDrops;
     public boolean smelt;
@@ -62,6 +63,7 @@ public final class Context {
         c.exp = exp;
         c.caught = caught;
         c.hook = hook;
+        c.projectile = projectile;
         c.parent = this;
         return c;
     }

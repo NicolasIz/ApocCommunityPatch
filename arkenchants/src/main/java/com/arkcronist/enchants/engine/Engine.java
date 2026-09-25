@@ -28,6 +28,8 @@ public final class Engine {
     public final Plugin plugin;
     public final Combos combos = new Combos();
     public final PlacedBlocks placed = new PlacedBlocks();
+    public final Charges charges = new Charges();
+    public final Clones clones = new Clones();
     public final Effects effects;
     private final Placeholders placeholders = new Placeholders(this);
     private final Map<String, Long> cooldowns = new HashMap<>();
@@ -163,6 +165,27 @@ public final class Engine {
             disabled.put(p.getUniqueId() + "|" + enchantId.toLowerCase(java.util.Locale.ROOT),
                     System.currentTimeMillis() + (long) (seconds * 1000));
         }
+    }
+
+    /** True while MARK is on this entity. */
+    public boolean marked(org.bukkit.entity.Entity e) {
+        if (e == null) {
+            return false;
+        }
+        Long until = e.getPersistentDataContainer().get(com.arkcronist.enchants.item.Keys.MARK,
+                org.bukkit.persistence.PersistentDataType.LONG);
+        return until != null && until > System.currentTimeMillis();
+    }
+
+    /** Whether any enchant on this item fires on the trigger (used to show the charge bar only when it matters). */
+    public boolean has(ItemStack item, Trigger trigger) {
+        for (String id : Items.enchants(item).keySet()) {
+            Enchant e = registry.get(id);
+            if (e != null && e.triggers().contains(trigger) && Items.applicable(e, item)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     void unknownPlaceholder(String key) {

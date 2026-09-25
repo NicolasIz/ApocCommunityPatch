@@ -52,12 +52,16 @@ public final class Effects {
             "DISARM", "REMOVE_RANDOM_ARMOR", "SHUFFLE_HOTBAR", "PUMPKIN", "DROP_HEAD", "EXP", "ADD_SOULS", "REMOVE_SOULS",
             "ADD_DURABILITY_CURRENT_ITEM", "ADD_DURABILITY_ITEM", "ADD_DURABILITY_ARMOR", "REPAIR", "DISABLE_ACTIVATION",
             "RESET_COMBO", "BREAK_BLOCK", "BREAK_TREE", "SET_BLOCK", "MORE_DROPS", "SMELT", "TP_DROPS", "PLANT_SEEDS",
-            "AUTO_REEL", "REVIVE", "KEEP_ON_DEATH", "FLY", "AIR", "LAVA_WALKER", "WATER_WALKER", "REMOVE_ENCHANT");
+            "AUTO_REEL", "REVIVE", "KEEP_ON_DEATH", "FLY", "AIR", "LAVA_WALKER", "WATER_WALKER", "REMOVE_ENCHANT",
+            "CLONES", "DASH", "SLAM", "CHAIN_LIGHTNING", "MARK", "THROW_WEAPON", "HOMING", "MULTISHOT", "REFLECT", "BLINK",
+            "DOUBLE_JUMP", "DROP_ITEM", "DOUBLE_CATCH", "REVEAL", "ACTIONBAR");
 
     private final Engine engine;
+    private final Specials specials;
 
     Effects(Engine engine) {
         this.engine = engine;
+        this.specials = new Specials(engine);
     }
 
     void apply(EffectLine line, Context c) {
@@ -353,7 +357,11 @@ public final class Effects {
             case "WATER_WALKER" -> walker(c.holder, Material.WATER, Material.FROSTED_ICE, d(a, 0, 2));
             case "LAVA_WALKER" -> walker(c.holder, Material.LAVA, Material.MAGMA_BLOCK, d(a, 0, 2));
             case "REMOVE_ENCHANT" -> engine.warnOnce("remove_enchant", "REMOVE_ENCHANT is not supported by ArkEnchants (ignored).");
-            default -> engine.warnOnce("fx " + line.name(), "Unknown effect " + line.name() + " in " + c.enchantId + " (ignored).");
+            default -> {
+                if (!specials.apply(line.name(), a, t, c)) {
+                    engine.warnOnce("fx " + line.name(), "Unknown effect " + line.name() + " in " + c.enchantId + " (ignored).");
+                }
+            }
         }
     }
 

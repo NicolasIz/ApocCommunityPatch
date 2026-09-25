@@ -52,8 +52,13 @@ public final class CombatListener implements Listener {
     // ------------------------------------------------------------------ shots
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onShoot(EntityShootBowEvent e) {
-        if (e.getEntity() instanceof Player && e.getBow() != null && !Items.enchants(e.getBow()).isEmpty()) {
+        if (e.getEntity() instanceof Player p && e.getBow() != null && !Items.enchants(e.getBow()).isEmpty()) {
             remember(e.getProjectile(), e.getBow().clone());
+            Context c = new Context(Trigger.BOW_FIRE, p);
+            c.attacker = p;
+            c.event = e;
+            c.projectile = e.getProjectile();
+            engine.fire(Trigger.BOW_FIRE, c, List.of(e.getBow()));
         }
     }
 
@@ -86,6 +91,25 @@ public final class CombatListener implements Listener {
             e.setCancelled(true);
             return;
         }
+        // nobody hurts their own clones or guards
+        String victimOwner = victim.getPersistentDataContainer().get(Keys.GUARD, PersistentDataType.STRING);
+        Entity real = damager instanceof Projectile pr0 && pr0.getShooter() instanceof Entity sh ? sh : damager;
+        if (victimOwner != null && victimOwner.equals(real.getUniqueId().toString())) {
+            e.setCancelled(true);
+            return;
+        }
+        // a clone's hit counts as its owner's: kills, drops and protection plugins see the player
+        if (owner != null && damager.getPersistentDataContainer().has(Keys.CLONE)) {
+            Player ownerP = Bukkit.getPlayer(UUID.fromString(owner));
+            e.setCancelled(true);
+            if (ownerP != null && ownerP.isOnline() && victimOwner == null) {
+                double dmg = e.getDamage();
+                victim.setNoDamageTicks(0);
+                engine.quietly(() -> victim.damage(dmg, ownerP));
+                victim.getWorld().spawnParticle(Particle.SQUID_INK, victim.getLocation().add(0, 1, 0), 6, 0.3, 0.4, 0.3, 0.02);
+            }
+            return;
+        }
         Player shooter = null;
         ItemStack launcher = null;
         Player melee = null;
@@ -113,6 +137,19 @@ public final class CombatListener implements Listener {
             c.critical = e.isCritical();
             engine.combos.hit(melee);
             engine.fire(c.trigger, c, Gear.handAndArmor(melee));
+            if (engine.charges.consume(melee, System.currentTimeMillis())) {
+                Context ch = new Context(Trigger.CHARGED_ATTACK, melee);
+                ch.attacker = melee;
+                ch.victim = victim;
+                ch.event = e;
+                ch.damage = mods;
+                ch.baseDamage = base;
+                ch.critical = c.critical;
+                engine.fire(Trigger.CHARGED_ATTACK, ch, Gear.hand(melee));
+            }
+            if (engine.clones.count(melee) > 0 && victim.getPersistentDataContainer().get(Keys.GUARD, PersistentDataType.STRING) == null) {
+                engine.clones.focus(melee, victim);
+            }
         } else if (shooter != null) {
             Context c = new Context(victim instanceof Player ? Trigger.SHOOT : Trigger.SHOOT_MOB, shooter);
             c.attacker = shooter;
@@ -158,7 +195,14 @@ public final class CombatListener implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onGuardTarget(EntityTargetLivingEntityEvent e) {
         String owner = e.getEntity().getPersistentDataContainer().get(Keys.GUARD, PersistentDataType.STRING);
-        if (owner != null && e.getTarget() != null && owner.equals(e.getTarget().getUniqueId().toString())) {
+        if (owner == null || e.getTarget() == null) {
+            return;
+        }
+        if (owner.equals(e.getTarget().getUniqueId().toString())) {
+            e.setCancelled(true);
+        } else if (e.getEntity().getPersistentDataContainer().has(Keys.CLONE)
+                && !engine.clones.allowed(UUID.fromString(owner), e.getTarget())) {
+            // clones only go after what their owner is fighting
             e.setCancelled(true);
         }
     }
@@ -220,6 +264,7 @@ public final class CombatListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerDeath(PlayerDeathEvent e) {
         Player dead = e.getEntity();
+        engine.clones.removeAll(dead);
         List<ItemStack> keep = pendingKeep.remove(dead.getUniqueId());
         if (keep != null && !e.getKeepInventory()) {
             List<ItemStack> saved = new ArrayList<>();

@@ -16,6 +16,11 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemBreakEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
+import com.arkcronist.enchants.text.Colors;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
@@ -37,11 +42,42 @@ public final class MiscListener implements Listener {
         if (Items.readBook(hand) != null || Items.mysteryGroup(hand) != null || Items.isTracker(hand)) {
             return;
         }
+        charge(e.getPlayer(), hand);
         Context c = new Context(Trigger.RIGHT_CLICK, e.getPlayer());
         c.attacker = e.getPlayer();
         c.event = e;
         c.block = e.getClickedBlock();
         engine.fire(Trigger.RIGHT_CLICK, c, List.of(hand));
+    }
+
+    /** Holding right click while looking at a mob sends entity clicks instead of item uses. */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onClickEntity(PlayerInteractEntityEvent e) {
+        if (e.getHand() == EquipmentSlot.HAND) {
+            charge(e.getPlayer(), e.getPlayer().getInventory().getItemInMainHand());
+        }
+    }
+
+    private void charge(Player p, ItemStack hand) {
+        if (!engine.has(hand, Trigger.CHARGED_ATTACK)) {
+            return;
+        }
+        int pct = engine.charges.click(p, System.currentTimeMillis());
+        if (pct < 0) {
+            p.sendActionBar(Colors.of(engine.settings().msg("charged")));
+            p.playSound(p.getLocation(), Sound.BLOCK_BEACON_POWER_SELECT, 0.7f, 1.8f);
+            p.getWorld().spawnParticle(Particle.ENCHANTED_HIT, p.getLocation().add(0, 1.2, 0), 20, 0.4, 0.5, 0.4, 0.2);
+        } else if (pct < 100) {
+            int bars = pct / 10;
+            p.sendActionBar(Colors.of(engine.settings().msg("charging").replace("%bar%",
+                    "&d" + "|".repeat(bars) + "&8" + "|".repeat(10 - bars)).replace("%percent%", String.valueOf(pct))));
+        }
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent e) {
+        engine.clones.removeAll(e.getPlayer());
+        engine.charges.forget(e.getPlayer());
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)

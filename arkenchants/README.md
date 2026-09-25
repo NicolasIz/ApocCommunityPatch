@@ -5,7 +5,7 @@ ItemsAdder. It is a separate plugin from ArkcronistGenerator and builds on its o
 
 ```
 cd arkenchants
-mvn package        # target/ArkEnchants-1.0.0.jar
+mvn package        # target/ArkEnchants-1.1.0.jar
 ```
 
 ## Why it does not break ItemsAdder
@@ -16,10 +16,22 @@ mvn package        # target/ArkEnchants-1.0.0.jar
   data and the lore other plugins put there are left alone. If another plugin rewrites the lore, the lines come
   back the next time the item is held.
 
+## Bundled enchantments
+
+`enchantments.yml` ships 55 enchantments across six rarities, including charged attacks (hold right click
+until the bar fills, then hit within a few seconds): Sombras Gemelas (up to 3 shadow clones for up to 12 s),
+Tajo del Vacio (dash), Torbellino and Terremoto (ground slams). Also chain lightning, marks, a boomerang axe,
+homing and fan-shot arrows, double jump, reflect, escape teleport, lava walking, treasure finding and more.
+
+ArkEnchants-only effects: CLONES, DASH, SLAM, CHAIN_LIGHTNING, MARK, THROW_WEAPON, HOMING, MULTISHOT, REFLECT,
+BLINK, DOUBLE_JUMP, DROP_ITEM, DOUBLE_CATCH, REVEAL, ACTIONBAR. Extra types: CHARGED_ATTACK and BOW_FIRE.
+Extra variables: %victim health percent%, %player health percent%, %victim is marked%, %charge%, %clones%.
+`<math>` knows min, max, abs, floor, ceil, round and sqrt.
+
 ## Moving over from AdvancedEnchantments
 
-On first start, if `plugins/AdvancedEnchantments/enchantments.yml` and `groups.yml` exist, they are copied into
-`plugins/ArkEnchants/`. The console then says how many enchants loaded and lists any type or effect it does
+With `import-advancedenchantments: true`, the first start copies `plugins/AdvancedEnchantments/enchantments.yml`
+and `groups.yml` into `plugins/ArkEnchants/` instead of using the bundled set. The console then says how many enchants loaded and lists any type or effect it does
 not support. Items already enchanted by AdvancedEnchantments have their enchant lore lines ("Harvest III")
 turned into ArkEnchants data when a player joins or picks the item (`convert-advancedenchantments-lore`).
 

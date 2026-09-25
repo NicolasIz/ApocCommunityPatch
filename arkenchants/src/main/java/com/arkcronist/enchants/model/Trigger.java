@@ -9,6 +9,10 @@ public enum Trigger {
     ATTACK, ATTACK_MOB,
     DEFENSE, DEFENSE_MOB, DEFENSE_PROJECTILE,
     SHOOT, SHOOT_MOB,
+    /** A melee hit right after holding right click until the weapon charged. */
+    CHARGED_ATTACK,
+    /** The moment a bow or crossbow lets go of an arrow (the arrow is the projectile). */
+    BOW_FIRE,
     MINING,
     KILL_MOB, KILL_PLAYER,
     DEATH,

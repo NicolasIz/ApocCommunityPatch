@@ -28,6 +28,8 @@ public final class Settings {
     public final boolean importAdvancedEnchantments;
     public final List<String> extraMaterials;
     public final boolean convertLegacyLore;
+    public final double chargeSeconds;
+    public final double chargeReadySeconds;
     private final FileConfiguration cfg;
 
     public Settings(FileConfiguration c) {
@@ -49,9 +51,11 @@ public final class Settings {
         disabledWorlds = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         disabledWorlds.addAll(c.getStringList("disabled-worlds"));
         passiveInterval = Math.max(10, c.getInt("passive-interval-ticks", 40));
-        importAdvancedEnchantments = c.getBoolean("import-advancedenchantments", true);
+        importAdvancedEnchantments = c.getBoolean("import-advancedenchantments", false);
         extraMaterials = c.getStringList("apply.extra-materials");
         convertLegacyLore = c.getBoolean("convert-advancedenchantments-lore", true);
+        chargeSeconds = c.getDouble("charge.seconds", 1.2);
+        chargeReadySeconds = c.getDouble("charge.ready-seconds", 4);
     }
 
     public String msg(String key) {

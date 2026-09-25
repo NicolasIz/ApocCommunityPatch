@@ -10,6 +10,7 @@ import com.arkcronist.enchants.item.Keys;
 import com.arkcronist.enchants.listener.BlockListener;
 import com.arkcronist.enchants.listener.BookListener;
 import com.arkcronist.enchants.listener.CombatListener;
+import com.arkcronist.enchants.listener.JumpListener;
 import com.arkcronist.enchants.listener.MiscListener;
 import com.arkcronist.enchants.listener.PassiveTask;
 import com.arkcronist.enchants.load.EnchantLoader;
@@ -40,6 +41,8 @@ public final class ArkEnchants extends JavaPlugin {
     private Engine engine;
     private EnchanterMenu enchanter;
     private BukkitTask passive;
+    private BukkitTask jumpTask;
+    private JumpListener jumps;
 
     @Override
     public void onEnable() {
@@ -48,6 +51,7 @@ public final class ArkEnchants extends JavaPlugin {
         importOrDefaults();
         load();
         engine = new Engine(this, registry, settings);
+        chargeConfig();
         enchanter = new EnchanterMenu(this);
         var pm = getServer().getPluginManager();
         pm.registerEvents(new CombatListener(engine), this);
@@ -55,6 +59,9 @@ public final class ArkEnchants extends JavaPlugin {
         pm.registerEvents(new MiscListener(engine), this);
         pm.registerEvents(new BookListener(this), this);
         pm.registerEvents(enchanter, this);
+        jumps = new JumpListener(settings.passiveInterval);
+        pm.registerEvents(jumps, this);
+        jumpTask = getServer().getScheduler().runTaskTimer(this, jumps, 4, 4);
         ArkEnchantsCommand cmd = new ArkEnchantsCommand(this);
         for (String name : new String[]{"arkenchants", "enchanter"}) {
             PluginCommand pc = getCommand(name);
@@ -71,6 +78,12 @@ public final class ArkEnchants extends JavaPlugin {
         if (passive != null) {
             passive.cancel();
         }
+        if (jumpTask != null) {
+            jumpTask.cancel();
+        }
+        if (engine != null) {
+            engine.clones.removeEverything();
+        }
     }
 
     /** First start: bring over AdvancedEnchantments' enchantments.yml and groups.yml if they are there. */
@@ -78,7 +91,7 @@ public final class ArkEnchants extends JavaPlugin {
         File ench = new File(getDataFolder(), "enchantments.yml");
         File groups = new File(getDataFolder(), "groups.yml");
         File ae = new File(getDataFolder().getParentFile(), "AdvancedEnchantments");
-        boolean importAe = getConfig().getBoolean("import-advancedenchantments", true);
+        boolean importAe = getConfig().getBoolean("import-advancedenchantments", false);
         if (!ench.exists()) {
             File src = new File(ae, "enchantments.yml");
             if (importAe && src.isFile()) {
@@ -123,6 +136,7 @@ public final class ArkEnchants extends JavaPlugin {
         if (engine != null) {
             engine.reload(registry, settings);
         }
+        chargeConfig();
         Map<String, Integer> unknown = new TreeMap<>();
         int lines = 0;
         for (Enchant e : enchants.values()) {
@@ -144,6 +158,12 @@ public final class ArkEnchants extends JavaPlugin {
         }
         for (String b : report.broken) {
             getLogger().warning("Could not load enchantment " + b);
+        }
+    }
+
+    private void chargeConfig() {
+        if (engine != null) {
+            engine.charges.configure(settings.chargeSeconds, settings.chargeReadySeconds);
         }
     }
 

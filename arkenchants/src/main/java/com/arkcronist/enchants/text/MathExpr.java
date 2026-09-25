@@ -1,6 +1,6 @@
 package com.arkcronist.enchants.text;
 
-/** Tiny arithmetic evaluator for AdvancedEnchantments' {@code <math>} tags: + - * / ^ and parentheses. */
+/** Tiny arithmetic evaluator for {@code <math>} tags: + - * / % ^, parentheses and min/max/abs/floor/ceil/round/sqrt. */
 public final class MathExpr {
 
     private final String src;
@@ -80,6 +80,37 @@ public final class MathExpr {
     }
 
     private double atom() {
+        int fstart = pos;
+        while (pos < src.length() && Character.isLetter(src.charAt(pos))) {
+            pos++;
+        }
+        if (pos > fstart) {
+            String fn = src.substring(fstart, pos).toLowerCase(java.util.Locale.ROOT);
+            if (pos >= src.length() || src.charAt(pos) != '(') {
+                throw new IllegalArgumentException("'(' expected after " + fn);
+            }
+            pos++;
+            java.util.List<Double> args = new java.util.ArrayList<>();
+            args.add(sum());
+            while (pos < src.length() && src.charAt(pos) == ',') {
+                pos++;
+                args.add(sum());
+            }
+            if (pos < src.length() && src.charAt(pos) == ')') {
+                pos++;
+            }
+            double a0 = args.get(0);
+            return switch (fn) {
+                case "min" -> args.stream().mapToDouble(Double::doubleValue).min().orElse(0);
+                case "max" -> args.stream().mapToDouble(Double::doubleValue).max().orElse(0);
+                case "abs" -> Math.abs(a0);
+                case "floor" -> Math.floor(a0);
+                case "ceil" -> Math.ceil(a0);
+                case "round" -> Math.round(a0);
+                case "sqrt" -> Math.sqrt(Math.max(0, a0));
+                default -> throw new IllegalArgumentException("Unknown function " + fn);
+            };
+        }
         if (pos < src.length() && src.charAt(pos) == '(') {
             pos++;
             double v = sum();

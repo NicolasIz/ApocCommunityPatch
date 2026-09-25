@@ -1,9 +1,9 @@
 # ArkEnchants - encantamientos personalizados que leen el formato de AdvancedEnchantments.
 # No usa paquetes ni resource pack: los items de ItemsAdder conservan su textura y su lore.
 
-# En el primer arranque copia plugins/AdvancedEnchantments/enchantments.yml y groups.yml
-# (solo si aqui todavia no existen).
-import-advancedenchantments: true
+# ArkEnchants trae sus propios encantamientos (enchantments.yml). Si pones esto en true, en el primer
+# arranque usa en su lugar los de plugins/AdvancedEnchantments (solo si aqui todavia no hay ninguno).
+import-advancedenchantments: false
 
 # Los items encantados con AdvancedEnchantments llevan los encantamientos escritos en el lore
 # ("Harvest III"). Si esta activo, al entrar o al coger el item se convierten solos a ArkEnchants.
@@ -14,6 +14,11 @@ disabled-worlds: []
 
 # Cada cuantos ticks se aplican los efectos pasivos (EFFECT_STATIC, HELD, REPEATING, ELYTRA_FLY).
 passive-interval-ticks: 40
+
+# Ataque cargado: manten clic derecho con el arma hasta que se llene la barra y golpea.
+charge:
+  seconds: 1.2          # cuanto hay que mantener el clic
+  ready-seconds: 4      # cuanto dura la carga esperando el golpe
 
 lore:
   # %group-color% %display% %level% (numero romano) %level-number%
@@ -96,3 +101,5 @@ messages:
   not-enough-xp: '&cNecesitas &f%cost% &cniveles de experiencia.'
   bought: '&aHas comprado un libro %group% &apor &f%cost% &aniveles.'
   tracker-applied: '&aEl arma ahora cuenta almas.'
+  charging: '&7Cargando %bar% &f%percent%%'
+  charged: '&d&l¡CARGADO! &7Golpea ahora'

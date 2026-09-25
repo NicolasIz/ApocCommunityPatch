@@ -43,6 +43,12 @@ public final class Placeholders {
             case "attacker health" -> hp(c.attacker);
             case "player health" -> hp(c.holder);
             case "victim max health" -> maxHp(c.victim);
+            case "victim health percent" -> pct(c.victim);
+            case "attacker health percent" -> pct(c.attacker);
+            case "player health percent" -> pct(c.holder);
+            case "victim is marked" -> String.valueOf(engine.marked(c.victim));
+            case "charge" -> String.valueOf(engine.charges.percent(c.holder));
+            case "clones" -> String.valueOf(engine.clones.count(c.holder));
             case "attacker max health" -> maxHp(c.attacker);
             case "player max health" -> maxHp(c.holder);
             case "victim name" -> c.victim == null ? "" : c.victim.getName();
@@ -95,6 +101,15 @@ public final class Placeholders {
 
     private static String hp(LivingEntity e) {
         return e == null ? "0" : Engine.num(e.getHealth());
+    }
+
+    private static String pct(LivingEntity e) {
+        if (e == null) {
+            return "0";
+        }
+        var a = e.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+        double max = a == null ? 20 : a.getValue();
+        return Engine.num(max <= 0 ? 0 : e.getHealth() * 100 / max);
     }
 
     private static String maxHp(LivingEntity e) {

@@ -29,7 +29,13 @@ class LoaderTest {
     void bundledEnchantsLoadAndUseOnlyKnownEffects() {
         EnchantLoader.Report r = new EnchantLoader.Report();
         Map<String, Enchant> m = EnchantLoader.enchants(resource("enchantments.yml"), r);
-        assertEquals(29, m.size());
+        assertEquals(55, m.size());
+        Enchant s = m.get("sombras_gemelas");
+        assertTrue(s.triggers().contains(Trigger.CHARGED_ATTACK));
+        assertEquals(3, s.maxLevel());
+        assertEquals("CLONES", s.level(3).effects().get(0).name());
+        assertEquals(java.util.List.of("3", "12", "40"), s.level(3).effects().get(0).args());
+        assertTrue(m.get("flecha_buscadora").triggers().contains(Trigger.BOW_FIRE));
         assertTrue(r.broken.isEmpty(), r.broken.toString());
         assertTrue(r.unknownTriggers.isEmpty(), r.unknownTriggers.toString());
         for (Enchant e : m.values()) {

@@ -30,6 +30,10 @@ class TextTest {
         assertEquals(12.5, MathExpr.eval("10 * (1.0 + 0.25 * 1)"));
         assertEquals(-2, MathExpr.eval("-2"));
         assertEquals(8, MathExpr.eval("2 ^ 3"));
+        assertEquals(24, MathExpr.eval("min(10 * 3, 24)"));
+        assertEquals(6, MathExpr.eval("min(2 * 3, 24)"));
+        assertEquals(5, MathExpr.eval("max(1, 5, 3)"));
+        assertEquals(2, MathExpr.eval("floor(2.7)"));
     }
 
     @Test

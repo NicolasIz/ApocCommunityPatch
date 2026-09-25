@@ -1,39 +1,134 @@
-# Encantamientos de ArkEnchants. Mismo formato que AdvancedEnchantments, asi que puedes pegar aqui
-# los tuyos (o dejar que se importen solos de plugins/AdvancedEnchantments la primera vez).
+# Encantamientos de ArkEnchants (formato compatible con AdvancedEnchantments).
 #
 # nombre:
-#   display: '%group-color%Nombre'      como sale en el lore
-#   description: '...'
-#   applies-to: 'Espadas'               texto informativo
-#   type: ATTACK;ATTACK_MOB             cuando se activa (ver lista abajo)
-#   group: ELITE                        rareza (groups.yml)
-#   applies: [ALL_SWORD]                ALL_SWORD, ALL_AXE, ALL_ARMOR, ALL_HELMET, ALL_BOOTS, BOW, TRIDENT...
+#   display: '%group-color%Nombre'       como sale en el lore
+#   description / applies-to             texto para libros y /arkenchants info
+#   type: ATTACK;ATTACK_MOB              cuando se activa
+#   group: ELITE                         rareza (groups.yml)
+#   applies: [ALL_SWORD]                 ALL_SWORD, ALL_AXE, ALL_ARMOR, ALL_HELMET, ALL_BOOTS, BOW, TRIDENT...
 #   settings: {not-applyable-with: [otro], required-enchants: ['otro:2']}
 #   levels:
-#     1:
-#       chance: 10                      % de activarse
-#       cooldown: 5                     segundos
-#       conditions: ['%victim health% > 10 : %stop%']
-#       effects:
-#         - 'POTION:SLOW:1:60 @Victim'
+#     1: {chance: 10, cooldown: 5, conditions: [...], effects: [...]}
 #
-# Tipos: ATTACK, ATTACK_MOB, DEFENSE, DEFENSE_MOB, DEFENSE_PROJECTILE, SHOOT, SHOOT_MOB, MINING, KILL_MOB,
-#   KILL_PLAYER, DEATH, FALL_DAMAGE, FIRE, EXPLOSION, EFFECT_STATIC, HELD, REPEATING, ELYTRA_FLY, RIGHT_CLICK,
-#   CATCH_FISH, HOOK_ENTITY, BITE_HOOK, ITEM_BREAK
+# Tipos: ATTACK, ATTACK_MOB, CHARGED_ATTACK (manten clic derecho hasta cargar y golpea), DEFENSE,
+#   DEFENSE_MOB, DEFENSE_PROJECTILE, SHOOT, SHOOT_MOB, BOW_FIRE (al soltar la flecha), MINING, KILL_MOB,
+#   KILL_PLAYER, DEATH, FALL_DAMAGE, FIRE, EXPLOSION, EFFECT_STATIC, HELD, REPEATING, ELYTRA_FLY,
+#   RIGHT_CLICK, CATCH_FISH, HOOK_ENTITY, BITE_HOOK, ITEM_BREAK
 # Objetivos: @Victim @Attacker @Self @Aoe{radius=3,target=mobs|players|all} @Block @Trench{r=3}
 #   @Tunnel{radiuscustom=1x3x5,mode=STRAIGHT|UP|DOWN} @Veinmine{limit=64}
+# Efectos propios de ArkEnchants:
+#   CLONES:cantidad:segundos:%dano       clones sombra tuyos que atacan al objetivo
+#   DASH:distancia:dano                  embestida que atraviesa y corta a todo lo que toca
+#   SLAM:radio:dano:elevacion            golpe al suelo que lanza por los aires
+#   CHAIN_LIGHTNING:saltos:dano          rayo que salta de enemigo en enemigo
+#   MARK:segundos                        marca (brilla); %victim is marked% = true
+#   THROW_WEAPON:dano:distancia          lanza el arma como bumeran y vuelve
+#   HOMING:fuerza  MULTISHOT:flechas:angulo    (en BOW_FIRE)
+#   REFLECT:%  BLINK:distancia  DOUBLE_JUMP:potencia  REVEAL:radio:segundos
+#   DROP_ITEM:MATERIAL:cantidad  DOUBLE_CATCH:multiplicador  ACTIONBAR:texto
 
-sangrado:
-  display: '%group-color%Sangrado'
-  description: Hace sangrar al enemigo y lo ralentiza.
+# =====================================================================  ESPADAS
+sombras_gemelas:
+  display: '%group-color%Sombras Gemelas'
+  description: 'Ataque cargado: invocas clones sombra que luchan contigo.'
+  applies-to: Espadas
+  type: CHARGED_ATTACK
+  group: FABLED
+  applies: [ALL_SWORD]
+  settings: {not-applyable-with: [tajo_del_vacio, torbellino]}
+  levels:
+    1:
+      chance: 100
+      cooldown: 45
+      effects: ['CLONES:1:6:35 @Victim', 'ACTIONBAR:&8&l1 sombra &7te acompana (6s) @Self']
+    2:
+      chance: 100
+      cooldown: 45
+      effects: ['CLONES:2:9:35 @Victim', 'ACTIONBAR:&8&l2 sombras &7te acompanan (9s) @Self']
+    3:
+      chance: 100
+      cooldown: 50
+      effects: ['CLONES:3:12:40 @Victim', 'ACTIONBAR:&8&l3 sombras &7te acompanan (12s) @Self']
+
+tajo_del_vacio:
+  display: '%group-color%Tajo del Vacio'
+  description: 'Ataque cargado: te lanzas hacia delante cortando todo a tu paso.'
+  applies-to: Espadas
+  type: CHARGED_ATTACK
+  group: LEGENDARY
+  applies: [ALL_SWORD]
+  settings: {not-applyable-with: [sombras_gemelas, torbellino]}
+  levels:
+    1: {chance: 100, cooldown: 20, effects: ['DASH:6:6']}
+    2: {chance: 100, cooldown: 17, effects: ['DASH:8:8']}
+    3: {chance: 100, cooldown: 14, effects: ['DASH:10:10', 'POTION:SPEED:1:60']}
+
+torbellino:
+  display: '%group-color%Torbellino'
+  description: 'Ataque cargado: giras y golpeas a todos a tu alrededor.'
+  applies-to: Espadas
+  type: CHARGED_ATTACK
+  group: ULTIMATE
+  applies: [ALL_SWORD]
+  settings: {not-applyable-with: [sombras_gemelas, tajo_del_vacio]}
+  levels:
+    1: {chance: 100, cooldown: 14, effects: ['SLAM:3:5:0.2', 'PARTICLE:SWEEP_ATTACK:12:0 @Self']}
+    2: {chance: 100, cooldown: 12, effects: ['SLAM:4:7:0.25', 'PARTICLE:SWEEP_ATTACK:16:0 @Self']}
+    3: {chance: 100, cooldown: 10, effects: ['SLAM:5:9:0.3', 'PARTICLE:SWEEP_ATTACK:20:0 @Self']}
+
+ejecutor:
+  display: '%group-color%Ejecutor'
+  description: Mucho mas dano a enemigos con poca vida.
   applies-to: Espadas y hachas
   type: ATTACK;ATTACK_MOB
-  group: SIMPLE
+  group: ULTIMATE
   applies: [ALL_SWORD, ALL_AXE]
   levels:
-    1: {chance: 6, effects: ['BLOOD @Victim', 'DO_HARM:1 @Victim', 'POTION:SLOW:0:40 @Victim']}
-    2: {chance: 9, effects: ['BLOOD @Victim', 'DO_HARM:2 @Victim', 'POTION:SLOW:0:60 @Victim']}
-    3: {chance: 12, effects: ['BLOOD @Victim', 'DO_HARM:3 @Victim', 'POTION:SLOW:1:60 @Victim']}
+    1: {chance: 100, conditions: ['%victim health percent% > 30 : %stop%'], effects: ['INCREASE_DAMAGE:20']}
+    2: {chance: 100, conditions: ['%victim health percent% > 30 : %stop%'], effects: ['INCREASE_DAMAGE:35']}
+    3: {chance: 100, conditions: ['%victim health percent% > 35 : %stop%'], effects: ['INCREASE_DAMAGE:50', 'PARTICLE:DAMAGE_INDICATOR:6:0.1 @Victim']}
+
+frenesi:
+  display: '%group-color%Frenesi'
+  description: Cada golpe seguido sin que te den suma dano.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: ELITE
+  applies: [ALL_SWORD]
+  levels:
+    1: {chance: 100, effects: ['INCREASE_DAMAGE:<math>min(%combo% * 3, 24)</math>']}
+    2: {chance: 100, effects: ['INCREASE_DAMAGE:<math>min(%combo% * 4, 32)</math>']}
+    3: {chance: 100, effects: ['INCREASE_DAMAGE:<math>min(%combo% * 5, 40)</math>']}
+
+cadena_electrica:
+  display: '%group-color%Cadena Electrica'
+  description: Un rayo salta de enemigo en enemigo.
+  applies-to: Espadas y tridentes
+  type: ATTACK;ATTACK_MOB;SHOOT;SHOOT_MOB
+  group: LEGENDARY
+  applies: [ALL_SWORD, TRIDENT]
+  levels:
+    1: {chance: 6, cooldown: 5, effects: ['CHAIN_LIGHTNING:3:4 @Victim']}
+    2: {chance: 9, cooldown: 4, effects: ['CHAIN_LIGHTNING:4:5 @Victim']}
+    3: {chance: 12, cooldown: 3, effects: ['CHAIN_LIGHTNING:5:6 @Victim']}
+
+marca_mortal:
+  display: '%group-color%Marca Mortal'
+  description: Marcas al enemigo; mientras brilla recibe mas dano de ti.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: ULTIMATE
+  applies: [ALL_SWORD]
+  levels:
+    1:
+      chance: 100
+      effects: ['MARK:5 @Victim <chance>8</chance>', 'INCREASE_DAMAGE:15 <condition>%victim is marked% = true : %allow%</condition>']
+    2:
+      chance: 100
+      effects: ['MARK:6 @Victim <chance>10</chance>', 'INCREASE_DAMAGE:22 <condition>%victim is marked% = true : %allow%</condition>']
+    3:
+      chance: 100
+      effects: ['MARK:7 @Victim <chance>12</chance>', 'INCREASE_DAMAGE:30 <condition>%victim is marked% = true : %allow%</condition>']
 
 vampiro:
   display: '%group-color%Vampiro'
@@ -47,31 +142,19 @@ vampiro:
     2: {chance: 11, effects: ['STEAL_HEALTH:3 @Attacker', 'PARTICLE:HEART:8:0.1 @Attacker']}
     3: {chance: 14, effects: ['STEAL_HEALTH:4 @Attacker', 'PARTICLE:HEART:10:0.1 @Attacker']}
 
-berserker:
-  display: '%group-color%Berserker'
-  description: Mas dano cuanto menos vida te queda.
+sangrado:
+  display: '%group-color%Sangrado'
+  description: Hace sangrar al enemigo y lo ralentiza.
   applies-to: Espadas y hachas
   type: ATTACK;ATTACK_MOB
-  group: LEGENDARY
+  group: SIMPLE
   applies: [ALL_SWORD, ALL_AXE]
   levels:
-    1: {chance: 100, conditions: ['%player health% > 8 : %stop%'], effects: ['INCREASE_DAMAGE:15']}
-    2: {chance: 100, conditions: ['%player health% > 8 : %stop%'], effects: ['INCREASE_DAMAGE:25']}
-    3: {chance: 100, conditions: ['%player health% > 10 : %stop%'], effects: ['INCREASE_DAMAGE:35', 'PARTICLE:ANGRY_VILLAGER:4:0.1 @Attacker']}
+    1: {chance: 6, effects: ['BLOOD @Victim', 'DO_HARM:1 @Victim', 'POTION:SLOW:0:40 @Victim']}
+    2: {chance: 9, effects: ['BLOOD @Victim', 'DO_HARM:2 @Victim', 'POTION:SLOW:0:60 @Victim']}
+    3: {chance: 12, effects: ['BLOOD @Victim', 'DO_HARM:3 @Victim', 'POTION:SLOW:1:60 @Victim']}
 
-rayo:
-  display: '%group-color%Tormenta'
-  description: Invoca un rayo sobre tu enemigo.
-  applies-to: Espadas, hachas y tridentes
-  type: ATTACK;ATTACK_MOB;SHOOT;SHOOT_MOB
-  group: ULTIMATE
-  applies: [ALL_SWORD, ALL_AXE, TRIDENT]
-  levels:
-    1: {chance: 4, cooldown: 6, effects: ['LIGHTNING:3 @Victim']}
-    2: {chance: 6, cooldown: 5, effects: ['LIGHTNING:4 @Victim']}
-    3: {chance: 8, cooldown: 4, effects: ['LIGHTNING:5 @Victim', 'BURN:60 @Victim']}
-
-hielo:
+congelar:
   display: '%group-color%Congelar'
   description: Congela al enemigo en el sitio.
   applies-to: Espadas
@@ -79,8 +162,19 @@ hielo:
   group: UNIQUE
   applies: [ALL_SWORD]
   levels:
-    1: {chance: 7, effects: ['POTION:SLOW:2:40 @Victim', 'PARTICLE:SNOWFLAKE:25:0.05 @Victim']}
-    2: {chance: 10, effects: ['POTION:SLOW:3:60 @Victim', 'PARTICLE:SNOWFLAKE:35:0.05 @Victim']}
+    1: {chance: 7, cooldown: 4, effects: ['POTION:SLOW:2:40 @Victim', 'PARTICLE:SNOWFLAKE:25:0.05 @Victim']}
+    2: {chance: 10, cooldown: 4, effects: ['POTION:SLOW:3:60 @Victim', 'POTION:MINING_FATIGUE:1:60 @Victim', 'PARTICLE:SNOWFLAKE:35:0.05 @Victim']}
+
+cegar:
+  display: '%group-color%Ceniza'
+  description: Ciega al rival unos segundos.
+  applies-to: Espadas
+  type: ATTACK
+  group: ELITE
+  applies: [ALL_SWORD]
+  levels:
+    1: {chance: 5, cooldown: 10, effects: ['POTION:BLINDNESS:0:40 @Victim', 'PARTICLE:SMOKE_LARGE:20:0.02 @Victim']}
+    2: {chance: 8, cooldown: 10, effects: ['POTION:BLINDNESS:0:60 @Victim', 'PARTICLE:SMOKE_LARGE:30:0.02 @Victim']}
 
 decapitar:
   display: '%group-color%Decapitar'
@@ -106,6 +200,195 @@ sabiduria:
     2: {chance: 100, effects: ['EXP:<math>%exp% * 0.5</math>']}
     3: {chance: 100, effects: ['EXP:<math>%exp% * 0.75</math>']}
 
+devorador:
+  display: '%group-color%Devorador de Almas'
+  description: Al matar te curas y ganas absorcion.
+  applies-to: Espadas y hachas
+  type: KILL_MOB;KILL_PLAYER
+  group: LEGENDARY
+  applies: [ALL_SWORD, ALL_AXE]
+  levels:
+    1: {chance: 30, effects: ['ADD_HEALTH:3', 'PARTICLE:SOUL:12:0.05 @Victim']}
+    2: {chance: 40, effects: ['ADD_HEALTH:4', 'POTION:ABSORPTION:0:120', 'PARTICLE:SOUL:16:0.05 @Victim']}
+    3: {chance: 50, effects: ['ADD_HEALTH:6', 'POTION:ABSORPTION:1:120', 'PARTICLE:SOUL:20:0.05 @Victim']}
+
+# =====================================================================  HACHAS
+terremoto:
+  display: '%group-color%Terremoto'
+  description: 'Ataque cargado: golpeas el suelo y lanzas a todos por los aires.'
+  applies-to: Hachas
+  type: CHARGED_ATTACK
+  group: FABLED
+  applies: [ALL_AXE]
+  levels:
+    1: {chance: 100, cooldown: 25, effects: ['SLAM:4:6:0.8']}
+    2: {chance: 100, cooldown: 22, effects: ['SLAM:5:8:0.9']}
+    3: {chance: 100, cooldown: 18, effects: ['SLAM:6:10:1.0', 'POTION:SLOW:2:40 @Aoe{radius=6,target=all}']}
+
+hacha_bumeran:
+  display: '%group-color%Bumeran'
+  description: 'Agachado + clic derecho: lanzas el hacha, corta a la ida y a la vuelta.'
+  applies-to: Hachas
+  type: RIGHT_CLICK
+  group: LEGENDARY
+  applies: [ALL_AXE]
+  levels:
+    1: {chance: 100, cooldown: 7, conditions: ['%player is sneaking% = true : %allow%'], effects: ['THROW_WEAPON:6:12']}
+    2: {chance: 100, cooldown: 6, conditions: ['%player is sneaking% = true : %allow%'], effects: ['THROW_WEAPON:8:14']}
+    3: {chance: 100, cooldown: 4, conditions: ['%player is sneaking% = true : %allow%'], effects: ['THROW_WEAPON:10:16']}
+
+berserker:
+  display: '%group-color%Berserker'
+  description: Mas dano cuanto menos vida te queda.
+  applies-to: Espadas y hachas
+  type: ATTACK;ATTACK_MOB
+  group: LEGENDARY
+  applies: [ALL_SWORD, ALL_AXE]
+  levels:
+    1: {chance: 100, conditions: ['%player health percent% > 40 : %stop%'], effects: ['INCREASE_DAMAGE:15']}
+    2: {chance: 100, conditions: ['%player health percent% > 40 : %stop%'], effects: ['INCREASE_DAMAGE:25']}
+    3: {chance: 100, conditions: ['%player health percent% > 50 : %stop%'], effects: ['INCREASE_DAMAGE:35', 'PARTICLE:ANGRY_VILLAGER:4:0.1 @Attacker']}
+
+rompehuesos:
+  display: '%group-color%Rompehuesos'
+  description: Aturde al enemigo y le quita fuerza.
+  applies-to: Hachas
+  type: ATTACK;ATTACK_MOB
+  group: ULTIMATE
+  applies: [ALL_AXE]
+  levels:
+    1: {chance: 6, cooldown: 6, effects: ['POTION:SLOW:3:30 @Victim', 'POTION:WEAKNESS:0:80 @Victim', 'PLAY_SOUND_OUTLOUD:ENTITY_ZOMBIE_BREAK_WOODEN_DOOR @Victim']}
+    2: {chance: 9, cooldown: 5, effects: ['POTION:SLOW:3:40 @Victim', 'POTION:WEAKNESS:1:100 @Victim', 'PLAY_SOUND_OUTLOUD:ENTITY_ZOMBIE_BREAK_WOODEN_DOOR @Victim']}
+
+lenador:
+  display: '%group-color%Lenador'
+  description: Tala el arbol entero (agachado para no hacerlo).
+  applies-to: Hachas
+  type: MINING
+  group: LEGENDARY
+  applies: [ALL_AXE]
+  levels:
+    1: {chance: 100, conditions: ['%player is sneaking% = true : %stop%'], effects: ['BREAK_TREE @Block']}
+
+# =====================================================================  ARCOS, BALLESTAS Y TRIDENTES
+flecha_buscadora:
+  display: '%group-color%Flecha Buscadora'
+  description: Tus flechas persiguen al enemigo mas cercano.
+  applies-to: Arcos y ballestas
+  type: BOW_FIRE
+  group: LEGENDARY
+  applies: [BOW, CROSSBOW]
+  levels:
+    1: {chance: 100, effects: ['HOMING:0.2']}
+    2: {chance: 100, effects: ['HOMING:0.3']}
+    3: {chance: 100, effects: ['HOMING:0.45']}
+
+abanico:
+  display: '%group-color%Abanico'
+  description: Disparas varias flechas en abanico.
+  applies-to: Arcos
+  type: BOW_FIRE
+  group: ULTIMATE
+  applies: [BOW]
+  levels:
+    1: {chance: 25, effects: ['MULTISHOT:2:8']}
+    2: {chance: 35, effects: ['MULTISHOT:2:10']}
+    3: {chance: 45, effects: ['MULTISHOT:4:9']}
+
+flecha_explosiva:
+  display: '%group-color%Flecha Explosiva'
+  description: Tus flechas explotan al impactar (sin romper bloques).
+  applies-to: Arcos y ballestas
+  type: SHOOT;SHOOT_MOB
+  group: LEGENDARY
+  applies: [BOW, CROSSBOW]
+  levels:
+    1: {chance: 8, cooldown: 3, effects: ['TNT:1.5 @Victim']}
+    2: {chance: 12, cooldown: 3, effects: ['TNT:2 @Victim']}
+    3: {chance: 16, cooldown: 2, effects: ['TNT:2.5 @Victim']}
+
+francotirador:
+  display: '%group-color%Francotirador'
+  description: Los tiros a la cabeza hacen mas dano.
+  applies-to: Arcos y ballestas
+  type: SHOOT;SHOOT_MOB
+  group: ELITE
+  applies: [BOW, CROSSBOW]
+  levels:
+    1: {chance: 100, conditions: ['%is headshot% = false : %stop%'], effects: ['INCREASE_DAMAGE:30', 'PLAY_SOUND:ENTITY_ARROW_HIT_PLAYER @Self']}
+    2: {chance: 100, conditions: ['%is headshot% = false : %stop%'], effects: ['INCREASE_DAMAGE:50', 'PLAY_SOUND:ENTITY_ARROW_HIT_PLAYER @Self']}
+
+lluvia_de_flechas:
+  display: '%group-color%Lluvia de Flechas'
+  description: Caen flechas del cielo sobre el objetivo.
+  applies-to: Arcos
+  type: SHOOT;SHOOT_MOB
+  group: ULTIMATE
+  applies: [BOW]
+  levels:
+    1: {chance: 8, cooldown: 8, effects: ['SPAWN_ARROWS:5 @Victim']}
+    2: {chance: 12, cooldown: 6, effects: ['SPAWN_ARROWS:8 @Victim']}
+
+kraken:
+  display: '%group-color%Kraken'
+  description: El tridente arrastra al enemigo hacia ti entre tinta.
+  applies-to: Tridentes
+  type: SHOOT;SHOOT_MOB
+  group: ULTIMATE
+  applies: [TRIDENT]
+  levels:
+    1: {chance: 20, cooldown: 5, effects: ['PULL_CLOSER:1.2 @Victim', 'POTION:SLOW:1:60 @Victim', 'PARTICLE:SQUID_INK:30:0.05 @Victim']}
+    2: {chance: 30, cooldown: 4, effects: ['PULL_CLOSER:1.6 @Victim', 'POTION:SLOW:2:80 @Victim', 'PARTICLE:SQUID_INK:40:0.05 @Victim']}
+
+# =====================================================================  ARMADURA
+angel:
+  display: '%group-color%Angel'
+  description: Doble salto (salta en el aire).
+  applies-to: Pecheras
+  type: EFFECT_STATIC
+  group: FABLED
+  applies: [ALL_CHESTPLATE]
+  levels:
+    1: {chance: 100, effects: ['DOUBLE_JUMP:0.8']}
+    2: {chance: 100, effects: ['DOUBLE_JUMP:1.1']}
+    3: {chance: 100, effects: ['DOUBLE_JUMP:1.4']}
+
+espejo:
+  display: '%group-color%Espejo'
+  description: Devuelve parte del dano a quien te golpea.
+  applies-to: Pecheras
+  type: DEFENSE;DEFENSE_MOB
+  group: LEGENDARY
+  applies: [ALL_CHESTPLATE]
+  levels:
+    1: {chance: 15, effects: ['REFLECT:15']}
+    2: {chance: 20, effects: ['REFLECT:25']}
+    3: {chance: 25, effects: ['REFLECT:35']}
+
+fantasma:
+  display: '%group-color%Fantasma'
+  description: Con poca vida te desvaneces y apareces lejos.
+  applies-to: Pantalones
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: FABLED
+  applies: [ALL_LEGGINGS]
+  levels:
+    1: {chance: 100, cooldown: 60, conditions: ['%player health percent% > 25 : %stop%'], effects: ['BLINK:8', 'POTION:INVISIBILITY:0:60', 'POTION:SPEED:1:60']}
+    2: {chance: 100, cooldown: 50, conditions: ['%player health percent% > 30 : %stop%'], effects: ['BLINK:10', 'POTION:INVISIBILITY:0:80', 'POTION:SPEED:2:80']}
+    3: {chance: 100, cooldown: 40, conditions: ['%player health percent% > 35 : %stop%'], effects: ['BLINK:12', 'POTION:INVISIBILITY:0:100', 'POTION:SPEED:2:100', 'POTION:REGENERATION:1:80']}
+
+escudo_de_almas:
+  display: '%group-color%Escudo de Almas'
+  description: Con poca vida te cubre un escudo de corazones.
+  applies-to: Pecheras
+  type: DEFENSE;DEFENSE_MOB
+  group: ELITE
+  applies: [ALL_CHESTPLATE]
+  levels:
+    1: {chance: 100, cooldown: 30, conditions: ['%player health percent% > 40 : %stop%'], effects: ['POTION:ABSORPTION:0:200', 'PARTICLE:SOUL_FIRE_FLAME:20:0.05 @Self']}
+    2: {chance: 100, cooldown: 25, conditions: ['%player health percent% > 40 : %stop%'], effects: ['POTION:ABSORPTION:1:200', 'PARTICLE:SOUL_FIRE_FLAME:25:0.05 @Self']}
+    3: {chance: 100, cooldown: 20, conditions: ['%player health percent% > 45 : %stop%'], effects: ['POTION:ABSORPTION:2:200', 'PARTICLE:SOUL_FIRE_FLAME:30:0.05 @Self']}
+
 guardianes:
   display: '%group-color%Guardianes'
   description: Golems de hierro salen a defenderte.
@@ -114,8 +397,30 @@ guardianes:
   group: LEGENDARY
   applies: [ALL_CHESTPLATE]
   levels:
-    1: {chance: 2, cooldown: 30, conditions: ['%player health% > 10 : %stop%'], effects: ['GUARD:IRON_GOLEM:10:1 @Attacker']}
-    2: {chance: 3, cooldown: 25, conditions: ['%player health% > 10 : %stop%'], effects: ['GUARD:IRON_GOLEM:12:2 @Attacker']}
+    1: {chance: 3, cooldown: 30, conditions: ['%player health percent% > 50 : %stop%'], effects: ['GUARD:IRON_GOLEM:10:1 @Attacker']}
+    2: {chance: 4, cooldown: 25, conditions: ['%player health percent% > 50 : %stop%'], effects: ['GUARD:IRON_GOLEM:12:2 @Attacker']}
+
+adrenalina:
+  display: '%group-color%Adrenalina'
+  description: Con poca vida corres y saltas mucho mas.
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: ULTIMATE
+  applies: [ALL_BOOTS]
+  levels:
+    1: {chance: 100, cooldown: 30, conditions: ['%player health percent% > 35 : %stop%'], effects: ['POTION:SPEED:1:100', 'POTION:JUMP:1:100']}
+    2: {chance: 100, cooldown: 25, conditions: ['%player health percent% > 35 : %stop%'], effects: ['POTION:SPEED:2:120', 'POTION:JUMP:1:120']}
+
+botas_meteoro:
+  display: '%group-color%Meteoro'
+  description: No recibes dano de caidas grandes y al aterrizar haces un crater.
+  applies-to: Botas
+  type: FALL_DAMAGE
+  group: LEGENDARY
+  applies: [ALL_BOOTS]
+  levels:
+    1: {chance: 100, conditions: ['%damage% < 4 : %stop%'], effects: ['SLAM:3:<math>%damage% * 1</math>:0.5', 'CANCEL_EVENT']}
+    2: {chance: 100, conditions: ['%damage% < 4 : %stop%'], effects: ['SLAM:4:<math>%damage% * 1.5</math>:0.6', 'CANCEL_EVENT']}
 
 espinas:
   display: '%group-color%Cactus'
@@ -129,9 +434,9 @@ espinas:
     2: {chance: 15, effects: ['CACTUS:1.5 @Attacker']}
     3: {chance: 20, effects: ['CACTUS:2 @Attacker']}
 
-armadura:
+endurecer:
   display: '%group-color%Endurecer'
-  description: Reduce el dano recibido.
+  description: Probabilidad de reducir el dano recibido.
   applies-to: Armadura
   type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
   group: ULTIMATE
@@ -149,39 +454,28 @@ ultimo_aliento:
   group: FABLED
   applies: [ALL_CHESTPLATE]
   levels:
-    1: {chance: 100, cooldown: 600, effects: ['REVIVE', 'POTION:REGENERATION:1:100', 'MESSAGE:&6&lUltimo Aliento te ha salvado! @Self']}
+    1: {chance: 100, cooldown: 600, effects: ['REVIVE', 'POTION:REGENERATION:1:100', 'MESSAGE:&6&l¡Ultimo Aliento te ha salvado! @Self']}
 
-almas_eternas:
+alma_eterna:
   display: '%group-color%Alma Eterna'
   description: No pierdes este item al morir.
-  applies-to: Cualquier item
+  applies-to: Armas, herramientas y armadura
   type: DEATH
   group: FABLED
   applies: [ALL_SWORD, ALL_AXE, ALL_ARMOR, ALL_PICKAXE, BOW, CROSSBOW, TRIDENT, MACE, ELYTRA]
   levels:
     1: {chance: 100, effects: ['KEEP_ON_DEATH']}
 
-pies_ligeros:
-  display: '%group-color%Pies Ligeros'
-  description: Velocidad permanente.
-  applies-to: Botas
+vidente:
+  display: '%group-color%Vidente'
+  description: Los monstruos cercanos brillan a traves de las paredes.
+  applies-to: Cascos
   type: EFFECT_STATIC
-  group: UNIQUE
-  applies: [ALL_BOOTS]
+  group: ULTIMATE
+  applies: [ALL_HELMET]
   levels:
-    1: {chance: 100, effects: ['POTION:SPEED:0:100']}
-    2: {chance: 100, effects: ['POTION:SPEED:1:100']}
-
-salto:
-  display: '%group-color%Saltarin'
-  description: Saltas mas alto.
-  applies-to: Botas
-  type: EFFECT_STATIC
-  group: SIMPLE
-  applies: [ALL_BOOTS]
-  levels:
-    1: {chance: 100, effects: ['POTION:JUMP:0:100']}
-    2: {chance: 100, effects: ['POTION:JUMP:1:100']}
+    1: {chance: 100, effects: ['REVEAL:12:3']}
+    2: {chance: 100, effects: ['REVEAL:20:3']}
 
 vision:
   display: '%group-color%Vision Nocturna'
@@ -203,17 +497,50 @@ branquias:
   levels:
     1: {chance: 100, effects: ['POTION:WATER_BREATHING:0:100']}
 
-caida:
+pies_ligeros:
+  display: '%group-color%Pies Ligeros'
+  description: Velocidad permanente.
+  applies-to: Botas
+  type: EFFECT_STATIC
+  group: UNIQUE
+  applies: [ALL_BOOTS]
+  levels:
+    1: {chance: 100, effects: ['POTION:SPEED:0:100']}
+    2: {chance: 100, effects: ['POTION:SPEED:1:100']}
+
+saltarin:
+  display: '%group-color%Saltarin'
+  description: Saltas mas alto.
+  applies-to: Botas
+  type: EFFECT_STATIC
+  group: SIMPLE
+  applies: [ALL_BOOTS]
+  levels:
+    1: {chance: 100, effects: ['POTION:JUMP:0:100']}
+    2: {chance: 100, effects: ['POTION:JUMP:1:100']}
+
+caminante:
+  display: '%group-color%Caminante de Lava'
+  description: Caminas sobre la lava (se enfria bajo tus pies).
+  applies-to: Botas
+  type: EFFECT_STATIC
+  group: LEGENDARY
+  applies: [ALL_BOOTS]
+  levels:
+    1: {chance: 100, effects: ['LAVA_WALKER:1', 'POTION:FIRE_RESISTANCE:0:100']}
+    2: {chance: 100, effects: ['LAVA_WALKER:2', 'POTION:FIRE_RESISTANCE:0:100']}
+
+pluma:
   display: '%group-color%Pluma'
   description: Menos dano por caidas.
   applies-to: Botas
   type: FALL_DAMAGE
   group: SIMPLE
   applies: [ALL_BOOTS]
+  settings: {not-applyable-with: [botas_meteoro]}
   levels:
     1: {chance: 100, effects: ['DECREASE_DAMAGE:40']}
     2: {chance: 100, effects: ['DECREASE_DAMAGE:70']}
-    3: {chance: 100, effects: ['CANCEL_EVENT']}
 
 ignifugo:
   display: '%group-color%Ignifugo'
@@ -223,11 +550,12 @@ ignifugo:
   group: ELITE
   applies: [ALL_CHESTPLATE]
   levels:
-    1: {chance: 25, effects: ['EXTINGUISH @Self', 'POTION:FIRE_RESISTANCE:0:100']}
+    1: {chance: 25, cooldown: 10, effects: ['EXTINGUISH @Self', 'POTION:FIRE_RESISTANCE:0:100']}
 
+# =====================================================================  HERRAMIENTAS
 excavadora:
   display: '%group-color%Excavadora'
-  description: Rompe en 3x3.
+  description: Rompe en 3x3 (agachado para no hacerlo).
   applies-to: Picos y palas
   type: MINING
   group: LEGENDARY
@@ -235,9 +563,9 @@ excavadora:
   levels:
     1: {chance: 100, conditions: ['%player is sneaking% = true : %stop%'], effects: ['BREAK_BLOCK @Trench{r=3}']}
 
-minero:
+veta:
   display: '%group-color%Veta'
-  description: Rompe toda la veta de mineral.
+  description: Agachado, rompe toda la veta de mineral.
   applies-to: Picos
   type: MINING
   group: ULTIMATE
@@ -246,7 +574,7 @@ minero:
     1: {chance: 100, conditions: ['%block type% contains ORE : %allow%', '%player is sneaking% = true : %allow%'], effects: ['BREAK_BLOCK @Veinmine{limit=24}']}
     2: {chance: 100, conditions: ['%block type% contains ORE : %allow%', '%player is sneaking% = true : %allow%'], effects: ['BREAK_BLOCK @Veinmine{limit=64}']}
 
-fundir:
+fundicion:
   display: '%group-color%Fundicion'
   description: Los minerales salen fundidos.
   applies-to: Picos
@@ -256,9 +584,9 @@ fundir:
   levels:
     1: {chance: 100, conditions: ['%block type% contains ORE : %allow%'], effects: ['SMELT', 'PARTICLE:FLAME:8:0.02 @Block']}
 
-fortuna:
+riqueza:
   display: '%group-color%Riqueza'
-  description: Probabilidad de doble botin al minar.
+  description: Probabilidad de mas botin al minar.
   applies-to: Picos
   type: MINING
   group: ULTIMATE
@@ -267,6 +595,17 @@ fortuna:
     1: {chance: 10, conditions: ['%block type% contains ORE : %allow%'], effects: ['MORE_DROPS:1']}
     2: {chance: 15, conditions: ['%block type% contains ORE : %allow%'], effects: ['MORE_DROPS:1']}
     3: {chance: 20, conditions: ['%block type% contains ORE : %allow%'], effects: ['MORE_DROPS:2']}
+
+tesoro:
+  display: '%group-color%Cazatesoros'
+  description: A veces encuentras gemas escondidas en la piedra.
+  applies-to: Picos
+  type: MINING
+  group: LEGENDARY
+  applies: [ALL_PICKAXE]
+  levels:
+    1: {chance: 0.4, conditions: ['%block natural% = false : %stop%', '%block type% contains STONE : %allow%'], effects: ['DROP_ITEM:<random word>DIAMOND,EMERALD,GOLD_INGOT,LAPIS_LAZULI</random word>:1 @Block', 'PLAY_SOUND:ENTITY_PLAYER_LEVELUP @Self']}
+    2: {chance: 0.8, conditions: ['%block natural% = false : %stop%', '%block type% contains STONE : %allow%'], effects: ['DROP_ITEM:<random word>DIAMOND,EMERALD,GOLD_INGOT,LAPIS_LAZULI</random word>:1 @Block', 'PLAY_SOUND:ENTITY_PLAYER_LEVELUP @Self']}
 
 telequinesis:
   display: '%group-color%Telequinesis'
@@ -277,16 +616,6 @@ telequinesis:
   applies: [ALL_TOOLS]
   levels:
     1: {chance: 100, effects: ['TP_DROPS']}
-
-lenador:
-  display: '%group-color%Lenador'
-  description: Tala el arbol entero.
-  applies-to: Hachas
-  type: MINING
-  group: LEGENDARY
-  applies: [ALL_AXE]
-  levels:
-    1: {chance: 100, conditions: ['%player is sneaking% = true : %stop%'], effects: ['BREAK_TREE @Block']}
 
 cosecha:
   display: '%group-color%Cosecha'
@@ -299,29 +628,19 @@ cosecha:
     1: {chance: 100, conditions: ['%is fully grown% = false : %stop%'], effects: ['PLANT_SEEDS:0']}
     2: {chance: 100, conditions: ['%is fully grown% = false : %stop%'], effects: ['BREAK_BLOCK @Trench{r=3}', 'PLANT_SEEDS:1']}
 
-francotirador:
-  display: '%group-color%Francotirador'
-  description: Los tiros a la cabeza hacen mas dano.
-  applies-to: Arcos y ballestas
-  type: SHOOT;SHOOT_MOB
+autorreparacion:
+  display: '%group-color%Autorreparacion'
+  description: El item se repara solo poco a poco.
+  applies-to: Armas, herramientas y armadura
+  type: REPEATING
   group: LEGENDARY
-  applies: [BOW, CROSSBOW]
+  applies: [ALL_SWORD, ALL_AXE, ALL_PICKAXE, ALL_SHOVEL, ALL_HOE, ALL_ARMOR, BOW, CROSSBOW, TRIDENT, MACE]
   levels:
-    1: {chance: 100, conditions: ['%is headshot% = false : %stop%'], effects: ['INCREASE_DAMAGE:30', 'PLAY_SOUND:ENTITY_ARROW_HIT_PLAYER @Self']}
-    2: {chance: 100, conditions: ['%is headshot% = false : %stop%'], effects: ['INCREASE_DAMAGE:50', 'PLAY_SOUND:ENTITY_ARROW_HIT_PLAYER @Self']}
+    1: {chance: 100, effects: ['ADD_DURABILITY_ITEM:1']}
+    2: {chance: 100, effects: ['ADD_DURABILITY_ITEM:2']}
 
-lluvia:
-  display: '%group-color%Lluvia de Flechas'
-  description: Caen flechas sobre el objetivo.
-  applies-to: Arcos
-  type: SHOOT;SHOOT_MOB
-  group: ULTIMATE
-  applies: [BOW]
-  levels:
-    1: {chance: 8, cooldown: 8, effects: ['SPAWN_ARROWS:5 @Victim']}
-    2: {chance: 12, cooldown: 6, effects: ['SPAWN_ARROWS:8 @Victim']}
-
-pescador:
+# =====================================================================  PESCA Y ELITROS
+anzuelo_rapido:
   display: '%group-color%Anzuelo Rapido'
   description: Recoges el pez solo en cuanto pica.
   applies-to: Canas de pescar
@@ -332,13 +651,25 @@ pescador:
     1: {chance: 50, effects: ['AUTO_REEL']}
     2: {chance: 100, effects: ['AUTO_REEL']}
 
-reparacion:
-  display: '%group-color%Autorreparacion'
-  description: El item se repara solo poco a poco.
-  applies-to: Cualquier herramienta o arma
-  type: REPEATING
-  group: LEGENDARY
-  applies: [ALL_SWORD, ALL_AXE, ALL_PICKAXE, ALL_SHOVEL, ALL_HOE, ALL_ARMOR, BOW, CROSSBOW, TRIDENT, MACE]
+pesca_doble:
+  display: '%group-color%Pesca Doble'
+  description: Probabilidad de sacar el doble.
+  applies-to: Canas de pescar
+  type: CATCH_FISH
+  group: ELITE
+  applies: [FISHING_ROD]
   levels:
-    1: {chance: 100, effects: ['ADD_DURABILITY_ITEM:1']}
-    2: {chance: 100, effects: ['ADD_DURABILITY_ITEM:2']}
+    1: {chance: 15, effects: ['DOUBLE_CATCH:2']}
+    2: {chance: 25, effects: ['DOUBLE_CATCH:2']}
+    3: {chance: 35, effects: ['DOUBLE_CATCH:3']}
+
+propulsor:
+  display: '%group-color%Propulsor'
+  description: 'Volando con elitros, agachate para un impulso.'
+  applies-to: Elitros
+  type: ELYTRA_FLY
+  group: LEGENDARY
+  applies: [ELYTRA]
+  levels:
+    1: {chance: 100, cooldown: 4, conditions: ['%player is sneaking% = true : %allow%'], effects: ['BOOST:FORWARD:25', 'PARTICLE:FIREWORK:20:0.1 @Self', 'PLAY_SOUND:ENTITY_FIREWORK_ROCKET_LAUNCH @Self']}
+    2: {chance: 100, cooldown: 3, conditions: ['%player is sneaking% = true : %allow%'], effects: ['BOOST:FORWARD:32', 'PARTICLE:FIREWORK:25:0.1 @Self', 'PLAY_SOUND:ENTITY_FIREWORK_ROCKET_LAUNCH @Self']}

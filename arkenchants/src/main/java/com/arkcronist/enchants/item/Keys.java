@@ -17,6 +17,10 @@ public final class Keys {
     public static NamespacedKey PROJECTILE;
     public static NamespacedKey SCROLL;
     public static NamespacedKey GUARD;
+    public static NamespacedKey CLONE;
+    public static NamespacedKey MARK;
+    public static NamespacedKey JUMP;
+    public static NamespacedKey JUMP_TIME;
 
     private Keys() {
     }
@@ -33,5 +37,9 @@ public final class Keys {
         PROJECTILE = new NamespacedKey(plugin, "projectile");
         SCROLL = new NamespacedKey(plugin, "scroll");
         GUARD = new NamespacedKey(plugin, "guard");
+        CLONE = new NamespacedKey(plugin, "clone");
+        MARK = new NamespacedKey(plugin, "mark");
+        JUMP = new NamespacedKey(plugin, "double_jump");
+        JUMP_TIME = new NamespacedKey(plugin, "double_jump_time");
     }
 }
