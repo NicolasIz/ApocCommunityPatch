@@ -40,44 +40,136 @@ public final class Menus {
     }
 
     // ------------------------------------------------------------------ main
+    /** Where the books go, in groups.yml order: two rows of three in the middle of the purple strip. */
+    private static final int[] BOOK_SLOTS = {30, 31, 32, 39, 40, 41, 21, 22, 23};
+    /** Scrolls down the right-hand column. */
+    private static final int[] SCROLL_SLOTS = {17, 26, 35, 44};
+
     public void main(Player p) {
-        boolean admin = admin(p);
-        Menu m = new Menu(admin ? 6 : 3, "&5&lArkEnchants");
-        m.set(11, icon(Material.ENCHANTING_TABLE, "&d&lEncantador", "&7Compra libros misteriosos y", "&7pergaminos con experiencia.", "",
-                "&eClic para abrir"), e -> plugin.enchanter().open(p));
-        m.set(13, icon(Material.BOOKSHELF, "&b&lCatalogo", "&7Todos los encantamientos por rareza:", "&7que hacen, a que se aplican",
-                "&7y cuantos niveles tienen.", "", "&f" + plugin.registry().all().size() + " &7encantamientos", "", "&eClic para ver"),
-                e -> groups(p, Mode.BROWSE));
-        m.set(15, handIcon(p), e -> {
-            p.closeInventory();
-            p.performCommand("arkenchants info");
-        });
-        if (admin) {
-            m.set(27, icon(Material.RED_STAINED_GLASS_PANE, "&c&lAdmin", "&7Herramientas de administracion"), null);
-            m.set(29, icon(Material.ENCHANTED_BOOK, "&6&lSacar libros", "&7Elige cualquier encantamiento,", "&7nivel y % de exito.",
-                    "", "&eClic para abrir"), e -> groups(p, Mode.GIVE));
-            m.set(30, icon(Material.BOOK, "&6&lLibros misteriosos", "&7Uno por rareza.", "", "&eClic para abrir"), e -> mystery(p));
-            m.set(31, icon(Material.INK_SAC, "&6&lPergaminos", "&7Extraccion, proteccion, purificacion", "&7y rastreador de almas.", "",
-                    "&eClic para abrir"), e -> scrolls(p));
-            m.set(32, icon(Material.ANVIL, "&6&lEncantar la mano", "&7Pon cualquier encantamiento directamente",
-                    "&7en el item que tienes en la mano.", "", "&eClic para elegir"), e -> groups(p, Mode.APPLY));
-            m.set(33, icon(Material.EXPERIENCE_BOTTLE, "&6&lEncantar al azar", "&7Encanta el item de la mano como",
-                    "&7si saliera de un cofre de botin.", "", "&eClic para tirar"), e -> {
-                        ItemStack hand = p.getInventory().getItemInMainHand();
-                        int n = LootEnchanter.roll(hand, plugin.registry(), plugin.settings(), ThreadLocalRandom.current(), true);
-                        p.getInventory().setItemInMainHand(hand);
-                        plugin.send(p, n > 0 ? "random-done" : "random-none", "%count%", String.valueOf(n));
-                        main(p);
-                    });
-            m.set(34, icon(Material.SPYGLASS, "&6&lQuitar encantamientos", "&7Quita uno (clic) o todos (clic derecho)",
-                    "&7del item de la mano.", "", "&eClic para abrir"), e -> remove(p));
-            m.set(35, icon(Material.REDSTONE, "&c&lRecargar", "&7Vuelve a leer config y encantamientos.", "", "&eClic para recargar"), e -> {
-                plugin.reloadAll();
-                plugin.send(p, "reloaded", "%count%", String.valueOf(plugin.registry().all().size()));
+        Menu m = new Menu(6, plugin.settings().enchanterTitle);
+        for (int i = 0; i < m.size(); i++) {
+            int col = i % 9;
+            pane(m, i, col >= 2 && col <= 6 ? Material.PURPLE_STAINED_GLASS_PANE : Material.GRAY_STAINED_GLASS_PANE);
+        }
+        pane(m, 22, Material.MAGENTA_STAINED_GLASS_PANE);
+
+        m.set(4, icon(Material.EXPERIENCE_BOTTLE, "&a&lTu experiencia", "&8▪ &fTienes &a" + p.getLevel() + " &fniveles.", "",
+                "&7Los libros y pergaminos se", "&7pagan con niveles de experiencia."), null);
+
+        List<Group> groups = plugin.enchanter().groups();
+        for (int i = 0; i < groups.size() && i < BOOK_SLOTS.length; i++) {
+            Group g = groups.get(i);
+            m.set(BOOK_SLOTS[i], bookIcon(p, g), e -> {
+                plugin.enchanter().buy(p, g);
                 main(p);
             });
         }
-        m.set(m.size() - 5, icon(Material.BARRIER, "&cCerrar"), e -> p.closeInventory());
+        var scrolls = plugin.settings().scrolls.values().stream().filter(sc -> sc.cost() > 0).toList();
+        for (int i = 0; i < scrolls.size() && i < SCROLL_SLOTS.length; i++) {
+            var sc = scrolls.get(i);
+            m.set(SCROLL_SLOTS[i], scrollIcon(p, sc), e -> {
+                plugin.enchanter().buyScroll(p, sc.kind());
+                main(p);
+            });
+        }
+
+        m.set(9, icon(Material.BOOKSHELF, "&b&lCatalogo", "&8▪ &fTodos los encantamientos", "&8▪ &fQue hacen y a que se aplican", "",
+                "&7" + plugin.registry().all().size() + " encantamientos", "", "&b➟ &fClic para ver"), e -> groups(p, Mode.BROWSE));
+        m.set(18, handIcon(p), e -> {
+            p.closeInventory();
+            p.performCommand("arkenchants info");
+        });
+        m.set(27, icon(Material.ENCHANTED_BOOK, "&d&lComo se usan", "&8▪ &fCompra un libro de la rareza", "&f  que quieras.",
+                "&8▪ &fClic derecho con el libro en", "&f  la mano para descubrirlo.", "&8▪ &fArrastralo encima de tu item.", "",
+                "&7Si falla puede romper el item:", "&7usa un &fPergamino de Proteccion&7."), null);
+        m.set(36, icon(new ItemStack(Material.LANTERN), "&e&lRarezas", rarityLore()), null);
+        if (admin(p)) {
+            m.set(45, icon(Material.COMMAND_BLOCK, "&c&lAdmin", "&8▪ &fSacar libros y pergaminos", "&8▪ &fEncantar la mano", "&8▪ &fRecargar",
+                    "", "&c➟ &fClic para abrir"), e -> adminMenu(p));
+        }
+        m.set(49, icon(Material.BARRIER, "&cCerrar"), e -> p.closeInventory());
+        m.open(p);
+    }
+
+    private static void pane(Menu m, int slot, Material mat) {
+        m.set(slot, icon(mat, " "), null);
+    }
+
+    private List<String> rarityLore() {
+        List<String> l = new ArrayList<>();
+        for (Group g : plugin.registry().groups()) {
+            if (!g.curse()) {
+                l.add("&8▪ " + g.color() + g.name() + " &7" + Percent.fmt(g.successMin()) + "-" + Percent.fmt(g.successMax()) + "% exito");
+            }
+        }
+        l.add("");
+        l.add("&7Cuanto mas rara, mas fuerte");
+        l.add("&7y mas arriesgada.");
+        return l;
+    }
+
+    private ItemStack bookIcon(Player p, Group g) {
+        List<String> lore = new ArrayList<>();
+        lore.add("&fExamina para recibir un");
+        lore.add("&flibro de encantamiento " + g.color() + g.name() + "&f.");
+        lore.add("");
+        lore.add("&8▪ &7Exito: &a" + Percent.fmt(g.successMin()) + "-" + Percent.fmt(g.successMax()) + "%");
+        lore.add("&8▪ &7Rotura: &c" + Percent.fmt(g.destroyMin()) + "-" + Percent.fmt(g.destroyMax()) + "%");
+        lore.add("&8▪ &7Encantamientos: &f" + plugin.registry().inGroup(g.id()).size());
+        lore.add("");
+        lore.add(cost(p, g.enchanterCost()));
+        return icon(Items.mystery(g), g.color() + "&lEncantamiento " + g.name() + " &7(Clic)", lore);
+    }
+
+    private ItemStack scrollIcon(Player p, com.arkcronist.enchants.Settings.Scroll sc) {
+        List<String> lore = new ArrayList<>();
+        for (String l : sc.lore()) {
+            if (!l.contains("%success%")) {
+                lore.add(l);
+            }
+        }
+        lore.add("");
+        if (sc.min() < 100) {
+            lore.add("&8▪ &7Exito: &a" + Percent.fmt(sc.min()) + "-" + Percent.fmt(sc.max()) + "%");
+        }
+        lore.add(cost(p, sc.cost()));
+        return icon(Items.scroll(sc.kind(), sc.max()), sc.name().replace(" &7(%success%%)", "").replace("%success%", "") + " &7(Clic)", lore);
+    }
+
+    private static String cost(Player p, int cost) {
+        int miss = EnchanterMenu.missing(p, cost);
+        return "&b&lCOSTO &f" + cost + " niveles " + (miss > 0 ? "&7(Te faltan &c" + miss + " &7niveles)" : "&a✔");
+    }
+
+    // ------------------------------------------------------------------ admin
+    void adminMenu(Player p) {
+        if (!admin(p)) {
+            return;
+        }
+        Menu m = new Menu(3, "&8Admin &7| &5ArkEnchants");
+        m.set(10, icon(Material.ENCHANTED_BOOK, "&6&lSacar libros", "&7Elige cualquier encantamiento,", "&7nivel y % de exito.",
+                "", "&eClic para abrir"), e -> groups(p, Mode.GIVE));
+        m.set(11, icon(Material.BOOK, "&6&lLibros misteriosos", "&7Uno por rareza.", "", "&eClic para abrir"), e -> mystery(p));
+        m.set(12, icon(Material.INK_SAC, "&6&lPergaminos", "&7Extraccion, proteccion, purificacion", "&7y rastreador de almas.", "",
+                "&eClic para abrir"), e -> scrolls(p));
+        m.set(13, icon(Material.ANVIL, "&6&lEncantar la mano", "&7Pon cualquier encantamiento directamente",
+                "&7en el item que tienes en la mano.", "", "&eClic para elegir"), e -> groups(p, Mode.APPLY));
+        m.set(14, icon(Material.EXPERIENCE_BOTTLE, "&6&lEncantar al azar", "&7Encanta el item de la mano como",
+                "&7si saliera de un cofre de botin.", "", "&eClic para tirar"), e -> {
+                    ItemStack hand = p.getInventory().getItemInMainHand();
+                    int n = LootEnchanter.roll(hand, plugin.registry(), plugin.settings(), ThreadLocalRandom.current(), true);
+                    p.getInventory().setItemInMainHand(hand);
+                    plugin.send(p, n > 0 ? "random-done" : "random-none", "%count%", String.valueOf(n));
+                    adminMenu(p);
+                });
+        m.set(15, icon(Material.SPYGLASS, "&6&lQuitar encantamientos", "&7Quita uno (clic) o todos (clic derecho)",
+                "&7del item de la mano.", "", "&eClic para abrir"), e -> remove(p));
+        m.set(16, icon(Material.REDSTONE, "&c&lRecargar", "&7Vuelve a leer config y encantamientos.", "", "&eClic para recargar"), e -> {
+            plugin.reloadAll();
+            plugin.send(p, "reloaded", "%count%", String.valueOf(plugin.registry().all().size()));
+            adminMenu(p);
+        });
+        back(m, p);
         m.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
     }
 
@@ -99,8 +191,8 @@ public final class Menus {
             lore.add("&f✦ Protegido");
         }
         lore.add("");
-        lore.add("&eClic para ver los detalles en el chat");
-        return icon(Items.empty(hand) ? new ItemStack(Material.BARRIER) : hand, "&a&lTu item", lore);
+        lore.add("&a➟ &fClic para ver los detalles en el chat");
+        return icon(Items.empty(hand) ? new ItemStack(Material.ANVIL) : hand, "&a&lTu item", lore);
     }
 
     // ------------------------------------------------------------------ groups and enchant lists
@@ -124,7 +216,11 @@ public final class Menus {
             m.set(9 + start + i, icon(base, g.color() + "&l" + g.name(), List.of("&7" + count(g) + " encantamientos", "",
                     "&eClic para ver")), e -> list(p, g, mode, 0));
         }
-        back(m, p);
+        if (mode == Mode.BROWSE) {
+            back(m, p);
+        } else {
+            m.set(m.size() - 5, icon(Material.OAK_DOOR, "&7« Admin"), e -> adminMenu(p));
+        }
         m.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
     }
 
@@ -299,7 +395,7 @@ public final class Menus {
                 give(p, it);
             });
         }
-        back(m, p);
+        m.set(m.size() - 5, icon(Material.OAK_DOOR, "&7« Admin"), e -> adminMenu(p));
         m.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
     }
 
@@ -316,7 +412,7 @@ public final class Menus {
             slot += 2;
         }
         m.set(16, icon(Items.tracker(), null, List.of("&eClic para sacarlo")), c -> give(p, Items.tracker()));
-        back(m, p);
+        m.set(m.size() - 5, icon(Material.OAK_DOOR, "&7« Admin"), e -> adminMenu(p));
         m.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
     }
 
@@ -348,7 +444,7 @@ public final class Menus {
         if (ench.isEmpty()) {
             m.set(13, icon(Material.BARRIER, "&7El item de tu mano no tiene encantamientos"), null);
         }
-        back(m, p);
+        m.set(m.size() - 5, icon(Material.OAK_DOOR, "&7« Admin"), e -> adminMenu(p));
         m.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
     }
 

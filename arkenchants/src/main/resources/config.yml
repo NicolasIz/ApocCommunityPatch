@@ -111,16 +111,9 @@ soul-tracker:
     - '&7Arrastralo encima de un arma para que'
     - '&7cuente las almas de los jugadores que mates.'
 
+# /ake y /enchanter abren el mismo menu: libros por rareza en el centro, pergaminos a la derecha.
 enchanter:
-  title: '&8Encantador'
-  icon-lore:
-    - '&7Encantamientos en este grupo: &f%count%'
-    - '&7Precio: &a%cost% niveles de experiencia'
-    - '&eClic para comprar'
-  scroll-lore:
-    - '&7Exito: &a%min%-%max%%'
-    - '&7Precio: &a%cost% niveles de experiencia'
-    - '&eClic para comprar'
+  title: '&5⚡ &dEncantamientos &5⚡'
 
 # Ajustes de libros por grupo. Colores y nombres salen de groups.yml.
 # success / destroy: rango del porcentaje que sale al abrir un libro misterioso. Acepta decimales:

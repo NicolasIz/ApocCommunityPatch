@@ -59,7 +59,6 @@ public final class ArkEnchants extends JavaPlugin {
         pm.registerEvents(new BlockListener(engine), this);
         pm.registerEvents(new MiscListener(engine), this);
         pm.registerEvents(new BookListener(this), this);
-        pm.registerEvents(enchanter, this);
         menus = new com.arkcronist.enchants.gui.Menus(this);
         pm.registerEvents(new com.arkcronist.enchants.gui.Menu.Clicks(), this);
         pm.registerEvents(new com.arkcronist.enchants.listener.LootListener(this), this);

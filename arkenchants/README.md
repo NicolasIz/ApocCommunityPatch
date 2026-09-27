@@ -5,7 +5,7 @@ ItemsAdder. It is a separate plugin from ArkcronistGenerator and builds on its o
 
 ```
 cd arkenchants
-mvn package        # target/ArkEnchants-1.3.0.jar
+mvn package        # target/ArkEnchants-1.5.0.jar
 ```
 
 ## Why it does not break ItemsAdder
@@ -86,11 +86,16 @@ type and REMOVE_ENCHANT.
 
 ## Menu
 
-`/ake` with nothing after it opens a menu, so nothing has to be typed:
+`/ake` with nothing after it (and `/enchanter`) opens one six-row menu, titled by `enchanter.title`:
 
-- **Everyone:** the enchanter, a catalogue of every enchantment by rarity (what it does, what it goes on, levels,
-  when it triggers) and the enchantments on the item in hand.
-- **Admins** (`arkenchants.admin`) also get:
+- **Middle (purple strip):** one mystery book per rarity. The lore shows success and destroy ranges, how many
+  enchantments the rarity has and the price in levels, with how many levels the player is still missing.
+  Clicking buys it.
+- **Top:** the player's experience levels.
+- **Left column:** catalogue of every enchantment by rarity, the enchantments on the item in hand, how books
+  work and the rarities with their success ranges.
+- **Right column:** the scrolls that have a price, bought the same way as books.
+- **Admins** (`arkenchants.admin`) get an extra button, bottom left, that opens the admin page:
   - **Sacar libros:** pick a rarity, then an enchantment. Left click gives the max level at 100%; right click
     opens a picker for level and success (100/75/50/25/10/1/0.1%, or random within the rarity's range).
   - **Libros misteriosos:** click gives 1, right click gives 16.

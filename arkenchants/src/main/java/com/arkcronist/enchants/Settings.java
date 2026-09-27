@@ -23,6 +23,7 @@ public final class Settings {
     public final String trackerName;
     public final List<String> trackerLore;
     public final String enchanterTitle;
+    private static final String DEFAULT_TITLE = "&5⚡ &dEncantamientos &5⚡";
     public final Set<String> disabledWorlds;
     public final int passiveInterval;
     public final boolean importAdvancedEnchantments;
@@ -61,7 +62,9 @@ public final class Settings {
         trackerMaterial = material(c.getString("soul-tracker.material"), Material.PAPER);
         trackerName = c.getString("soul-tracker.name", "&f&lRastreador de almas");
         trackerLore = c.getStringList("soul-tracker.lore");
-        enchanterTitle = c.getString("enchanter.title", "&8Encantador");
+        String title = c.getString("enchanter.title", DEFAULT_TITLE);
+        // the old default from 1.4.0 and earlier moves to the new one; a title someone wrote stays
+        enchanterTitle = title.equals("&8Encantador") ? DEFAULT_TITLE : title;
         disabledWorlds = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         disabledWorlds.addAll(c.getStringList("disabled-worlds"));
         passiveInterval = Math.max(10, c.getInt("passive-interval-ticks", 40));
