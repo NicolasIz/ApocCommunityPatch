@@ -171,7 +171,21 @@ public final class BiomeThemes {
             theme("carmesi", 3, "crimson", "crimson", "", null),
             theme("distorsionado", 3, "warped", "warped", "", null),
             theme("almas", 2, "soul soulsand souls", "soul", "", null),
-            theme("basalto", 3, "basalt delta deltas", "basalt", "", null));
+            theme("basalto", 3, "basalt delta deltas", "basalt", "", null),
+            // Incendium's Nether. Its biome names are the only thing that says what they are - the
+            // pack files them all under the same tags - so the words are what is matched.
+            theme("ceniza", 3, "ash ashen ember embers", "ash ashen", "", null),
+            theme("cuarzo", 3, "quartz", "quartz", "", null),
+            theme("toxico", 3, "toxic toxin poison poisonous venom venomous acid plague sludge",
+                    "toxic", "", null),
+            theme("marchito", 3, "withered decay decayed rotten rot", "withered", "", null),
+            theme("llanto", 3, "weeping weep tear tears sorrow", "weeping", "", null),
+            // Nullscape's End.
+            theme("sombra", 3, "shadow shadows shade shades umbra shadowy", "shadowlands shadow",
+                    "", null),
+            theme("vacio", 3, "void null abyss abyssal", "void", "", null),
+            theme("cristal", 2, "crystal crystalline shard shards prism", "crystal crystals", "",
+                    null));
 
     /**
      * Words too common in mob names to mean a place when they happen to match a biome's name.

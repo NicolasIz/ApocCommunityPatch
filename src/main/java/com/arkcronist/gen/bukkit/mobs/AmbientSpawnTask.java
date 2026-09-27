@@ -121,8 +121,20 @@ public final class AmbientSpawnTask implements Runnable {
             // you, and a player standing in a forest can easily have this land in the tundra.
             // Then what discovery gave the biome from the mobs' own names - for a share of the
             // spawns, so the place keeps some of the general mix too.
+            // Inside a datapack's building, that building's own mobs: the knights in the castle,
+            // the dead in the crypt. See StructureGarrison.
+            List<String> here = null;
+            String structure = plugin.structureGarrison().structureAt(where);
+            if (structure != null) {
+                List<String> garrison = plugin.structureGarrison().mobsFor(world, structure).mobs();
+                if (!garrison.isEmpty()) {
+                    here = garrison;
+                }
+            }
             String biome = BiomeMobs.keyAt(world, where);
-            List<String> here = BiomeMobs.candidates(plugin.arkConfig().biomeMobTable(), biome);
+            if (here == null) {
+                here = BiomeMobs.candidates(plugin.arkConfig().biomeMobTable(), biome);
+            }
             if (here == null) {
                 here = BiomeMobs.discovered(plugin.roster().biomeMobs(biome),
                         plugin.arkConfig().autoDiscoverBiomeShare(), random.nextDouble());
@@ -145,6 +157,7 @@ public final class AmbientSpawnTask implements Runnable {
                 continue;
             }
             spawned.getPersistentDataContainer().set(mark, PersistentDataType.BYTE, (byte) 1);
+            MobFit.watch(plugin, spawned);
             if (plugin.arkConfig().spawnedMobsDespawn()) {
                 SpawnedMobs.release(spawned);
             }
@@ -171,12 +184,8 @@ public final class AmbientSpawnTask implements Runnable {
     }
 
     /** Whether this world gets custom mobs at all. */
-    private boolean applies(World world) {
-        return switch (world.getEnvironment()) {
-            case NETHER -> plugin.arkConfig().netherApplies(world.getName());
-            case THE_END -> plugin.arkConfig().endApplies(world.getName());
-            default -> MobWorlds.applies(plugin, world);
-        };
+    private boolean applies(org.bukkit.World world) {
+        return MobWorlds.appliesHere(plugin, world);
     }
 
     /** How many of this task's own mobs are already keeping this player company. */

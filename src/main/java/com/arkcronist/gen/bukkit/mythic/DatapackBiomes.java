@@ -44,10 +44,24 @@ import java.util.zip.ZipFile;
 public final class DatapackBiomes {
 
     private static final Pattern ENTRY = Pattern.compile(
-            "(?:^|.*/)data/([a-z0-9_.-]+)/(worldgen/biome|tags/worldgen/biome)/(.+)\\.json$");
+            "(?:^|.*/)data/([a-z0-9_.-]+)/(worldgen/biome|tags/worldgen/biome|dimension)/(.+)\\.json$");
 
     /** A biome's file, before its tags are known. */
     private record Raw(double temperature, double downfall) {
+    }
+
+    /**
+     * Which dimension each biome is generated in, from the packs' own {@code dimension} files.
+     *
+     * <p>This is the only place a pack says it outright. Incendium replaces
+     * {@code minecraft:the_nether} with a file that lists all thirteen of its biomes, and Nullscape
+     * does the same for {@code minecraft:the_end}; the biome files themselves say nothing about
+     * which side of a portal they are on. Tags usually say it too ({@code #minecraft:is_nether}), but
+     * a tag is a courtesy a pack author may skip, while a biome missing from the dimension file is a
+     * biome that is never generated. So this wins over the tags.</p>
+     */
+    private record Found(Map<String, Raw> biomes, Map<String, List<String>> tags,
+                         Map<String, Habitat> dimensions) {
     }
 
     private DatapackBiomes() {
@@ -61,6 +75,8 @@ public final class DatapackBiomes {
     public static List<BiomeProfile> read(List<Path> folders) {
         Map<String, Raw> biomes = new LinkedHashMap<>();
         Map<String, List<String>> tags = new HashMap<>();
+        Map<String, Habitat> dimensions = new HashMap<>();
+        Found found = new Found(biomes, tags, dimensions);
         for (Path folder : folders) {
             if (folder == null || !Files.isDirectory(folder)) {
                 continue;
@@ -69,9 +85,9 @@ public final class DatapackBiomes {
                 for (Path pack : (Iterable<Path>) packs::iterator) {
                     try {
                         if (Files.isDirectory(pack)) {
-                            readFolder(pack, biomes, tags);
+                            readFolder(pack, found);
                         } else if (pack.toString().toLowerCase(Locale.ROOT).endsWith(".zip")) {
-                            readZip(pack, biomes, tags);
+                            readZip(pack, found);
                         }
                     } catch (IOException | RuntimeException skipped) {
                         // One unreadable pack does not cost the others.
@@ -81,11 +97,10 @@ public final class DatapackBiomes {
                 // A folder that cannot be listed has nothing to give.
             }
         }
-        return profiles(biomes, tags);
+        return profiles(biomes, tags, dimensions);
     }
 
-    private static void readZip(Path pack, Map<String, Raw> biomes, Map<String, List<String>> tags)
-            throws IOException {
+    private static void readZip(Path pack, Found found) throws IOException {
         try (ZipFile zip = new ZipFile(pack.toFile())) {
             Enumeration<? extends ZipEntry> entries = zip.entries();
             while (entries.hasMoreElements()) {
@@ -96,15 +111,14 @@ public final class DatapackBiomes {
                 Matcher match = ENTRY.matcher(entry.getName().replace('\\', '/'));
                 if (match.matches()) {
                     try (InputStream in = zip.getInputStream(entry)) {
-                        take(match, in, biomes, tags);
+                        take(match, in, found);
                     }
                 }
             }
         }
     }
 
-    private static void readFolder(Path pack, Map<String, Raw> biomes,
-                                   Map<String, List<String>> tags) throws IOException {
+    private static void readFolder(Path pack, Found found) throws IOException {
         try (Stream<Path> files = Files.walk(pack)) {
             for (Path file : (Iterable<Path>) files::iterator) {
                 if (!Files.isRegularFile(file)) {
@@ -113,15 +127,16 @@ public final class DatapackBiomes {
                 Matcher match = ENTRY.matcher(pack.relativize(file).toString().replace('\\', '/'));
                 if (match.matches()) {
                     try (InputStream in = Files.newInputStream(file)) {
-                        take(match, in, biomes, tags);
+                        take(match, in, found);
                     }
                 }
             }
         }
     }
 
-    private static void take(Matcher match, InputStream in, Map<String, Raw> biomes,
-                             Map<String, List<String>> tags) {
+    private static void take(Matcher match, InputStream in, Found found) {
+        Map<String, Raw> biomes = found.biomes();
+        Map<String, List<String>> tags = found.tags();
         String key = match.group(1) + ":" + match.group(3);
         JsonElement json;
         try (Reader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
@@ -135,6 +150,15 @@ public final class DatapackBiomes {
         JsonObject object = json.getAsJsonObject();
         if (match.group(2).equals("worldgen/biome")) {
             biomes.put(key, new Raw(number(object, "temperature"), number(object, "downfall")));
+            return;
+        }
+        if (match.group(2).equals("dimension")) {
+            Habitat habitat = dimensionHabitat(key, object);
+            if (habitat != null) {
+                for (String biome : dimensionBiomes(object)) {
+                    found.dimensions().put(biome, habitat);
+                }
+            }
             return;
         }
         if (!object.has("values") || !object.get("values").isJsonArray()) {
@@ -158,8 +182,95 @@ public final class DatapackBiomes {
         }
     }
 
+    /**
+     * Which dimension a dimension file describes: by its {@code type} first, which is what the game
+     * uses, and by its own name when the type is a pack's own.
+     */
+    static Habitat dimensionHabitat(String key, JsonObject dimension) {
+        String type = dimension.has("type") && dimension.get("type").isJsonPrimitive()
+                ? dimension.get("type").getAsString().toLowerCase(Locale.ROOT) : "";
+        for (String name : new String[] {type, key.toLowerCase(Locale.ROOT)}) {
+            if (name.endsWith("the_nether") || name.endsWith(":nether")) {
+                return Habitat.NETHER;
+            }
+            if (name.endsWith("the_end") || name.endsWith(":end")) {
+                return Habitat.END;
+            }
+            if (name.endsWith("overworld")) {
+                return Habitat.OVERWORLD;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Every biome a dimension file's biome source names: the {@code biomes} list of a
+     * {@code multi_noise} or {@code checkerboard} source, or the single one of a {@code fixed}.
+     * A tag in the list ({@code #incendium:all}) is kept with its {@code #} and resolved later.
+     */
+    static List<String> dimensionBiomes(JsonObject dimension) {
+        List<String> found = new ArrayList<>();
+        if (!dimension.has("generator") || !dimension.get("generator").isJsonObject()) {
+            return found;
+        }
+        JsonObject generator = dimension.getAsJsonObject("generator");
+        if (!generator.has("biome_source") || !generator.get("biome_source").isJsonObject()) {
+            return found;
+        }
+        JsonObject source = generator.getAsJsonObject("biome_source");
+        if (source.has("biome") && source.get("biome").isJsonPrimitive()) {
+            found.add(source.get("biome").getAsString());
+        }
+        if (source.has("biomes")) {
+            JsonElement list = source.get("biomes");
+            if (list.isJsonPrimitive()) {
+                found.add(list.getAsString());
+            } else if (list.isJsonArray()) {
+                for (JsonElement entry : list.getAsJsonArray()) {
+                    if (entry.isJsonPrimitive()) {
+                        found.add(entry.getAsString());
+                    } else if (entry.isJsonObject() && entry.getAsJsonObject().has("biome")
+                            && entry.getAsJsonObject().get("biome").isJsonPrimitive()) {
+                        found.add(entry.getAsJsonObject().get("biome").getAsString());
+                    }
+                }
+            }
+        }
+        List<String> keys = new ArrayList<>();
+        for (String name : found) {
+            String lower = name.trim().toLowerCase(Locale.ROOT);
+            if (!lower.isEmpty()) {
+                keys.add(lower.startsWith("#") || lower.contains(":") ? lower : "minecraft:" + lower);
+            }
+        }
+        return keys;
+    }
+
     /** Turns biome files and tag files into profiles, following nested tags. */
     static List<BiomeProfile> profiles(Map<String, Raw> biomes, Map<String, List<String>> tags) {
+        return profiles(biomes, tags, Map.of());
+    }
+
+    /**
+     * The same, with the dimension each biome was found generated in. A biome a dimension file
+     * lists takes that dimension whatever its tags say; a tag in a dimension file gives its whole
+     * membership.
+     */
+    static List<BiomeProfile> profiles(Map<String, Raw> biomes, Map<String, List<String>> tags,
+                                       Map<String, Habitat> dimensions) {
+        Map<String, Habitat> placed = new HashMap<>();
+        Map<String, Set<String>> tagCache = new HashMap<>();
+        dimensions.forEach((name, habitat) -> {
+            if (name.startsWith("#")) {
+                String tag = name.substring(1);
+                for (String member : members(tag.contains(":") ? tag : "minecraft:" + tag, tags,
+                        tagCache, new HashSet<>())) {
+                    placed.put(member, habitat);
+                }
+            } else {
+                placed.put(name, habitat);
+            }
+        });
         Map<String, Set<String>> tagWords = new HashMap<>();
         Map<String, Set<String>> resolved = new HashMap<>();
         for (String tag : tags.keySet()) {
@@ -171,8 +282,9 @@ public final class DatapackBiomes {
         for (Map.Entry<String, Raw> entry : biomes.entrySet()) {
             String key = entry.getKey();
             Set<String> words = tagWords.getOrDefault(key, Set.of());
+            Habitat habitat = placed.get(key);
             profiles.add(BiomeProfile.of(key, words, entry.getValue().temperature(),
-                    entry.getValue().downfall(), habitat(key, words)));
+                    entry.getValue().downfall(), habitat != null ? habitat : habitat(key, words)));
         }
         return profiles;
     }

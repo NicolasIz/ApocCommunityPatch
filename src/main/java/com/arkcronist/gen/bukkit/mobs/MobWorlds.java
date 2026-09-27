@@ -35,6 +35,22 @@ public final class MobWorlds {
         return plugin.arkConfig().adoptedPreset(world.getName());
     }
 
+    /**
+     * Whether the custom mobs apply in this world, whatever dimension it is.
+     *
+     * <p>An overworld by preset, as below. The Nether and the End by being the Nether and the End -
+     * they are the server's own worlds, or the companions this plugin opens, and neither has a
+     * preset to be recognised by - so a Nether rebuilt by Incendium and an End rebuilt by Nullscape
+     * are both covered without being named anywhere.</p>
+     */
+    public static boolean appliesHere(ArkcronistPlugin plugin, World world) {
+        return switch (world.getEnvironment()) {
+            case NETHER -> plugin.arkConfig().netherApplies(world.getName());
+            case THE_END -> plugin.arkConfig().endApplies(world.getName());
+            default -> applies(plugin, world);
+        };
+    }
+
     /** Whether the custom hostile mobs belong in this world at all. */
     public static boolean applies(ArkcronistPlugin plugin, World world) {
         String preset = presetOf(plugin, world);

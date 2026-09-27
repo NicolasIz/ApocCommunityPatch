@@ -47,6 +47,9 @@ public final class ArkConfig {
     private final java.util.Map<String, String> autoDiscoverRoles;
     private final java.util.Map<String, String> autoDiscoverHabitats;
     private final java.util.Map<String, java.util.List<String>> autoDiscoverBiomeOverrides;
+    private final java.util.Map<String, java.util.List<String>> structureMobTable;
+    private final java.util.Set<String> structureExclude;
+    private final java.util.Set<String> structurePeaceful;
 
     public ArkConfig(FileConfiguration config) {
         this.config = config;
@@ -74,6 +77,11 @@ public final class ArkConfig {
         this.autoDiscoverRoles = readWords("hostile-mobs.auto-discover.roles");
         this.autoDiscoverHabitats = readWords("hostile-mobs.auto-discover.habitats");
         this.autoDiscoverBiomeOverrides = readMobTable("hostile-mobs.auto-discover.biomes.overrides");
+        this.structureMobTable = readMobTable("hostile-mobs.datapack-structures.table");
+        this.structureExclude = readLowerCaseSet("hostile-mobs.datapack-structures.exclude");
+        this.structurePeaceful = config.isSet("hostile-mobs.datapack-structures.peaceful-words")
+                ? readLowerCaseSet("hostile-mobs.datapack-structures.peaceful-words")
+                : com.arkcronist.gen.bukkit.mythic.StructureThemes.PEACEFUL;
     }
 
     /** A section of name to single word, kept as written so the reader can report a typo verbatim. */
@@ -615,6 +623,65 @@ public final class ArkConfig {
             return false;
         }
         return endWorlds.isEmpty() || endWorlds.contains(worldName.toLowerCase(Locale.ROOT));
+    }
+
+    /**
+     * Whether a hostile spawn that no table names is filled from this dimension's own list.
+     *
+     * <p>On in the Nether and the End, off in the overworld. Down there it is how the dimension's
+     * mobs appear at all: the packs build them on zombies and skeletons, the Nether spawns piglins,
+     * blazes and magma cubes, and without it nothing ever matched. In the overworld every hostile
+     * already has a table entry or is meant to stay vanilla - a creeper is a creeper - so the old
+     * rule stands there unless you turn this on.</p>
+     */
+    public boolean fillFromPool(com.arkcronist.gen.bukkit.mythic.MobClassifier.Habitat habitat) {
+        return switch (habitat) {
+            case NETHER -> config.getBoolean("hostile-mobs.fill-from-pool.nether", true);
+            case END -> config.getBoolean("hostile-mobs.fill-from-pool.end", true);
+            case OVERWORLD -> config.getBoolean("hostile-mobs.fill-from-pool.overworld", false);
+            default -> false;
+        };
+    }
+
+    /** Whether structures a datapack generates get a garrison of the custom mobs. */
+    public boolean structureMobsEnabled() {
+        return config.getBoolean("hostile-mobs.datapack-structures.enabled", true);
+    }
+
+    /** Whether the game's own structures ({@code minecraft:}) count as datapack structures too. */
+    public boolean structureIncludeVanilla() {
+        return config.getBoolean("hostile-mobs.datapack-structures.include-vanilla", false);
+    }
+
+    /** Chance that one piece of a structure (a room, a corridor, a tower) gets a guard. */
+    public double structurePieceChance() {
+        double chance = config.getDouble("hostile-mobs.datapack-structures.piece-chance", 0.35);
+        return Double.isNaN(chance) ? 0.35 : Math.max(0.0, Math.min(1.0, chance));
+    }
+
+    /** Most guards one freshly generated chunk of a structure gets. */
+    public int structureMaxPerChunk() {
+        return Math.max(0, Math.min(16, config.getInt("hostile-mobs.datapack-structures.max-per-chunk", 3)));
+    }
+
+    /** Whether the daylight spawner uses a structure's own mobs when it lands inside one. */
+    public boolean structureAmbient() {
+        return config.getBoolean("hostile-mobs.datapack-structures.ambient", true);
+    }
+
+    /** Structure key, or its path, to the mobs that garrison it. Keys in upper case. */
+    public java.util.Map<String, java.util.List<String>> structureMobTable() {
+        return structureMobTable;
+    }
+
+    /** Structure keys never garrisoned, lower case. */
+    public java.util.Set<String> structureExclude() {
+        return structureExclude;
+    }
+
+    /** Words in a structure's name that mean it is not a place for hostile mobs, lower case. */
+    public java.util.Set<String> structurePeaceful() {
+        return structurePeaceful;
     }
 
     /** Whether the plugin spawns mobs itself, which is the only way to have them out in daylight. */

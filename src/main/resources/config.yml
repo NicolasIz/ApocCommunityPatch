@@ -624,6 +624,25 @@ hostile-mobs:
     table: {}
 
   # ---------------------------------------------------------------------------
+  #  Nether y End modificados (Incendium, Nullscape): que salgan TUS mobs
+  # ---------------------------------------------------------------------------
+  #  La tabla de arriba solo cambia un mob vanilla por el tipo que nombra. En el
+  #  Nether eso casi nunca pasaba: los packs montan sus bichos del Nether sobre
+  #  ZOMBIE o SKELETON, y el Nether no saca zombis; saca piglins, blazes, cubos
+  #  de magma... y con Incendium, lo que cada uno de sus biomas diga. Resultado:
+  #  en el Nether tus mobs solo salian por el spawner de dia.
+  #
+  #  Con esto en true, un mob hostil del Nether (o del End) que ninguna tabla
+  #  nombra se cambia por uno de la lista de ESA dimension (la de 'ambient' mas
+  #  lo que encuentre auto-discover). replace-chance se sigue aplicando.
+  #
+  #  En el overworld viene en false: ahi un creeper sigue siendo un creeper.
+  fill-from-pool:
+    overworld: false
+    nether: true
+    end: true
+
+  # ---------------------------------------------------------------------------
   #  Spawner propio: de dia Y de noche
   # ---------------------------------------------------------------------------
   #  La tabla de arriba solo puede CAMBIAR un spawn que el juego iba a hacer de
@@ -677,6 +696,66 @@ hostile-mobs:
 
     # Lo que saca en el End. Vacia por lo mismo que la tabla del End.
     end: []
+
+  # ---------------------------------------------------------------------------
+  #  Estructuras de datapack: guarniciones de tus mobs
+  # ---------------------------------------------------------------------------
+  #  Las estructuras que generan tus datapacks (el castillo prohibido y el
+  #  sanctum de Incendium, las catacumbas de Just Another Structure Pack, las
+  #  fortalezas de Grim Kingdoms, las torres de Ominous Towers, las de Nullscape)
+  #  reciben mobs de MythicMobs al generarse, UNA vez, como las del generador.
+  #
+  #  Por que hace falta: muchas prohiben el spawn natural de monstruos dentro
+  #  (el castillo de Incendium pone "spawns: []"), asi que ahi la sustitucion
+  #  nunca puede actuar. Lo que viva dentro hay que ponerlo.
+  #
+  #  Que mobs: por el NOMBRE de la estructura contra el nombre de tus mobs.
+  #    castle, keep, fortress, tower  -> knight, guard, warrior, tank...
+  #    crypt, catacombs, tomb         -> skeleton, zombie, undead, lich...
+  #    spire, arcane, library, altar  -> mage, wizard, witch, cultist...
+  #    camp, outpost, ship            -> bandit, goblin, archer, cursed...
+  #    nest, lair, den                -> spider, beast, hound...
+  #    pyramid, temple, sphinx        -> mummy, pharaoh, scorpion...
+  #  Si el nombre no dice nada, salen los de la mezcla general de esa dimension.
+  #  /ag mythic structures te dice que le toco a cada una y por que.
+  #
+  #  No toca las estructuras cuyo nombre dice que alli vive gente o es decoracion
+  #  (village, cabin, hut, farm, statue, friendly...), ni las del juego
+  #  (minecraft:) salvo que pongas include-vanilla: true.
+  datapack-structures:
+    enabled: true
+
+    # Tambien las del juego (minecraft:fortress, minecraft:mansion...). Ojo: los
+    # packs que reescriben aldeas usan minecraft:village_*, y esas se saltan igual
+    # por la palabra 'village'.
+    include-vanilla: false
+
+    # Probabilidad de que cada pieza de la estructura (una sala, un pasillo, una
+    # torre) que caiga en el chunk reciba un mob.
+    piece-chance: 0.35
+
+    # Tope de mobs por chunk nuevo. 0 = apagado.
+    max-per-chunk: 3
+
+    # Que el spawner de dia, cuando cae dentro de una de estas estructuras, saque
+    # los mobs de la estructura en vez de los del bioma.
+    ambient: true
+
+    # Estructuras que nunca reciben mobs, por clave completa o solo el nombre.
+    #   exclude: [incendium:quartz_kitchen, pipeline]
+    exclude: []
+
+    # Palabras que marcan una estructura como pacifica. Si la escribes, sustituye
+    # a la lista de serie (village, town, house, cabin, hut, farm, mill, statue,
+    # friendly, church, inn, tavern, market...).
+    #   peaceful-words: [village, cabin, statue]
+
+    # Estructura -> lista exacta de mobs. Gana a la eleccion por nombre.
+    # La clave va ENTRE COMILLAS porque lleva dos puntos.
+    #   table:
+    #     "incendium:forbidden_castle": [dSkeleton_Warrior_Cinder_em, dSkeleton_Tank_Cinder_em]
+    #     "ethrium:catacombs": [skeleton_melee, skeleton_mage]
+    table: {}
 
   # ---------------------------------------------------------------------------
   #  Auto-descubrimiento: que el plugin lea MythicMobs en vez de que se lo digas
@@ -738,7 +817,9 @@ hostile-mobs:
     #  Al leer MythicMobs, el plugin lee tambien TODOS los biomas del servidor:
     #  los del juego y los de cada datapack de la carpeta datapacks del mundo
     #  (Terralith incluido), con su temperatura y sus etiquetas (c:is_snowy,
-    #  c:is_forest, c:is_swamp...). Luego mira el NOMBRE de cada mob hostil
+    #  c:is_forest, c:is_swamp...), y los archivos 'dimension' de cada pack: asi
+    #  sabe que los biomas de Incendium son del Nether y los de Nullscape del End
+    #  aunque el pack no los etiquete. Luego mira el NOMBRE de cada mob hostil
     #  descubierto y lo pone solo en los biomas que encajan:
     #
     #    frostmite, yeti, iceologer   -> los biomas frios (45 con Terralith)
@@ -747,6 +828,10 @@ hostile-mobs:
     #    swamp_hag, blightwood_...    -> swamp, mangrove_swamp, terralith:orchid_swamp
     #    desert_mummy                 -> los desiertos
     #    crimson_...  (Nether)        -> crimson_forest
+    #    ash_..., toxic_..., quartz_...  (Nether con Incendium)
+    #                                 -> incendium:ash_barrens, toxic_heap, quartz_flats
+    #    void_..., shadow_...  (End con Nullscape)
+    #                                 -> nullscape:void_barrens, nullscape:shadowlands
     #
     #  Un mob cuyo nombre no dice ningun sitio (am_goblin_melee, skeleton_archer)
     #  sigue saliendo en todas partes, como siempre. Un mob con bioma YA NO sale

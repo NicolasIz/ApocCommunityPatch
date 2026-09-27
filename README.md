@@ -593,6 +593,76 @@ un mundo nuestro. El terreno y las estructuras no pueden seguirte a un mundo as�
 construyen a partir de nuestra propia idea de dónde está el suelo; los mobs no tienen esa atadura,
 se colocan alrededor de los jugadores sobre suelo que ya está ahí.
 
+### Tus mobs en el Nether de Incendium y el End de Nullscape
+
+Tres cosas hacían falta para que un pack de mobs nuevo apareciera de verdad en un Nether o un End
+cambiado por un datapack, y ninguna estaba:
+
+**1. Saber qué biomas son de qué dimensión.** Los biomas de un datapack se leían de sus archivos,
+pero la dimensión se sacaba de las etiquetas (`#minecraft:is_nether`), que son una cortesía del
+autor del pack. Ahora se leen también los archivos `data/*/dimension/*.json`: Incendium reescribe
+`minecraft:the_nether` con un archivo que lista sus biomas, y Nullscape hace lo mismo con
+`minecraft:the_end`. Un bioma que aparece en ese archivo es un bioma que se genera allí, así que esa
+respuesta gana a las etiquetas. Con eso, un mob llamado `ash_wraith` va a `incendium:ash_barrens`,
+uno `toxic_*` a `incendium:toxic_heap` y uno `void_*` a `nullscape:void_barrens` — hay temas nuevos
+para ceniza, cuarzo, tóxico, marchito, llanto, sombra, vacío y cristal.
+
+**2. Que el Nether tuviera algo que sustituir.** La tabla cambia un mob vanilla por el tipo que
+nombra, y los packs montan sus bichos del Nether sobre `ZOMBIE` o `SKELETON` — que el Nether no saca.
+Lo que saca (piglins, blazes, cubos de magma y lo que añada cada bioma de Incendium) no tenía entrada,
+así que en el Nether tus mobs solo salían por el spawner de día. `hostile-mobs.fill-from-pool`, en
+`true` para el Nether y el End, cambia un hostil que ninguna tabla nombra por uno de la lista de esa
+dimensión. En el overworld viene apagado: allí un creeper sigue siendo un creeper.
+
+**3. Guarniciones en las estructuras de datapack.** Ver abajo.
+
+### Guarniciones en las estructuras de los datapacks
+
+Muchas estructuras de datapack **prohíben** el spawn natural de monstruos dentro. El castillo
+prohibido de Incendium lo dice literalmente:
+
+```json
+"spawn_overrides": { "monster": { "bounding_box": "piece", "spawns": [] } }
+```
+
+Ahí la sustitución no puede hacer nada porque no hay nada que sustituir. Así que cuando se genera un
+chunk que tiene parte de una estructura de datapack, algunas de sus piezas —una sala, un pasillo, una
+torre— reciben un mob, **una sola vez**, como las guarniciones propias del generador. El sitio es la
+propia estructura: una columna dentro de la pieza, el suelo buscado con `SpawnSpot`, y un sitio fuera
+de la altura de la pieza se rechaza (el guardia del sótano no aparece en el tejado).
+
+**Qué mobs**, por el nombre de la estructura contra el de tus mobs (`StructureThemes`): los caballeros
+y guerreros a `castle`/`keep`/`fortress`/`tower`, los no-muertos a `crypt`/`catacombs`/`tomb`, los
+magos a `spire`/`arcane`/`library`/`altar`, goblins y bandidos a `camp`/`outpost`/`ship`, arañas y
+bestias a `nest`/`lair`/`den`, momias a `pyramid`/`temple`/`sphinx`. Si el nombre no dice nada, sale
+la mezcla general de esa dimensión. `/ag mythic structures` dice qué le tocó a cada una y por qué, y
+`hostile-mobs.datapack-structures.table` fija la lista a mano.
+
+**Qué no toca**: las del juego (`minecraft:`) salvo que se pida, y las que por el nombre son sitios
+donde vive gente o decoración — `village`, `cabin`, `hut`, `farm`, `statue`, `friendly`… — porque
+Villages Revamped, las cabañas de Grim Kingdoms o las estatuas de Reds llenas de goblins serían
+aldeas sin aldeanos a la mañana siguiente.
+
+Y el spawner de día, cuando cae dentro de una de estas estructuras, saca los mobs de la estructura en
+vez de los del bioma.
+
+### Mobs metidos en la piedra
+
+Seguían muriendo asfixiados algunos, y las dos causas eran nuevas:
+
+* **El ancho.** La comprobación miraba solo la columna del centro. Una araña mide 1,4 bloques y un
+  bruto de un pack puede medir 2: con la columna central libre, los hombros están en la roca de al
+  lado. Ahora se exige libre toda la huella del mob (`SpawnSpot.halfWidth`), y al moverlo se buscan
+  también las columnas de alrededor, hasta 3 bloques, solo en chunks ya cargados.
+* **El momento.** La comprobación se hacía en el tick del spawn, con el cuerpo que MythicMobs acaba
+  de crear. ModelEngine ajusta el hitbox al modelo un tick después y la escala del pack también llega
+  tarde: el goblin que pasó como un husk mide tres bloques un momento después, en una cueva de dos.
+  Ahora se vuelve a mirar a los 2, 10 y 40 ticks (`MobFit.watch`), y si ha crecido dentro de la roca
+  se mueve o se quita.
+
+Y por si algo se escapa (un mob empujado contra una pared, uno que un jugador tapió), el daño por
+asfixia de un mob nuestro se cancela y el mob se mueve al hueco más cercano; si no hay, se quita.
+
 ### Estructuras de datapack y las de este generador
 
 `structures.vanilla-structures: true` hace que el servidor coloque sus propias estructuras, y eso

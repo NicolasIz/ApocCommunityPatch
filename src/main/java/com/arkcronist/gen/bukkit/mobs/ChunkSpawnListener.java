@@ -22,16 +22,21 @@ import java.util.List;
  */
 public final class ChunkSpawnListener implements Listener {
 
+    /** Marks a mob placed as a structure's guard, so the suffocation guard knows it is ours. */
+    public static final String GUARD_MARK = "arkcronist_guard";
+
     private final ArkcronistPlugin plugin;
     private final NamespacedKey populatedKey;
     private final NamespacedKey bossKey;
     private final NamespacedKey tierKey;
+    private final NamespacedKey guardKey;
 
     public ChunkSpawnListener(ArkcronistPlugin plugin) {
         this.plugin = plugin;
         this.populatedKey = new NamespacedKey(plugin, "mobs_spawned");
         this.bossKey = new NamespacedKey(plugin, MinibossFactory.MINIBOSS_KEY);
         this.tierKey = new NamespacedKey(plugin, MinibossFactory.TIER_KEY);
+        this.guardKey = new NamespacedKey(plugin, GUARD_MARK);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -64,8 +69,13 @@ public final class ChunkSpawnListener implements Listener {
                     com.arkcronist.gen.bukkit.mythic.MobRoster.habitatOf(bukkitWorld));
             for (MobSpawn spawn : spawns) {
                 try {
-                    MinibossFactory.spawn(bukkitWorld, spawn, plugin.arkConfig(), table,
-                            bossKey, tierKey);
+                    org.bukkit.entity.Entity guard = MinibossFactory.spawn(bukkitWorld, spawn,
+                            plugin.arkConfig(), table, bossKey, tierKey);
+                    if (guard != null) {
+                        guard.getPersistentDataContainer().set(guardKey, PersistentDataType.BYTE,
+                                (byte) 1);
+                        MobFit.watch(plugin, guard);
+                    }
                 } catch (RuntimeException exception) {
                     plugin.getLogger().warning("Could not spawn " + spawn.entityType()
                             + ": " + exception.getMessage());

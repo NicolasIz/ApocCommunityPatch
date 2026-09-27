@@ -91,4 +91,28 @@ class MobFitTest {
         BoundingBox titan = new BoundingBox(0, 64, 0, 12, 76, 12);
         assertFalse(MobFit.buried(titan, wallAt(5, 70, 5)));
     }
+
+    @Test
+    @DisplayName("a buried mob looks in its own column first, then ring by ring outwards")
+    void searchOrder() {
+        int[][] around = MobFit.around(3);
+        assertTrue(around[0][0] == 0 && around[0][1] == 0);
+        assertTrue(around.length == 49);
+        int last = 0;
+        for (int[] offset : around) {
+            int ring = Math.max(Math.abs(offset[0]), Math.abs(offset[1]));
+            assertTrue(ring >= last, "rings must not go back inwards");
+            last = ring;
+        }
+    }
+
+    @Test
+    @DisplayName("a zombie needs its own column, a spider the ones either side too")
+    void footprint() {
+        assertTrue(com.arkcronist.gen.bukkit.mobs.SpawnSpot.halfWidth(0.6) == 0);
+        assertTrue(com.arkcronist.gen.bukkit.mobs.SpawnSpot.halfWidth(1.0) == 0);
+        assertTrue(com.arkcronist.gen.bukkit.mobs.SpawnSpot.halfWidth(1.4) == 1);
+        assertTrue(com.arkcronist.gen.bukkit.mobs.SpawnSpot.halfWidth(3.0) == 1);
+        assertTrue(com.arkcronist.gen.bukkit.mobs.SpawnSpot.halfWidth(3.2) == 2);
+    }
 }

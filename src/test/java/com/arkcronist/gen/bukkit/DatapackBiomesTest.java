@@ -106,6 +106,54 @@ class DatapackBiomesTest {
     }
 
     @Test
+    @DisplayName("Incendium's biomes go to the Nether because its dimension file lists them")
+    void incendiumDimensionFile() throws IOException {
+        // No is_nether tag at all: the dimension file alone has to say it. Incendium's real one
+        // lists vanilla and its own biomes in a multi_noise source.
+        zip("Incendium.zip", Map.of(
+                "data/incendium/worldgen/biome/ash_barrens.json", "{\"temperature\": 2.0}",
+                "data/incendium/worldgen/biome/toxic_heap.json", "{\"temperature\": 2.0}",
+                "data/minecraft/dimension/the_nether.json",
+                "{\"type\": \"minecraft:the_nether\", \"generator\": {\"type\": \"minecraft:noise\","
+                        + " \"biome_source\": {\"type\": \"minecraft:multi_noise\", \"biomes\": ["
+                        + "{\"biome\": \"minecraft:nether_wastes\", \"parameters\": {}},"
+                        + "{\"biome\": \"incendium:ash_barrens\", \"parameters\": {}},"
+                        + "{\"biome\": \"incendium:toxic_heap\", \"parameters\": {}}]}}}"));
+        List<BiomeProfile> read = DatapackBiomes.read(List.of(folder));
+        assertEquals(Habitat.NETHER, find(read, "incendium:ash_barrens").habitat());
+        assertEquals(Habitat.NETHER, find(read, "incendium:toxic_heap").habitat());
+    }
+
+    @Test
+    @DisplayName("Nullscape's biomes go to the End, through a tag named in its dimension file")
+    void nullscapeDimensionFileWithTag() throws IOException {
+        zip("Nullscape.zip", Map.of(
+                "data/nullscape/worldgen/biome/void_barrens.json", "{\"temperature\": 0.5}",
+                "data/nullscape/worldgen/biome/shadowlands.json", "{\"temperature\": 0.5}",
+                "data/nullscape/tags/worldgen/biome/all_nullscape_biomes.json",
+                "{\"values\": [\"nullscape:void_barrens\", \"nullscape:shadowlands\"]}",
+                "data/minecraft/dimension/the_end.json",
+                "{\"type\": \"minecraft:the_end\", \"generator\": {\"biome_source\": {\"type\":"
+                        + " \"minecraft:checkerboard\", \"biomes\": \"#nullscape:all_nullscape_biomes\"}}}"));
+        List<BiomeProfile> read = DatapackBiomes.read(List.of(folder));
+        assertEquals(Habitat.END, find(read, "nullscape:void_barrens").habitat());
+        assertEquals(Habitat.END, find(read, "nullscape:shadowlands").habitat());
+    }
+
+    @Test
+    @DisplayName("a mob named for ash lands in Incendium's Ash Barrens and nowhere in the overworld")
+    void ashMobFindsIncendium() throws IOException {
+        incendiumDimensionFile();
+        List<BiomeProfile> all = DatapackBiomes.merge(VanillaBiomes.all(),
+                DatapackBiomes.read(List.of(folder)), List.of());
+        com.arkcronist.gen.bukkit.mythic.BiomeThemes.Result result =
+                com.arkcronist.gen.bukkit.mythic.BiomeThemes.assign(List.of(
+                        new com.arkcronist.gen.bukkit.mythic.BiomeThemes.Candidate("ash_wraith", "",
+                                Habitat.NETHER)), all, Map.of());
+        assertEquals(List.of("incendium:ash_barrens"), result.byMob().get("ash_wraith").biomes());
+    }
+
+    @Test
     @DisplayName("a missing folder is not an error")
     void missingFolder() {
         assertTrue(DatapackBiomes.read(List.of(folder.resolve("nope"))).isEmpty());

@@ -286,6 +286,49 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
      * {@code hostile-mobs.auto-discover.roles} or {@code .habitats} rather than switching the whole
      * feature off.</p>
      */
+    /**
+     * Which mobs the datapack structures get: the one the player stands in, then every structure a
+     * choice has been made for so far, with the reason. A heuristic nobody can inspect is not
+     * distinguishable from a bug, so the reason is printed with each.
+     */
+    private void datapackStructures(CommandSender sender) {
+        com.arkcronist.gen.bukkit.mobs.StructureGarrison garrison = plugin.structureGarrison();
+        if (!plugin.arkConfig().structureMobsEnabled()) {
+            sender.sendMessage(PREFIX + "§eDatapack structure garrisons are off"
+                    + " (hostile-mobs.datapack-structures.enabled).");
+            return;
+        }
+        if (sender instanceof org.bukkit.entity.Player player) {
+            String here = garrison.structureAt(player.getLocation());
+            if (here == null) {
+                sender.sendMessage(PREFIX + "You are not inside a datapack structure that gets mobs.");
+            } else {
+                com.arkcronist.gen.bukkit.mythic.StructureThemes.Pick pick =
+                        garrison.mobsFor(player.getWorld(), here);
+                sender.sendMessage(PREFIX + "You are in §f" + here + "§7: §f"
+                        + String.join(", ", pick.mobs()) + " §8(" + pick.why() + ")");
+            }
+        }
+        java.util.Map<String, com.arkcronist.gen.bukkit.mythic.StructureThemes.Pick> decided =
+                new java.util.TreeMap<>(garrison.decided());
+        if (decided.isEmpty()) {
+            sender.sendMessage(PREFIX + "No datapack structure has been garrisoned since the last"
+                    + " start. They are chosen as new chunks with one are generated.");
+            return;
+        }
+        int shown = 0;
+        for (java.util.Map.Entry<String, com.arkcronist.gen.bukkit.mythic.StructureThemes.Pick> entry
+                : decided.entrySet()) {
+            if (shown++ >= 30) {
+                sender.sendMessage(PREFIX + "... and " + (decided.size() - 30) + " more.");
+                break;
+            }
+            com.arkcronist.gen.bukkit.mythic.StructureThemes.Pick pick = entry.getValue();
+            sender.sendMessage("§7 " + entry.getKey().replace('|', ' ') + ": §f"
+                    + pick.mobs().size() + " mobs §8(" + pick.why() + ")");
+        }
+    }
+
     private void mythic(CommandSender sender, String[] args) {
         MobRoster roster = plugin.roster();
         MobDiscovery.Result result = roster.result();
@@ -315,6 +358,10 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
         }
         if (what.equals("biomes")) {
             biomes(sender, roster);
+            return;
+        }
+        if (what.equals("structures") || what.equals("estructuras")) {
+            datapackStructures(sender);
             return;
         }
         if (what.isEmpty()) {
@@ -859,7 +906,7 @@ public final class AgCommand implements CommandExecutor, TabCompleter {
             options.addAll(List.of("help", "info", "biome", "locate", "structures", "prefabs",
                     "presets", "stats", "mobs", "mythic", "bench", "top", "reload", "version"));
         } else if (args.length == 2 && args[0].equalsIgnoreCase("mythic")) {
-            options.addAll(List.of("list", "refresh", "export", "models", "biomes"));
+            options.addAll(List.of("list", "refresh", "export", "models", "biomes", "structures"));
             for (MobClassifier.Role role : MobClassifier.Role.values()) {
                 options.add(role.name().toLowerCase(Locale.ROOT));
             }

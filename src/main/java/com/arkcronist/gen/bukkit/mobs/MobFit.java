@@ -135,16 +135,82 @@ public final class MobFit {
         }
         Location where = entity.getLocation();
         World world = entity.getWorld();
-        int needed = Math.max(1, (int) Math.ceil(entity.getBoundingBox().getHeight()));
-        Location moved = SpawnSpot.resolve(world, where.getBlockX(), where.getBlockY(),
-                where.getBlockZ(), needed, false);
-        if (moved == null) {
-            return false;
+        BoundingBox box = entity.getBoundingBox();
+        int needed = Math.max(1, (int) Math.ceil(box.getHeight()));
+        int half = SpawnSpot.halfWidth(Math.max(box.getWidthX(), box.getWidthZ()));
+        // Its own column first, then the ones around it, nearest first. Only columns in chunks that
+        // are already loaded: this runs on the main thread, and asking for a block in an unloaded
+        // chunk generates that chunk on the spot.
+        for (int[] offset : AROUND) {
+            int x = where.getBlockX() + offset[0];
+            int z = where.getBlockZ() + offset[1];
+            if (!world.isChunkLoaded(x >> 4, z >> 4)) {
+                continue;
+            }
+            Location moved = SpawnSpot.resolve(world, x, where.getBlockY(), z, needed, false, half);
+            if (moved == null) {
+                continue;
+            }
+            moved.setYaw(where.getYaw());
+            moved.setPitch(where.getPitch());
+            entity.teleport(moved);
+            if (!buried(entity)) {
+                return true;
+            }
         }
-        moved.setYaw(where.getYaw());
-        moved.setPitch(where.getPitch());
-        entity.teleport(moved);
-        return !buried(entity);
+        return false;
+    }
+
+    /**
+     * Columns to try, nearest first: the mob's own, then rings out to three blocks away.
+     *
+     * <p>The vertical search alone was not enough, and the log said so: a mob buried in the side of
+     * a hill has solid rock above and below it in its own column, and the nearest open air is a
+     * step to the side. Three blocks is as far as a mob can be moved without it looking like it
+     * appeared somewhere else.</p>
+     */
+    private static final int[][] AROUND = around(3);
+
+    public static int[][] around(int reach) {
+        java.util.List<int[]> offsets = new java.util.ArrayList<>();
+        for (int ring = 0; ring <= reach; ring++) {
+            for (int dx = -ring; dx <= ring; dx++) {
+                for (int dz = -ring; dz <= ring; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) == ring) {
+                        offsets.add(new int[] {dx, dz});
+                    }
+                }
+            }
+        }
+        return offsets.toArray(new int[0][]);
+    }
+
+    /**
+     * When to look again after a spawn, in ticks.
+     *
+     * <p>The check at spawn time is a check of the body MythicMobs spawned, which is not always the
+     * body the mob ends up with: ModelEngine fits its hitbox to the model on a later tick, and a
+     * pack's scale and size options are applied after the spawn call has returned. A goblin brute
+     * that passed as a husk-sized box is three blocks tall a moment later, in a cave with two - and
+     * suffocates. So the same question is asked again once the mob has finished growing.</p>
+     */
+    static final long[] RECHECK = {2L, 10L, 40L};
+
+    /**
+     * Checks this mob again after it has had time to take its real size, moving it or removing it
+     * if it has grown into the rock.
+     */
+    public static void watch(org.bukkit.plugin.Plugin plugin, Entity entity) {
+        if (plugin == null || entity == null) {
+            return;
+        }
+        for (long delay : RECHECK) {
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                if (entity.isValid() && !settle(entity)) {
+                    entity.remove();
+                }
+            }, delay);
+        }
     }
 
     /** Whether standing in this block would hurt. */

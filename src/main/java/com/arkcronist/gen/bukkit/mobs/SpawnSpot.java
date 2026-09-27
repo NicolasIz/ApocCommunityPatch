@@ -81,6 +81,22 @@ public final class SpawnSpot {
      * @return the location, or null when the column has nowhere to put it
      */
     public static Location resolve(World world, int x, int wantedY, int z, int needed, boolean floats) {
+        return resolve(world, x, wantedY, z, needed, floats, 0);
+    }
+
+    /**
+     * The same search for a mob wider than one block.
+     *
+     * <p>A single column was enough while every mob was a zombie. A spider is 1.4 blocks across and
+     * a pack's brute can be two: stood in the middle of a block, its shoulders are in the columns
+     * either side, and a column that is clear in the middle says nothing about those. So the whole
+     * footprint has to be clear, and only the middle needs a floor - a mob standing on the edge of a
+     * ledge is a mob, not a problem.</p>
+     *
+     * @param half how many columns either side of the middle the mob reaches into; 0 for one block
+     */
+    public static Location resolve(World world, int x, int wantedY, int z, int needed, boolean floats,
+                                   int half) {
         int lowest = world.getMinHeight() + 1;
         int highest = world.getMaxHeight() - Math.max(1, needed);
         if (lowest > highest) {
@@ -88,18 +104,18 @@ public final class SpawnSpot {
         }
         int wanted = Math.max(lowest, Math.min(highest, wantedY));
 
-        if (fits(world, x, wanted, z, floats, needed)) {
+        if (fits(world, x, wanted, z, floats, needed, half)) {
             return at(world, x, wanted, z);
         }
         // Outwards from where the structure asked, nearest first, so a mob is moved as little as
         // possible: down for one left hanging over its floor, up for one walled into a rise.
         for (int step = 1; step <= REACH; step++) {
             int below = wanted - step;
-            if (below >= lowest && fits(world, x, below, z, floats, needed)) {
+            if (below >= lowest && fits(world, x, below, z, floats, needed, half)) {
                 return at(world, x, below, z);
             }
             int above = wanted + step;
-            if (above <= highest && fits(world, x, above, z, floats, needed)) {
+            if (above <= highest && fits(world, x, above, z, floats, needed, half)) {
                 return at(world, x, above, z);
             }
         }
@@ -113,7 +129,15 @@ public final class SpawnSpot {
      * Something that swims is held to less: it needs the space but not the floor, because a guardian
      * over the middle of a monument's flooded hall is exactly where it belongs.</p>
      */
-    private static boolean fits(World world, int x, int y, int z, boolean floats, int needed) {
+    private static boolean fits(World world, int x, int y, int z, boolean floats, int needed,
+                                int half) {
+        for (int dx = -half; dx <= half; dx++) {
+            for (int dz = -half; dz <= half; dz++) {
+                if ((dx != 0 || dz != 0) && !clear(world, x + dx, y, z + dz, needed)) {
+                    return false;
+                }
+            }
+        }
         boolean wet = false;
         for (int offset = 0; offset < needed; offset++) {
             Block block = world.getBlockAt(x, y + offset, z);
@@ -132,6 +156,27 @@ public final class SpawnSpot {
         }
         Block floor = world.getBlockAt(x, y - 1, z);
         return floor.isSolid() && !floor.isLiquid() && !DEADLY.contains(floor.getType());
+    }
+
+    /** A column clear of anything solid or lethal for this many blocks up. */
+    private static boolean clear(World world, int x, int y, int z, int needed) {
+        for (int offset = 0; offset < needed; offset++) {
+            if (!open(world.getBlockAt(x, y + offset, z))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * How many columns either side of its middle a mob this wide reaches into, stood in the middle
+     * of a block. A zombie (0.6) stays in its own; a spider (1.4) reaches one either way.
+     */
+    public static int halfWidth(double width) {
+        if (!(width > 0)) {
+            return 0;
+        }
+        return Math.max(0, (int) Math.ceil(width / 2.0 - 0.5 - 1e-3));
     }
 
     /** Nothing solid and nothing lethal. */

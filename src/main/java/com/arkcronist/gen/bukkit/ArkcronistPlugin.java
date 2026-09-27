@@ -42,6 +42,8 @@ public final class ArkcronistPlugin extends JavaPlugin {
     private com.arkcronist.gen.bukkit.world.DimensionManager dimensions;
     private final com.arkcronist.gen.bukkit.mobs.SpawnedMobs spawnedMobs =
             new com.arkcronist.gen.bukkit.mobs.SpawnedMobs(this);
+    private final com.arkcronist.gen.bukkit.mobs.StructureGarrison structureGarrison =
+            new com.arkcronist.gen.bukkit.mobs.StructureGarrison(this);
     private final com.arkcronist.gen.bukkit.mythic.MobRoster roster =
             new com.arkcronist.gen.bukkit.mythic.MobRoster();
 
@@ -65,6 +67,9 @@ public final class ArkcronistPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(spawnedMobs, this);
         getServer().getPluginManager().registerEvents(
                 new com.arkcronist.gen.bukkit.mobs.HostileSwapListener(this), this);
+        getServer().getPluginManager().registerEvents(structureGarrison, this);
+        getServer().getPluginManager().registerEvents(
+                new com.arkcronist.gen.bukkit.mobs.SuffocationGuard(this), this);
         getServer().getPluginManager().registerEvents(new WorldAdoptionListener(this), this);
         getServer().getPluginManager().registerEvents(
                 new com.arkcronist.gen.bukkit.world.PortalListener(this), this);
@@ -454,6 +459,11 @@ public final class ArkcronistPlugin extends JavaPlugin {
 
     public com.arkcronist.gen.bukkit.mobs.SpawnedMobs spawnedMobs() {
         return spawnedMobs;
+    }
+
+    /** Garrisons for the structures datapacks generate, and which mobs each one gets. */
+    public com.arkcronist.gen.bukkit.mobs.StructureGarrison structureGarrison() {
+        return structureGarrison;
     }
 
     public com.arkcronist.gen.bukkit.mythic.MobRoster roster() {

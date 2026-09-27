@@ -37,6 +37,14 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public final class HostileSwapListener implements Listener {
 
+    /**
+     * Spawns made in mid-air, never filled from a dimension's list: a ghast appears in the open
+     * middle of the Nether, and the land mob standing in for it would appear there too and fall.
+     */
+    private static final java.util.Set<org.bukkit.entity.EntityType> AIRBORNE = java.util.EnumSet.of(
+            org.bukkit.entity.EntityType.GHAST, org.bukkit.entity.EntityType.PHANTOM,
+            org.bukkit.entity.EntityType.VEX);
+
     private final ArkcronistPlugin plugin;
     private boolean swapping;
 
@@ -89,6 +97,17 @@ public final class HostileSwapListener implements Listener {
             String vanilla = event.getEntityType().name().toUpperCase(Locale.ROOT);
             candidates = table.get(vanilla);
         }
+        if (candidates == null && !AIRBORNE.contains(event.getEntityType())
+                && plugin.arkConfig().fillFromPool(MobRoster.habitatOf(bukkitWorld))) {
+            // Nothing is keyed to this mob here, but the dimension has mobs of its own. In the
+            // Nether that is the normal case rather than the exception: its packs build their
+            // creatures on zombies and skeletons, which the Nether never spawns, while what it does
+            // spawn - piglins, blazes, magma cubes, and whatever a pack like Incendium adds to its
+            // biomes - has no entry. Without this the Nether's own mobs only ever came from the
+            // daylight spawner.
+            candidates = plugin.roster().ambientPool(plugin.arkConfig(),
+                    MobRoster.habitatOf(bukkitWorld));
+        }
         if (candidates == null || candidates.isEmpty()) {
             return;
         }
@@ -139,6 +158,7 @@ public final class HostileSwapListener implements Listener {
         // spawn and the night never stops adding them. See SpawnedMobs.
         SpawnedMobs.released(plugin, replacement, SpawnedMobs.SWAP_MARK,
                 plugin.arkConfig().spawnedMobsDespawn());
+        MobFit.watch(plugin, replacement);
         plugin.spawnedMobs().added(bukkitWorld);
         event.setCancelled(true);
     }
@@ -167,10 +187,6 @@ public final class HostileSwapListener implements Listener {
 
     /** Whether this world gets custom mobs at all. */
     private boolean applies(org.bukkit.World world) {
-        return switch (world.getEnvironment()) {
-            case NETHER -> plugin.arkConfig().netherApplies(world.getName());
-            case THE_END -> plugin.arkConfig().endApplies(world.getName());
-            default -> MobWorlds.applies(plugin, world);
-        };
+        return MobWorlds.appliesHere(plugin, world);
     }
 }
