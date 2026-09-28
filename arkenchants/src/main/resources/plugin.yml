@@ -4,7 +4,7 @@ main: com.arkcronist.enchants.ArkEnchants
 api-version: '1.21'
 author: Arkcronist
 description: Encantamientos personalizados (formato AdvancedEnchantments) compatibles con ItemsAdder.
-softdepend: [ItemsAdder]
+softdepend: [ItemsAdder, MythicMobs]
 commands:
   arkenchants:
     description: Administrar ArkEnchants
@@ -21,3 +21,6 @@ permissions:
   arkenchants.enchanter:
     description: Usar /enchanter
     default: true
+  arkenchants.astral.bypass:
+    description: Mover, tirar y repartir libros y objetos Astrales
+    default: op

@@ -49,6 +49,7 @@ public final class Placeholders {
             case "victim is marked" -> String.valueOf(engine.marked(c.victim));
             case "charge" -> String.valueOf(engine.charges.percent(c.holder));
             case "clones" -> String.valueOf(engine.clones.count(c.holder));
+            case "summons", "allies" -> String.valueOf(engine.summons.count(c.holder));
             case "attacker max health" -> maxHp(c.attacker);
             case "player max health" -> maxHp(c.holder);
             case "victim name" -> c.victim == null ? "" : c.victim.getName();

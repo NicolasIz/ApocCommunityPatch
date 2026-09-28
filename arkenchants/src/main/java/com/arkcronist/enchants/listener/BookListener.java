@@ -72,6 +72,11 @@ public final class BookListener implements Listener {
             return;
         }
         e.setCancelled(true);
+        boolean astral = ench.group().equals("ASTRAL");
+        if (astral && (!Items.ownedBy(cursor, p) || !Items.ownedBy(target, p))) {
+            plugin.send(p, "astral-not-yours");
+            return;
+        }
         Map<String, Integer> current = new LinkedHashMap<>(Items.enchants(target));
         Applying.Outcome o = Applying.check(ench, book.level(), current, Items.applicable(ench, target),
                 plugin.settings().maxEnchants, plugin.settings().upgradeOnSameLevel);
@@ -87,6 +92,9 @@ public final class BookListener implements Listener {
                 if (Percent.chance(book.success(), r)) {
                     current.put(ench.id(), o.newLevel());
                     Items.setEnchants(target, current);
+                    if (astral && Items.owner(target) == null) {
+                        Items.bind(target, p);
+                    }
                     e.setCurrentItem(target);
                     good(p);
                     plugin.send(p, "applied", "%enchant%", Items.format("%group-color%%display% %level%", ench, o.newLevel()));
@@ -141,6 +149,12 @@ public final class BookListener implements Listener {
             }
             case "extract", "purify" -> {
                 boolean curse = kind.equals("purify");
+                if (curse && plugin.settings().cursesPermanent && !Items.enchants(target).isEmpty()) {
+                    // curses are for life: only an admin (/ake uncurse) takes them off
+                    e.setCancelled(true);
+                    plugin.send(p, "curse-permanent");
+                    return;
+                }
                 Map<String, Integer> current = new LinkedHashMap<>(Items.enchants(target));
                 List<String> options = new ArrayList<>();
                 for (String id : current.keySet()) {
@@ -263,6 +277,15 @@ public final class BookListener implements Listener {
                     plugin.settings().upgradeOnSameLevel);
             if (o.result() == Applying.Result.OK) {
                 merged.put(ench.id(), o.newLevel());
+            }
+        }
+        if (plugin.settings().cursesPermanent) {
+            // a cursed item used up on the anvil passes its curses on: an anvil never washes a curse away
+            for (Map.Entry<String, Integer> en : b.entrySet()) {
+                Enchant ench = plugin.registry().get(en.getKey());
+                if (ench != null && ench.group().equals("CURSE")) {
+                    merged.merge(ench.id(), en.getValue(), Math::max);
+                }
             }
         }
         ItemStack out = result.clone();

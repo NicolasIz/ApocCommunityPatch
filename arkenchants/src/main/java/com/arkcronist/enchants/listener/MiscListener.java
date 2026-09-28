@@ -77,6 +77,7 @@ public final class MiscListener implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
         engine.clones.removeAll(e.getPlayer());
+        engine.summons.removeAll(e.getPlayer());
         engine.charges.forget(e.getPlayer());
     }
 

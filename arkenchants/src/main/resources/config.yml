@@ -10,6 +10,72 @@ import-advancedenchantments: false
 sets:
   extra: true               # enchantments-extra.yml: 360 encantamientos (292 buenos + 68 maldiciones)
   advancedenchantments: true  # enchantments-advanced.yml: los 182 de AdvancedEnchantments
+  arcanos: true             # enchantments-arcanos.yml: 3548 encantamientos nuevos (3176 buenos, 93 invocaciones, 279 maldiciones)
+  astrales: true            # enchantments-astrales.yml: 52 encantamientos Astrales (solo admins los reparten)
+
+# Nombres y descripciones en espanol, con acentos y en varias lineas (tambien traduce los de AdvancedEnchantments).
+# Vienen dentro del plugin (descripciones.yml); si creas plugins/ArkEnchants/descripciones.yml con el mismo
+# formato puedes cambiar cualquier texto:   id_del_encanto: {display: 'Nombre', description: 'Texto', applies-to: 'Espadas'}
+spanish-texts: true
+
+# Maldiciones: con permanent: true ninguna se quita jugando (ni pergaminos, ni yunque, ni nada).
+# Solo un admin puede quitarlas con /ake uncurse <jugador> [maldicion|all].
+curses:
+  permanent: true
+
+# Libros y objetos Astrales: los mas poderosos. Solo se consiguen de un admin (/ake give).
+#   soulbound: no se pueden tirar, ni meter en cofres/shulkers/menus de tradeo, ni marcos, ni bundles.
+#   Quedan vinculados al jugador que los recibe: en manos de otro no funcionan y otro no los puede recoger.
+#   keep-on-death: no se pierden al morir.
+# Quien tenga el permiso arkenchants.astral.bypass (admins) puede moverlos para repartirlos.
+astral:
+  soulbound: true
+  keep-on-death: true
+  bound-lore: '&d✦ Vinculado a &f%player%'
+
+# Invocaciones (efecto SUMMON:<criatura>:<segundos>:<cantidad>): criaturas de MythicMobs que luchan por quien las
+# llama. Siguen a su dueno, atacan a lo que el golpea o a lo que le ataca, nunca le hacen dano, no sueltan botin
+# y desaparecen al acabarse el tiempo. Se prueba el primer mob de MythicMobs que exista; si no hay ninguno,
+# sale el de vanilla. Puedes anadir criaturas o cambiar los mobs por los de tus packs.
+summons:
+  max-per-player: 6      # cuantas invocaciones puede tener un jugador a la vez
+  leash: 24              # si se alejan mas de esto, vuelven junto a su dueno
+  aggro-radius: 12       # buscan monstruos a esta distancia de su dueno si no hay un enemigo marcado
+  creatures:
+    esqueleto_guerrero: {name: 'Guerrero Esqueleto', mythicmobs: [ncr_Skeleton_Warrior, DungeonSkeletonsSkeletonSwordSummon], vanilla: SKELETON}
+    esqueleto_lancero: {name: 'Lancero Esqueleto', mythicmobs: [ncr_Skeleton_Spearman, DungeonSkeletonsSkeletonSpearSummon], vanilla: SKELETON}
+    esqueleto_arquero: {name: 'Arquero Esqueleto', mythicmobs: [ncr_Skeleton_Archer, DungeonSkeletonsSkeletonArcherSummon], vanilla: SKELETON}
+    esqueleto_ballestero: {name: 'Ballestero Esqueleto', mythicmobs: [ncr_Skeleton_Crossbow], vanilla: SKELETON}
+    esqueleto_mago: {name: 'Mago Esqueleto', mythicmobs: [ncr_Skeleton_Mage], vanilla: SKELETON}
+    esqueleto_tanque: {name: 'Coloso Esqueleto', mythicmobs: [ncr_Skeleton_Tank], vanilla: WITHER_SKELETON}
+    esqueleto_asesino: {name: 'Asesino Esqueleto', mythicmobs: [ncr_Skeleton_Assassin], vanilla: SKELETON}
+    caballero_esqueletico: {name: 'Caballero Esqueletico', mythicmobs: [SkeletalKnight], vanilla: WITHER_SKELETON}
+    esbirro_oseo: {name: 'Esbirro Oseo', mythicmobs: [SkeletalMinion], vanilla: SKELETON}
+    sabueso_infernal: {name: 'Sabueso Infernal', mythicmobs: [Hellhound], vanilla: WOLF}
+    diablillo_igneo: {name: 'Diablillo Igneo', mythicmobs: [Fire_Imp], vanilla: BLAZE}
+    diablillo_oscuro: {name: 'Diablillo Oscuro', mythicmobs: [Dark_Imp], vanilla: VEX}
+    alma_perdida: {name: 'Alma Perdida', mythicmobs: [Lost_Soul], vanilla: VEX}
+    esbirro_blaze: {name: 'Esbirro Blaze', mythicmobs: [Blaze_Minion], vanilla: BLAZE}
+    entling_roble: {name: 'Entling de Roble', mythicmobs: [oak_entling], vanilla: WOLF}
+    entling_roble_oscuro: {name: 'Entling de Roble Oscuro', mythicmobs: [dark_oak_entling], vanilla: WOLF}
+    entling_alamo: {name: 'Entling de Alamo', mythicmobs: [aspen_entling], vanilla: WOLF}
+    entling_infernal: {name: 'Entling Infernal', mythicmobs: [hellbark_entling], vanilla: WOLF}
+    ent_roble: {name: 'Ent de Roble', mythicmobs: [oak_tree_ent], vanilla: IRON_GOLEM}
+    bestia_corteza: {name: 'Bestia de Corteza', mythicmobs: [oak_bark_beast, dark_oak_bark_beast], vanilla: IRON_GOLEM}
+    espectro_glacial: {name: 'Espectro Glacial', mythicmobs: [GOLEMGLACIAL_espectro], vanilla: STRAY}
+    engendro_abisal: {name: 'Engendro Abisal', mythicmobs: [ABOMINACION_engendro], vanilla: CAVE_SPIDER}
+    cangrejo_sculk: {name: 'Cangrejo de Sculk', mythicmobs: [sculk_crabby], vanilla: WOLF}
+    esbirro_fuego: {name: 'Esbirro de Fuego', mythicmobs: [DE_Esbirro_Fuego], vanilla: VEX}
+    esbirro_tormenta: {name: 'Esbirro de Tormenta', mythicmobs: [DE_Esbirro_Tormenta], vanilla: VEX}
+    esbirro_hielo: {name: 'Esbirro de Hielo', mythicmobs: [DE_Esbirro_Hielo], vanilla: STRAY}
+    esbirro_sombra: {name: 'Esbirro de Sombra', mythicmobs: [DE_Esbirro_Sombra], vanilla: WITHER_SKELETON}
+    esbirro_magma: {name: 'Esbirro de Magma', mythicmobs: [DE_Esbirro_Magma], vanilla: MAGMA_CUBE}
+    esbirro_veneno: {name: 'Esbirro de Veneno', mythicmobs: [DE_Esbirro_Veneno], vanilla: CAVE_SPIDER}
+    lobo_espectral: {name: 'Lobo Espectral', mythicmobs: [], vanilla: WOLF}
+    golem_guardian: {name: 'Golem Guardian', mythicmobs: [], vanilla: IRON_GOLEM}
+    draco_terravore: {name: 'Draco Terravore', mythicmobs: [Terravore_Drake], vanilla: RAVAGER}
+    wyvern_celeste: {name: 'Wyvern Celeste', mythicmobs: [Skywhisper_Wyvern], vanilla: VEX}
+    dragon_flamigero: {name: 'Dragon Flamigero', mythicmobs: [Flarewing_Dragon], vanilla: BLAZE}
 
 # Botin: armas, armaduras y herramientas que salen en cofres de dungeons y estructuras
 # (se generan al abrirlos por primera vez) pueden venir encantadas, o malditas.
@@ -49,17 +115,30 @@ apply:
   # Aplicar un libro del mismo nivel que ya tiene el item lo sube un nivel (hasta el maximo).
   upgrade-on-same-level: true
 
+# Lore de los libros. La descripcion se parte sola en lineas de unos "wrap" caracteres.
+# Lineas que empiezan por [normal], [curse] o [astral] solo salen en libros de ese tipo.
+# %description% %trigger% (cuando se activa) %chance% %cooldown% %level% %max-level% %applies-to%
+# %success% %destroy% %group-name% %group-color%
 books:
   material: ENCHANTED_BOOK
   name: '%group-color%&l%display% %level%'
+  wrap: 34
   lore:
-    - '&7%description%'
+    - '&8%group-name% &8• &7Nivel &f%level% &8de &7%max-level%'
     - ''
-    - '&a%success%% &7probabilidad de exito'
-    - '&c%destroy%% &7probabilidad de romper el item'
+    - '&f%description%'
     - ''
-    - '&7Aplica a: &f%applies-to%'
-    - '&8Arrastralo encima del item para aplicarlo.'
+    - '&6» &7Se activa: &e%trigger%'
+    - '&6» &7Probabilidad: &e%chance% &8| &7Recarga: &e%cooldown%'
+    - '&6» &7Aplica a: &e%applies-to%'
+    - ''
+    - '[normal]&a✔ %success%% &7de exito  &c✖ %destroy%% &7de romper'
+    - '[normal]&8Arrastralo encima del item para aplicarlo.'
+    - '[curse]&4✖ Maldicion permanente: &cno se quita con nada.'
+    - '[curse]&8Solo un administrador puede retirarla.'
+    - '[astral]&d✦ Poder astral: &fno se puede tirar ni tradear.'
+    - '[astral]&8Queda vinculado a quien lo recibe.'
+    - '[astral]&8Arrastralo encima del item para aplicarlo.'
 
 mystery-books:
   material: BOOK
@@ -72,7 +151,7 @@ mystery-books:
 # Pergaminos: se arrastran encima del item, igual que los libros.
 #   extract: quita un encantamiento al azar y te lo devuelve como libro (las maldiciones no se pueden extraer).
 #   protect: el item no se pierde al morir ni se rompe si falla un libro (la proteccion se gasta al salvarlo).
-#   purify:  quita una maldicion al azar.
+#   purify:  quita una maldicion al azar (solo si curses.permanent es false; si no, ni se vende).
 # success: rango del % de exito con que sale cada pergamino (acepta decimales, p. ej. 0.1-100).
 # cost: precio en niveles en /enchanter (0 = no se vende).
 scrolls:
@@ -127,6 +206,7 @@ groups:
   LEGENDARY: {success: 1-100, destroy: 5-50, cost: 35}
   FABLED:    {success: 0.1-100, destroy: 10-60, cost: 50}
   CURSE:     {success: 100-100, destroy: 0-0, cost: 0, enchanter: false}
+  ASTRAL:    {success: 100-100, destroy: 0-0, cost: 0, enchanter: false}
 
 messages:
   prefix: '&5&lArkEnchants &8» &7'
@@ -166,3 +246,12 @@ messages:
   no-curse: '&cEse item no tiene maldiciones.'
   random-done: '&aEl item recibio &f%count% &aencantamientos al azar.'
   random-none: '&cEse item no puede recibir encantamientos (o ya tiene).'
+  astral-locked: '&dEse objeto es &lAstral&d: no se puede tirar, guardar en cofres ni tradear.'
+  astral-not-yours: '&cEse poder astral esta vinculado a otro jugador.'
+  curse-permanent: '&4Las maldiciones son permanentes. &7Solo un administrador puede quitarlas.'
+  uncursed: '&aQuitadas &f%count% &amaldicion(es) del item de &f%player%&a.'
+  uncursed-you: '&aUn administrador te quito &f%count% &amaldicion(es) del item en tu mano.'
+  bound: '&dItem vinculado a &f%player%&d.'
+  unbound: '&7Item desvinculado.'
+  summoned: '&bHan acudido &f%count% &b(%creature%).'
+  summon-failed: '&cNo se pudo invocar &f%creature%&c: no existe esa criatura ni en MythicMobs ni en vanilla.'

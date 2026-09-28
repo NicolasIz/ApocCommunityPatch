@@ -30,6 +30,7 @@ public final class Engine {
     public final PlacedBlocks placed = new PlacedBlocks();
     public final Charges charges = new Charges();
     public final Clones clones = new Clones();
+    public final Summons summons = new Summons(this);
     public final Effects effects;
     private final Placeholders placeholders = new Placeholders(this);
     private final Map<String, Long> cooldowns = new HashMap<>();
@@ -53,6 +54,7 @@ public final class Engine {
         this.registry = r;
         this.settings = s;
         cooldowns.clear();
+        summons.rehook();
     }
 
     public EnchantRegistry registry() {
@@ -86,6 +88,10 @@ public final class Engine {
             for (Map.Entry<String, Integer> en : ench.entrySet()) {
                 Enchant e = registry.get(en.getKey());
                 if (e == null || !e.triggers().contains(trigger) || !Items.applicable(e, item)) {
+                    continue;
+                }
+                // astral power only answers to the one it is bound to
+                if (e.group().equals("ASTRAL") && !Items.ownedBy(item, base.holder)) {
                     continue;
                 }
                 activate(e, en.getValue(), item, base);

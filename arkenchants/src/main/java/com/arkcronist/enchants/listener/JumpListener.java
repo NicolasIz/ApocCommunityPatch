@@ -28,7 +28,7 @@ public final class JumpListener implements Listener, Runnable {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onToggle(PlayerToggleFlightEvent e) {
         Player p = e.getPlayer();
-        if (!e.isFlying() || !active(p) || p.getPersistentDataContainer().has(Keys.GUARD)
+        if (!e.isFlying() || !active(p) || p.getPersistentDataContainer().has(Keys.FLY)
                 || p.getGameMode() != GameMode.SURVIVAL && p.getGameMode() != GameMode.ADVENTURE) {
             return;
         }
@@ -59,7 +59,7 @@ public final class JumpListener implements Listener, Runnable {
     /** Gives the jump back on landing and takes flight away once the item is gone. */
     void tick(Player p) {
         PersistentDataContainer pdc = p.getPersistentDataContainer();
-        if (!pdc.has(Keys.JUMP_TIME) || pdc.has(Keys.GUARD)
+        if (!pdc.has(Keys.JUMP_TIME) || pdc.has(Keys.FLY)
                 || p.getGameMode() != GameMode.SURVIVAL && p.getGameMode() != GameMode.ADVENTURE) {
             return;
         }

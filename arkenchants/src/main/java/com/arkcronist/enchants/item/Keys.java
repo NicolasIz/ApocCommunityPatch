@@ -23,6 +23,10 @@ public final class Keys {
     public static NamespacedKey MARK;
     public static NamespacedKey JUMP;
     public static NamespacedKey JUMP_TIME;
+    public static NamespacedKey OWNER;
+    public static NamespacedKey OWNER_NAME;
+    public static NamespacedKey SUMMON;
+    public static NamespacedKey FLY;
 
     private Keys() {
     }
@@ -45,5 +49,9 @@ public final class Keys {
         MARK = new NamespacedKey(plugin, "mark");
         JUMP = new NamespacedKey(plugin, "double_jump");
         JUMP_TIME = new NamespacedKey(plugin, "double_jump_time");
+        OWNER = new NamespacedKey(plugin, "owner");
+        OWNER_NAME = new NamespacedKey(plugin, "owner_name");
+        SUMMON = new NamespacedKey(plugin, "summon");
+        FLY = new NamespacedKey(plugin, "fly_granted");
     }
 }

@@ -66,6 +66,60 @@ class LoaderTest {
     }
 
     @Test
+    void arcanosAndAstralesAre3600WorkingEnchants() {
+        EnchantLoader.Report r = new EnchantLoader.Report();
+        Map<String, Enchant> arc = EnchantLoader.enchants(resource("enchantments-arcanos.yml"), r);
+        Map<String, Enchant> ast = EnchantLoader.enchants(resource("enchantments-astrales.yml"), r);
+        assertEquals(3600, arc.size() + ast.size());
+        assertTrue(r.broken.isEmpty(), r.broken.toString());
+        assertTrue(r.unknownTriggers.isEmpty(), r.unknownTriggers.toString());
+        var creatures = resource("config.yml").getConfigurationSection("summons.creatures").getKeys(false);
+        java.util.Set<String> ids = new java.util.HashSet<>();
+        for (String f : new String[]{"enchantments.yml", "enchantments-extra.yml"}) {
+            ids.addAll(EnchantLoader.enchants(resource(f), new EnchantLoader.Report()).keySet());
+        }
+        int summons = 0;
+        for (Map<String, Enchant> set : java.util.List.of(arc, ast)) {
+            for (Enchant e : set.values()) {
+                assertTrue(ids.add(e.id()), "repeated id " + e.id());
+                assertTrue(!e.description().isBlank() && !e.appliesTo().isBlank() && !e.applies().isEmpty(), e.id());
+                for (var l : e.levels().values()) {
+                    for (EffectLine fx : l.effects()) {
+                        assertTrue(Effects.KNOWN.contains(fx.name()), e.id() + ": " + fx.raw());
+                        if (fx.name().equals("SUMMON")) {
+                            summons++;
+                            assertTrue(creatures.contains(fx.arg(0, "")), e.id() + " summons an unknown creature: " + fx.raw());
+                        }
+                    }
+                }
+                if (e.group().equals("CURSE") || e.group().equals("ASTRAL")) {
+                    assertTrue(!e.inEnchanter() && !e.removable(), e.id());
+                }
+            }
+        }
+        assertTrue(ast.values().stream().allMatch(e -> e.group().equals("ASTRAL")));
+        assertTrue(arc.values().stream().filter(e -> e.group().equals("CURSE")).count() > 250);
+        assertTrue(summons > 90, "summons: " + summons);
+    }
+
+    @Test
+    void spanishTextsOnlyNameExistingEnchants() {
+        YamlConfiguration d = resource("descripciones.yml");
+        java.util.Set<String> ids = new java.util.HashSet<>();
+        for (String f : new String[]{"enchantments.yml", "enchantments-extra.yml"}) {
+            ids.addAll(EnchantLoader.enchants(resource(f), new EnchantLoader.Report()).keySet());
+        }
+        assertTrue(d.getKeys(false).size() >= 415);
+        for (String id : ids) {
+            assertTrue(d.isConfigurationSection(id), "no Spanish text for " + id);
+        }
+        for (String id : d.getKeys(false)) {
+            String desc = d.getString(id + ".description", "");
+            assertTrue(!desc.isBlank() && !desc.contains("\n"), id);
+        }
+    }
+
+    @Test
     void lootLevelsFavourLowLevels() {
         java.util.Random r = new java.util.Random(7);
         int[] count = new int[4];
@@ -80,8 +134,12 @@ class LoaderTest {
         YamlConfiguration cfg = resource("config.yml");
         Map<String, Group> g = EnchantLoader.groups(resource("groups.yml").getConfigurationSection("groups"),
                 cfg.getConfigurationSection("groups"));
-        assertEquals(7, g.size());
+        assertEquals(8, g.size());
         assertTrue(g.get("CURSE").curse());
+        assertTrue(g.get("ASTRAL").astral() && !g.get("ASTRAL").inEnchanter());
+        assertEquals(100, g.get("ASTRAL").successMin());
+        // an old groups.yml without ASTRAL still gets the group
+        assertTrue(EnchantLoader.groups(null, null).containsKey("ASTRAL"));
         assertTrue(!g.get("CURSE").inEnchanter());
         assertEquals("&6", g.get("LEGENDARY").color());
         assertEquals(35, g.get("LEGENDARY").enchanterCost());

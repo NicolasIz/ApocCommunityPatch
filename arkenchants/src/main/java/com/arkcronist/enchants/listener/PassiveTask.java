@@ -47,9 +47,15 @@ public final class PassiveTask implements Runnable {
                         ? new org.bukkit.inventory.ItemStack(org.bukkit.Material.AIR) : p.getInventory().getChestplate()));
             }
             // FLY only lasts while the item that grants it is worn
-            Long granted = p.getPersistentDataContainer().get(Keys.GUARD, PersistentDataType.LONG);
-            if (granted != null && now - granted > interval * 50L * 2 + 500) {
+            if (p.getPersistentDataContainer().has(Keys.GUARD, PersistentDataType.LONG)) {
+                // up to 1.5.0 FLY was kept under the guard key; move it to its own
+                p.getPersistentDataContainer().set(Keys.FLY, PersistentDataType.LONG,
+                        p.getPersistentDataContainer().get(Keys.GUARD, PersistentDataType.LONG));
                 p.getPersistentDataContainer().remove(Keys.GUARD);
+            }
+            Long granted = p.getPersistentDataContainer().get(Keys.FLY, PersistentDataType.LONG);
+            if (granted != null && now - granted > interval * 50L * 2 + 500) {
+                p.getPersistentDataContainer().remove(Keys.FLY);
                 if (p.getGameMode() == GameMode.SURVIVAL || p.getGameMode() == GameMode.ADVENTURE) {
                     p.setFlying(false);
                     p.setAllowFlight(false);

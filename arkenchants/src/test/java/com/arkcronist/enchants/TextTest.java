@@ -12,6 +12,31 @@ import org.junit.jupiter.api.Test;
 class TextTest {
 
     @Test
+    void bookDescriptionsWrapIntoLinesWithoutLineBreaks() {
+        var lines = com.arkcronist.enchants.item.Items.wrap(
+                "Plant seeds in a 3x3 area\nby shift+right-clicking. Una frase bastante larga para partirla en dos.", 20);
+        assertEquals("Plant seeds in a 3x3", lines.get(0));
+        assertEquals("area", lines.get(1));
+        assertEquals("by", lines.get(2).substring(0, 2));
+        for (String l : lines) {
+            assertTrue(!l.contains("\n") && l.length() <= 22, l);
+        }
+        // colours carry over to the next line
+        var coloured = com.arkcronist.enchants.item.Items.wrap("&cuno dos tres cuatro cinco seis", 10);
+        assertTrue(coloured.get(1).startsWith("&c"), coloured.toString());
+    }
+
+    @Test
+    void triggersReadAsSpanish() {
+        var t = java.util.EnumSet.of(com.arkcronist.enchants.model.Trigger.ATTACK, com.arkcronist.enchants.model.Trigger.ATTACK_MOB);
+        assertEquals("al golpear", com.arkcronist.enchants.item.Texts.triggers(t));
+        assertEquals("permanente", com.arkcronist.enchants.item.Texts.chance(100,
+                java.util.EnumSet.of(com.arkcronist.enchants.model.Trigger.EFFECT_STATIC)));
+        assertEquals("5 min", com.arkcronist.enchants.item.Texts.cooldown(300));
+        assertEquals("ninguna", com.arkcronist.enchants.item.Texts.cooldown(0));
+    }
+
+    @Test
     void romanNumeralsRoundTrip() {
         assertEquals("I", Roman.of(1));
         assertEquals("IV", Roman.of(4));

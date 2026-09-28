@@ -58,7 +58,7 @@ public final class Targets {
         String who = a.getOrDefault("target", "all").toLowerCase(Locale.ROOT);
         Location at = ctx.holder.getLocation();
         for (Entity e : at.getWorld().getNearbyEntities(at, r, r, r)) {
-            if (!(e instanceof LivingEntity le) || e == ctx.holder || e.isDead()) {
+            if (!(e instanceof LivingEntity le) || e == ctx.holder || e.isDead() || Summons.ally(ctx.holder.getUniqueId(), e)) {
                 continue;
             }
             boolean player = e instanceof Player;

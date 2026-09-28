@@ -64,7 +64,9 @@ public final class Menus {
                 main(p);
             });
         }
-        var scrolls = plugin.settings().scrolls.values().stream().filter(sc -> sc.cost() > 0).toList();
+        // with permanent curses the purifying scroll is not sold (it would do nothing)
+        var scrolls = plugin.settings().scrolls.values().stream().filter(sc -> sc.cost() > 0)
+                .filter(sc -> !(sc.kind().equals("purify") && plugin.settings().cursesPermanent)).toList();
         for (int i = 0; i < scrolls.size() && i < SCROLL_SLOTS.length; i++) {
             var sc = scrolls.get(i);
             m.set(SCROLL_SLOTS[i], scrollIcon(p, sc), e -> {
@@ -98,7 +100,7 @@ public final class Menus {
     private List<String> rarityLore() {
         List<String> l = new ArrayList<>();
         for (Group g : plugin.registry().groups()) {
-            if (!g.curse()) {
+            if (!g.curse() && !g.astral()) {
                 l.add("&8▪ " + g.color() + g.name() + " &7" + Percent.fmt(g.successMin()) + "-" + Percent.fmt(g.successMax()) + "% exito");
             }
         }
@@ -261,11 +263,13 @@ public final class Menus {
 
     private ItemStack enchantIcon(Enchant e, Mode mode) {
         List<String> lore = new ArrayList<>();
-        lore.add("&7" + e.description());
+        for (String line : Items.wrap(e.description(), 34)) {
+            lore.add("&7" + line);
+        }
         lore.add("");
         lore.add("&7Aplica a: &f" + e.appliesTo());
         lore.add("&7Niveles: &f" + (e.maxLevel() <= 1 ? "I" : "I - " + Roman.of(e.maxLevel())));
-        lore.add("&7Se activa: &f" + triggers(e));
+        lore.add("&7Se activa: &f" + com.arkcronist.enchants.item.Texts.triggers(e.triggers()));
         lore.add("&8id: " + e.id());
         switch (mode) {
             case GIVE -> {
@@ -282,28 +286,6 @@ public final class Menus {
             }
         }
         return icon(new ItemStack(Material.ENCHANTED_BOOK), Items.format("%group-color%&l%display%", e, e.maxLevel()), lore);
-    }
-
-    private static String triggers(Enchant e) {
-        List<String> out = new ArrayList<>();
-        for (Trigger t : e.triggers()) {
-            out.add(switch (t) {
-                case ATTACK -> "golpear jugadores";
-                case ATTACK_MOB -> "golpear mobs";
-                case CHARGED_ATTACK -> "ataque cargado";
-                case DEFENSE, DEFENSE_MOB -> "recibir golpes";
-                case DEFENSE_PROJECTILE -> "recibir flechas";
-                case SHOOT, SHOOT_MOB -> "acertar disparos";
-                case BOW_FIRE -> "disparar";
-                case MINING -> "romper bloques";
-                case KILL_MOB, KILL_PLAYER -> "matar";
-                case DEATH -> "morir";
-                case EFFECT_STATIC, HELD -> "siempre activo";
-                case REPEATING -> "cada pocos segundos";
-                default -> t.name().toLowerCase(Locale.ROOT).replace('_', ' ');
-            });
-        }
-        return String.join(", ", new java.util.LinkedHashSet<>(out));
     }
 
     private void onEnchant(Player p, Enchant e, Group g, Mode mode, int page, InventoryClickEvent click) {

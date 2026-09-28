@@ -169,7 +169,7 @@ public final class Items {
                 .replace("%group-name%", g == null ? e.group() : g.name())
                 .replace("%level%", Roman.of(level))
                 .replace("%level-number%", String.valueOf(level))
-                .replace("%description%", e.description())
+                .replace("%description%", e.description().replace("\n", " "))
                 .replace("%applies-to%", e.appliesTo())
                 .replace("%max-level%", Roman.of(e.maxLevel()))
                 .replace("%group-color%", color);
@@ -199,9 +199,8 @@ public final class Items {
         ItemMeta meta = it.getItemMeta();
         meta.displayName(Colors.of(format(settings.bookName, e, level)));
         List<Component> lore = new ArrayList<>();
-        for (String l : settings.bookLore) {
-            lore.add(Colors.of(format(l, e, level).replace("%success%", com.arkcronist.enchants.text.Percent.fmt(success))
-                    .replace("%destroy%", com.arkcronist.enchants.text.Percent.fmt(destroy))));
+        for (String l : bookLines(e, level, success, destroy)) {
+            lore.add(Colors.of(l));
         }
         meta.lore(lore);
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
@@ -212,6 +211,183 @@ public final class Items {
         meta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP, ItemFlag.HIDE_ENCHANTS);
         it.setItemMeta(meta);
         return it;
+    }
+
+    /**
+     * The book's lore: the description is split into short lines (a line break inside one lore line shows up as a
+     * strange symbol in the client), and lines about a group that does not apply (curses, astral) are left out.
+     */
+    public static List<String> bookLines(Enchant e, int level, double success, double destroy) {
+        Group g = registry.group(e.group());
+        boolean curse = g != null && g.curse();
+        boolean astral = g != null && g.astral();
+        var lv = e.level(level);
+        List<String> out = new ArrayList<>();
+        for (String l : settings.bookLore) {
+            if (l.startsWith("[curse]")) {
+                if (curse) {
+                    out.add(l.substring(7));
+                }
+                continue;
+            }
+            if (l.startsWith("[astral]")) {
+                if (astral) {
+                    out.add(l.substring(8));
+                }
+                continue;
+            }
+            if (l.startsWith("[normal]")) {
+                if (!curse && !astral) {
+                    out.add(l.substring(8));
+                }
+                continue;
+            }
+            if (l.contains("%description%")) {
+                String prefix = l.substring(0, l.indexOf("%description%"));
+                String color = lastColors(prefix);
+                boolean first = true;
+                for (String part : wrap(e.description(), settings.bookWrap)) {
+                    out.add(format((first ? prefix : color) + part + l.substring(l.indexOf("%description%") + 13), e, level));
+                    first = false;
+                }
+                continue;
+            }
+            out.add(format(l, e, level)
+                    .replace("%success%", com.arkcronist.enchants.text.Percent.fmt(success))
+                    .replace("%destroy%", com.arkcronist.enchants.text.Percent.fmt(destroy))
+                    .replace("%trigger%", Texts.triggers(e.triggers()))
+                    .replace("%chance%", lv == null ? "-" : Texts.chance(lv.chance(), e.triggers()))
+                    .replace("%cooldown%", lv == null ? "-" : Texts.cooldown(lv.cooldown())));
+        }
+        return out;
+    }
+
+    /** Words into lines of about {@code width} characters; existing line breaks are kept. */
+    public static List<String> wrap(String text, int width) {
+        List<String> out = new ArrayList<>();
+        if (text == null || text.isBlank()) {
+            return out;
+        }
+        for (String para : text.replace("\\n", "\n").split("\\s*\n\\s*")) {
+            StringBuilder line = new StringBuilder();
+            String active = "";
+            int len = 0;
+            for (String w : para.trim().split("\\s+")) {
+                if (w.isEmpty()) {
+                    continue;
+                }
+                int wl = visibleLength(w);
+                if (len > 0 && len + 1 + wl > width) {
+                    out.add(line.toString());
+                    active = lastColors(active + line);
+                    line = new StringBuilder(active);
+                    len = 0;
+                }
+                if (len > 0) {
+                    line.append(' ');
+                    len++;
+                }
+                line.append(w);
+                len += wl;
+            }
+            if (len > 0) {
+                out.add(line.toString());
+            }
+        }
+        return out;
+    }
+
+    private static int visibleLength(String s) {
+        return s.replaceAll("[&§](#[0-9a-fA-F]{6}|[0-9a-fk-orA-FK-OR])", "").length();
+    }
+
+    /** The colour and format codes still active at the end of a legacy string. */
+    static String lastColors(String s) {
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i + 1 < s.length(); i++) {
+            char ch = s.charAt(i);
+            if (ch != '&' && ch != '§') {
+                continue;
+            }
+            char c = Character.toLowerCase(s.charAt(i + 1));
+            if (c == '#' && i + 7 < s.length()) {
+                out.setLength(0);
+                out.append(s, i, i + 8);
+                i += 7;
+            } else if ("0123456789abcdef".indexOf(c) >= 0 || c == 'r') {
+                out.setLength(0);
+                if (c != 'r') {
+                    out.append('&').append(c);
+                }
+                i++;
+            } else if ("klmno".indexOf(c) >= 0) {
+                out.append('&').append(c);
+                i++;
+            }
+        }
+        return out.toString();
+    }
+
+    // ------------------------------------------------------------------ astral binding
+    /** True for an astral book, or an item that carries an astral enchant. */
+    public static boolean isAstral(ItemStack item) {
+        if (empty(item) || !item.hasItemMeta()) {
+            return false;
+        }
+        Book b = readBook(item);
+        if (b != null) {
+            Enchant e = registry.get(b.enchant());
+            return e != null && e.group().equals("ASTRAL");
+        }
+        for (String id : enchants(item).keySet()) {
+            Enchant e = registry.get(id);
+            if (e != null && e.group().equals("ASTRAL")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static java.util.UUID owner(ItemStack item) {
+        if (empty(item) || !item.hasItemMeta()) {
+            return null;
+        }
+        String s = item.getItemMeta().getPersistentDataContainer().get(Keys.OWNER, PersistentDataType.STRING);
+        try {
+            return s == null ? null : java.util.UUID.fromString(s);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    /** No owner yet, or this player is the owner. */
+    public static boolean ownedBy(ItemStack item, org.bukkit.entity.Player p) {
+        java.util.UUID o = owner(item);
+        return o == null || o.equals(p.getUniqueId());
+    }
+
+    public static void bind(ItemStack item, org.bukkit.entity.Player p) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) {
+            return;
+        }
+        PersistentDataContainer pdc = meta.getPersistentDataContainer();
+        List<Component> lore = meta.lore() == null ? new ArrayList<>() : new ArrayList<>(meta.lore());
+        String oldName = pdc.get(Keys.OWNER_NAME, PersistentDataType.STRING);
+        if (oldName != null) {
+            String line = Colors.plain(Colors.of(settings.boundLore.replace("%player%", oldName)));
+            lore.removeIf(c -> Colors.plain(c).equals(line));
+        }
+        if (p == null) {
+            pdc.remove(Keys.OWNER);
+            pdc.remove(Keys.OWNER_NAME);
+        } else {
+            pdc.set(Keys.OWNER, PersistentDataType.STRING, p.getUniqueId().toString());
+            pdc.set(Keys.OWNER_NAME, PersistentDataType.STRING, p.getName());
+            lore.add(Colors.of(settings.boundLore.replace("%player%", p.getName())));
+        }
+        meta.lore(lore.isEmpty() ? null : lore);
+        item.setItemMeta(meta);
     }
 
     /** The book on this item, or null when it is not an ArkEnchants book. */
@@ -388,6 +564,8 @@ public final class Items {
         for (Enchant e : registry.all()) {
             byName.put(normal(Colors.plain(Colors.of(e.display().replace("%group-color%", "")))), e.id());
         }
+        // AdvancedEnchantments' own (English) names still convert after the names were translated
+        registry.aliases().forEach((name, id) -> byName.putIfAbsent(normal(Colors.plain(Colors.of(name.replace("%group-color%", "")))), id));
         Map<String, Integer> found = new LinkedHashMap<>();
         List<Component> keep = new ArrayList<>();
         for (Component line : meta.lore()) {

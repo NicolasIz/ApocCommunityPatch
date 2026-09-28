@@ -59,6 +59,7 @@ public final class ArkEnchants extends JavaPlugin {
         pm.registerEvents(new BlockListener(engine), this);
         pm.registerEvents(new MiscListener(engine), this);
         pm.registerEvents(new BookListener(this), this);
+        pm.registerEvents(new com.arkcronist.enchants.listener.AstralListener(this), this);
         menus = new com.arkcronist.enchants.gui.Menus(this);
         pm.registerEvents(new com.arkcronist.enchants.gui.Menu.Clicks(), this);
         pm.registerEvents(new com.arkcronist.enchants.listener.LootListener(this), this);
@@ -86,6 +87,7 @@ public final class ArkEnchants extends JavaPlugin {
         }
         if (engine != null) {
             engine.clones.removeEverything();
+            engine.summons.removeEverything();
         }
     }
 
@@ -123,8 +125,10 @@ public final class ArkEnchants extends JavaPlugin {
             out.add(main);
         }
         java.util.Map<String, Boolean> bundled = java.util.Map.of("enchantments-extra.yml", settings.setExtra,
-                "enchantments-advanced.yml", settings.setAdvanced);
-        for (String name : new String[]{"enchantments-extra.yml", "enchantments-advanced.yml"}) {
+                "enchantments-advanced.yml", settings.setAdvanced, "enchantments-arcanos.yml", settings.setArcanos,
+                "enchantments-astrales.yml", settings.setAstrales);
+        for (String name : new String[]{"enchantments-extra.yml", "enchantments-advanced.yml", "enchantments-arcanos.yml",
+                "enchantments-astrales.yml"}) {
             File f = new File(getDataFolder(), name);
             if (bundled.get(name)) {
                 if (!f.exists() && getResource(name) != null) {
@@ -174,7 +178,11 @@ public final class ArkEnchants extends JavaPlugin {
             }
             getLogger().info(f.getName() + ": " + added + " enchantments");
         }
-        registry = new EnchantRegistry(enchants, groups);
+        Map<String, String> aliases = new java.util.HashMap<>();
+        if (settings.spanishTexts) {
+            spanishTexts(enchants, aliases);
+        }
+        registry = new EnchantRegistry(enchants, groups, aliases);
         Items.configure(registry, settings);
         if (engine != null) {
             engine.reload(registry, settings);
@@ -204,6 +212,48 @@ public final class ArkEnchants extends JavaPlugin {
         }
     }
 
+    /**
+     * Names and descriptions in Spanish, with the details the books show: the bundled descripciones.yml first
+     * (it also translates AdvancedEnchantments' English set), then plugins/ArkEnchants/descripciones.yml, where
+     * anyone can rewrite a text without touching the enchantment files.
+     */
+    private void spanishTexts(Map<String, Enchant> enchants, Map<String, String> aliases) {
+        java.util.List<org.bukkit.configuration.ConfigurationSection> sources = new java.util.ArrayList<>();
+        try (var in = getResource("descripciones.yml")) {
+            if (in != null) {
+                sources.add(YamlConfiguration.loadConfiguration(new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8)));
+            }
+        } catch (IOException ignored) {
+            // no bundled texts: the enchantment files' own texts stay
+        }
+        File mine = new File(getDataFolder(), "descripciones.yml");
+        if (mine.isFile()) {
+            sources.add(YamlConfiguration.loadConfiguration(mine));
+        }
+        int changed = 0;
+        for (var src : sources) {
+            for (String id : src.getKeys(false)) {
+                var t = src.getConfigurationSection(id);
+                Enchant e = enchants.get(id.toLowerCase(java.util.Locale.ROOT));
+                if (t == null || e == null) {
+                    continue;
+                }
+                String display = t.getString("display");
+                if (display != null && !display.contains("%group-color%")) {
+                    display = "%group-color%" + display;
+                }
+                if (display != null && !display.equals(e.display())) {
+                    aliases.putIfAbsent(e.display(), e.id());
+                }
+                enchants.put(e.id(), EnchantLoader.withTexts(e, display, t.getString("description"), t.getString("applies-to")));
+                changed++;
+            }
+        }
+        if (changed > 0) {
+            getLogger().info("Spanish names and descriptions: " + changed);
+        }
+    }
+
     private void chargeConfig() {
         if (engine != null) {
             engine.charges.configure(settings.chargeSeconds, settings.chargeReadySeconds);
@@ -225,6 +275,10 @@ public final class ArkEnchants extends JavaPlugin {
 
     public Settings settings() {
         return settings;
+    }
+
+    public Engine engine() {
+        return engine;
     }
 
     public EnchantRegistry registry() {

@@ -54,7 +54,12 @@ public final class Effects {
             "RESET_COMBO", "BREAK_BLOCK", "BREAK_TREE", "SET_BLOCK", "MORE_DROPS", "SMELT", "TP_DROPS", "PLANT_SEEDS",
             "AUTO_REEL", "REVIVE", "KEEP_ON_DEATH", "FLY", "AIR", "LAVA_WALKER", "WATER_WALKER", "REMOVE_ENCHANT",
             "CLONES", "DASH", "SLAM", "CHAIN_LIGHTNING", "MARK", "THROW_WEAPON", "HOMING", "MULTISHOT", "REFLECT", "BLINK",
-            "DOUBLE_JUMP", "DROP_ITEM", "DOUBLE_CATCH", "REVEAL", "ACTIONBAR");
+            "DOUBLE_JUMP", "DROP_ITEM", "DOUBLE_CATCH", "REVEAL", "ACTIONBAR", "SUMMON");
+
+    /** The chat lines AdvancedEnchantments' set sends, in Spanish. */
+    private static final java.util.Map<String, String> ENGLISH = java.util.Map.of(
+            "You're bleeding!", "¡Estás sangrando!",
+            "** YOU HAVE BEEN DISARMORED **", "** ¡TE HAN ARRANCADO UNA PIEZA DE ARMADURA! **");
 
     private final Engine engine;
     private final Specials specials;
@@ -97,9 +102,15 @@ public final class Effects {
                     c.damage.percent += d(a, 0, 10);
                 }
             }
-            case "DECREASE_DAMAGE", "NEGATE_DAMAGE" -> {
+            case "DECREASE_DAMAGE" -> {
                 if (c.damage != null) {
                     c.damage.percent -= d(a, 0, 10);
+                }
+            }
+            case "NEGATE_DAMAGE" -> {
+                // like AdvancedEnchantments: the hit does nothing at all
+                if (c.damage != null) {
+                    c.damage.multiplier = 0;
                 }
             }
             case "DOUBLE_DAMAGE" -> {
@@ -187,7 +198,13 @@ public final class Effects {
                 }
             }
             case "MESSAGE" -> {
-                String msg = String.join(":", a);
+                String raw = String.join(":", a);
+                if (engine.settings().spanishTexts) {
+                    for (var en : ENGLISH.entrySet()) {
+                        raw = raw.replace(en.getKey(), en.getValue());
+                    }
+                }
+                String msg = raw;
                 t.entities.forEach(e -> e.sendMessage(Colors.of(msg)));
             }
             case "CANCEL_EVENT" -> c.cancel();
@@ -293,7 +310,8 @@ public final class Effects {
             });
             case "EXP" -> {
                 int xp = (int) d(a, 0, 1);
-                if (xp > 0) {
+                if (xp != 0) {
+                    // negative amounts take experience away (curses)
                     c.holder.giveExp(xp);
                 }
             }
@@ -350,7 +368,7 @@ public final class Effects {
             case "FLY" -> {
                 if (c.holder.getGameMode() == GameMode.SURVIVAL || c.holder.getGameMode() == GameMode.ADVENTURE) {
                     c.holder.setAllowFlight(true);
-                    c.holder.getPersistentDataContainer().set(Keys.GUARD, PersistentDataType.LONG, System.currentTimeMillis());
+                    c.holder.getPersistentDataContainer().set(Keys.FLY, PersistentDataType.LONG, System.currentTimeMillis());
                 }
             }
             case "AIR" -> t.entities.forEach(e -> e.setRemainingAir(e.getMaximumAir()));

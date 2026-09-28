@@ -1,0 +1,2351 @@
+# Generado por tools/generar_descripciones.py: nombres y descripciones en español de los encantamientos
+# que ya existían (propios, extra y los de AdvancedEnchantments). Para cambiar un texto en tu servidor,
+# crea plugins/ArkEnchants/descripciones.yml con el mismo formato: lo que pongas ahí manda.
+harvest:
+  display: Cosecha Amplia
+  description: Cosecha los cultivos maduros en un área de 3x3 alrededor del que rompes.
+  applies-to: Azadas
+autoreel:
+  display: Carrete Automático
+  description: 'Recoge el sedal solo en cuanto pica un pez: nunca se te escapa ninguno.'
+  applies-to: Cañas de pescar
+gemify:
+  display: Gemificar
+  description: A veces un mineral se convierte directamente en su bloque (diamante en bloque de diamante...).
+  applies-to: Picos
+planter:
+  display: Sembrador
+  description: 'Agachado + clic derecho con la azada: siembra semillas en un área de 3x3.'
+  applies-to: Azadas
+potatoplanter:
+  display: Sembrador de Patatas
+  description: 'Agachado + clic derecho con la azada: planta patatas en un área de 3x3.'
+  applies-to: Azadas
+carrotplanter:
+  display: Sembrador de Zanahorias
+  description: 'Agachado + clic derecho con la azada: planta zanahorias en un área de 3x3.'
+  applies-to: Azadas
+replanter:
+  display: Replantador
+  description: Al recoger un cultivo maduro, lo vuelve a plantar solo.
+  applies-to: Azadas
+strike:
+  display: Relámpago
+  description: A veces hace caer un rayo sobre tu oponente al golpearlo o dispararle.
+  applies-to: Espadas, arcos, ballestas y tridentes
+impact:
+  display: Impacto
+  description: A veces el tridente hace el doble de daño.
+  applies-to: Tridentes
+twinge:
+  display: Punzada
+  description: 'Hace sangrar al enemigo cuerpo a cuerpo: lo frena y le quita vida durante unos segundos.'
+  applies-to: Tridentes
+jellylegs:
+  display: Piernas de Gelatina
+  description: A veces anula por completo el daño de caída.
+  applies-to: Botas
+wings:
+  display: Alas
+  description: Mientras llevas las botas puestas puedes volar.
+  applies-to: Botas
+aquatic:
+  display: Acuático
+  description: Respiras bajo el agua mientras llevas el casco.
+  applies-to: Cascos
+smelting:
+  display: Fundidor
+  description: A veces los bloques que rompes salen ya fundidos.
+  applies-to: Picos
+experience:
+  display: Experiencia
+  description: A veces los minerales te dan más experiencia.
+  applies-to: Herramientas
+hasten:
+  display: Apresurar
+  description: A veces ganas prisa minera al romper bloques.
+  applies-to: Herramientas
+haste:
+  display: Prisa
+  description: Mueves tus herramientas mucho más rápido mientras las empuñas.
+  applies-to: Herramientas
+rebreather:
+  display: Rerrespirador
+  description: A veces recuperas aire al minar bajo el agua.
+  applies-to: Picos
+glowing:
+  display: Resplandor
+  description: Visión nocturna permanente mientras llevas el casco.
+  applies-to: Cascos
+decapitation:
+  display: Decapitación
+  description: A veces tu oponente suelta su cabeza al morir.
+  applies-to: Espadas y hachas
+forcefield:
+  display: Campo de Fuerza
+  description: A veces empuja lejos a quien te golpea.
+  applies-to: Espadas
+epicness:
+  display: Epicidad
+  description: Tus golpes lanzan partículas y sonidos espectaculares.
+  applies-to: Espadas
+famine:
+  display: Hambruna
+  description: A veces provoca hambre a tu oponente.
+  applies-to: Armas
+berserk:
+  display: Berserker Salvaje
+  description: A veces te da fuerza a cambio de fatiga minera.
+  applies-to: Espadas y hachas
+reflect:
+  display: Reflejo
+  description: A veces absorbe parte del daño que recibes y se lo devuelve al atacante.
+  applies-to: Armadura
+ward:
+  display: Salvaguarda
+  description: A veces absorbe el daño de un golpe enemigo.
+  applies-to: Armadura
+explosive:
+  display: Explosivo
+  description: A veces tus flechas explotan al impactar.
+  applies-to: Arcos
+frenzy:
+  display: Furia de Flechas
+  description: A veces tus flechas explotan al impactar.
+  applies-to: Ballestas
+featherweight:
+  display: Peso Pluma
+  description: A veces te da un arrebato de prisa al golpear.
+  applies-to: Espadas y hachas
+sharpnesshook:
+  display: Anzuelo Afilado
+  description: El anzuelo hace daño a lo que engancha.
+  applies-to: Cañas de pescar
+poisonedhook:
+  display: Anzuelo Envenenado
+  description: El anzuelo envenena a lo que engancha.
+  applies-to: Cañas de pescar
+firehook:
+  display: Anzuelo de Fuego
+  description: El anzuelo prende fuego a lo que engancha.
+  applies-to: Cañas de pescar
+molten:
+  display: Fundido
+  description: A veces prende fuego a quien te golpea.
+  applies-to: Armadura
+ravenous:
+  display: Voraz
+  description: A veces recuperas comida mientras luchas.
+  applies-to: Espadas y hachas
+veinminer:
+  display: Minero de Vetas
+  description: Rompe la veta de mineral entera de una vez.
+  applies-to: Picos
+telepathy:
+  display: Telepatía
+  description: Los bloques que rompes van directos a tu inventario.
+  applies-to: Herramientas
+explosivedemise:
+  display: Final Explosivo
+  description: Cuando estás a punto de morir aparecen creepers que te protegen y ciegan a tu atacante.
+  applies-to: Pantalones
+enderslayer:
+  display: Matador del End
+  description: Más daño contra endermans y el dragón del End.
+  applies-to: Armas
+deathpunch:
+  display: Puño Mortal
+  description: Más daño contra zombis.
+  applies-to: Espadas y hachas
+bonecrusher:
+  display: Trituradora de Huesos
+  description: Más daño contra esqueletos.
+  applies-to: Espadas y hachas
+immolate:
+  display: Inmolar
+  description: Más daño contra arañas.
+  applies-to: Espadas y hachas
+slayer:
+  display: Matarife
+  description: Más daño contra animales pacíficos.
+  applies-to: Espadas y hachas
+hunter:
+  display: Cazador
+  description: Más daño contra animales pacíficos.
+  applies-to: Arcos, ballestas y tridentes
+beastslayer:
+  display: Matabestias
+  description: Más daño contra monstruos hostiles.
+  applies-to: Espadas y hachas
+hook:
+  display: Gancho
+  description: Consigues más experiencia al pescar.
+  applies-to: Cañas de pescar
+bait:
+  display: Cebo
+  description: A veces pescas el doble.
+  applies-to: Cañas de pescar
+snap:
+  display: Tirón
+  description: Atrae hacia ti a lo que engancha la caña.
+  applies-to: Cañas de pescar
+lucky:
+  display: Afortunado
+  description: A veces ganas suerte mientras pescas.
+  applies-to: Cañas de pescar
+permafrost:
+  display: Permafrost
+  description: A veces ralentiza y hace sangrar a tus oponentes.
+  applies-to: Espadas
+soulless:
+  display: Desalmado
+  description: Más daño contra monstruos hostiles.
+  applies-to: Arcos, ballestas y tridentes
+reaper:
+  display: Parca
+  description: A veces marchita y ciega a tu oponente mientras le haces daño.
+  applies-to: Hachas
+netherslayer:
+  display: Matador del Nether
+  description: Más daño contra las criaturas del Nether.
+  applies-to: Armas
+blind:
+  display: Ceguera
+  description: A veces ciega a quien golpeas.
+  applies-to: Espadas
+allure:
+  display: Seducción
+  description: Tus golpes atraen a los monstruos hacia ti.
+  applies-to: Espadas
+frozen:
+  display: Congelado
+  description: Al defenderte, a veces ralentiza a tu atacante.
+  applies-to: Armadura
+paralyze:
+  display: Parálisis
+  description: Lanza un rayo y a veces deja al enemigo lento y torpe al atacar.
+  applies-to: Espadas y hachas
+poison:
+  display: Veneno
+  description: A veces envenena a quien golpeas.
+  applies-to: Espadas y hachas
+virus:
+  display: Virus
+  description: A veces envenena a quien golpeas.
+  applies-to: Arcos, ballestas y tridentes
+poisoned:
+  display: Envenenado
+  description: A veces envenena a quien te golpea.
+  applies-to: Armadura
+reforged:
+  display: Reforjado
+  description: 'Protege la durabilidad de armas y herramientas: tardan mucho más en romperse.'
+  applies-to: Armas y herramientas
+snare:
+  display: Trampa
+  description: Tus proyectiles a veces ralentizan y fatigan a los enemigos.
+  applies-to: Arcos
+springs:
+  display: Muelles
+  description: Salto mejorado mientras llevas las botas.
+  applies-to: Botas
+undeadruse:
+  display: Ardid No Muerto
+  description: Al recibir golpes, a veces aparece una horda de zombis que distrae y desorienta a tus oponentes.
+  applies-to: Botas
+voodoo:
+  display: Vudú
+  description: A veces debilita a quien golpeas.
+  applies-to: Armadura
+wither:
+  display: Marchitar
+  description: A veces aplica el efecto Wither a quien golpeas.
+  applies-to: Armadura
+perish:
+  display: Perecer
+  description: A veces aplica el efecto Wither a quien golpeas.
+  applies-to: Arcos, ballestas y tridentes
+smokebomb:
+  display: Bomba de Humo
+  description: Cuando estás a punto de morir sueltas una bomba de humo que ciega a tus enemigos.
+  applies-to: Cascos
+infernal:
+  display: Infernal
+  description: Tus flechas estallan en fuego al impactar.
+  applies-to: Espadas y hachas
+extinguish:
+  display: Extinguir
+  description: A veces te apaga cuando estás ardiendo.
+  applies-to: Pantalones
+shockwave:
+  display: Onda de Choque
+  description: Con poca vida, a veces empuja lejos a tu atacante.
+  applies-to: Pecheras
+vampire:
+  display: Vampírico
+  description: A veces te cura hasta 3 corazones unos segundos después de golpear.
+  applies-to: Espadas
+greatsword:
+  display: Mandoble
+  description: Multiplica tu daño contra jugadores que empuñan un arco.
+  applies-to: Espadas
+bowmaster:
+  display: Maestro Arquero
+  description: Multiplica tu daño contra jugadores que empuñan una espada.
+  applies-to: Arcos, ballestas y tridentes
+hardened:
+  display: Endurecido
+  description: A veces recupera durabilidad al recibir golpes de jugadores.
+  applies-to: Armadura
+patch:
+  display: Remiendo
+  description: A veces recupera durabilidad al recibir golpes de monstruos.
+  applies-to: Armadura
+rocketescape:
+  display: Huida Cohete
+  description: Con poca vida sales disparado hacia el cielo.
+  applies-to: Botas
+trickster:
+  display: Embaucador
+  description: Al recibir un golpe, a veces te teletransportas justo a la espalda de tu oponente.
+  applies-to: Armadura
+timber:
+  display: Tala
+  description: A veces tala el árbol entero de un solo golpe.
+  applies-to: Hachas
+distance:
+  display: Distancia
+  description: A veces te aleja de tus enemigos y te da regeneración.
+  applies-to: Armas
+cleave:
+  display: Hendidura
+  description: Daña a los jugadores de alrededor; el radio crece con el nivel.
+  applies-to: Hachas
+ambit:
+  display: Ámbito
+  description: Daña a los monstruos de alrededor; el radio crece con el nivel.
+  applies-to: Espadas y hachas
+angelic:
+  display: Angelical
+  description: Te cura cuando recibes daño.
+  applies-to: Armadura
+arrowdeflect:
+  display: Desvío de Flechas
+  description: A veces evita el daño de las flechas enemigas.
+  applies-to: Armadura
+arrowbreak:
+  display: Rompeflechas
+  description: Con el arma en la mano, a veces las flechas rebotan en ti.
+  applies-to: Hachas
+curse:
+  display: Maleficio
+  description: A veces da fatiga minera a tu enemigo.
+  applies-to: Armadura
+diminish:
+  display: Disminuir
+  description: A veces da fatiga minera a tu enemigo.
+  applies-to: Hachas
+interrupt:
+  display: Interrumpir
+  description: A veces da fatiga minera a tu enemigo.
+  applies-to: Espadas
+exalted:
+  display: Exaltado
+  description: A veces te quita los efectos negativos de pociones.
+  applies-to: Espadas
+ragdoll:
+  display: Muñeco de Trapo
+  description: A veces sales despedido hacia atrás al recibir un golpe.
+  applies-to: Armadura
+block:
+  display: Bloqueo
+  description: A veces anula un ataque y devuelve hasta 4 de daño.
+  applies-to: Espadas
+trench:
+  display: Zanja
+  description: A veces rompe en un área de 3x3.
+  applies-to: Picos y palas
+tunnel:
+  display: Túnel
+  description: A veces excava túneles y escaleras en la dirección en la que miras.
+  applies-to: Picos y palas
+dodge:
+  display: Esquivar
+  description: A veces esquivas un ataque físico; más a menudo si vas agachado.
+  applies-to: Armadura
+fumble:
+  display: Torpeza Ajena
+  description: A veces hace explotar al enemigo cuando te alcanza con sus flechas.
+  applies-to: Pecheras
+turmoil:
+  display: Turbulencia
+  description: A veces impide que aparezcan los guardianes de tus oponentes.
+  applies-to: Armadura
+guardians:
+  display: Guardianes de Hierro
+  description: A veces aparecen gólems de hierro que te ayudan y te vigilan.
+  applies-to: Armadura
+iceaspect:
+  display: Aspecto Helado
+  description: A veces ralentiza a tu enemigo.
+  applies-to: Espadas
+momentum:
+  display: Impulso
+  description: A veces ganas un acelerón volando con cohetes.
+  applies-to: Élitros
+reinforced:
+  display: Reforzado
+  description: Reduce el daño que recibes.
+  applies-to: Élitros
+restore:
+  display: Restaurar
+  description: Al romperse, a veces pierde este encantamiento y repara la mitad de su durabilidad.
+  applies-to: Herramientas
+implants:
+  display: Implantes
+  description: A veces te devuelve comida cada pocos segundos.
+  applies-to: Cascos
+obsidianshield:
+  display: Escudo de Obsidiana
+  description: Resistencia al fuego permanente mientras lo llevas.
+  applies-to: Armadura
+piercing:
+  display: Perforante
+  description: Hace más daño.
+  applies-to: Arcos
+archer:
+  display: Arquero
+  description: Más daño con arcos.
+  applies-to: Arcos
+marksman:
+  display: Tirador
+  description: Más daño con ballestas.
+  applies-to: Ballestas
+poseidon:
+  display: Poseidón
+  description: Más daño con tridentes.
+  applies-to: Tridentes
+safeguard:
+  display: Resguardo
+  description: Al defenderte, a veces ganas resistencia al daño.
+  applies-to: Armadura
+disappear:
+  display: Desaparecer
+  description: Con poca vida, a veces te vuelves invisible.
+  applies-to: Armadura
+confuse:
+  display: Confundir
+  description: A veces marea a tu enemigo (náusea).
+  applies-to: Espadas
+disintegrate:
+  display: Desintegrar
+  description: A veces desgasta mucho toda la armadura del enemigo con cada ataque.
+  applies-to: Espadas
+shatter:
+  display: Quebrar
+  description: A veces desgasta mucho toda la armadura del enemigo con cada ataque.
+  applies-to: Hachas
+heavy:
+  display: Pesado
+  description: Reduce el daño de los arcos enemigos un 2% por nivel.
+  applies-to: Armadura
+devour:
+  display: Devorar
+  description: A veces recuperas comida al matar monstruos.
+  applies-to: Armas
+replenish:
+  display: Reponer
+  description: A veces recuperas comida mientras minas.
+  applies-to: Picos
+hellfire:
+  display: Fuego Infernal
+  description: Tus flechas se convierten en bolas de fuego.
+  applies-to: Arcos
+missile:
+  display: Misil
+  description: Tus flechas se convierten en bolas de fuego.
+  applies-to: Ballestas
+longbow:
+  display: Arco Largo
+  description: Mucho más daño contra jugadores que tienen un arco en la mano.
+  applies-to: Arcos
+tank:
+  display: Tanque
+  description: A veces reduce el daño de las hachas enemigas un 2% por nivel.
+  applies-to: Armadura
+swordsman:
+  display: Espadachín
+  description: Empuñando una espada, a veces reduces el daño recibido (hasta un 22% al nivel máximo).
+  applies-to: Armadura
+critical:
+  display: Crítico
+  description: Aumenta el daño de los golpes críticos.
+  applies-to: Espadas
+rebound:
+  display: Rebote
+  description: Recuperas algo de vida al matar.
+  applies-to: Armas
+thunderlord:
+  display: Señor del Trueno
+  description: Cada 3 golpes seguidos cae un rayo sobre el monstruo.
+  applies-to: Armas
+netherling:
+  display: Hijo del Nether
+  description: Doble daño a los monstruos en el Nether.
+  applies-to: Espadas
+endmaster:
+  display: Maestro del End
+  description: Doble daño a los monstruos en el End.
+  applies-to: Espadas
+creeperarmor:
+  display: Armadura Anticreeper
+  description: A veces eres inmune a las explosiones; a niveles altos incluso te curan.
+  applies-to: Armadura
+spirits:
+  display: Espíritus
+  description: A veces aparecen blazes guardianes que te protegen.
+  applies-to: Armadura
+bleed:
+  display: Desangrar
+  description: Hace sangrar a tu oponente.
+  applies-to: Hachas
+lavawalker:
+  display: Paso de Magma
+  description: Caminas sobre la lava.
+  applies-to: Botas
+waterwalker:
+  display: Caminante del Agua
+  description: Caminas sobre el agua.
+  applies-to: Botas
+aqua:
+  display: Aqua
+  description: Doble daño mientras estás en el agua.
+  applies-to: Botas
+judgement:
+  display: Juicio
+  description: A veces envenena a tu oponente y te da regeneración.
+  applies-to: Élitros
+divert:
+  display: Desviar
+  description: A veces envenena a tu oponente y te da regeneración.
+  applies-to: Armadura
+unholy:
+  display: Impío
+  description: Al defenderte, debilita y marchita a tu atacante.
+  applies-to: Armadura
+chaos:
+  display: Caos
+  description: Debilita y marchita a quien golpeas.
+  applies-to: Tridentes
+convulse:
+  display: Convulsión
+  description: A veces lanza por los aires a quien te ataca.
+  applies-to: Botas
+chunky:
+  display: Robusto
+  description: A veces recibes menos daño.
+  applies-to: Pecheras
+barbarian:
+  display: Bárbaro
+  description: A veces tus hachazos hacen más daño.
+  applies-to: Hachas
+lucid:
+  display: Lúcido
+  description: Al recibir un golpe, a veces te quita la ceguera y te da visión nocturna.
+  applies-to: Armadura
+doublestrike:
+  display: Doble Golpe
+  description: A veces golpeas dos veces.
+  applies-to: Espadas
+gears:
+  display: Engranajes
+  description: Más velocidad mientras llevas las botas.
+  applies-to: Botas
+inflame:
+  display: Inflamar
+  description: Prende fuego a todos los jugadores de alrededor.
+  applies-to: Hachas
+immolation:
+  display: Inmolación
+  description: Prende fuego a todos los monstruos de alrededor.
+  applies-to: Espadas
+killaura:
+  display: Aura Asesina
+  description: A veces mata a varios monstruos de alrededor a la vez.
+  applies-to: Espadas
+inquisitive:
+  display: Inquisitivo
+  description: A veces los monstruos sueltan más experiencia.
+  applies-to: Espadas
+lifesteal:
+  display: Robavidas
+  description: A veces robas vida al atacar.
+  applies-to: Espadas
+overload:
+  display: Sobrecarga
+  description: Te da corazones adicionales.
+  applies-to: Armadura
+armored:
+  display: Acorazado
+  description: Reduce el daño de las espadas enemigas un 2% por nivel.
+  applies-to: Armadura
+blacksmith:
+  display: Herrero
+  description: Repara tu arma a cambio de hacer algo menos de daño.
+  applies-to: Hachas
+immortal:
+  display: Inmortal
+  description: A veces evita que tu armadura pierda durabilidad.
+  applies-to: Armadura
+unbreakable:
+  display: Irrompible
+  description: Las herramientas con este encantamiento nunca se rompen.
+  applies-to: Herramientas
+abiding:
+  display: Perdurable
+  description: Las armas con este encantamiento nunca se rompen.
+  applies-to: Armas
+disarmor:
+  display: Desarmadura
+  description: A veces le quita a tu oponente una pieza de armadura al azar.
+  applies-to: Espadas
+striker:
+  display: Tormenta de Flechas
+  description: Hace llover flechas sobre tu oponente.
+  applies-to: Arcos
+sniper:
+  display: Francotirador Experto
+  description: Los tiros a la cabeza con arco hacen el doble de daño.
+  applies-to: Arcos
+deadshot:
+  display: Tiro Mortal
+  description: Los tiros a la cabeza con tridente hacen el doble de daño.
+  applies-to: Tridentes
+soulbound:
+  display: Vínculo de Alma
+  description: A veces conservas el objeto al morir.
+  applies-to: Armas, herramientas y arcos
+neutralize:
+  display: Neutralizar
+  description: A veces desarma a tu oponente.
+  applies-to: Arcos y ballestas
+disarm:
+  display: Desarmar
+  description: A veces desarma a tu oponente.
+  applies-to: Espadas
+phoenix:
+  display: Fénix
+  description: A veces resucitas al morir.
+  applies-to: Pecheras
+scare:
+  display: Susto
+  description: A veces le cambia el casco a tu oponente por una calabaza durante un rato.
+  applies-to: Armas
+strife:
+  display: Contienda
+  description: Aumenta el daño cuerpo a cuerpo del tridente.
+  applies-to: Tridentes
+spark:
+  display: Chispa
+  description: Prende fuego a tus oponentes.
+  applies-to: Tridentes
+bluntforce:
+  display: Fuerza Bruta
+  description: A veces golpeas con una fuerza tremenda.
+  applies-to: Hachas
+aegis:
+  display: Égida
+  description: A veces ganas velocidad al recibir daño de caída.
+  applies-to: Botas
+plummet:
+  display: Desplome
+  description: Al recibir daño de caída dañas a los monstruos de alrededor.
+  applies-to: Botas
+suspend:
+  display: Suspender
+  description: A veces tus golpes no empujan a los monstruos.
+  applies-to: Espadas
+nightowl:
+  display: Búho Nocturno
+  description: Más daño a los monstruos de noche.
+  applies-to: Espadas
+nightwalker:
+  display: Caminante Nocturno
+  description: De noche congela a los monstruos.
+  applies-to: Espadas
+launch:
+  display: Lanzamiento
+  description: 'Clic derecho: sales disparado hacia arriba.'
+  applies-to: Espadas
+slingshot:
+  display: Tirachinas
+  description: 'Clic derecho: te impulsas para echar a volar.'
+  applies-to: Élitros
+nulify:
+  display: Anular
+  description: A veces haces doble daño y dejas ciego al enemigo. Cuesta 40 almas por activación.
+  applies-to: Armas
+rush:
+  display: Acometida
+  description: A veces ganas un gran acelerón al despegar con élitros. Cuesta 10 almas por activación.
+  applies-to: Élitros
+diploid:
+  display: Diploide
+  description: A veces multiplica el botín de los monstruos. Cuesta 5 almas por activación.
+  applies-to: Espadas
+multiplication:
+  display: Multiplicación
+  description: A veces multiplica lo que sueltan los minerales. Cuesta 5 almas por activación.
+  applies-to: Picos
+fuddle:
+  display: Aturullar
+  description: Desordena la barra de objetos de tu oponente.
+  applies-to: Espadas
+spiritmaster:
+  display: Maestro de Espíritus
+  description: A veces consigues más almas al matar jugadores.
+  applies-to: Espadas
+axeofspirits:
+  display: Hacha de Espíritus
+  description: A veces consigues más almas al matar jugadores.
+  applies-to: Hachas
+soulminer:
+  display: Minero de Almas
+  description: A veces consigues almas al minar.
+  applies-to: Picos
+soulgrind:
+  display: Molienda de Almas
+  description: A veces consigues almas al matar monstruos.
+  applies-to: Espadas
+deranged:
+  display: Trastornado
+  description: Hace caer rayos sobre los jugadores cercanos.
+  applies-to: Espadas
+magnet:
+  display: Imán
+  description: Tus golpes atraen a los jugadores hacia ti.
+  applies-to: Espadas
+callallies:
+  display: Llamada a los Aliados
+  description: 'Toca el cuerno de cabra: llamas a tus aliados en tu ayuda cuando estás en peligro.'
+  applies-to: Cuerno de cabra
+sombras_gemelas:
+  display: Sombras Gemelas
+  description: 'Ataque cargado: invocas clones de sombra con tu aspecto que luchan a tu lado y golpean con parte de tu fuerza.'
+  applies-to: Espadas
+tajo_del_vacio:
+  display: Tajo del Vacío
+  description: 'Ataque cargado: te lanzas hacia delante como una sombra, cortando a todo lo que encuentras a tu paso.'
+  applies-to: Espadas
+torbellino:
+  description: 'Ataque cargado: giras sobre ti mismo y golpeas a todos los enemigos que te rodean.'
+  applies-to: Espadas
+ejecutor:
+  description: Haces muchísimo más daño a los enemigos a los que les queda poca vida. Ideal para rematar.
+  applies-to: Espadas y hachas
+frenesi:
+  display: Frenesí
+  description: Cada golpe seguido sin que te den suma daño extra. Si te golpean, la cuenta vuelve a empezar.
+  applies-to: Espadas
+cadena_electrica:
+  display: Cadena Eléctrica
+  description: Un rayo salta de enemigo en enemigo, dañando a varios a la vez.
+  applies-to: Espadas y tridentes
+marca_mortal:
+  description: Marcas al enemigo con un brillo rojo; mientras dure la marca, recibe mucho más daño de ti.
+  applies-to: Espadas
+vampiro:
+  description: Robas vida con cada golpe y te la quedas tú.
+  applies-to: Espadas
+sangrado:
+  description: 'Hace sangrar al enemigo: pierde vida durante unos segundos y se mueve más lento.'
+  applies-to: Espadas y hachas
+congelar:
+  description: 'Congela al enemigo en el sitio durante un instante: no puede moverse.'
+  applies-to: Espadas
+cegar:
+  description: Lanza ceniza a los ojos del rival y lo deja ciego unos segundos.
+  applies-to: Espadas
+decapitar:
+  description: Probabilidad de que lo que matas suelte su cabeza como trofeo.
+  applies-to: Espadas y hachas
+sabiduria:
+  display: Sabiduría
+  description: Los monstruos que matas sueltan más experiencia.
+  applies-to: Armas
+devorador:
+  description: 'Al matar, devoras el alma del caído: te curas y ganas corazones de absorción.'
+  applies-to: Espadas y hachas
+terremoto:
+  description: 'Ataque cargado: golpeas el suelo con tanta fuerza que lanzas a todos por los aires.'
+  applies-to: Hachas
+hacha_bumeran:
+  display: Bumerán
+  description: 'Agachado + clic derecho: lanzas el hacha como un bumerán; corta a la ida y a la vuelta y vuelve a tu mano.'
+  applies-to: Hachas
+berserker:
+  description: Cuanta menos vida te queda, más daño haces.
+  applies-to: Espadas y hachas
+rompehuesos:
+  description: Tus golpes aturden al enemigo y le quitan fuerza.
+  applies-to: Hachas
+lenador:
+  display: Leñador
+  description: Tala el árbol entero de un golpe (agáchate si solo quieres romper un tronco).
+  applies-to: Hachas
+flecha_buscadora:
+  description: Tus flechas giran en el aire y persiguen al enemigo más cercano.
+  applies-to: Arcos y ballestas
+abanico:
+  description: Disparas varias flechas a la vez en forma de abanico.
+  applies-to: Arcos
+flecha_explosiva:
+  description: Tus flechas explotan al impactar sin romper bloques.
+  applies-to: Arcos y ballestas
+francotirador:
+  description: Los tiros a la cabeza hacen mucho más daño.
+  applies-to: Arcos y ballestas
+lluvia_de_flechas:
+  description: Al acertar, cae una lluvia de flechas del cielo sobre el objetivo.
+  applies-to: Arcos
+kraken:
+  description: El tridente arrastra al enemigo hacia ti entre una nube de tinta.
+  applies-to: Tridentes
+angel:
+  display: Ángel
+  description: 'Doble salto: pulsa saltar de nuevo en el aire para impulsarte otra vez.'
+  applies-to: Pecheras
+espejo:
+  description: Devuelve parte del daño que recibes a quien te golpea.
+  applies-to: Pecheras
+fantasma:
+  description: Con poca vida te desvaneces en humo y reapareces lejos del peligro.
+  applies-to: Pantalones
+escudo_de_almas:
+  description: Con poca vida te envuelve un escudo de corazones de absorción.
+  applies-to: Pecheras
+guardianes:
+  description: Al recibir golpes, a veces salen gólems de hierro a defenderte.
+  applies-to: Pecheras
+adrenalina:
+  description: Con poca vida corres y saltas muchísimo más.
+  applies-to: Botas
+botas_meteoro:
+  description: No recibes daño de caídas grandes y al aterrizar abres un cráter que daña a los de alrededor.
+  applies-to: Botas
+espinas:
+  description: Quien te golpea se pincha y recibe daño.
+  applies-to: Armadura
+endurecer:
+  description: A veces reduce el daño que recibes.
+  applies-to: Armadura
+ultimo_aliento:
+  display: Último Aliento
+  description: Te salva de la muerte una vez cada 10 minutos.
+  applies-to: Pecheras
+alma_eterna:
+  description: 'No pierdes este objeto al morir: vuelve contigo al reaparecer.'
+  applies-to: Armas, herramientas y armadura
+vidente:
+  description: Los monstruos cercanos brillan y los ves a través de las paredes.
+  applies-to: Cascos
+vision:
+  display: Visión Nocturna
+  description: Ves en la oscuridad mientras llevas el casco.
+  applies-to: Cascos
+branquias:
+  description: Respiras bajo el agua mientras llevas el casco.
+  applies-to: Cascos
+pies_ligeros:
+  description: Velocidad permanente mientras llevas las botas.
+  applies-to: Botas
+saltarin:
+  display: Saltarín
+  description: Saltas más alto mientras llevas las botas.
+  applies-to: Botas
+caminante:
+  description: 'Caminas sobre la lava: se enfría bajo tus pies y te da resistencia al fuego.'
+  applies-to: Botas
+pluma:
+  description: Recibes menos daño por caídas.
+  applies-to: Botas
+ignifugo:
+  display: Ignífugo
+  description: Te apaga el fuego cuando te quemas.
+  applies-to: Pecheras
+excavadora:
+  description: Rompe en un área de 3x3 (agáchate para romper solo un bloque).
+  applies-to: Picos y palas
+veta:
+  description: Agachado, rompe la veta de mineral entera de una vez.
+  applies-to: Picos
+fundicion:
+  display: Fundición
+  description: Los minerales salen ya fundidos en lingotes.
+  applies-to: Picos
+riqueza:
+  description: Probabilidad de conseguir más botín al minar.
+  applies-to: Picos
+tesoro:
+  description: A veces encuentras gemas escondidas en la piedra.
+  applies-to: Picos
+telequinesis:
+  description: Lo que rompes va directo a tu inventario.
+  applies-to: Herramientas
+cosecha:
+  description: Replanta los cultivos que recoges.
+  applies-to: Azadas
+autorreparacion:
+  display: Autorreparación
+  description: El objeto se repara solo poco a poco.
+  applies-to: Armas, herramientas y armadura
+anzuelo_rapido:
+  display: Anzuelo Rápido
+  description: Recoges el pez solo en cuanto pica.
+  applies-to: Cañas de pescar
+pesca_doble:
+  description: Probabilidad de sacar el doble al pescar.
+  applies-to: Cañas de pescar
+propulsor:
+  description: Volando con élitros, agáchate para darte un impulso.
+  applies-to: Élitros
+espada_fuego:
+  display: Filo Ígneo
+  description: Al golpear, a veces prende fuego al enemigo.
+  applies-to: Espadas
+espada_hielo:
+  display: Filo Gélido
+  description: Al golpear, a veces ralentiza al enemigo.
+  applies-to: Espadas
+espada_veneno:
+  display: Filo Venenoso
+  description: Al golpear, a veces envenena al enemigo.
+  applies-to: Espadas
+espada_viento:
+  display: Filo Huracanado
+  description: Al golpear, a veces empuja lejos al enemigo.
+  applies-to: Espadas
+espada_sangre:
+  display: Filo Sangriento
+  description: Al golpear, a veces hace daño extra y sangrar.
+  applies-to: Espadas
+espada_sombra:
+  display: Filo Sombrío
+  description: Al golpear, a veces ciega y frena al enemigo.
+  applies-to: Espadas
+espada_arcano:
+  display: Filo Arcano
+  description: Al golpear, a veces debilita al enemigo.
+  applies-to: Espadas
+espada_ruina:
+  display: Filo Pútrido
+  description: Al golpear, a veces marchita al enemigo.
+  applies-to: Espadas
+espada_trueno:
+  display: Filo Tronante
+  description: Al golpear, a veces invoca un rayo sobre el enemigo.
+  applies-to: Espadas
+hacha_fuego:
+  display: Tajo Ígneo
+  description: Al golpear, a veces prende fuego al enemigo.
+  applies-to: Hachas
+hacha_hielo:
+  display: Tajo Gélido
+  description: Al golpear, a veces ralentiza al enemigo.
+  applies-to: Hachas
+hacha_veneno:
+  display: Tajo Venenoso
+  description: Al golpear, a veces envenena al enemigo.
+  applies-to: Hachas
+hacha_viento:
+  display: Tajo Huracanado
+  description: Al golpear, a veces empuja lejos al enemigo.
+  applies-to: Hachas
+hacha_sangre:
+  display: Tajo Sangriento
+  description: Al golpear, a veces hace daño extra y sangrar.
+  applies-to: Hachas
+hacha_sombra:
+  display: Tajo Sombrío
+  description: Al golpear, a veces ciega y frena al enemigo.
+  applies-to: Hachas
+hacha_arcano:
+  display: Tajo Arcano
+  description: Al golpear, a veces debilita al enemigo.
+  applies-to: Hachas
+hacha_ruina:
+  display: Tajo Pútrido
+  description: Al golpear, a veces marchita al enemigo.
+  applies-to: Hachas
+hacha_trueno:
+  display: Tajo Tronante
+  description: Al golpear, a veces invoca un rayo sobre el enemigo.
+  applies-to: Hachas
+maza_fuego:
+  display: Golpe Ígneo
+  description: Al golpear, a veces prende fuego al enemigo.
+  applies-to: Mazas
+maza_hielo:
+  display: Golpe Gélido
+  description: Al golpear, a veces ralentiza al enemigo.
+  applies-to: Mazas
+maza_veneno:
+  display: Golpe Venenoso
+  description: Al golpear, a veces envenena al enemigo.
+  applies-to: Mazas
+maza_viento:
+  display: Golpe Huracanado
+  description: Al golpear, a veces empuja lejos al enemigo.
+  applies-to: Mazas
+maza_sangre:
+  display: Golpe Sangriento
+  description: Al golpear, a veces hace daño extra y sangrar.
+  applies-to: Mazas
+maza_sombra:
+  display: Golpe Sombrío
+  description: Al golpear, a veces ciega y frena al enemigo.
+  applies-to: Mazas
+maza_arcano:
+  display: Golpe Arcano
+  description: Al golpear, a veces debilita al enemigo.
+  applies-to: Mazas
+maza_ruina:
+  display: Golpe Pútrido
+  description: Al golpear, a veces marchita al enemigo.
+  applies-to: Mazas
+maza_trueno:
+  display: Golpe Tronante
+  description: Al golpear, a veces invoca un rayo sobre el enemigo.
+  applies-to: Mazas
+arco_fuego:
+  display: Flecha Ígnea
+  description: Al acertar un disparo, a veces prende fuego al enemigo.
+  applies-to: Arcos
+arco_hielo:
+  display: Flecha Gélida
+  description: Al acertar un disparo, a veces ralentiza al enemigo.
+  applies-to: Arcos
+arco_veneno:
+  display: Flecha Venenosa
+  description: Al acertar un disparo, a veces envenena al enemigo.
+  applies-to: Arcos
+arco_viento:
+  display: Flecha Huracanada
+  description: Al acertar un disparo, a veces empuja lejos al enemigo.
+  applies-to: Arcos
+arco_sangre:
+  display: Flecha Sangrienta
+  description: Al acertar un disparo, a veces hace daño extra y sangrar.
+  applies-to: Arcos
+arco_sombra:
+  display: Flecha Sombría
+  description: Al acertar un disparo, a veces ciega y frena al enemigo.
+  applies-to: Arcos
+arco_arcano:
+  display: Flecha Arcana
+  description: Al acertar un disparo, a veces debilita al enemigo.
+  applies-to: Arcos
+arco_ruina:
+  display: Flecha Pútrida
+  description: Al acertar un disparo, a veces marchita al enemigo.
+  applies-to: Arcos
+arco_trueno:
+  display: Flecha Tronante
+  description: Al acertar un disparo, a veces invoca un rayo sobre el enemigo.
+  applies-to: Arcos
+ballesta_fuego:
+  display: Virote Ígneo
+  description: Al acertar un disparo, a veces prende fuego al enemigo.
+  applies-to: Ballestas
+ballesta_hielo:
+  display: Virote Gélido
+  description: Al acertar un disparo, a veces ralentiza al enemigo.
+  applies-to: Ballestas
+ballesta_veneno:
+  display: Virote Venenoso
+  description: Al acertar un disparo, a veces envenena al enemigo.
+  applies-to: Ballestas
+ballesta_viento:
+  display: Virote Huracanado
+  description: Al acertar un disparo, a veces empuja lejos al enemigo.
+  applies-to: Ballestas
+ballesta_sangre:
+  display: Virote Sangriento
+  description: Al acertar un disparo, a veces hace daño extra y sangrar.
+  applies-to: Ballestas
+ballesta_sombra:
+  display: Virote Sombrío
+  description: Al acertar un disparo, a veces ciega y frena al enemigo.
+  applies-to: Ballestas
+ballesta_arcano:
+  display: Virote Arcano
+  description: Al acertar un disparo, a veces debilita al enemigo.
+  applies-to: Ballestas
+ballesta_ruina:
+  display: Virote Pútrido
+  description: Al acertar un disparo, a veces marchita al enemigo.
+  applies-to: Ballestas
+ballesta_trueno:
+  display: Virote Tronante
+  description: Al acertar un disparo, a veces invoca un rayo sobre el enemigo.
+  applies-to: Ballestas
+tridente_fuego:
+  display: Arpón Ígneo
+  description: Al acertar un disparo, a veces prende fuego al enemigo.
+  applies-to: Tridentes
+tridente_hielo:
+  display: Arpón Gélido
+  description: Al acertar un disparo, a veces ralentiza al enemigo.
+  applies-to: Tridentes
+tridente_veneno:
+  display: Arpón Venenoso
+  description: Al acertar un disparo, a veces envenena al enemigo.
+  applies-to: Tridentes
+tridente_viento:
+  display: Arpón Huracanado
+  description: Al acertar un disparo, a veces empuja lejos al enemigo.
+  applies-to: Tridentes
+tridente_sangre:
+  display: Arpón Sangriento
+  description: Al acertar un disparo, a veces hace daño extra y sangrar.
+  applies-to: Tridentes
+tridente_sombra:
+  display: Arpón Sombrío
+  description: Al acertar un disparo, a veces ciega y frena al enemigo.
+  applies-to: Tridentes
+tridente_arcano:
+  display: Arpón Arcano
+  description: Al acertar un disparo, a veces debilita al enemigo.
+  applies-to: Tridentes
+tridente_ruina:
+  display: Arpón Pútrido
+  description: Al acertar un disparo, a veces marchita al enemigo.
+  applies-to: Tridentes
+tridente_trueno:
+  display: Arpón Tronante
+  description: Al acertar un disparo, a veces invoca un rayo sobre el enemigo.
+  applies-to: Tridentes
+espada_sanador:
+  display: Filo Sanador
+  description: Al matar recuperas vida.
+  applies-to: Espadas
+espada_veloz:
+  display: Filo Veloz
+  description: Al matar ganas velocidad.
+  applies-to: Espadas
+espada_protector:
+  display: Filo Protector
+  description: Al matar ganas corazones extra.
+  applies-to: Espadas
+espada_furioso:
+  display: Filo Furioso
+  description: Al matar ganas fuerza un momento.
+  applies-to: Espadas
+espada_renovador:
+  display: Filo Renovador
+  description: Al matar te regeneras.
+  applies-to: Espadas
+espada_gloton:
+  display: Filo Glotón
+  description: Al matar recuperas comida.
+  applies-to: Espadas
+hacha_sanador:
+  display: Tajo Sanador
+  description: Al matar recuperas vida.
+  applies-to: Hachas
+hacha_veloz:
+  display: Tajo Veloz
+  description: Al matar ganas velocidad.
+  applies-to: Hachas
+hacha_protector:
+  display: Tajo Protector
+  description: Al matar ganas corazones extra.
+  applies-to: Hachas
+hacha_furioso:
+  display: Tajo Furioso
+  description: Al matar ganas fuerza un momento.
+  applies-to: Hachas
+hacha_renovador:
+  display: Tajo Renovador
+  description: Al matar te regeneras.
+  applies-to: Hachas
+hacha_gloton:
+  display: Tajo Glotón
+  description: Al matar recuperas comida.
+  applies-to: Hachas
+maza_sanador:
+  display: Golpe Sanador
+  description: Al matar recuperas vida.
+  applies-to: Mazas
+maza_veloz:
+  display: Golpe Veloz
+  description: Al matar ganas velocidad.
+  applies-to: Mazas
+maza_protector:
+  display: Golpe Protector
+  description: Al matar ganas corazones extra.
+  applies-to: Mazas
+maza_furioso:
+  display: Golpe Furioso
+  description: Al matar ganas fuerza un momento.
+  applies-to: Mazas
+maza_renovador:
+  display: Golpe Renovador
+  description: Al matar te regeneras.
+  applies-to: Mazas
+maza_gloton:
+  display: Golpe Glotón
+  description: Al matar recuperas comida.
+  applies-to: Mazas
+arco_sanador:
+  display: Flecha Sanadora
+  description: Al matar recuperas vida.
+  applies-to: Arcos
+arco_veloz:
+  display: Flecha Veloz
+  description: Al matar ganas velocidad.
+  applies-to: Arcos
+arco_protector:
+  display: Flecha Protectora
+  description: Al matar ganas corazones extra.
+  applies-to: Arcos
+arco_furioso:
+  display: Flecha Furiosa
+  description: Al matar ganas fuerza un momento.
+  applies-to: Arcos
+arco_renovador:
+  display: Flecha Renovadora
+  description: Al matar te regeneras.
+  applies-to: Arcos
+arco_gloton:
+  display: Flecha Glotona
+  description: Al matar recuperas comida.
+  applies-to: Arcos
+ballesta_sanador:
+  display: Virote Sanador
+  description: Al matar recuperas vida.
+  applies-to: Ballestas
+ballesta_veloz:
+  display: Virote Veloz
+  description: Al matar ganas velocidad.
+  applies-to: Ballestas
+ballesta_protector:
+  display: Virote Protector
+  description: Al matar ganas corazones extra.
+  applies-to: Ballestas
+ballesta_furioso:
+  display: Virote Furioso
+  description: Al matar ganas fuerza un momento.
+  applies-to: Ballestas
+ballesta_renovador:
+  display: Virote Renovador
+  description: Al matar te regeneras.
+  applies-to: Ballestas
+ballesta_gloton:
+  display: Virote Glotón
+  description: Al matar recuperas comida.
+  applies-to: Ballestas
+tridente_sanador:
+  display: Arpón Sanador
+  description: Al matar recuperas vida.
+  applies-to: Tridentes
+tridente_veloz:
+  display: Arpón Veloz
+  description: Al matar ganas velocidad.
+  applies-to: Tridentes
+tridente_protector:
+  display: Arpón Protector
+  description: Al matar ganas corazones extra.
+  applies-to: Tridentes
+tridente_furioso:
+  display: Arpón Furioso
+  description: Al matar ganas fuerza un momento.
+  applies-to: Tridentes
+tridente_renovador:
+  display: Arpón Renovador
+  description: Al matar te regeneras.
+  applies-to: Tridentes
+tridente_gloton:
+  display: Arpón Glotón
+  description: Al matar recuperas comida.
+  applies-to: Tridentes
+espada_contra_zombis:
+  display: Azote de Zombis
+  description: Más daño contra zombis.
+  applies-to: Espadas
+espada_contra_esqueletos:
+  display: Azote de Esqueletos
+  description: Más daño contra esqueletos.
+  applies-to: Espadas
+espada_contra_aranas:
+  display: Azote de Arañas
+  description: Más daño contra arañas.
+  applies-to: Espadas
+espada_contra_creepers:
+  display: Azote de Creepers
+  description: Más daño contra creepers.
+  applies-to: Espadas
+espada_contra_endermans:
+  display: Azote de Endermans
+  description: Más daño contra endermans.
+  applies-to: Espadas
+espada_contra_piglins:
+  display: Azote de Piglins
+  description: Más daño contra piglins.
+  applies-to: Espadas
+espada_contra_blazes:
+  display: Azote de Blazes
+  description: Más daño contra blazes.
+  applies-to: Espadas
+espada_contra_brujas:
+  display: Azote de Brujas
+  description: Más daño contra brujas.
+  applies-to: Espadas
+espada_contra_illagers:
+  display: Azote de Illagers
+  description: Más daño contra illagers.
+  applies-to: Espadas
+espada_contra_slimes:
+  display: Azote de Slimes
+  description: Más daño contra slimes.
+  applies-to: Espadas
+espada_contra_fantasmas:
+  display: Azote de Fantasmas
+  description: Más daño contra fantasmas.
+  applies-to: Espadas
+espada_contra_guardianes:
+  display: Azote de Guardianes
+  description: Más daño contra guardianes.
+  applies-to: Espadas
+espada_contra_ahogados:
+  display: Azote de Ahogados
+  description: Más daño contra ahogados.
+  applies-to: Espadas
+espada_contra_jefes:
+  display: Azote de Jefes
+  description: Más daño contra jefes.
+  applies-to: Espadas
+espada_contra_jugadores:
+  display: Azote de Jugadores
+  description: Más daño contra jugadores.
+  applies-to: Espadas
+hacha_contra_zombis:
+  display: Verdugo de Zombis
+  description: Más daño contra zombis.
+  applies-to: Hachas
+hacha_contra_esqueletos:
+  display: Verdugo de Esqueletos
+  description: Más daño contra esqueletos.
+  applies-to: Hachas
+hacha_contra_aranas:
+  display: Verdugo de Arañas
+  description: Más daño contra arañas.
+  applies-to: Hachas
+hacha_contra_creepers:
+  display: Verdugo de Creepers
+  description: Más daño contra creepers.
+  applies-to: Hachas
+hacha_contra_endermans:
+  display: Verdugo de Endermans
+  description: Más daño contra endermans.
+  applies-to: Hachas
+hacha_contra_piglins:
+  display: Verdugo de Piglins
+  description: Más daño contra piglins.
+  applies-to: Hachas
+hacha_contra_blazes:
+  display: Verdugo de Blazes
+  description: Más daño contra blazes.
+  applies-to: Hachas
+hacha_contra_brujas:
+  display: Verdugo de Brujas
+  description: Más daño contra brujas.
+  applies-to: Hachas
+hacha_contra_illagers:
+  display: Verdugo de Illagers
+  description: Más daño contra illagers.
+  applies-to: Hachas
+hacha_contra_slimes:
+  display: Verdugo de Slimes
+  description: Más daño contra slimes.
+  applies-to: Hachas
+hacha_contra_fantasmas:
+  display: Verdugo de Fantasmas
+  description: Más daño contra fantasmas.
+  applies-to: Hachas
+hacha_contra_guardianes:
+  display: Verdugo de Guardianes
+  description: Más daño contra guardianes.
+  applies-to: Hachas
+hacha_contra_ahogados:
+  display: Verdugo de Ahogados
+  description: Más daño contra ahogados.
+  applies-to: Hachas
+hacha_contra_jefes:
+  display: Verdugo de Jefes
+  description: Más daño contra jefes.
+  applies-to: Hachas
+hacha_contra_jugadores:
+  display: Verdugo de Jugadores
+  description: Más daño contra jugadores.
+  applies-to: Hachas
+arco_contra_zombis:
+  display: Cazador de Zombis
+  description: Más daño contra zombis.
+  applies-to: Arcos y ballestas
+arco_contra_esqueletos:
+  display: Cazador de Esqueletos
+  description: Más daño contra esqueletos.
+  applies-to: Arcos y ballestas
+arco_contra_aranas:
+  display: Cazador de Arañas
+  description: Más daño contra arañas.
+  applies-to: Arcos y ballestas
+arco_contra_creepers:
+  display: Cazador de Creepers
+  description: Más daño contra creepers.
+  applies-to: Arcos y ballestas
+arco_contra_endermans:
+  display: Cazador de Endermans
+  description: Más daño contra endermans.
+  applies-to: Arcos y ballestas
+arco_contra_piglins:
+  display: Cazador de Piglins
+  description: Más daño contra piglins.
+  applies-to: Arcos y ballestas
+arco_contra_blazes:
+  display: Cazador de Blazes
+  description: Más daño contra blazes.
+  applies-to: Arcos y ballestas
+arco_contra_brujas:
+  display: Cazador de Brujas
+  description: Más daño contra brujas.
+  applies-to: Arcos y ballestas
+arco_contra_illagers:
+  display: Cazador de Illagers
+  description: Más daño contra illagers.
+  applies-to: Arcos y ballestas
+arco_contra_slimes:
+  display: Cazador de Slimes
+  description: Más daño contra slimes.
+  applies-to: Arcos y ballestas
+arco_contra_fantasmas:
+  display: Cazador de Fantasmas
+  description: Más daño contra fantasmas.
+  applies-to: Arcos y ballestas
+arco_contra_guardianes:
+  display: Cazador de Guardianes
+  description: Más daño contra guardianes.
+  applies-to: Arcos y ballestas
+arco_contra_ahogados:
+  display: Cazador de Ahogados
+  description: Más daño contra ahogados.
+  applies-to: Arcos y ballestas
+arco_contra_jefes:
+  display: Cazador de Jefes
+  description: Más daño contra jefes.
+  applies-to: Arcos y ballestas
+arco_contra_jugadores:
+  display: Cazador de Jugadores
+  description: Más daño contra jugadores.
+  applies-to: Arcos y ballestas
+espada_sigiloso:
+  display: Filo Sigiloso
+  description: Más daño atacando agachado.
+  applies-to: Espadas
+espada_certero:
+  display: Filo Certero
+  description: Más daño en golpes críticos.
+  applies-to: Espadas
+espada_nocturno:
+  display: Filo Nocturno
+  description: Más daño de noche.
+  applies-to: Espadas
+espada_marino:
+  display: Filo Marino
+  description: Más daño bajo el agua.
+  applies-to: Espadas
+espada_madrugador:
+  display: Filo Madrugador
+  description: Más daño en el primer golpe.
+  applies-to: Espadas
+espada_encadenado:
+  display: Filo Encadenado
+  description: Más daño a partir del tercer golpe seguido.
+  applies-to: Espadas
+hacha_sigiloso:
+  display: Tajo Sigiloso
+  description: Más daño atacando agachado.
+  applies-to: Hachas
+hacha_certero:
+  display: Tajo Certero
+  description: Más daño en golpes críticos.
+  applies-to: Hachas
+hacha_nocturno:
+  display: Tajo Nocturno
+  description: Más daño de noche.
+  applies-to: Hachas
+hacha_marino:
+  display: Tajo Marino
+  description: Más daño bajo el agua.
+  applies-to: Hachas
+hacha_madrugador:
+  display: Tajo Madrugador
+  description: Más daño en el primer golpe.
+  applies-to: Hachas
+hacha_encadenado:
+  display: Tajo Encadenado
+  description: Más daño a partir del tercer golpe seguido.
+  applies-to: Hachas
+maza_sigiloso:
+  display: Golpe Sigiloso
+  description: Más daño atacando agachado.
+  applies-to: Mazas
+maza_certero:
+  display: Golpe Certero
+  description: Más daño en golpes críticos.
+  applies-to: Mazas
+maza_nocturno:
+  display: Golpe Nocturno
+  description: Más daño de noche.
+  applies-to: Mazas
+maza_marino:
+  display: Golpe Marino
+  description: Más daño bajo el agua.
+  applies-to: Mazas
+maza_madrugador:
+  display: Golpe Madrugador
+  description: Más daño en el primer golpe.
+  applies-to: Mazas
+maza_encadenado:
+  display: Golpe Encadenado
+  description: Más daño a partir del tercer golpe seguido.
+  applies-to: Mazas
+yelmo_brasas:
+  display: Yelmo de Brasas
+  description: Cuando te golpean, a veces quema a quien te golpea.
+  applies-to: Cascos
+yelmo_escarcha:
+  display: Yelmo de Escarcha
+  description: Cuando te golpean, a veces ralentiza a quien te golpea.
+  applies-to: Cascos
+yelmo_puas:
+  display: Yelmo de Púas
+  description: Cuando te golpean, a veces pincha a quien te golpea.
+  applies-to: Cascos
+yelmo_toxina:
+  display: Yelmo de Toxina
+  description: Cuando te golpean, a veces envenena a quien te golpea.
+  applies-to: Cascos
+yelmo_niebla:
+  display: Yelmo de Niebla
+  description: Cuando te golpean, a veces ciega a quien te golpea.
+  applies-to: Cascos
+yelmo_vendaval:
+  display: Yelmo de Vendaval
+  description: Cuando te golpean, a veces aparta a quien te golpea.
+  applies-to: Cascos
+yelmo_plomo:
+  display: Yelmo de Plomo
+  description: Cuando te golpean, a veces debilita a quien te golpea.
+  applies-to: Cascos
+yelmo_ruina:
+  display: Yelmo de Ruina
+  description: Cuando te golpean, a veces marchita a quien te golpea.
+  applies-to: Cascos
+yelmo_vacio:
+  display: Yelmo del Vacío
+  description: Cuando te golpean, a veces hace levitar a quien te golpea.
+  applies-to: Cascos
+coraza_brasas:
+  display: Coraza de Brasas
+  description: Cuando te golpean, a veces quema a quien te golpea.
+  applies-to: Pecheras
+coraza_escarcha:
+  display: Coraza de Escarcha
+  description: Cuando te golpean, a veces ralentiza a quien te golpea.
+  applies-to: Pecheras
+coraza_puas:
+  display: Coraza de Púas
+  description: Cuando te golpean, a veces pincha a quien te golpea.
+  applies-to: Pecheras
+coraza_toxina:
+  display: Coraza de Toxina
+  description: Cuando te golpean, a veces envenena a quien te golpea.
+  applies-to: Pecheras
+coraza_niebla:
+  display: Coraza de Niebla
+  description: Cuando te golpean, a veces ciega a quien te golpea.
+  applies-to: Pecheras
+coraza_vendaval:
+  display: Coraza de Vendaval
+  description: Cuando te golpean, a veces aparta a quien te golpea.
+  applies-to: Pecheras
+coraza_plomo:
+  display: Coraza de Plomo
+  description: Cuando te golpean, a veces debilita a quien te golpea.
+  applies-to: Pecheras
+coraza_ruina:
+  display: Coraza de Ruina
+  description: Cuando te golpean, a veces marchita a quien te golpea.
+  applies-to: Pecheras
+coraza_vacio:
+  display: Coraza del Vacío
+  description: Cuando te golpean, a veces hace levitar a quien te golpea.
+  applies-to: Pecheras
+grebas_brasas:
+  display: Grebas de Brasas
+  description: Cuando te golpean, a veces quema a quien te golpea.
+  applies-to: Pantalones
+grebas_escarcha:
+  display: Grebas de Escarcha
+  description: Cuando te golpean, a veces ralentiza a quien te golpea.
+  applies-to: Pantalones
+grebas_puas:
+  display: Grebas de Púas
+  description: Cuando te golpean, a veces pincha a quien te golpea.
+  applies-to: Pantalones
+grebas_toxina:
+  display: Grebas de Toxina
+  description: Cuando te golpean, a veces envenena a quien te golpea.
+  applies-to: Pantalones
+grebas_niebla:
+  display: Grebas de Niebla
+  description: Cuando te golpean, a veces ciega a quien te golpea.
+  applies-to: Pantalones
+grebas_vendaval:
+  display: Grebas de Vendaval
+  description: Cuando te golpean, a veces aparta a quien te golpea.
+  applies-to: Pantalones
+grebas_plomo:
+  display: Grebas de Plomo
+  description: Cuando te golpean, a veces debilita a quien te golpea.
+  applies-to: Pantalones
+grebas_ruina:
+  display: Grebas de Ruina
+  description: Cuando te golpean, a veces marchita a quien te golpea.
+  applies-to: Pantalones
+grebas_vacio:
+  display: Grebas del Vacío
+  description: Cuando te golpean, a veces hace levitar a quien te golpea.
+  applies-to: Pantalones
+botas_brasas:
+  display: Botas de Brasas
+  description: Cuando te golpean, a veces quema a quien te golpea.
+  applies-to: Botas
+botas_escarcha:
+  display: Botas de Escarcha
+  description: Cuando te golpean, a veces ralentiza a quien te golpea.
+  applies-to: Botas
+botas_puas:
+  display: Botas de Púas
+  description: Cuando te golpean, a veces pincha a quien te golpea.
+  applies-to: Botas
+botas_toxina:
+  display: Botas de Toxina
+  description: Cuando te golpean, a veces envenena a quien te golpea.
+  applies-to: Botas
+botas_niebla:
+  display: Botas de Niebla
+  description: Cuando te golpean, a veces ciega a quien te golpea.
+  applies-to: Botas
+botas_vendaval:
+  display: Botas de Vendaval
+  description: Cuando te golpean, a veces aparta a quien te golpea.
+  applies-to: Botas
+botas_plomo:
+  display: Botas de Plomo
+  description: Cuando te golpean, a veces debilita a quien te golpea.
+  applies-to: Botas
+botas_ruina:
+  display: Botas de Ruina
+  description: Cuando te golpean, a veces marchita a quien te golpea.
+  applies-to: Botas
+botas_vacio:
+  display: Botas del Vacío
+  description: Cuando te golpean, a veces hace levitar a quien te golpea.
+  applies-to: Botas
+yelmo_tenacidad:
+  display: Yelmo de Tenacidad
+  description: Con poca vida resistes mas.
+  applies-to: Cascos
+yelmo_vitalidad:
+  display: Yelmo de Vitalidad
+  description: Con poca vida te regeneras.
+  applies-to: Cascos
+yelmo_huida:
+  display: Yelmo de Huida
+  description: Con poca vida corres mas.
+  applies-to: Cascos
+yelmo_egida:
+  display: Yelmo de Égida
+  description: Con poca vida te cubre un escudo.
+  applies-to: Cascos
+yelmo_penumbra:
+  display: Yelmo de Penumbra
+  description: Con poca vida te vuelves invisible.
+  applies-to: Cascos
+yelmo_furia:
+  display: Yelmo de Furia
+  description: Con poca vida pegas más fuerte.
+  applies-to: Cascos
+coraza_tenacidad:
+  display: Coraza de Tenacidad
+  description: Con poca vida resistes mas.
+  applies-to: Pecheras
+coraza_vitalidad:
+  display: Coraza de Vitalidad
+  description: Con poca vida te regeneras.
+  applies-to: Pecheras
+coraza_huida:
+  display: Coraza de Huida
+  description: Con poca vida corres mas.
+  applies-to: Pecheras
+coraza_egida:
+  display: Coraza de Égida
+  description: Con poca vida te cubre un escudo.
+  applies-to: Pecheras
+coraza_penumbra:
+  display: Coraza de Penumbra
+  description: Con poca vida te vuelves invisible.
+  applies-to: Pecheras
+coraza_furia:
+  display: Coraza de Furia
+  description: Con poca vida pegas más fuerte.
+  applies-to: Pecheras
+grebas_tenacidad:
+  display: Grebas de Tenacidad
+  description: Con poca vida resistes mas.
+  applies-to: Pantalones
+grebas_vitalidad:
+  display: Grebas de Vitalidad
+  description: Con poca vida te regeneras.
+  applies-to: Pantalones
+grebas_huida:
+  display: Grebas de Huida
+  description: Con poca vida corres mas.
+  applies-to: Pantalones
+grebas_egida:
+  display: Grebas de Égida
+  description: Con poca vida te cubre un escudo.
+  applies-to: Pantalones
+grebas_penumbra:
+  display: Grebas de Penumbra
+  description: Con poca vida te vuelves invisible.
+  applies-to: Pantalones
+grebas_furia:
+  display: Grebas de Furia
+  description: Con poca vida pegas más fuerte.
+  applies-to: Pantalones
+botas_tenacidad:
+  display: Botas de Tenacidad
+  description: Con poca vida resistes mas.
+  applies-to: Botas
+botas_vitalidad:
+  display: Botas de Vitalidad
+  description: Con poca vida te regeneras.
+  applies-to: Botas
+botas_huida:
+  display: Botas de Huida
+  description: Con poca vida corres mas.
+  applies-to: Botas
+botas_egida:
+  display: Botas de Égida
+  description: Con poca vida te cubre un escudo.
+  applies-to: Botas
+botas_penumbra:
+  display: Botas de Penumbra
+  description: Con poca vida te vuelves invisible.
+  applies-to: Botas
+botas_furia:
+  display: Botas de Furia
+  description: Con poca vida pegas más fuerte.
+  applies-to: Botas
+yelmo_muralla:
+  display: Yelmo de Muralla
+  description: Menos daño de proyectiles.
+  applies-to: Cascos
+yelmo_bunker:
+  display: Yelmo de Búnker
+  description: Menos daño de explosiones.
+  applies-to: Cascos
+yelmo_salamandra:
+  display: Yelmo de Salamandra
+  description: Menos daño de fuego y lava.
+  applies-to: Cascos
+yelmo_pluma:
+  display: Yelmo de Pluma
+  description: Menos daño de caídas.
+  applies-to: Cascos
+coraza_muralla:
+  display: Coraza de Muralla
+  description: Menos daño de proyectiles.
+  applies-to: Pecheras
+coraza_bunker:
+  display: Coraza de Búnker
+  description: Menos daño de explosiones.
+  applies-to: Pecheras
+coraza_salamandra:
+  display: Coraza de Salamandra
+  description: Menos daño de fuego y lava.
+  applies-to: Pecheras
+coraza_pluma:
+  display: Coraza de Pluma
+  description: Menos daño de caídas.
+  applies-to: Pecheras
+grebas_muralla:
+  display: Grebas de Muralla
+  description: Menos daño de proyectiles.
+  applies-to: Pantalones
+grebas_bunker:
+  display: Grebas de Búnker
+  description: Menos daño de explosiones.
+  applies-to: Pantalones
+grebas_salamandra:
+  display: Grebas de Salamandra
+  description: Menos daño de fuego y lava.
+  applies-to: Pantalones
+grebas_pluma:
+  display: Grebas de Pluma
+  description: Menos daño de caídas.
+  applies-to: Pantalones
+botas_muralla:
+  display: Botas de Muralla
+  description: Menos daño de proyectiles.
+  applies-to: Botas
+botas_bunker:
+  display: Botas de Búnker
+  description: Menos daño de explosiones.
+  applies-to: Botas
+botas_salamandra:
+  display: Botas de Salamandra
+  description: Menos daño de fuego y lava.
+  applies-to: Botas
+botas_pluma:
+  display: Botas de Pluma
+  description: Menos daño de caídas.
+  applies-to: Botas
+zancada_veloz:
+  display: Zancada Veloz
+  description: Mientras lo llevas puesto tienes velocidad permanente.
+  applies-to: Botas
+trote_ligero:
+  display: Trote Ligero
+  description: Mientras lo llevas puesto tienes velocidad permanente.
+  applies-to: Pantalones
+sangre_agil:
+  display: Sangre Ágil
+  description: Mientras lo llevas puesto tienes velocidad permanente.
+  applies-to: Pecheras
+brinco:
+  display: Brinco
+  description: Mientras lo llevas puesto tienes salto mejorado permanente.
+  applies-to: Botas
+resorte:
+  display: Resorte
+  description: Mientras lo llevas puesto tienes salto mejorado permanente.
+  applies-to: Pantalones
+descenso_suave:
+  display: Descenso Suave
+  description: Mientras lo llevas puesto tienes caída lenta permanente.
+  applies-to: Botas
+aleta_de_delfin:
+  display: Aleta de Delfín
+  description: Mientras lo llevas puesto tienes gracia del delfín permanente.
+  applies-to: Botas
+corriente_marina:
+  display: Corriente Marina
+  description: Mientras lo llevas puesto tienes gracia del delfín permanente.
+  applies-to: Pantalones
+brazo_minero:
+  display: Brazo Minero
+  description: Mientras lo llevas puesto tienes prisa minera permanente.
+  applies-to: Pecheras
+mente_obrera:
+  display: Mente Obrera
+  description: Mientras lo llevas puesto tienes prisa minera permanente.
+  applies-to: Cascos
+ritmo_minero:
+  display: Ritmo Minero
+  description: Mientras lo llevas puesto tienes prisa minera permanente.
+  applies-to: Pantalones
+vigor_del_titan:
+  display: Vigor del Titán
+  description: Mientras lo llevas puesto tienes fuerza permanente.
+  applies-to: Pecheras
+piel_de_piedra:
+  display: Piel de Piedra
+  description: Mientras lo llevas puesto tienes resistencia al daño permanente.
+  applies-to: Pecheras
+muslos_de_hierro:
+  display: Muslos de Hierro
+  description: Mientras lo llevas puesto tienes resistencia al daño permanente.
+  applies-to: Pantalones
+latido_eterno:
+  display: Latido Eterno
+  description: Mientras lo llevas puesto tienes regeneración permanente.
+  applies-to: Pecheras
+mente_serena:
+  display: Mente Serena
+  description: Mientras lo llevas puesto tienes regeneración permanente.
+  applies-to: Cascos
+piel_de_salamandra:
+  display: Piel de Salamandra
+  description: Mientras lo llevas puesto tienes resistencia al fuego permanente.
+  applies-to: Pantalones
+pasos_de_ceniza:
+  display: Pasos de Ceniza
+  description: Mientras lo llevas puesto tienes resistencia al fuego permanente.
+  applies-to: Botas
+corona_de_brasas:
+  display: Corona de Brasas
+  description: Mientras lo llevas puesto tienes resistencia al fuego permanente.
+  applies-to: Cascos
+trebol_de_cuatro_hojas:
+  display: Trébol de Cuatro Hojas
+  description: Mientras lo llevas puesto tienes suerte permanente.
+  applies-to: Cascos
+heroe_del_pueblo:
+  display: Héroe del Pueblo
+  description: Mientras lo llevas puesto tienes héroe de la aldea permanente.
+  applies-to: Cascos
+corazon_del_mar:
+  display: Corazón del Mar
+  description: Mientras lo llevas puesto tienes poder del conducto permanente.
+  applies-to: Cascos
+pulmones_de_pez:
+  display: Pulmones de Pez
+  description: Mientras lo llevas puesto tienes respiración acuática permanente.
+  applies-to: Pecheras
+agallas:
+  display: Agallas
+  description: Mientras lo llevas puesto tienes respiración acuática permanente.
+  applies-to: Pantalones
+aura_ignea:
+  display: Aura Ígnea
+  description: Quema a los monstruos cercanos.
+  applies-to: Pecheras
+aura_gelida:
+  display: Aura Gélida
+  description: Frena a los monstruos cercanos.
+  applies-to: Pecheras
+aura_toxica:
+  display: Aura Tóxica
+  description: Envenena a los monstruos cercanos.
+  applies-to: Pecheras
+aura_debilitante:
+  display: Aura Debilitante
+  description: Debilita a los monstruos cercanos.
+  applies-to: Pecheras
+aura_repelente:
+  display: Aura Repelente
+  description: Aparta a los monstruos cercanos.
+  applies-to: Pecheras
+aura_sagrada:
+  display: Aura Sagrada
+  description: Te cura poco a poco.
+  applies-to: Pecheras
+punta_frenetica:
+  display: Punta Frenética
+  description: Al romper bloques a veces te da prisa minera.
+  applies-to: Picos
+punta_erudita:
+  display: Punta Erudita
+  description: Experiencia extra al romper bloques.
+  applies-to: Picos
+punta_buscadora:
+  display: Punta Buscadora
+  description: A veces encuentra algo útil.
+  applies-to: Picos
+punta_viva:
+  display: Punta Viva
+  description: Se repara sola al trabajar.
+  applies-to: Picos
+punta_ligera:
+  display: Punta Ligera
+  description: Al trabajar a veces corres mas.
+  applies-to: Picos
+punta_nutritiva:
+  display: Punta Nutritiva
+  description: Al trabajar a veces recuperas comida.
+  applies-to: Picos
+hoja_frenetica:
+  display: Hoja Frenética
+  description: Al romper bloques a veces te da prisa minera.
+  applies-to: Hachas
+hoja_erudita:
+  display: Hoja Erudita
+  description: Experiencia extra al romper bloques.
+  applies-to: Hachas
+hoja_buscadora:
+  display: Hoja Buscadora
+  description: A veces encuentra algo útil.
+  applies-to: Hachas
+hoja_viva:
+  display: Hoja Viva
+  description: Se repara sola al trabajar.
+  applies-to: Hachas
+hoja_ligera:
+  display: Hoja Ligera
+  description: Al trabajar a veces corres mas.
+  applies-to: Hachas
+hoja_nutritiva:
+  display: Hoja Nutritiva
+  description: Al trabajar a veces recuperas comida.
+  applies-to: Hachas
+pala_frenetica:
+  display: Pala Frenética
+  description: Al romper bloques a veces te da prisa minera.
+  applies-to: Palas
+pala_erudita:
+  display: Pala Erudita
+  description: Experiencia extra al romper bloques.
+  applies-to: Palas
+pala_buscadora:
+  display: Pala Buscadora
+  description: A veces encuentra algo útil.
+  applies-to: Palas
+pala_viva:
+  display: Pala Viva
+  description: Se repara sola al trabajar.
+  applies-to: Palas
+pala_ligera:
+  display: Pala Ligera
+  description: Al trabajar a veces corres mas.
+  applies-to: Palas
+pala_nutritiva:
+  display: Pala Nutritiva
+  description: Al trabajar a veces recuperas comida.
+  applies-to: Palas
+azada_frenetica:
+  display: Azada Frenética
+  description: Al romper bloques a veces te da prisa minera.
+  applies-to: Azadas
+azada_erudita:
+  display: Azada Erudita
+  description: Experiencia extra al romper bloques.
+  applies-to: Azadas
+azada_buscadora:
+  display: Azada Buscadora
+  description: A veces encuentra algo útil.
+  applies-to: Azadas
+azada_viva:
+  display: Azada Viva
+  description: Se repara sola al trabajar.
+  applies-to: Azadas
+azada_ligera:
+  display: Azada Ligera
+  description: Al trabajar a veces corres mas.
+  applies-to: Azadas
+azada_nutritiva:
+  display: Azada Nutritiva
+  description: Al trabajar a veces recuperas comida.
+  applies-to: Azadas
+cebo_dorado:
+  display: Cebo Dorado
+  description: Experiencia extra al pescar.
+  applies-to: Cañas de pescar
+sedal_curativo:
+  display: Sedal Curativo
+  description: Pescar te cura.
+  applies-to: Cañas de pescar
+pescador_hambriento:
+  display: Pescador Hambriento
+  description: Pescar te llena el estómago.
+  applies-to: Cañas de pescar
+marea_de_suerte:
+  display: Marea de Suerte
+  description: A veces pescas un tesoro extra.
+  applies-to: Cañas de pescar
+arponero:
+  display: Arponero
+  description: Atrae hacia ti lo que enganchas.
+  applies-to: Cañas de pescar
+vuelo_sanador:
+  display: Vuelo Sanador
+  description: Volar con élitros te cura.
+  applies-to: Élitros
+ala_dorada:
+  display: Ala Dorada
+  description: Los élitros se reparan mientras vuelas.
+  applies-to: Élitros
+estela_luminosa:
+  display: Estela Luminosa
+  description: Dejas una estela de chispas al volar.
+  applies-to: Élitros
+ojo_de_halcon:
+  display: Ojo de Halcón
+  description: Desde el aire ves a los monstruos brillar.
+  applies-to: Élitros
+maldicion_pesadez_yelmo:
+  display: Pesadez del Yelmo
+  description: 'Maldición: te vuelve lento. Nada puede quitarla; solo un administrador.'
+  applies-to: Cascos
+maldicion_pesadez_coraza:
+  display: Pesadez de la Coraza
+  description: 'Maldición: te vuelve lento. Nada puede quitarla; solo un administrador.'
+  applies-to: Pecheras
+maldicion_pesadez_grebas:
+  display: Pesadez de las Grebas
+  description: 'Maldición: te vuelve lento. Nada puede quitarla; solo un administrador.'
+  applies-to: Pantalones
+maldicion_pesadez_botas:
+  display: Pesadez de las Botas
+  description: 'Maldición: te vuelve lento. Nada puede quitarla; solo un administrador.'
+  applies-to: Botas
+maldicion_pesadez_espada:
+  display: Pesadez de la Espada
+  description: 'Maldición: te vuelve lento. Nada puede quitarla; solo un administrador.'
+  applies-to: Espadas
+maldicion_pesadez_hacha:
+  display: Pesadez del Hacha
+  description: 'Maldición: te vuelve lento. Nada puede quitarla; solo un administrador.'
+  applies-to: Hachas
+maldicion_pesadez_pico:
+  display: Pesadez del Pico
+  description: 'Maldición: te vuelve lento. Nada puede quitarla; solo un administrador.'
+  applies-to: Picos
+maldicion_hambre_yelmo:
+  display: Hambre del Yelmo
+  description: 'Maldición: te da hambre constantemente. Nada puede quitarla; solo un administrador.'
+  applies-to: Cascos
+maldicion_hambre_coraza:
+  display: Hambre de la Coraza
+  description: 'Maldición: te da hambre constantemente. Nada puede quitarla; solo un administrador.'
+  applies-to: Pecheras
+maldicion_hambre_grebas:
+  display: Hambre de las Grebas
+  description: 'Maldición: te da hambre constantemente. Nada puede quitarla; solo un administrador.'
+  applies-to: Pantalones
+maldicion_hambre_botas:
+  display: Hambre de las Botas
+  description: 'Maldición: te da hambre constantemente. Nada puede quitarla; solo un administrador.'
+  applies-to: Botas
+maldicion_hambre_espada:
+  display: Hambre de la Espada
+  description: 'Maldición: te da hambre constantemente. Nada puede quitarla; solo un administrador.'
+  applies-to: Espadas
+maldicion_hambre_hacha:
+  display: Hambre del Hacha
+  description: 'Maldición: te da hambre constantemente. Nada puede quitarla; solo un administrador.'
+  applies-to: Hachas
+maldicion_hambre_pico:
+  display: Hambre del Pico
+  description: 'Maldición: te da hambre constantemente. Nada puede quitarla; solo un administrador.'
+  applies-to: Picos
+maldicion_fragilidad_espada:
+  display: Fragilidad de la Espada
+  description: 'Maldición: se desgasta solo. Nada puede quitarla; solo un administrador.'
+  applies-to: Espadas
+maldicion_fragilidad_hacha:
+  display: Fragilidad del Hacha
+  description: 'Maldición: se desgasta solo. Nada puede quitarla; solo un administrador.'
+  applies-to: Hachas
+maldicion_fragilidad_arco:
+  display: Fragilidad del Arco
+  description: 'Maldición: se desgasta solo. Nada puede quitarla; solo un administrador.'
+  applies-to: Arcos
+maldicion_fragilidad_pico:
+  display: Fragilidad del Pico
+  description: 'Maldición: se desgasta solo. Nada puede quitarla; solo un administrador.'
+  applies-to: Picos
+maldicion_fragilidad_pala:
+  display: Fragilidad de la Pala
+  description: 'Maldición: se desgasta solo. Nada puede quitarla; solo un administrador.'
+  applies-to: Palas
+maldicion_fragilidad_coraza:
+  display: Fragilidad de la Coraza
+  description: 'Maldición: se desgasta solo. Nada puede quitarla; solo un administrador.'
+  applies-to: Pecheras
+maldicion_fragilidad_botas:
+  display: Fragilidad de las Botas
+  description: 'Maldición: se desgasta solo. Nada puede quitarla; solo un administrador.'
+  applies-to: Botas
+maldicion_fragilidad_tridente:
+  display: Fragilidad del Tridente
+  description: 'Maldición: se desgasta solo. Nada puede quitarla; solo un administrador.'
+  applies-to: Tridentes
+maldicion_torpeza_espada:
+  display: Torpeza de la Espada
+  description: 'Maldición: haces menos daño. Nada puede quitarla; solo un administrador.'
+  applies-to: Espadas
+maldicion_torpeza_hacha:
+  display: Torpeza del Hacha
+  description: 'Maldición: haces menos daño. Nada puede quitarla; solo un administrador.'
+  applies-to: Hachas
+maldicion_torpeza_maza:
+  display: Torpeza de la Maza
+  description: 'Maldición: haces menos daño. Nada puede quitarla; solo un administrador.'
+  applies-to: Mazas
+maldicion_punteria_arco:
+  display: Mala Puntería del Arco
+  description: 'Maldición: tus disparos hacen menos daño. Nada puede quitarla; solo un administrador.'
+  applies-to: Arcos
+maldicion_punteria_ballesta:
+  display: Mala Puntería de la Ballesta
+  description: 'Maldición: tus disparos hacen menos daño. Nada puede quitarla; solo un administrador.'
+  applies-to: Ballestas
+maldicion_vulnerabilidad_yelmo:
+  display: Vulnerabilidad del Yelmo
+  description: 'Maldición: recibes más daño. Nada puede quitarla; solo un administrador.'
+  applies-to: Cascos
+maldicion_vulnerabilidad_coraza:
+  display: Vulnerabilidad de la Coraza
+  description: 'Maldición: recibes más daño. Nada puede quitarla; solo un administrador.'
+  applies-to: Pecheras
+maldicion_vulnerabilidad_grebas:
+  display: Vulnerabilidad de las Grebas
+  description: 'Maldición: recibes más daño. Nada puede quitarla; solo un administrador.'
+  applies-to: Pantalones
+maldicion_vulnerabilidad_botas:
+  display: Vulnerabilidad de las Botas
+  description: 'Maldición: recibes más daño. Nada puede quitarla; solo un administrador.'
+  applies-to: Botas
+maldicion_resbaladizo_espada:
+  display: Resbaladizo de la Espada
+  description: 'Maldición: a veces se te escapa de la mano. Nada puede quitarla; solo un administrador.'
+  applies-to: Espadas
+maldicion_resbaladizo_hacha:
+  display: Resbaladizo del Hacha
+  description: 'Maldición: a veces se te escapa de la mano. Nada puede quitarla; solo un administrador.'
+  applies-to: Hachas
+maldicion_resbaladizo_maza:
+  display: Resbaladizo de la Maza
+  description: 'Maldición: a veces se te escapa de la mano. Nada puede quitarla; solo un administrador.'
+  applies-to: Mazas
+maldicion_autolesion_espada:
+  display: Autolesión de la Espada
+  description: 'Maldición: a veces te hieres tu. Nada puede quitarla; solo un administrador.'
+  applies-to: Espadas
+maldicion_autolesion_hacha:
+  display: Autolesión del Hacha
+  description: 'Maldición: a veces te hieres tu. Nada puede quitarla; solo un administrador.'
+  applies-to: Hachas
+maldicion_autolesion_maza:
+  display: Autolesión de la Maza
+  description: 'Maldición: a veces te hieres tu. Nada puede quitarla; solo un administrador.'
+  applies-to: Mazas
+maldicion_autolesion_tridente:
+  display: Autolesión del Tridente
+  description: 'Maldición: a veces te hieres tu. Nada puede quitarla; solo un administrador.'
+  applies-to: Tridentes
+maldicion_nausea_yelmo:
+  display: Náusea del Yelmo
+  description: 'Maldición: al recibir golpes te mareas. Nada puede quitarla; solo un administrador.'
+  applies-to: Cascos
+maldicion_nausea_coraza:
+  display: Náusea de la Coraza
+  description: 'Maldición: al recibir golpes te mareas. Nada puede quitarla; solo un administrador.'
+  applies-to: Pecheras
+maldicion_nausea_grebas:
+  display: Náusea de las Grebas
+  description: 'Maldición: al recibir golpes te mareas. Nada puede quitarla; solo un administrador.'
+  applies-to: Pantalones
+maldicion_nausea_botas:
+  display: Náusea de las Botas
+  description: 'Maldición: al recibir golpes te mareas. Nada puede quitarla; solo un administrador.'
+  applies-to: Botas
+maldicion_debilidad_yelmo:
+  display: Debilidad del Yelmo
+  description: 'Maldición: te deja sin fuerzas. Nada puede quitarla; solo un administrador.'
+  applies-to: Cascos
+maldicion_debilidad_coraza:
+  display: Debilidad de la Coraza
+  description: 'Maldición: te deja sin fuerzas. Nada puede quitarla; solo un administrador.'
+  applies-to: Pecheras
+maldicion_debilidad_grebas:
+  display: Debilidad de las Grebas
+  description: 'Maldición: te deja sin fuerzas. Nada puede quitarla; solo un administrador.'
+  applies-to: Pantalones
+maldicion_debilidad_botas:
+  display: Debilidad de las Botas
+  description: 'Maldición: te deja sin fuerzas. Nada puede quitarla; solo un administrador.'
+  applies-to: Botas
+maldicion_fatiga_pico:
+  display: Fatiga del Pico
+  description: 'Maldición: al trabajar te cansas. Nada puede quitarla; solo un administrador.'
+  applies-to: Picos
+maldicion_fatiga_pala:
+  display: Fatiga de la Pala
+  description: 'Maldición: al trabajar te cansas. Nada puede quitarla; solo un administrador.'
+  applies-to: Palas
+maldicion_fatiga_hacha:
+  display: Fatiga del Hacha
+  description: 'Maldición: al trabajar te cansas. Nada puede quitarla; solo un administrador.'
+  applies-to: Hachas
+maldicion_fatiga_azada:
+  display: Fatiga de la Azada
+  description: 'Maldición: al trabajar te cansas. Nada puede quitarla; solo un administrador.'
+  applies-to: Azadas
+maldicion_infortunio_yelmo:
+  display: Infortunio del Yelmo
+  description: 'Maldición: te da mala suerte. Nada puede quitarla; solo un administrador.'
+  applies-to: Cascos
+maldicion_infortunio_coraza:
+  display: Infortunio de la Coraza
+  description: 'Maldición: te da mala suerte. Nada puede quitarla; solo un administrador.'
+  applies-to: Pecheras
+maldicion_infortunio_grebas:
+  display: Infortunio de las Grebas
+  description: 'Maldición: te da mala suerte. Nada puede quitarla; solo un administrador.'
+  applies-to: Pantalones
+maldicion_infortunio_botas:
+  display: Infortunio de las Botas
+  description: 'Maldición: te da mala suerte. Nada puede quitarla; solo un administrador.'
+  applies-to: Botas
+maldicion_combustion_yelmo:
+  display: Combustión del Yelmo
+  description: 'Maldición: al recibir golpes a veces ardes. Nada puede quitarla; solo un administrador.'
+  applies-to: Cascos
+maldicion_combustion_coraza:
+  display: Combustión de la Coraza
+  description: 'Maldición: al recibir golpes a veces ardes. Nada puede quitarla; solo un administrador.'
+  applies-to: Pecheras
+maldicion_combustion_grebas:
+  display: Combustión de las Grebas
+  description: 'Maldición: al recibir golpes a veces ardes. Nada puede quitarla; solo un administrador.'
+  applies-to: Pantalones
+maldicion_combustion_botas:
+  display: Combustión de las Botas
+  description: 'Maldición: al recibir golpes a veces ardes. Nada puede quitarla; solo un administrador.'
+  applies-to: Botas
+maldicion_ingravidez_yelmo:
+  display: Ingravidez del Yelmo
+  description: 'Maldición: al recibir golpes a veces flotas. Nada puede quitarla; solo un administrador.'
+  applies-to: Cascos
+maldicion_ingravidez_coraza:
+  display: Ingravidez de la Coraza
+  description: 'Maldición: al recibir golpes a veces flotas. Nada puede quitarla; solo un administrador.'
+  applies-to: Pecheras
+maldicion_ingravidez_grebas:
+  display: Ingravidez de las Grebas
+  description: 'Maldición: al recibir golpes a veces flotas. Nada puede quitarla; solo un administrador.'
+  applies-to: Pantalones
+maldicion_ingravidez_botas:
+  display: Ingravidez de las Botas
+  description: 'Maldición: al recibir golpes a veces flotas. Nada puede quitarla; solo un administrador.'
+  applies-to: Botas
+maldicion_faro_yelmo:
+  display: Faro del Yelmo
+  description: 'Maldición: brillas y todos te ven. Nada puede quitarla; solo un administrador.'
+  applies-to: Cascos
+maldicion_faro_coraza:
+  display: Faro de la Coraza
+  description: 'Maldición: brillas y todos te ven. Nada puede quitarla; solo un administrador.'
+  applies-to: Pecheras
+maldicion_faro_grebas:
+  display: Faro de las Grebas
+  description: 'Maldición: brillas y todos te ven. Nada puede quitarla; solo un administrador.'
+  applies-to: Pantalones
+maldicion_faro_botas:
+  display: Faro de las Botas
+  description: 'Maldición: brillas y todos te ven. Nada puede quitarla; solo un administrador.'
+  applies-to: Botas
+maldicion_tinieblas_yelmo:
+  display: Tinieblas del Yelmo
+  description: 'Maldición: de noche se te nubla la vista. Nada puede quitarla; solo un administrador.'
+  applies-to: Cascos
+maldicion_tinieblas_coraza:
+  display: Tinieblas de la Coraza
+  description: 'Maldición: de noche se te nubla la vista. Nada puede quitarla; solo un administrador.'
+  applies-to: Pecheras

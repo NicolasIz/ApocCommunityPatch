@@ -93,6 +93,13 @@ public final class EnchantLoader {
                 Collections.unmodifiableNavigableMap(levels), required, conflicts, removable, inEnchanter);
     }
 
+    /** The same enchant with other texts; null keeps the current one. */
+    public static Enchant withTexts(Enchant e, String display, String description, String appliesTo) {
+        return new Enchant(e.id(), display == null ? e.display() : display, description == null ? e.description() : description,
+                appliesTo == null ? e.appliesTo() : appliesTo, e.group(), e.triggers(), e.applies(), e.levels(), e.required(),
+                e.conflicts(), e.removable(), e.inEnchanter());
+    }
+
     /**
      * Groups from AdvancedEnchantments' groups.yml (colour and name) merged with ArkEnchants' own book
      * settings from config.yml ({@code groups.<ID>.success/destroy/cost/weight}).
@@ -116,10 +123,13 @@ public final class EnchantLoader {
             double[] destroy = range(o == null ? null : o.getString("destroy"), 0, 50);
             out.put(id, new Group(id, color, name, o == null ? 10 : o.getInt("weight", 10),
                     success[0], success[1], destroy[0], destroy[1], o == null ? 10 : o.getInt("cost", 10),
-                    o == null ? !id.equals("CURSE") : o.getBoolean("enchanter", !id.equals("CURSE"))));
+                    o == null ? !id.equals("CURSE") && !id.equals("ASTRAL")
+                            : o.getBoolean("enchanter", !id.equals("CURSE") && !id.equals("ASTRAL"))));
         }
         // curses always have a group, even with an old groups.yml
         out.putIfAbsent("CURSE", new Group("CURSE", "&4", "Maldito", 20, 100, 100, 0, 0, 0, false));
+        // and astral books, the rarest of all, even when groups.yml predates them
+        out.putIfAbsent("ASTRAL", new Group("ASTRAL", "&d", "Astral", 0, 100, 100, 0, 0, 0, false));
         return out;
     }
 

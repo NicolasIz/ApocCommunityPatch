@@ -1,0 +1,1598 @@
+# Generado por tools/generar_arcanos.py: 52 encantamientos Astrales.
+# Solo los da un admin (/ake give). Quedan vinculados a quien los recibe: no se tiran ni se tradean.
+astral_juicio_celestial:
+  display: '%group-color%Juicio Celestial'
+  description: 'Los cielos castigan a tus enemigos: rayos encadenados y un daño enorme en cada golpe.'
+  applies-to: Espadas, hachas, mazas y tridentes
+  type: ATTACK;ATTACK_MOB
+  group: ASTRAL
+  applies:
+  - ALL_SWORD
+  - ALL_AXE
+  - MACE
+  - TRIDENT
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - INCREASE_DAMAGE:45
+    2:
+      chance: 100
+      effects:
+      - INCREASE_DAMAGE:60
+    3:
+      chance: 100
+      effects:
+      - INCREASE_DAMAGE:75
+astral_supernova:
+  display: '%group-color%Supernova'
+  description: Al matar, el enemigo estalla como una estrella moribunda y arrasa a todos los monstruos cercanos.
+  applies-to: Armas
+  type: KILL_MOB;KILL_PLAYER
+  group: ASTRAL
+  applies:
+  - ALL_SWORD
+  - ALL_AXE
+  - MACE
+  - TRIDENT
+  - BOW
+  - CROSSBOW
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DO_HARM:9 @Aoe{radius=6,target=hostile}
+      - BURN:100 @Aoe{radius=6,target=hostile}
+      - PARTICLE:EXPLOSION_EMITTER:1:0 @Self
+      - PLAY_SOUND:ENTITY_GENERIC_EXPLODE:1:1
+    2:
+      chance: 100
+      effects:
+      - DO_HARM:12 @Aoe{radius=7,target=hostile}
+      - BURN:100 @Aoe{radius=7,target=hostile}
+      - PARTICLE:EXPLOSION_EMITTER:1:0 @Self
+      - PLAY_SOUND:ENTITY_GENERIC_EXPLODE:1:1
+    3:
+      chance: 100
+      effects:
+      - DO_HARM:15 @Aoe{radius=8,target=hostile}
+      - BURN:100 @Aoe{radius=8,target=hostile}
+      - PARTICLE:EXPLOSION_EMITTER:1:0 @Self
+      - PLAY_SOUND:ENTITY_GENERIC_EXPLODE:1:1
+astral_tormenta_divina:
+  display: '%group-color%Tormenta Divina'
+  description: Cada golpe desata una cadena de rayos que salta entre todos los enemigos cercanos.
+  applies-to: Espadas, hachas, mazas y tridentes
+  type: ATTACK;ATTACK_MOB
+  group: ASTRAL
+  applies:
+  - ALL_SWORD
+  - ALL_AXE
+  - MACE
+  - TRIDENT
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 35
+      cooldown: 3
+      effects:
+      - CHAIN_LIGHTNING:4:6
+    2:
+      chance: 45
+      cooldown: 3
+      effects:
+      - CHAIN_LIGHTNING:5:8
+    3:
+      chance: 55
+      cooldown: 3
+      effects:
+      - CHAIN_LIGHTNING:6:10
+astral_sed_del_cosmos:
+  display: '%group-color%Sed del Cosmos'
+  description: 'Robas muchísima vida con cada golpe: el cosmos se alimenta de tus enemigos a través de ti.'
+  applies-to: Espadas, hachas, mazas y tridentes
+  type: ATTACK;ATTACK_MOB
+  group: ASTRAL
+  applies:
+  - ALL_SWORD
+  - ALL_AXE
+  - MACE
+  - TRIDENT
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      cooldown: 1
+      effects:
+      - STEAL_HEALTH:2 @Self
+      - PARTICLE:HEART:3:0.05 @Self
+    2:
+      chance: 100
+      cooldown: 1
+      effects:
+      - STEAL_HEALTH:3 @Self
+      - PARTICLE:HEART:3:0.05 @Self
+    3:
+      chance: 100
+      cooldown: 1
+      effects:
+      - STEAL_HEALTH:4 @Self
+      - PARTICLE:HEART:3:0.05 @Self
+astral_agujero_negro:
+  display: '%group-color%Agujero Negro'
+  description: 'A veces abres un agujero negro: atrae, marchita y aplasta a todo lo que te rodea.'
+  applies-to: Mazas y hachas
+  type: ATTACK;ATTACK_MOB
+  group: ASTRAL
+  applies:
+  - MACE
+  - ALL_AXE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 20
+      cooldown: 10
+      effects:
+      - PULL_CLOSER:1.2 @Aoe{radius=7,target=hostile}
+      - POTION:WITHER:2:80 @Aoe{radius=7,target=hostile}
+      - DO_HARM:6 @Aoe{radius=7,target=hostile}
+      - PARTICLE:REVERSE_PORTAL:120:0.4 @Self
+      - PLAY_SOUND:ENTITY_WARDEN_SONIC_BOOM:1:0.6
+    2:
+      chance: 25
+      cooldown: 8
+      effects:
+      - PULL_CLOSER:1.2 @Aoe{radius=8,target=hostile}
+      - POTION:WITHER:2:100 @Aoe{radius=8,target=hostile}
+      - DO_HARM:8 @Aoe{radius=8,target=hostile}
+      - PARTICLE:REVERSE_PORTAL:120:0.4 @Self
+      - PLAY_SOUND:ENTITY_WARDEN_SONIC_BOOM:1:0.6
+    3:
+      chance: 30
+      cooldown: 6
+      effects:
+      - PULL_CLOSER:1.2 @Aoe{radius=9,target=hostile}
+      - POTION:WITHER:2:120 @Aoe{radius=9,target=hostile}
+      - DO_HARM:10 @Aoe{radius=9,target=hostile}
+      - PARTICLE:REVERSE_PORTAL:120:0.4 @Self
+      - PLAY_SOUND:ENTITY_WARDEN_SONIC_BOOM:1:0.6
+astral_legion_astral:
+  display: '%group-color%Legión Astral'
+  description: Al golpear, a veces se abren portales y acude una legión de guerreros esqueleto a luchar por ti.
+  applies-to: Espadas, hachas, mazas y tridentes
+  type: ATTACK;ATTACK_MOB
+  group: ASTRAL
+  applies:
+  - ALL_SWORD
+  - ALL_AXE
+  - MACE
+  - TRIDENT
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 15
+      cooldown: 60
+      effects:
+      - SUMMON:esqueleto_guerrero:30:2 @Victim
+      - SUMMON:esqueleto_arquero:30:1 @Victim
+      - SUMMON:esqueleto_mago:30:0 @Victim
+    2:
+      chance: 15
+      cooldown: 45
+      effects:
+      - SUMMON:esqueleto_guerrero:30:2 @Victim
+      - SUMMON:esqueleto_arquero:30:1 @Victim
+      - SUMMON:esqueleto_mago:30:1 @Victim
+    3:
+      chance: 15
+      cooldown: 30
+      effects:
+      - SUMMON:esqueleto_guerrero:30:2 @Victim
+      - SUMMON:esqueleto_arquero:30:1 @Victim
+      - SUMMON:esqueleto_mago:30:1 @Victim
+astral_jinete_de_dragones:
+  display: '%group-color%Jinete de Dragones'
+  description: Al golpear, a veces un Dragón Flamígero desciende del cielo y lucha a tu lado.
+  applies-to: Espadas, hachas, mazas y tridentes
+  type: ATTACK;ATTACK_MOB
+  group: ASTRAL
+  applies:
+  - ALL_SWORD
+  - ALL_AXE
+  - MACE
+  - TRIDENT
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 8
+      cooldown: 160
+      effects:
+      - SUMMON:dragon_flamigero:35:1 @Victim
+    2:
+      chance: 8
+      cooldown: 120
+      effects:
+      - SUMMON:dragon_flamigero:45:1 @Victim
+    3:
+      chance: 8
+      cooldown: 80
+      effects:
+      - SUMMON:dragon_flamigero:55:1 @Victim
+astral_pacto_del_wyvern:
+  display: '%group-color%Pacto del Wyvern'
+  description: Cuando te golpean, a veces un Wyvern Celeste baja a protegerte.
+  applies-to: Pecheras
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: ASTRAL
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 10
+      cooldown: 150
+      effects:
+      - SUMMON:wyvern_celeste:35:1 @Attacker
+    2:
+      chance: 10
+      cooldown: 120
+      effects:
+      - SUMMON:wyvern_celeste:45:1 @Attacker
+    3:
+      chance: 10
+      cooldown: 90
+      effects:
+      - SUMMON:wyvern_celeste:55:1 @Attacker
+astral_furia_del_draco:
+  display: '%group-color%Furia del Draco'
+  description: Con poca vida, un Draco Terravore surge de la tierra y aplasta a tus enemigos.
+  applies-to: Pantalones
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: ASTRAL
+  applies:
+  - ALL_LEGGINGS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      cooldown: 200
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - SUMMON:draco_terravore:40:1 @Attacker
+    2:
+      chance: 100
+      cooldown: 160
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - SUMMON:draco_terravore:50:1 @Attacker
+    3:
+      chance: 100
+      cooldown: 120
+      conditions:
+      - '%player health percent% > 40 : %stop%'
+      effects:
+      - SUMMON:draco_terravore:60:1 @Attacker
+astral_bosque_viviente:
+  display: '%group-color%Bosque Viviente'
+  description: Al matar, a veces brotan entlings y un ent de roble que te protegen durante un rato.
+  applies-to: Hachas
+  type: KILL_MOB;KILL_PLAYER
+  group: ASTRAL
+  applies:
+  - ALL_AXE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 25
+      cooldown: 60
+      effects:
+      - SUMMON:entling_roble:30:2
+      - SUMMON:ent_roble:30:0
+    2:
+      chance: 30
+      cooldown: 60
+      effects:
+      - SUMMON:entling_roble:30:3
+      - SUMMON:ent_roble:30:0
+    3:
+      chance: 35
+      cooldown: 60
+      effects:
+      - SUMMON:entling_roble:30:4
+      - SUMMON:ent_roble:30:1
+astral_sombras_del_vacio:
+  display: '%group-color%Sombras del Vacío'
+  description: 'Ataque cargado: te acompañan clones sombra que golpean con tu fuerza.'
+  applies-to: Espadas
+  type: CHARGED_ATTACK
+  group: ASTRAL
+  applies:
+  - ALL_SWORD
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      cooldown: 30
+      effects:
+      - CLONES:3:15:65 @Victim
+    2:
+      chance: 100
+      cooldown: 20
+      effects:
+      - CLONES:4:20:80 @Victim
+    3:
+      chance: 100
+      cooldown: 10
+      effects:
+      - CLONES:5:25:95 @Victim
+astral_cometa:
+  display: '%group-color%Cometa'
+  description: 'Tus flechas llegan como cometas: explotan en fuego y rayos sin romper bloques.'
+  applies-to: Arcos y ballestas
+  type: SHOOT;SHOOT_MOB
+  group: ASTRAL
+  applies:
+  - BOW
+  - CROSSBOW
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      cooldown: 2
+      effects:
+      - INCREASE_DAMAGE:45
+      - BURN:100 @Victim
+      - LIGHTNING:4 @Victim
+      - PARTICLE:FLAME:40:0.2 @Victim
+    2:
+      chance: 100
+      cooldown: 2
+      effects:
+      - INCREASE_DAMAGE:60
+      - BURN:100 @Victim
+      - LIGHTNING:4 @Victim
+      - PARTICLE:FLAME:40:0.2 @Victim
+    3:
+      chance: 100
+      cooldown: 2
+      effects:
+      - INCREASE_DAMAGE:75
+      - BURN:100 @Victim
+      - LIGHTNING:4 @Victim
+      - PARTICLE:FLAME:40:0.2 @Victim
+astral_lluvia_de_estrellas:
+  display: '%group-color%Lluvia de Estrellas'
+  description: Al acertar, cae del cielo una lluvia de flechas sobre el objetivo.
+  applies-to: Arcos y ballestas
+  type: SHOOT;SHOOT_MOB
+  group: ASTRAL
+  applies:
+  - BOW
+  - CROSSBOW
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 40
+      cooldown: 5
+      effects:
+      - SPAWN_ARROWS:9 @Victim
+    2:
+      chance: 50
+      cooldown: 5
+      effects:
+      - SPAWN_ARROWS:12 @Victim
+    3:
+      chance: 60
+      cooldown: 5
+      effects:
+      - SPAWN_ARROWS:15 @Victim
+astral_ojo_del_cazador_astral:
+  display: '%group-color%Ojo del Cazador Astral'
+  description: Tus flechas persiguen a su presa y los tiros a la cabeza hacen un daño devastador.
+  applies-to: Arcos y ballestas
+  type: BOW_FIRE
+  group: ASTRAL
+  applies:
+  - BOW
+  - CROSSBOW
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - HOMING:0.5
+    2:
+      chance: 100
+      effects:
+      - HOMING:0.6
+    3:
+      chance: 100
+      effects:
+      - HOMING:0.7
+astral_salva_celestial:
+  display: '%group-color%Salva Celestial'
+  description: Cada disparo sale acompañado de varias flechas en abanico.
+  applies-to: Arcos y ballestas
+  type: BOW_FIRE
+  group: ASTRAL
+  applies:
+  - BOW
+  - CROSSBOW
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - MULTISHOT:2:12
+    2:
+      chance: 100
+      effects:
+      - MULTISHOT:3:12
+    3:
+      chance: 100
+      effects:
+      - MULTISHOT:4:12
+astral_marea_cosmica:
+  display: '%group-color%Marea Cósmica'
+  description: El tridente arrastra al enemigo, lo ahoga en tinta y lo golpea con la fuerza del océano.
+  applies-to: Tridentes
+  type: ATTACK;ATTACK_MOB;SHOOT;SHOOT_MOB
+  group: ASTRAL
+  applies:
+  - TRIDENT
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      cooldown: 1
+      effects:
+      - INCREASE_DAMAGE:50
+      - PULL_CLOSER:1 @Victim
+      - POTION:BLINDNESS:0:40 @Victim
+      - PARTICLE:NAUTILUS:40:0.3 @Victim
+    2:
+      chance: 100
+      cooldown: 1
+      effects:
+      - INCREASE_DAMAGE:65
+      - PULL_CLOSER:1 @Victim
+      - POTION:BLINDNESS:0:40 @Victim
+      - PARTICLE:NAUTILUS:40:0.3 @Victim
+    3:
+      chance: 100
+      cooldown: 1
+      effects:
+      - INCREASE_DAMAGE:80
+      - PULL_CLOSER:1 @Victim
+      - POTION:BLINDNESS:0:40 @Victim
+      - PARTICLE:NAUTILUS:40:0.3 @Victim
+astral_egida_del_firmamento:
+  display: '%group-color%Égida del Firmamento'
+  description: 'A veces el firmamento te protege: anula el golpe por completo y te cura.'
+  applies-to: Pecheras
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: ASTRAL
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 20
+      effects:
+      - NEGATE_DAMAGE
+      - ADD_HEALTH:3
+      - PARTICLE:END_ROD:30:0.1 @Self
+    2:
+      chance: 25
+      effects:
+      - NEGATE_DAMAGE
+      - ADD_HEALTH:4
+      - PARTICLE:END_ROD:30:0.1 @Self
+    3:
+      chance: 30
+      effects:
+      - NEGATE_DAMAGE
+      - ADD_HEALTH:5
+      - PARTICLE:END_ROD:30:0.1 @Self
+astral_renacer_estelar:
+  display: '%group-color%Renacer Estelar'
+  description: Si recibes un golpe mortal, renaces entre estrellas con la mitad de la vida.
+  applies-to: Pecheras
+  type: DEATH
+  group: ASTRAL
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      cooldown: 450
+      effects:
+      - REVIVE
+    2:
+      chance: 100
+      cooldown: 300
+      effects:
+      - REVIVE
+    3:
+      chance: 100
+      cooldown: 150
+      effects:
+      - REVIVE
+astral_corona_estelar:
+  display: '%group-color%Corona Estelar'
+  description: 'Mientras la llevas: visión nocturna, regeneración, resistencia y resistencia al fuego.'
+  applies-to: Cascos
+  type: EFFECT_STATIC
+  group: ASTRAL
+  applies:
+  - ALL_HELMET
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:NIGHT_VISION:0:320
+      - POTION:REGENERATION:0:100
+      - POTION:RESISTANCE:0:100
+      - POTION:FIRE_RESISTANCE:0:100
+    2:
+      chance: 100
+      effects:
+      - POTION:NIGHT_VISION:0:320
+      - POTION:REGENERATION:1:100
+      - POTION:RESISTANCE:1:100
+      - POTION:FIRE_RESISTANCE:0:100
+    3:
+      chance: 100
+      effects:
+      - POTION:NIGHT_VISION:0:320
+      - POTION:REGENERATION:2:100
+      - POTION:RESISTANCE:1:100
+      - POTION:FIRE_RESISTANCE:0:100
+astral_mente_cosmica:
+  display: '%group-color%Mente Cósmica'
+  description: Ves a todos los monstruos a través de las paredes y te sobra experiencia.
+  applies-to: Cascos
+  type: REPEATING
+  group: ASTRAL
+  applies:
+  - ALL_HELMET
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - REVEAL:32:3
+      - EXP:1
+    2:
+      chance: 100
+      effects:
+      - REVEAL:40:3
+      - EXP:2
+    3:
+      chance: 100
+      effects:
+      - REVEAL:48:3
+      - EXP:3
+astral_alas_del_cosmos:
+  display: '%group-color%Alas del Cosmos'
+  description: Puedes volar libremente mientras las llevas puestas.
+  applies-to: Botas
+  type: EFFECT_STATIC
+  group: ASTRAL
+  applies:
+  - ALL_BOOTS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - FLY
+astral_gravedad_cero:
+  display: '%group-color%Gravedad Cero'
+  description: Doble salto, velocidad y nunca recibes daño de caída.
+  applies-to: Botas
+  type: EFFECT_STATIC;FALL_DAMAGE
+  group: ASTRAL
+  applies:
+  - ALL_BOOTS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - DOUBLE_JUMP:1.2
+      - POTION:SPEED:0:100
+      - NEGATE_DAMAGE
+    2:
+      chance: 100
+      effects:
+      - DOUBLE_JUMP:1.4
+      - POTION:SPEED:1:100
+      - NEGATE_DAMAGE
+    3:
+      chance: 100
+      effects:
+      - DOUBLE_JUMP:1.6
+      - POTION:SPEED:2:100
+      - NEGATE_DAMAGE
+astral_pasos_de_nebulosa:
+  display: '%group-color%Pasos de Nebulosa'
+  description: Caminas sobre el agua y la lava, y dejas una estela de polvo de estrellas.
+  applies-to: Botas
+  type: REPEATING
+  group: ASTRAL
+  applies:
+  - ALL_BOOTS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - WATER_WALKER:3
+      - LAVA_WALKER:3
+      - PARTICLE:END_ROD:4:0.02 @Self
+astral_titan_estelar:
+  display: '%group-color%Titán Estelar'
+  description: 'Mientras la llevas: fuerza, absorción y corazones que se regeneran.'
+  applies-to: Pantalones
+  type: EFFECT_STATIC
+  group: ASTRAL
+  applies:
+  - ALL_LEGGINGS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:STRENGTH:0:100
+      - POTION:ABSORPTION:1:100
+      - POTION:REGENERATION:0:100
+    2:
+      chance: 100
+      effects:
+      - POTION:STRENGTH:1:100
+      - POTION:ABSORPTION:2:100
+      - POTION:REGENERATION:0:100
+    3:
+      chance: 100
+      effects:
+      - POTION:STRENGTH:1:100
+      - POTION:ABSORPTION:3:100
+      - POTION:REGENERATION:0:100
+astral_reflejo_del_cosmos:
+  display: '%group-color%Reflejo del Cosmos'
+  description: Devuelves gran parte del daño que recibes a quien te golpea.
+  applies-to: Pecheras
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: ASTRAL
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - REFLECT:50
+    2:
+      chance: 100
+      effects:
+      - REFLECT:70
+    3:
+      chance: 100
+      effects:
+      - REFLECT:90
+astral_guardianes_del_eter:
+  display: '%group-color%Guardianes del Éter'
+  description: Cuando te golpean, a veces acuden gólems guardianes y lobos espectrales a defenderte.
+  applies-to: Armadura
+  type: DEFENSE;DEFENSE_MOB
+  group: ASTRAL
+  applies:
+  - ALL_ARMOR
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 10
+      cooldown: 75
+      effects:
+      - SUMMON:golem_guardian:30:1
+      - SUMMON:lobo_espectral:30:2 @Attacker
+    2:
+      chance: 10
+      cooldown: 60
+      effects:
+      - SUMMON:golem_guardian:30:1
+      - SUMMON:lobo_espectral:30:3 @Attacker
+    3:
+      chance: 10
+      cooldown: 45
+      effects:
+      - SUMMON:golem_guardian:30:2
+      - SUMMON:lobo_espectral:30:4 @Attacker
+astral_paso_estelar:
+  display: '%group-color%Paso Estelar'
+  description: Cuando te golpean, a veces te teletransportas a la espalda de tu atacante.
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB
+  group: ASTRAL
+  applies:
+  - ALL_BOOTS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 20
+      cooldown: 6
+      effects:
+      - TELEPORT_BEHIND @Attacker
+    2:
+      chance: 25
+      cooldown: 6
+      effects:
+      - TELEPORT_BEHIND @Attacker
+    3:
+      chance: 30
+      cooldown: 6
+      effects:
+      - TELEPORT_BEHIND @Attacker
+astral_big_bang:
+  display: '%group-color%Big Bang'
+  description: Rompe en un área enorme de 5x5, funde los minerales y te da más botín.
+  applies-to: Picos
+  type: MINING
+  group: ASTRAL
+  applies:
+  - ALL_PICKAXE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%player is sneaking% = true : %stop%'
+      effects:
+      - BREAK_BLOCK @Trench{radius=3}
+      - SMELT
+      - MORE_DROPS:1
+      - TP_DROPS
+    2:
+      chance: 100
+      conditions:
+      - '%player is sneaking% = true : %stop%'
+      effects:
+      - BREAK_BLOCK @Trench{radius=5}
+      - SMELT
+      - MORE_DROPS:2
+      - TP_DROPS
+    3:
+      chance: 100
+      conditions:
+      - '%player is sneaking% = true : %stop%'
+      effects:
+      - BREAK_BLOCK @Trench{radius=5}
+      - SMELT
+      - MORE_DROPS:3
+      - TP_DROPS
+astral_veta_de_estrellas:
+  display: '%group-color%Veta de Estrellas'
+  description: Rompe la veta entera, triplica el botín y todo va directo al inventario.
+  applies-to: Picos
+  type: MINING
+  group: ASTRAL
+  applies:
+  - ALL_PICKAXE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%block type% !contains ORE : %stop%'
+      effects:
+      - BREAK_BLOCK @Veinmine{limit=64}
+      - MORE_DROPS:2
+      - TP_DROPS
+    2:
+      chance: 100
+      conditions:
+      - '%block type% !contains ORE : %stop%'
+      effects:
+      - BREAK_BLOCK @Veinmine{limit=64}
+      - MORE_DROPS:3
+      - TP_DROPS
+    3:
+      chance: 100
+      conditions:
+      - '%block type% !contains ORE : %stop%'
+      effects:
+      - BREAK_BLOCK @Veinmine{limit=64}
+      - MORE_DROPS:4
+      - TP_DROPS
+astral_arbol_cosmico:
+  display: '%group-color%Árbol Cósmico'
+  description: Tala el árbol entero de un golpe y el botín va directo al inventario.
+  applies-to: Hachas
+  type: MINING
+  group: ASTRAL
+  applies:
+  - ALL_AXE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%player is sneaking% = true : %stop%'
+      effects:
+      - BREAK_TREE
+      - TP_DROPS
+      - MORE_DROPS:1
+    2:
+      chance: 100
+      conditions:
+      - '%player is sneaking% = true : %stop%'
+      effects:
+      - BREAK_TREE
+      - TP_DROPS
+      - MORE_DROPS:2
+    3:
+      chance: 100
+      conditions:
+      - '%player is sneaking% = true : %stop%'
+      effects:
+      - BREAK_TREE
+      - TP_DROPS
+      - MORE_DROPS:3
+astral_cosecha_infinita:
+  display: '%group-color%Cosecha Infinita'
+  description: Cosecha en un área enorme, replanta sola y multiplica la cosecha.
+  applies-to: Azadas
+  type: MINING
+  group: ASTRAL
+  applies:
+  - ALL_HOE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%is crop% = false : %stop%'
+      effects:
+      - BREAK_BLOCK @Trench{radius=3}
+      - PLANT_SEEDS:3
+      - MORE_DROPS:1
+      - TP_DROPS
+    2:
+      chance: 100
+      conditions:
+      - '%is crop% = false : %stop%'
+      effects:
+      - BREAK_BLOCK @Trench{radius=5}
+      - PLANT_SEEDS:3
+      - MORE_DROPS:2
+      - TP_DROPS
+    3:
+      chance: 100
+      conditions:
+      - '%is crop% = false : %stop%'
+      effects:
+      - BREAK_BLOCK @Trench{radius=5}
+      - PLANT_SEEDS:3
+      - MORE_DROPS:3
+      - TP_DROPS
+astral_excavacion_astral:
+  display: '%group-color%Excavación Astral'
+  description: Rompe en un área enorme y todo va directo al inventario.
+  applies-to: Palas
+  type: MINING
+  group: ASTRAL
+  applies:
+  - ALL_SHOVEL
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%player is sneaking% = true : %stop%'
+      effects:
+      - BREAK_BLOCK @Trench{radius=3}
+      - TP_DROPS
+      - MORE_DROPS:0
+    2:
+      chance: 100
+      conditions:
+      - '%player is sneaking% = true : %stop%'
+      effects:
+      - BREAK_BLOCK @Trench{radius=5}
+      - TP_DROPS
+      - MORE_DROPS:1
+    3:
+      chance: 100
+      conditions:
+      - '%player is sneaking% = true : %stop%'
+      effects:
+      - BREAK_BLOCK @Trench{radius=5}
+      - TP_DROPS
+      - MORE_DROPS:2
+astral_anzuelo_de_las_estrellas:
+  display: '%group-color%Anzuelo de las Estrellas'
+  description: Triplica lo que pescas, recoges solo y ganas mucha experiencia.
+  applies-to: Cañas de pescar
+  type: CATCH_FISH;BITE_HOOK
+  group: ASTRAL
+  applies:
+  - FISHING_ROD
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - AUTO_REEL
+      - DOUBLE_CATCH:3
+      - EXP:4
+    2:
+      chance: 100
+      effects:
+      - AUTO_REEL
+      - DOUBLE_CATCH:3
+      - EXP:8
+    3:
+      chance: 100
+      effects:
+      - AUTO_REEL
+      - DOUBLE_CATCH:3
+      - EXP:12
+astral_estela_de_andromeda:
+  display: '%group-color%Estela de Andrómeda'
+  description: Volando con élitros te impulsas, te curas y los élitros se reparan solos.
+  applies-to: Élitros
+  type: ELYTRA_FLY
+  group: ASTRAL
+  applies:
+  - ELYTRA
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - ADD_HEALTH:1
+      - ADD_DURABILITY_ITEM:1
+      - PARTICLE:END_ROD:6:0.02 @Self
+    2:
+      chance: 100
+      effects:
+      - ADD_HEALTH:1
+      - ADD_DURABILITY_ITEM:2
+      - PARTICLE:END_ROD:6:0.02 @Self
+    3:
+      chance: 100
+      effects:
+      - ADD_HEALTH:1
+      - ADD_DURABILITY_ITEM:3
+      - PARTICLE:END_ROD:6:0.02 @Self
+astral_forja_eterna:
+  display: '%group-color%Forja Eterna'
+  description: El objeto se repara solo sin parar y nunca se pierde al morir.
+  applies-to: Armas, herramientas y armadura
+  type: REPEATING;DEATH
+  group: ASTRAL
+  applies:
+  - ALL_WEAPONS
+  - ALL_TOOLS
+  - ALL_ARMOR
+  - BOW
+  - CROSSBOW
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - ADD_DURABILITY_ITEM:2
+      - KEEP_ON_DEATH
+    2:
+      chance: 100
+      effects:
+      - ADD_DURABILITY_ITEM:4
+      - KEEP_ON_DEATH
+    3:
+      chance: 100
+      effects:
+      - ADD_DURABILITY_ITEM:6
+      - KEEP_ON_DEATH
+astral_aniquilacion:
+  display: '%group-color%Aniquilación'
+  description: Contra enemigos con menos del 40% de vida, el golpe los remata al instante (no jefes).
+  applies-to: Espadas y hachas
+  type: ATTACK_MOB
+  group: ASTRAL
+  applies:
+  - ALL_SWORD
+  - ALL_AXE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 20
+      cooldown: 4
+      conditions:
+      - '%victim health percent% > 40 : %stop%'
+      - '%mob type% contains WITHER || %mob type% contains ENDER_DRAGON || %mob type% contains WARDEN : %stop%'
+      effects:
+      - KILL @Victim
+      - PARTICLE:SOUL:40:0.2 @Victim
+    2:
+      chance: 30
+      cooldown: 4
+      conditions:
+      - '%victim health percent% > 40 : %stop%'
+      - '%mob type% contains WITHER || %mob type% contains ENDER_DRAGON || %mob type% contains WARDEN : %stop%'
+      effects:
+      - KILL @Victim
+      - PARTICLE:SOUL:40:0.2 @Victim
+    3:
+      chance: 40
+      cooldown: 4
+      conditions:
+      - '%victim health percent% > 40 : %stop%'
+      - '%mob type% contains WITHER || %mob type% contains ENDER_DRAGON || %mob type% contains WARDEN : %stop%'
+      effects:
+      - KILL @Victim
+      - PARTICLE:SOUL:40:0.2 @Victim
+astral_desarme_cosmico:
+  display: '%group-color%Desarme Cósmico'
+  description: 'Contra jugadores: a veces les arrancas el arma de las manos.'
+  applies-to: Espadas
+  type: ATTACK
+  group: ASTRAL
+  applies:
+  - ALL_SWORD
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 10
+      cooldown: 15
+      effects:
+      - DISARM @Victim
+    2:
+      chance: 15
+      cooldown: 15
+      effects:
+      - DISARM @Victim
+    3:
+      chance: 20
+      cooldown: 15
+      effects:
+      - DISARM @Victim
+astral_eclipse:
+  display: '%group-color%Eclipse'
+  description: 'De noche eres casi imparable: fuerza, velocidad y te vuelves invisible al agacharte.'
+  applies-to: Pecheras
+  type: EFFECT_STATIC
+  group: ASTRAL
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      conditions:
+      - '%is night% = true : %allow%'
+      effects:
+      - POTION:STRENGTH:0:100
+      - POTION:SPEED:0:100
+    2:
+      chance: 100
+      conditions:
+      - '%is night% = true : %allow%'
+      effects:
+      - POTION:STRENGTH:1:100
+      - POTION:SPEED:1:100
+    3:
+      chance: 100
+      conditions:
+      - '%is night% = true : %allow%'
+      effects:
+      - POTION:STRENGTH:1:100
+      - POTION:SPEED:2:100
+astral_aura_de_supernova:
+  display: '%group-color%Aura de Supernova'
+  description: Quema, marchita y ciega a todos los monstruos que se acercan a ti.
+  applies-to: Pecheras
+  type: REPEATING
+  group: ASTRAL
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - BURN:60 @Aoe{radius=5,target=hostile}
+      - POTION:WITHER:0:60 @Aoe{radius=5,target=hostile}
+      - POTION:BLINDNESS:0:40 @Aoe{radius=5,target=hostile}
+      - PARTICLE:FLAME:20:0.05 @Self
+    2:
+      chance: 100
+      effects:
+      - BURN:60 @Aoe{radius=6,target=hostile}
+      - POTION:WITHER:0:60 @Aoe{radius=6,target=hostile}
+      - POTION:BLINDNESS:0:40 @Aoe{radius=6,target=hostile}
+      - PARTICLE:FLAME:20:0.05 @Self
+    3:
+      chance: 100
+      effects:
+      - BURN:60 @Aoe{radius=7,target=hostile}
+      - POTION:WITHER:0:60 @Aoe{radius=7,target=hostile}
+      - POTION:BLINDNESS:0:40 @Aoe{radius=7,target=hostile}
+      - PARTICLE:FLAME:20:0.05 @Self
+astral_ira_del_titan:
+  display: '%group-color%Ira del Titán'
+  description: 'Ataque cargado: golpeas el suelo y lanzas por los aires a todo lo que te rodea.'
+  applies-to: Mazas y hachas
+  type: CHARGED_ATTACK
+  group: ASTRAL
+  applies:
+  - MACE
+  - ALL_AXE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      cooldown: 8
+      effects:
+      - SLAM:6:12:1.2
+    2:
+      chance: 100
+      cooldown: 6
+      effects:
+      - SLAM:7:16:1.2
+    3:
+      chance: 100
+      cooldown: 4
+      effects:
+      - SLAM:8:20:1.2
+astral_relampago_errante:
+  display: '%group-color%Relámpago Errante'
+  description: 'Ataque cargado: te lanzas como un rayo atravesando a todos tus enemigos.'
+  applies-to: Espadas
+  type: CHARGED_ATTACK
+  group: ASTRAL
+  applies:
+  - ALL_SWORD
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      cooldown: 6
+      effects:
+      - DASH:10:12
+    2:
+      chance: 100
+      cooldown: 4
+      effects:
+      - DASH:12:16
+    3:
+      chance: 100
+      cooldown: 2
+      effects:
+      - DASH:14:20
+astral_salto_cuantico:
+  display: '%group-color%Salto Cuántico'
+  description: 'Clic derecho: te teletransportas hacia donde miras.'
+  applies-to: Espadas
+  type: RIGHT_CLICK
+  group: ASTRAL
+  applies:
+  - ALL_SWORD
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      cooldown: 9
+      effects:
+      - BLINK:15
+    2:
+      chance: 100
+      cooldown: 6
+      effects:
+      - BLINK:20
+    3:
+      chance: 100
+      cooldown: 3
+      effects:
+      - BLINK:25
+astral_bumeran_estelar:
+  display: '%group-color%Bumerán Estelar'
+  description: 'Agachado + clic derecho: lanzas el arma, que corta a la ida y a la vuelta.'
+  applies-to: Hachas y tridentes
+  type: RIGHT_CLICK
+  group: ASTRAL
+  applies:
+  - ALL_AXE
+  - TRIDENT
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      cooldown: 5
+      conditions:
+      - '%player is sneaking% = false : %stop%'
+      effects:
+      - THROW_WEAPON:14:16
+    2:
+      chance: 100
+      cooldown: 4
+      conditions:
+      - '%player is sneaking% = false : %stop%'
+      effects:
+      - THROW_WEAPON:18:18
+    3:
+      chance: 100
+      cooldown: 3
+      conditions:
+      - '%player is sneaking% = false : %stop%'
+      effects:
+      - THROW_WEAPON:22:20
+astral_bendicion_de_la_galaxia:
+  display: '%group-color%Bendición de la Galaxia'
+  description: 'Mientras la llevas: prisa, suerte y saturación permanentes.'
+  applies-to: Cascos
+  type: EFFECT_STATIC
+  group: ASTRAL
+  applies:
+  - ALL_HELMET
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - POTION:HASTE:1:100
+      - POTION:LUCK:1:100
+      - POTION:SATURATION:0:40
+    2:
+      chance: 100
+      effects:
+      - POTION:HASTE:2:100
+      - POTION:LUCK:2:100
+      - POTION:SATURATION:0:40
+    3:
+      chance: 100
+      effects:
+      - POTION:HASTE:2:100
+      - POTION:LUCK:3:100
+      - POTION:SATURATION:0:40
+astral_juramento_del_guardian_astral:
+  display: '%group-color%Juramento del Guardián Astral'
+  description: 'Con poca vida, llamas a toda tu guardia: esqueletos colosos y un gólem guardián.'
+  applies-to: Pecheras
+  type: DEFENSE;DEFENSE_MOB;DEFENSE_PROJECTILE
+  group: ASTRAL
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      cooldown: 240
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - SUMMON:esqueleto_tanque:40:1 @Attacker
+      - SUMMON:esqueleto_guerrero:40:2 @Attacker
+      - SUMMON:golem_guardian:40:1 @Attacker
+    2:
+      chance: 100
+      cooldown: 180
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - SUMMON:esqueleto_tanque:40:1 @Attacker
+      - SUMMON:esqueleto_guerrero:40:3 @Attacker
+      - SUMMON:golem_guardian:40:1 @Attacker
+    3:
+      chance: 100
+      cooldown: 120
+      conditions:
+      - '%player health percent% > 35 : %stop%'
+      effects:
+      - SUMMON:esqueleto_tanque:40:1 @Attacker
+      - SUMMON:esqueleto_guerrero:40:4 @Attacker
+      - SUMMON:golem_guardian:40:1 @Attacker
+astral_filo_del_horizonte:
+  display: '%group-color%Filo del Horizonte'
+  description: Cada golpe corta también a todos los monstruos que te rodean.
+  applies-to: Espadas
+  type: ATTACK;ATTACK_MOB
+  group: ASTRAL
+  applies:
+  - ALL_SWORD
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      cooldown: 1
+      effects:
+      - DO_HARM:3 @Aoe{radius=3,target=hostile}
+      - PARTICLE:SWEEP_ATTACK:3:0 @Self
+    2:
+      chance: 100
+      cooldown: 1
+      effects:
+      - DO_HARM:4 @Aoe{radius=3,target=hostile}
+      - PARTICLE:SWEEP_ATTACK:3:0 @Self
+    3:
+      chance: 100
+      cooldown: 1
+      effects:
+      - DO_HARM:5 @Aoe{radius=3,target=hostile}
+      - PARTICLE:SWEEP_ATTACK:3:0 @Self
+astral_sangre_de_estrella:
+  display: '%group-color%Sangre de Estrella'
+  description: Al matar te curas de golpe y ganas corazones de absorción.
+  applies-to: Armas
+  type: KILL_MOB;KILL_PLAYER
+  group: ASTRAL
+  applies:
+  - ALL_SWORD
+  - ALL_AXE
+  - MACE
+  - TRIDENT
+  - BOW
+  - CROSSBOW
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - ADD_HEALTH:6
+      - POTION:ABSORPTION:1:200 @Self
+    2:
+      chance: 100
+      effects:
+      - ADD_HEALTH:8
+      - POTION:ABSORPTION:2:200 @Self
+    3:
+      chance: 100
+      effects:
+      - ADD_HEALTH:10
+      - POTION:ABSORPTION:3:200 @Self
+astral_muro_de_orion:
+  display: '%group-color%Muro de Orión'
+  description: Muchas flechas y proyectiles no te hacen nada.
+  applies-to: Pecheras
+  type: DEFENSE_PROJECTILE
+  group: ASTRAL
+  applies:
+  - ALL_CHESTPLATE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 55
+      effects:
+      - NEGATE_DAMAGE
+    2:
+      chance: 70
+      effects:
+      - NEGATE_DAMAGE
+    3:
+      chance: 85
+      effects:
+      - NEGATE_DAMAGE
+astral_pulso_gravitatorio:
+  display: '%group-color%Pulso Gravitatorio'
+  description: Cuando te golpean, una onda de gravedad lanza lejos a todos los que te rodean.
+  applies-to: Botas
+  type: DEFENSE;DEFENSE_MOB
+  group: ASTRAL
+  applies:
+  - ALL_BOOTS
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      cooldown: 10
+      effects:
+      - PULL_AWAY:2.0 @Aoe{radius=5,target=all}
+      - PARTICLE:SONIC_BOOM:1:0 @Self
+    2:
+      chance: 100
+      cooldown: 8
+      effects:
+      - PULL_AWAY:2.5 @Aoe{radius=5,target=all}
+      - PARTICLE:SONIC_BOOM:1:0 @Self
+    3:
+      chance: 100
+      cooldown: 6
+      effects:
+      - PULL_AWAY:3.0 @Aoe{radius=5,target=all}
+      - PARTICLE:SONIC_BOOM:1:0 @Self
+astral_mirada_de_medusa:
+  display: '%group-color%Mirada de Medusa'
+  description: Quien te golpea a veces queda petrificado unos segundos.
+  applies-to: Cascos
+  type: DEFENSE;DEFENSE_MOB
+  group: ASTRAL
+  applies:
+  - ALL_HELMET
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 20
+      cooldown: 8
+      effects:
+      - POTION:SLOWNESS:5:60 @Attacker
+      - POTION:MINING_FATIGUE:4:60 @Attacker
+      - PARTICLE:WAX_OFF:30:0.1 @Attacker
+    2:
+      chance: 25
+      cooldown: 8
+      effects:
+      - POTION:SLOWNESS:5:80 @Attacker
+      - POTION:MINING_FATIGUE:4:80 @Attacker
+      - PARTICLE:WAX_OFF:30:0.1 @Attacker
+    3:
+      chance: 30
+      cooldown: 8
+      effects:
+      - POTION:SLOWNESS:5:100 @Attacker
+      - POTION:MINING_FATIGUE:4:100 @Attacker
+      - PARTICLE:WAX_OFF:30:0.1 @Attacker
+astral_cosecha_de_almas:
+  display: '%group-color%Cosecha de Almas'
+  description: Cada muerte te da almas y mucha experiencia.
+  applies-to: Espadas
+  type: KILL_MOB;KILL_PLAYER
+  group: ASTRAL
+  applies:
+  - ALL_SWORD
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 100
+      effects:
+      - ADD_SOULS:1
+      - EXP:5
+    2:
+      chance: 100
+      effects:
+      - ADD_SOULS:2
+      - EXP:10
+    3:
+      chance: 100
+      effects:
+      - ADD_SOULS:3
+      - EXP:15
+astral_enjambre_infernal:
+  display: '%group-color%Enjambre Infernal'
+  description: Al golpear, a veces acuden sabuesos infernales y diablillos ígneos a luchar por ti.
+  applies-to: Espadas y hachas
+  type: ATTACK;ATTACK_MOB
+  group: ASTRAL
+  applies:
+  - ALL_SWORD
+  - ALL_AXE
+  settings:
+    removeable: false
+    disable-in-enchanter: true
+  levels:
+    1:
+      chance: 12
+      cooldown: 65
+      effects:
+      - SUMMON:sabueso_infernal:30:1 @Victim
+      - SUMMON:diablillo_igneo:30:1 @Victim
+    2:
+      chance: 12
+      cooldown: 50
+      effects:
+      - SUMMON:sabueso_infernal:30:2 @Victim
+      - SUMMON:diablillo_igneo:30:2 @Victim
+    3:
+      chance: 12
+      cooldown: 35
+      effects:
+      - SUMMON:sabueso_infernal:30:2 @Victim
+      - SUMMON:diablillo_igneo:30:3 @Victim

@@ -15,10 +15,22 @@ public final class EnchantRegistry {
     private final Map<String, Group> groups;
     private final List<String> groupOrder;
 
+    private final Map<String, String> aliases;
+
     public EnchantRegistry(Map<String, Enchant> enchants, Map<String, Group> groups) {
+        this(enchants, groups, Map.of());
+    }
+
+    /** {@code aliases}: former display names (e.g. AdvancedEnchantments' English ones) to enchant id. */
+    public EnchantRegistry(Map<String, Enchant> enchants, Map<String, Group> groups, Map<String, String> aliases) {
         this.enchants = enchants;
         this.groups = groups;
         this.groupOrder = new ArrayList<>(groups.keySet());
+        this.aliases = aliases;
+    }
+
+    public Map<String, String> aliases() {
+        return aliases;
     }
 
     public Enchant get(String id) {

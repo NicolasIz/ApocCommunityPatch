@@ -45,6 +45,26 @@ public final class Settings {
     public final java.util.Map<String, Integer> lootWeights = new java.util.LinkedHashMap<>();
     public final Set<String> lootWorlds;
     public final double chargeReadySeconds;
+    public final boolean setArcanos;
+    public final boolean setAstrales;
+    public final boolean cursesPermanent;
+    public final boolean astralSoulbound;
+    public final boolean astralKeepOnDeath;
+    public final boolean spanishTexts;
+    public final int bookWrap;
+    public final String boundLore;
+    public final int summonMax;
+    public final double summonLeash;
+    public final double summonAggro;
+    /** Creatures SUMMON can call by name: MythicMobs ids tried in order, then a vanilla fallback. */
+    public final java.util.Map<String, Creature> creatures = new java.util.LinkedHashMap<>();
+
+    public record Creature(String key, List<String> mythic, org.bukkit.entity.EntityType vanilla, String name) {
+    }
+
+    /** books.lore up to 1.5.0: a config that still has it moves to the new, more detailed book. */
+    private static final List<String> OLD_BOOK_LORE = List.of("&7%description%", "", "&a%success%% &7probabilidad de exito",
+            "&c%destroy%% &7probabilidad de romper el item", "", "&7Aplica a: &f%applies-to%", "&8Arrastralo encima del item para aplicarlo.");
     private final FileConfiguration cfg;
 
     public Settings(FileConfiguration c) {
@@ -55,7 +75,12 @@ public final class Settings {
         upgradeOnSameLevel = c.getBoolean("apply.upgrade-on-same-level", true);
         bookMaterial = material(c.getString("books.material"), Material.ENCHANTED_BOOK);
         bookName = c.getString("books.name", "%group-color%&l%display% %level%");
-        bookLore = c.getStringList("books.lore");
+        List<String> bookLines = c.getStringList("books.lore");
+        var cfgDefaults = c.getDefaults();
+        if (bookLines.equals(OLD_BOOK_LORE) && cfgDefaults != null && !cfgDefaults.getStringList("books.lore").isEmpty()) {
+            bookLines = cfgDefaults.getStringList("books.lore");
+        }
+        bookLore = bookLines;
         mysteryMaterial = material(c.getString("mystery-books.material"), Material.BOOK);
         mysteryName = c.getString("mystery-books.name", "%group-color%&lLibro %group-name% &7(Clic derecho)");
         mysteryLore = c.getStringList("mystery-books.lore");
@@ -103,6 +128,30 @@ public final class Settings {
         lootWorlds = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         lootWorlds.addAll(c.getStringList("loot.worlds"));
         chargeReadySeconds = c.getDouble("charge.ready-seconds", 4);
+        setArcanos = c.getBoolean("sets.arcanos", true);
+        setAstrales = c.getBoolean("sets.astrales", true);
+        cursesPermanent = c.getBoolean("curses.permanent", true);
+        astralSoulbound = c.getBoolean("astral.soulbound", true);
+        astralKeepOnDeath = c.getBoolean("astral.keep-on-death", true);
+        spanishTexts = c.getBoolean("spanish-texts", true);
+        bookWrap = Math.max(20, c.getInt("books.wrap", 34));
+        boundLore = c.getString("astral.bound-lore", "&d✦ Vinculado a &f%player%");
+        summonMax = Math.max(1, c.getInt("summons.max-per-player", 6));
+        summonLeash = Math.max(6, c.getDouble("summons.leash", 24));
+        summonAggro = Math.max(2, c.getDouble("summons.aggro-radius", 12));
+        var cs = c.getConfigurationSection("summons.creatures");
+        if (cs != null) {
+            for (String k : cs.getKeys(false)) {
+                var e = cs.getConfigurationSection(k);
+                if (e == null) {
+                    continue;
+                }
+                org.bukkit.entity.EntityType type = com.arkcronist.enchants.engine.Lookups.entity(e.getString("vanilla", "ZOMBIE"));
+                creatures.put(k.toLowerCase(java.util.Locale.ROOT), new Creature(k.toLowerCase(java.util.Locale.ROOT),
+                        e.getStringList("mythicmobs"), type == null ? org.bukkit.entity.EntityType.ZOMBIE : type,
+                        e.getString("name", k)));
+            }
+        }
     }
 
     public String msg(String key) {

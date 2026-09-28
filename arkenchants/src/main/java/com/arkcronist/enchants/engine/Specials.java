@@ -45,7 +45,7 @@ import org.joml.Vector3f;
 final class Specials {
 
     static final Set<String> NAMES = Set.of("CLONES", "DASH", "SLAM", "CHAIN_LIGHTNING", "MARK", "THROW_WEAPON", "HOMING",
-            "MULTISHOT", "REFLECT", "BLINK", "DOUBLE_JUMP", "DROP_ITEM", "DOUBLE_CATCH", "REVEAL", "ACTIONBAR");
+            "MULTISHOT", "REFLECT", "BLINK", "DOUBLE_JUMP", "DROP_ITEM", "DOUBLE_CATCH", "REVEAL", "ACTIONBAR", "SUMMON");
 
     private final Engine engine;
 
@@ -56,6 +56,12 @@ final class Specials {
     boolean apply(String name, List<String> a, Targets t, Context c) {
         switch (name) {
             case "CLONES" -> clones(c, first(t, c), (int) d(a, 0, 1), d(a, 1, 8), d(a, 2, 40));
+            // SUMMON:<creature>:<seconds>:<amount> - allies from MythicMobs (or vanilla) that fight for the holder
+            case "SUMMON" -> {
+                LivingEntity enemy = first(t, c);
+                engine.summons.summon(c.holder, arg(a, 0, "zombie"), d(a, 1, 20), (int) d(a, 2, 1),
+                        enemy == c.holder ? null : enemy);
+            }
             case "DASH" -> dash(c, d(a, 0, 6), d(a, 1, 6));
             case "SLAM" -> slam(c, t, d(a, 0, 4), d(a, 1, 6), d(a, 2, 0.6));
             case "CHAIN_LIGHTNING" -> chain(c, first(t, c), (int) d(a, 0, 3), d(a, 1, 4));
@@ -148,7 +154,7 @@ final class Specials {
         if (!(e instanceof LivingEntity) || e == holder || e.isDead() || e instanceof ArmorStand) {
             return false;
         }
-        String owner = e.getPersistentDataContainer().get(Keys.GUARD, PersistentDataType.STRING);
+        String owner = Summons.owner(e);
         return owner == null || !owner.equals(holder.getUniqueId().toString());
     }
 

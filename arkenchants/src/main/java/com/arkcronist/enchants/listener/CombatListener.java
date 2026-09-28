@@ -3,6 +3,7 @@ package com.arkcronist.enchants.listener;
 import com.arkcronist.enchants.engine.Context;
 import com.arkcronist.enchants.engine.DamageMods;
 import com.arkcronist.enchants.engine.Engine;
+import com.arkcronist.enchants.engine.Summons;
 import com.arkcronist.enchants.item.Items;
 import com.arkcronist.enchants.item.Keys;
 import com.arkcronist.enchants.model.Trigger;
@@ -85,17 +86,29 @@ public final class CombatListener implements Listener {
             return;
         }
         Entity damager = e.getDamager();
-        // guards never hurt the player who summoned them
-        String owner = damager.getPersistentDataContainer().get(Keys.GUARD, PersistentDataType.STRING);
-        if (owner != null && owner.equals(victim.getUniqueId().toString())) {
+        Entity real = damager instanceof Projectile pr0 && pr0.getShooter() instanceof Entity sh ? sh : damager;
+        // guards and summons never hurt the player who called them (not even with arrows or skills)
+        String owner = Summons.owner(damager);
+        String realOwner = owner != null ? owner : Summons.owner(real);
+        if (realOwner != null && realOwner.equals(victim.getUniqueId().toString())) {
             e.setCancelled(true);
             return;
         }
-        // nobody hurts their own clones or guards
-        String victimOwner = victim.getPersistentDataContainer().get(Keys.GUARD, PersistentDataType.STRING);
-        Entity real = damager instanceof Projectile pr0 && pr0.getShooter() instanceof Entity sh ? sh : damager;
-        if (victimOwner != null && victimOwner.equals(real.getUniqueId().toString())) {
+        // nobody hurts their own clones or guards, and allies of the same player leave each other alone
+        String victimOwner = Summons.owner(victim);
+        if (victimOwner != null && (victimOwner.equals(real.getUniqueId().toString()) || victimOwner.equals(realOwner))) {
             e.setCancelled(true);
+            return;
+        }
+        // a summon hitting a player hits as its owner, so PvP rules and protection plugins still apply
+        if (realOwner != null && Summons.isSummon(real) && victim instanceof Player) {
+            Player ownerP = Bukkit.getPlayer(UUID.fromString(realOwner));
+            e.setCancelled(true);
+            if (ownerP != null && ownerP.isOnline()) {
+                double dmg = e.getDamage();
+                victim.setNoDamageTicks(0);
+                engine.quietly(() -> victim.damage(dmg, ownerP));
+            }
             return;
         }
         // a clone's hit counts as its owner's: kills, drops and protection plugins see the player
@@ -147,9 +160,10 @@ public final class CombatListener implements Listener {
                 ch.critical = c.critical;
                 engine.fire(Trigger.CHARGED_ATTACK, ch, Gear.hand(melee));
             }
-            if (engine.clones.count(melee) > 0 && victim.getPersistentDataContainer().get(Keys.GUARD, PersistentDataType.STRING) == null) {
+            if (engine.clones.count(melee) > 0 && Summons.owner(victim) == null) {
                 engine.clones.focus(melee, victim);
             }
+            engine.summons.focus(melee, victim);
         } else if (shooter != null) {
             Context c = new Context(victim instanceof Player ? Trigger.SHOOT : Trigger.SHOOT_MOB, shooter);
             c.attacker = shooter;
@@ -163,9 +177,11 @@ public final class CombatListener implements Listener {
                 items.add(0, launcher);
             }
             engine.fire(c.trigger, c, items);
+            engine.summons.focus(shooter, victim);
         }
         if (victim instanceof Player defender && attacker != null && attacker != defender) {
             engine.combos.reset(defender);
+            engine.summons.focus(defender, attacker);
             Trigger t = projectile ? Trigger.DEFENSE_PROJECTILE : attacker instanceof Player ? Trigger.DEFENSE : Trigger.DEFENSE_MOB;
             Context c = new Context(t, defender);
             c.attacker = attacker;
@@ -194,12 +210,17 @@ public final class CombatListener implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onGuardTarget(EntityTargetLivingEntityEvent e) {
-        String owner = e.getEntity().getPersistentDataContainer().get(Keys.GUARD, PersistentDataType.STRING);
+        String owner = Summons.owner(e.getEntity());
         if (owner == null || e.getTarget() == null) {
             return;
         }
         if (owner.equals(e.getTarget().getUniqueId().toString())) {
             e.setCancelled(true);
+        } else if (Summons.isSummon(e.getEntity())) {
+            // summons fight for their owner: never the owner, never fellow allies, players only when at war with the owner
+            if (!engine.summons.allowed(UUID.fromString(owner), e.getTarget())) {
+                e.setCancelled(true);
+            }
         } else if (e.getEntity().getPersistentDataContainer().has(Keys.CLONE)
                 && !engine.clones.allowed(UUID.fromString(owner), e.getTarget())) {
             // clones only go after what their owner is fighting
@@ -261,10 +282,29 @@ public final class CombatListener implements Listener {
         }
     }
 
+    /** A summon that would die simply goes back where it came from: no drops, no death skills. */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onSummonLethal(EntityDamageEvent e) {
+        if (Summons.isSummon(e.getEntity()) && e.getEntity() instanceof LivingEntity le && e.getFinalDamage() >= le.getHealth()) {
+            e.setCancelled(true);
+            Summons.vanish(le);
+        }
+    }
+
+    /** Guards, clones and summons never leave loot or experience. */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onGuardDeath(EntityDeathEvent e) {
+        if (Summons.owner(e.getEntity()) != null && !(e.getEntity() instanceof Player)) {
+            e.getDrops().clear();
+            e.setDroppedExp(0);
+        }
+    }
+
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerDeath(PlayerDeathEvent e) {
         Player dead = e.getEntity();
         engine.clones.removeAll(dead);
+        engine.summons.removeAll(dead);
         if (!e.getKeepInventory()) {
             // protection scrolls: the item stays with the player, and the protection is used up
             List<ItemStack> saved = new ArrayList<>();

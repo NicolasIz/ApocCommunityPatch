@@ -21,7 +21,7 @@ import org.bukkit.inventory.ItemStack;
 public final class ArkEnchantsCommand implements TabExecutor {
 
     private static final List<String> SUBS = List.of("help", "reload", "list", "give", "mystery", "tracker", "apply", "remove",
-            "info", "enchanter", "random", "scroll", "menu");
+            "info", "enchanter", "random", "scroll", "menu", "uncurse", "bind", "unbind", "summon");
     private final ArkEnchants plugin;
 
     public ArkEnchantsCommand(ArkEnchants plugin) {
@@ -100,6 +100,30 @@ public final class ArkEnchantsCommand implements TabExecutor {
                     plugin.enchanter().open(p);
                 }
             }
+            case "uncurse" -> uncurse(s, a);
+            case "bind", "unbind" -> {
+                Player t = a.length > 1 ? Bukkit.getPlayerExact(a[1]) : s instanceof Player p ? p : null;
+                if (t == null) {
+                    plugin.send(s, "player-not-found");
+                    return true;
+                }
+                ItemStack hand = t.getInventory().getItemInMainHand();
+                if (Items.empty(hand)) {
+                    plugin.send(s, "hold-item");
+                    return true;
+                }
+                Items.bind(hand, sub.equals("bind") ? t : null);
+                t.getInventory().setItemInMainHand(hand);
+                plugin.send(s, sub.equals("bind") ? "bound" : "unbound", "%player%", t.getName());
+            }
+            case "summon" -> {
+                if (!(s instanceof Player p) || a.length < 2) {
+                    plugin.send(s, "usage", "%usage%", "/arkenchants summon <criatura> [segundos] [cantidad]");
+                    return true;
+                }
+                int n = plugin.engine().summons.summon(p, a[1], a.length > 2 ? parse(a[2], 30) : 30, a.length > 3 ? parse(a[3], 1) : 1, null);
+                plugin.send(s, n > 0 ? "summoned" : "summon-failed", "%count%", String.valueOf(n), "%creature%", a[1]);
+            }
             default -> help(s, label);
         }
         return true;
@@ -118,6 +142,9 @@ public final class ArkEnchantsCommand implements TabExecutor {
             "&d/" + label + " list [grupo] &7- lista de encantamientos",
             "&d/" + label + " info &7- encantamientos del item de la mano",
             "&d/" + label + " random &7- encantar al azar el item de la mano (como el botin)",
+            "&d/" + label + " uncurse <jugador> [maldicion|all] &7- quitar maldiciones del item en su mano",
+            "&d/" + label + " bind|unbind [jugador] &7- vincular/desvincular el item de su mano (astrales)",
+            "&d/" + label + " summon <criatura> [segundos] [cantidad] &7- probar una invocacion aliada",
             "&d/" + label + " reload &7- recargar configuracion",
             "&d/enchanter &7- abrir el encantador"};
         for (String l : lines) {
@@ -156,7 +183,12 @@ public final class ArkEnchantsCommand implements TabExecutor {
         int lvl = a.length > 3 ? parse(a[3], 1) : e.maxLevel();
         double success = a.length > 4 ? com.arkcronist.enchants.text.Percent.parse(a[4], 100) : 100;
         double destroy = a.length > 5 ? com.arkcronist.enchants.text.Percent.parse(a[5], 0) : 0;
-        give(t, Items.book(e, Math.max(1, Math.min(lvl, e.maxLevel())), success, destroy));
+        ItemStack book = Items.book(e, Math.max(1, Math.min(lvl, e.maxLevel())), success, destroy);
+        if (e.group().equals("ASTRAL")) {
+            // an astral book belongs to whoever it was given to from the start
+            Items.bind(book, t);
+        }
+        give(t, book);
         plugin.send(s, "given", "%player%", t.getName());
     }
 
@@ -217,6 +249,41 @@ public final class ArkEnchantsCommand implements TabExecutor {
         plugin.send(s, "removed");
     }
 
+    /** Curses never come off by themselves: this is the only way (for admins, e.g. after a purchase or a ticket). */
+    private void uncurse(CommandSender s, String[] a) {
+        if (a.length < 2) {
+            plugin.send(s, "usage", "%usage%", "/arkenchants uncurse <jugador> [maldicion|all]");
+            return;
+        }
+        Player t = Bukkit.getPlayerExact(a[1]);
+        if (t == null) {
+            plugin.send(s, "player-not-found");
+            return;
+        }
+        ItemStack hand = t.getInventory().getItemInMainHand();
+        Map<String, Integer> m = new LinkedHashMap<>(Items.enchants(hand));
+        String which = a.length > 2 ? a[2].toLowerCase(Locale.ROOT) : "all";
+        int removed = 0;
+        for (var it = m.keySet().iterator(); it.hasNext(); ) {
+            String id = it.next();
+            Enchant e = plugin.registry().get(id);
+            if (e != null && e.group().equals("CURSE") && (which.equals("all") || which.equals(id))) {
+                it.remove();
+                removed++;
+            }
+        }
+        if (removed == 0) {
+            plugin.send(s, "no-curse");
+            return;
+        }
+        Items.setEnchants(hand, m);
+        t.getInventory().setItemInMainHand(hand);
+        plugin.send(s, "uncursed", "%count%", String.valueOf(removed), "%player%", t.getName());
+        if (s != t) {
+            plugin.send(t, "uncursed-you", "%count%", String.valueOf(removed));
+        }
+    }
+
     private void info(CommandSender s) {
         if (!(s instanceof Player p)) {
             return;
@@ -255,7 +322,21 @@ public final class ArkEnchantsCommand implements TabExecutor {
             out.addAll(SUBS);
         } else if (a.length == 3 && a[0].equalsIgnoreCase("scroll")) {
             out.addAll(plugin.settings().scrolls.keySet());
-        } else if (a.length == 2 && List.of("give", "mystery", "tracker", "scroll").contains(a[0].toLowerCase(Locale.ROOT))) {
+        } else if (a.length == 3 && a[0].equalsIgnoreCase("uncurse")) {
+            out.add("all");
+            Player t = Bukkit.getPlayerExact(a[1]);
+            if (t != null) {
+                for (String id : Items.enchants(t.getInventory().getItemInMainHand()).keySet()) {
+                    Enchant e = plugin.registry().get(id);
+                    if (e != null && e.group().equals("CURSE")) {
+                        out.add(id);
+                    }
+                }
+            }
+        } else if (a.length == 2 && a[0].equalsIgnoreCase("summon")) {
+            out.addAll(plugin.settings().creatures.keySet());
+        } else if (a.length == 2 && List.of("give", "mystery", "tracker", "scroll", "uncurse", "bind", "unbind")
+                .contains(a[0].toLowerCase(Locale.ROOT))) {
             Bukkit.getOnlinePlayers().forEach(p -> out.add(p.getName()));
         } else if (a.length == 3 && a[0].equalsIgnoreCase("give") || a.length == 2 && List.of("apply", "remove").contains(a[0].toLowerCase(Locale.ROOT))) {
             plugin.registry().all().forEach(e -> out.add(e.id()));

@@ -8,4 +8,9 @@ public record Group(String id, String color, String name, int weight,
     public boolean curse() {
         return id.equals("CURSE");
     }
+
+    /** Astral: admin-only books, bound to their owner, never dropped or traded. */
+    public boolean astral() {
+        return id.equals("ASTRAL");
+    }
 }

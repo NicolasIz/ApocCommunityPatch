@@ -22,3 +22,6 @@ groups:
   CURSE:
     global-color: "&4"
     group-name: "Maldito"
+  ASTRAL:
+    global-color: "&d"
+    group-name: "Astral"
