@@ -27,6 +27,7 @@ public final class Keys {
     public static NamespacedKey OWNER_NAME;
     public static NamespacedKey SUMMON;
     public static NamespacedKey FLY;
+    public static NamespacedKey SLOTS;
 
     private Keys() {
     }
@@ -53,5 +54,6 @@ public final class Keys {
         OWNER_NAME = new NamespacedKey(plugin, "owner_name");
         SUMMON = new NamespacedKey(plugin, "summon");
         FLY = new NamespacedKey(plugin, "fly_granted");
+        SLOTS = new NamespacedKey(plugin, "extra_slots");
     }
 }

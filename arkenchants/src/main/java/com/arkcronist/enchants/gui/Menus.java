@@ -7,7 +7,6 @@ import com.arkcronist.enchants.item.Items;
 import com.arkcronist.enchants.item.LootEnchanter;
 import com.arkcronist.enchants.model.Enchant;
 import com.arkcronist.enchants.model.Group;
-import com.arkcronist.enchants.model.Trigger;
 import com.arkcronist.enchants.text.Percent;
 import com.arkcronist.enchants.text.Roman;
 import java.util.ArrayList;
@@ -43,7 +42,9 @@ public final class Menus {
     /** Where the books go, in groups.yml order: two rows of three in the middle of the purple strip. */
     private static final int[] BOOK_SLOTS = {30, 31, 32, 39, 40, 41, 21, 22, 23};
     /** Scrolls down the right-hand column. */
-    private static final int[] SCROLL_SLOTS = {17, 26, 35, 44};
+    private static final int[] SCROLL_SLOTS = {17, 26, 35, 44, 8};
+    /** Players who were asked to type a search in chat, and for which list. */
+    private final Map<java.util.UUID, Mode> searching = new java.util.concurrent.ConcurrentHashMap<>();
 
     public void main(Player p) {
         Menu m = new Menu(6, plugin.settings().enchanterTitle);
@@ -65,7 +66,7 @@ public final class Menus {
             });
         }
         // with permanent curses the purifying scroll is not sold (it would do nothing)
-        var scrolls = plugin.settings().scrolls.values().stream().filter(sc -> sc.cost() > 0)
+        var scrolls = plugin.settings().scrolls.values().stream().filter(sc -> plugin.enchanter().forSale(sc.cost(), sc.money()))
                 .filter(sc -> !(sc.kind().equals("purify") && plugin.settings().cursesPermanent)).toList();
         for (int i = 0; i < scrolls.size() && i < SCROLL_SLOTS.length; i++) {
             var sc = scrolls.get(i);
@@ -89,6 +90,11 @@ public final class Menus {
             m.set(45, icon(Material.COMMAND_BLOCK, "&c&lAdmin", "&8▪ &fSacar libros y pergaminos", "&8▪ &fEncantar la mano", "&8▪ &fRecargar",
                     "", "&c➟ &fClic para abrir"), e -> adminMenu(p));
         }
+        m.set(47, icon(Material.ENCHANTING_TABLE, "&d&lMesa de Encantar", "&8▪ &fPon tu objeto y un libro,", "&f  pergamino o polvo mágico,",
+                "&f  y pulsa el botón.", "&8▪ &fIgual que arrastrar, pero más", "&f  cómodo (y funciona en Bedrock).", "",
+                "&d➟ &fClic para abrir"), e -> plugin.stations().openTable(p));
+        m.set(51, icon(Material.GRINDSTONE, "&a&lReciclar libros", "&8▪ &fLos libros que no quieras", "&f  se convierten en experiencia",
+                "&f  y a veces en &ePolvo Mágico&f.", "", "&a➟ &fClic para abrir"), e -> plugin.stations().openRecycler(p));
         m.set(49, icon(Material.BARRIER, "&cCerrar"), e -> p.closeInventory());
         m.open(p);
     }
@@ -119,7 +125,7 @@ public final class Menus {
         lore.add("&8▪ &7Rotura: &c" + Percent.fmt(g.destroyMin()) + "-" + Percent.fmt(g.destroyMax()) + "%");
         lore.add("&8▪ &7Encantamientos: &f" + plugin.registry().inGroup(g.id()).size());
         lore.add("");
-        lore.add(cost(p, g.enchanterCost()));
+        lore.add(plugin.enchanter().priceLine(p, g.enchanterCost(), plugin.enchanter().groupMoney(g)));
         return icon(Items.mystery(g), g.color() + "&lEncantamiento " + g.name() + " &7(Clic)", lore);
     }
 
@@ -134,13 +140,8 @@ public final class Menus {
         if (sc.min() < 100) {
             lore.add("&8▪ &7Exito: &a" + Percent.fmt(sc.min()) + "-" + Percent.fmt(sc.max()) + "%");
         }
-        lore.add(cost(p, sc.cost()));
+        lore.add(plugin.enchanter().priceLine(p, sc.cost(), sc.money()));
         return icon(Items.scroll(sc.kind(), sc.max()), sc.name().replace(" &7(%success%%)", "").replace("%success%", "") + " &7(Clic)", lore);
-    }
-
-    private static String cost(Player p, int cost) {
-        int miss = EnchanterMenu.missing(p, cost);
-        return "&b&lCOSTO &f" + cost + " niveles " + (miss > 0 ? "&7(Te faltan &c" + miss + " &7niveles)" : "&a✔");
     }
 
     // ------------------------------------------------------------------ admin
@@ -218,12 +219,83 @@ public final class Menus {
             m.set(9 + start + i, icon(base, g.color() + "&l" + g.name(), List.of("&7" + count(g) + " encantamientos", "",
                     "&eClic para ver")), e -> list(p, g, mode, 0));
         }
+        m.set(4, icon(Material.COMPASS, "&e&lBuscar", "&7Escribe en el chat una palabra:", "&7nombre, efecto, objeto o id.", "",
+                "&eClic para buscar"), e -> askSearch(p, mode));
         if (mode == Mode.BROWSE) {
             back(m, p);
         } else {
             m.set(m.size() - 5, icon(Material.OAK_DOOR, "&7« Admin"), e -> adminMenu(p));
         }
         m.fill(Material.BLACK_STAINED_GLASS_PANE).open(p);
+    }
+
+    // ------------------------------------------------------------------ search
+    public boolean isSearching(Player p) {
+        return searching.containsKey(p.getUniqueId());
+    }
+
+    private void askSearch(Player p, Mode mode) {
+        searching.put(p.getUniqueId(), mode);
+        p.closeInventory();
+        plugin.send(p, "search-ask");
+    }
+
+    /** Called from chat: the text a player typed after pressing Buscar. Returns false when nobody was searching. */
+    public boolean onSearchText(Player p, String text) {
+        Mode mode = searching.remove(p.getUniqueId());
+        if (mode == null) {
+            return false;
+        }
+        String q = normal(text.trim());
+        if (q.isEmpty() || q.equals("cancelar")) {
+            plugin.send(p, "search-cancelled");
+            return true;
+        }
+        List<Enchant> found = new ArrayList<>();
+        for (Enchant e : plugin.registry().all()) {
+            if (mode == Mode.BROWSE && e.group().equals("CURSE") && !admin(p)) {
+                continue;
+            }
+            String hay = normal(Items.format("%display%", e, 1) + " " + e.description() + " " + e.appliesTo() + " " + e.id());
+            if (hay.contains(q)) {
+                found.add(e);
+            }
+        }
+        found.sort((a, b) -> plugin.registry().rank(b.group()) - plugin.registry().rank(a.group()) != 0
+                ? plugin.registry().rank(b.group()) - plugin.registry().rank(a.group()) : a.id().compareTo(b.id()));
+        if (found.isEmpty()) {
+            plugin.send(p, "search-none", "%query%", text.trim());
+            return true;
+        }
+        results(p, text.trim(), found, mode, 0);
+        return true;
+    }
+
+    private static String normal(String s) {
+        String n = java.text.Normalizer.normalize(com.arkcronist.enchants.text.Colors.plain(
+                com.arkcronist.enchants.text.Colors.of(s)), java.text.Normalizer.Form.NFD);
+        return n.replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT);
+    }
+
+    private void results(Player p, String query, List<Enchant> found, Mode mode, int page) {
+        int pages = Math.max(1, (found.size() + 44) / 45);
+        int pg = Math.max(0, Math.min(page, pages - 1));
+        Menu m = new Menu(6, "&8Buscar: &f" + (query.length() > 16 ? query.substring(0, 16) + "…" : query)
+                + " &8(" + (pg + 1) + "/" + pages + ")");
+        for (int i = 0; i < 45 && pg * 45 + i < found.size(); i++) {
+            Enchant e = found.get(pg * 45 + i);
+            Group g = plugin.registry().group(e.group());
+            m.set(i, enchantIcon(e, mode), click -> onEnchant(p, e, g, mode, 0, click));
+        }
+        if (pg > 0) {
+            m.set(45, icon(Material.ARROW, "&e« Anterior"), e -> results(p, query, found, mode, pg - 1));
+        }
+        if (pg < pages - 1) {
+            m.set(53, icon(Material.ARROW, "&eSiguiente »"), e -> results(p, query, found, mode, pg + 1));
+        }
+        m.set(48, icon(Material.COMPASS, "&e&lOtra búsqueda"), e -> askSearch(p, mode));
+        m.set(50, icon(Material.OAK_DOOR, "&7« Volver"), e -> groups(p, mode));
+        m.fill(Material.GRAY_STAINED_GLASS_PANE).open(p);
     }
 
     private int count(Group g) {
@@ -385,13 +457,14 @@ public final class Menus {
         Menu m = new Menu(3, "&8Pergaminos");
         int slot = 10;
         for (var sc : plugin.settings().scrolls.values()) {
-            String name = sc.name().replace(" &7(%success%%)", "").replace("%success%", "");
-            m.set(slot, icon(Items.scroll(sc.kind(), 100), name, List.of("&eClic: &fal 100%",
-                    "&eClic derecho: &fcon % al azar (" + Percent.fmt(sc.min()) + "-" + Percent.fmt(sc.max()) + "%)")), c -> {
-                        double rate = c.isRightClick() ? Percent.roll(sc.min(), sc.max(), ThreadLocalRandom.current()) : 100;
+            String name = sc.name().replace(" &7(%success%%)", "").replace(" &7(+%success%%)", "").replace(" &7(+%success%)", "")
+                    .replace("%success%", "");
+            m.set(slot, icon(Items.scroll(sc.kind(), sc.max()), name, List.of("&eClic: &fal máximo (" + Percent.fmt(sc.max()) + ")",
+                    "&eClic derecho: &fal azar (" + Percent.fmt(sc.min()) + "-" + Percent.fmt(sc.max()) + ")")), c -> {
+                        double rate = c.isRightClick() ? Percent.roll(sc.min(), sc.max(), ThreadLocalRandom.current()) : sc.max();
                         give(p, Items.scroll(sc.kind(), rate));
                     });
-            slot += 2;
+            slot++;
         }
         m.set(16, icon(Items.tracker(), null, List.of("&eClic para sacarlo")), c -> give(p, Items.tracker()));
         m.set(m.size() - 5, icon(Material.OAK_DOOR, "&7« Admin"), e -> adminMenu(p));

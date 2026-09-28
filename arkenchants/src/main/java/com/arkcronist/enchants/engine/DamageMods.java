@@ -10,9 +10,17 @@ public final class DamageMods {
     public double multiplier = 1;
     public double flat;
 
+    /** Caps from config.yml (balance.*): how far all enchants together may raise or lower one hit, in percent. */
+    public static double maxBonus = 200;
+    public static double maxReduction = 80;
+
     public double apply(double damage) {
-        double d = (damage * Math.max(0, 1 + percent / 100.0)) * multiplier + flat;
-        return Math.max(0, d);
+        double factor = Math.max(0, 1 + percent / 100.0) * multiplier;
+        if (multiplier != 0) {
+            // NEGATE_DAMAGE (multiplier 0) still cancels the whole hit; everything else stays within the caps
+            factor = Math.max(1 - maxReduction / 100.0, Math.min(1 + maxBonus / 100.0, factor));
+        }
+        return Math.max(0, damage * factor + flat);
     }
 
     public boolean changed() {

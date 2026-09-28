@@ -99,7 +99,7 @@ public final class Effects {
             }
             case "INCREASE_DAMAGE" -> {
                 if (c.damage != null) {
-                    c.damage.percent += d(a, 0, 10);
+                    c.damage.percent += d(a, 0, 10) * (c.other() instanceof Player ? c.power : 1);
                 }
             }
             case "DECREASE_DAMAGE" -> {
@@ -125,11 +125,11 @@ public final class Effects {
             }
             case "DO_HARM" -> {
                 double dmg = d(a, 0, 1);
-                engine.quietly(() -> t.entities.forEach(e -> e.damage(dmg)));
+                engine.quietly(() -> t.entities.forEach(e -> e.damage(e instanceof Player ? dmg * c.power : dmg)));
             }
             case "STEAL_HEALTH" -> {
-                double amount = d(a, 0, 1);
                 LivingEntity from = c.other();
+                double amount = d(a, 0, 1) * (from instanceof Player ? c.power : 1);
                 if (from == null) {
                     return;
                 }
@@ -149,7 +149,7 @@ public final class Effects {
             case "EXTINGUISH" -> t.entities.forEach(e -> e.setFireTicks(0));
             case "LIGHTNING" -> t.entities.forEach(e -> {
                 e.getWorld().strikeLightningEffect(e.getLocation());
-                engine.quietly(() -> e.damage(d(a, 0, 4)));
+                engine.quietly(() -> e.damage(d(a, 0, 4) * (e instanceof Player ? c.power : 1)));
             });
             case "TNT" -> {
                 float power = (float) d(a, 0, 2);
@@ -366,7 +366,11 @@ public final class Effects {
                 }
             }
             case "FLY" -> {
-                if (c.holder.getGameMode() == GameMode.SURVIVAL || c.holder.getGameMode() == GameMode.ADVENTURE) {
+                // no enchant flight in the middle of a PvP fight, nor in the worlds that forbid it
+                if (engine.settings().noFlyWorlds.contains(c.holder.getWorld().getName())
+                        || engine.settings().noFlyInCombat && engine.inCombat(c.holder)) {
+                    dropFlight(c.holder);
+                } else if (c.holder.getGameMode() == GameMode.SURVIVAL || c.holder.getGameMode() == GameMode.ADVENTURE) {
                     c.holder.setAllowFlight(true);
                     c.holder.getPersistentDataContainer().set(Keys.FLY, PersistentDataType.LONG, System.currentTimeMillis());
                 }
@@ -380,6 +384,18 @@ public final class Effects {
                     engine.warnOnce("fx " + line.name(), "Unknown effect " + line.name() + " in " + c.enchantId + " (ignored).");
                 }
             }
+        }
+    }
+
+    /** Takes away flight that an enchant gave (never the flight of creative, spectator or /fly from other plugins). */
+    public static void dropFlight(Player p) {
+        if (!p.getPersistentDataContainer().has(Keys.FLY)) {
+            return;
+        }
+        p.getPersistentDataContainer().remove(Keys.FLY);
+        if (p.getGameMode() == GameMode.SURVIVAL || p.getGameMode() == GameMode.ADVENTURE) {
+            p.setFlying(false);
+            p.setAllowFlight(false);
         }
     }
 

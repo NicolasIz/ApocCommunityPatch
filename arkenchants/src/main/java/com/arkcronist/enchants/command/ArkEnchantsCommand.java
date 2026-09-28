@@ -21,7 +21,7 @@ import org.bukkit.inventory.ItemStack;
 public final class ArkEnchantsCommand implements TabExecutor {
 
     private static final List<String> SUBS = List.of("help", "reload", "list", "give", "mystery", "tracker", "apply", "remove",
-            "info", "enchanter", "random", "scroll", "menu", "uncurse", "bind", "unbind", "summon");
+            "info", "enchanter", "random", "scroll", "menu", "uncurse", "bind", "unbind", "summon", "mesa", "reciclar");
     private final ArkEnchants plugin;
 
     public ArkEnchantsCommand(ArkEnchants plugin) {
@@ -45,7 +45,7 @@ public final class ArkEnchantsCommand implements TabExecutor {
             return true;
         }
         String sub = a[0].toLowerCase(Locale.ROOT);
-        if (!sub.equals("enchanter") && !sub.equals("info") && !sub.equals("help") && !s.hasPermission("arkenchants.admin")) {
+        if (!java.util.Set.of("enchanter", "info", "help", "mesa", "reciclar").contains(sub) && !s.hasPermission("arkenchants.admin")) {
             plugin.send(s, "no-permission");
             return true;
         }
@@ -70,7 +70,7 @@ public final class ArkEnchantsCommand implements TabExecutor {
             case "info" -> info(s);
             case "scroll" -> {
                 if (a.length < 3 || !plugin.settings().scrolls.containsKey(a[2].toLowerCase(Locale.ROOT))) {
-                    plugin.send(s, "usage", "%usage%", "/arkenchants scroll <jugador> <extract|protect|purify> [cantidad] [exito%]");
+                    plugin.send(s, "usage", "%usage%", "/arkenchants scroll <jugador> <extract|protect|purify|dust|slots|cleanse> [cantidad] [valor]");
                     return true;
                 }
                 Player t = Bukkit.getPlayerExact(a[1]);
@@ -101,6 +101,16 @@ public final class ArkEnchantsCommand implements TabExecutor {
                 }
             }
             case "uncurse" -> uncurse(s, a);
+            case "mesa" -> {
+                if (s instanceof Player p) {
+                    plugin.stations().openTable(p);
+                }
+            }
+            case "reciclar" -> {
+                if (s instanceof Player p) {
+                    plugin.stations().openRecycler(p);
+                }
+            }
             case "bind", "unbind" -> {
                 Player t = a.length > 1 ? Bukkit.getPlayerExact(a[1]) : s instanceof Player p ? p : null;
                 if (t == null) {
@@ -142,6 +152,8 @@ public final class ArkEnchantsCommand implements TabExecutor {
             "&d/" + label + " list [grupo] &7- lista de encantamientos",
             "&d/" + label + " info &7- encantamientos del item de la mano",
             "&d/" + label + " random &7- encantar al azar el item de la mano (como el botin)",
+            "&d/" + label + " mesa &7- mesa de encantar (poner libro y objeto y pulsar)",
+            "&d/" + label + " reciclar &7- convertir libros en experiencia y polvo magico",
             "&d/" + label + " uncurse <jugador> [maldicion|all] &7- quitar maldiciones del item en su mano",
             "&d/" + label + " bind|unbind [jugador] &7- vincular/desvincular el item de su mano (astrales)",
             "&d/" + label + " summon <criatura> [segundos] [cantidad] &7- probar una invocacion aliada",

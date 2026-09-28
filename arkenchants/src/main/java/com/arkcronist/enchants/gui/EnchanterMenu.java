@@ -15,9 +15,35 @@ import org.bukkit.entity.Player;
 public final class EnchanterMenu {
 
     private final ArkEnchants plugin;
+    private final Money money;
 
     public EnchanterMenu(ArkEnchants plugin) {
         this.plugin = plugin;
+        this.money = new Money(plugin.getLogger());
+    }
+
+    /** Charging money: enchanter.currency is MONEY, Vault is there, and this thing has a money price. */
+    private boolean inMoney(double price) {
+        return plugin.settings().payWithMoney && price > 0 && money.ready();
+    }
+
+    public double groupMoney(Group g) {
+        return plugin.settings().groupMoney.getOrDefault(g.id(), 0.0);
+    }
+
+    /** Whether it is on sale at all (a price in the currency in use, or in levels). */
+    public boolean forSale(int levels, double price) {
+        return inMoney(price) || levels > 0;
+    }
+
+    /** The price line for menu lore, with what is missing. */
+    public String priceLine(Player p, int levels, double price) {
+        if (inMoney(price)) {
+            double have = p.getGameMode() == GameMode.CREATIVE ? Double.MAX_VALUE : money.balance(p);
+            return "&b&lPRECIO &f" + money.format(price) + " " + (have >= price ? "&a✔" : "&7(Te faltan &c" + money.format(price - have) + "&7)");
+        }
+        int miss = missing(p, levels);
+        return "&b&lCOSTO &f" + levels + " niveles " + (miss > 0 ? "&7(Te faltan &c" + miss + " &7niveles)" : "&a✔");
     }
 
     public void open(Player p) {
@@ -27,29 +53,31 @@ public final class EnchanterMenu {
     /** The groups sold here, in groups.yml order. */
     public List<Group> groups() {
         List<Group> out = new ArrayList<>(plugin.registry().groups());
-        out.removeIf(g -> !g.inEnchanter() || plugin.registry().inGroup(g.id()).isEmpty());
+        out.removeIf(g -> !g.inEnchanter() || plugin.registry().inGroup(g.id()).isEmpty()
+                || !forSale(g.enchanterCost(), groupMoney(g)));
         return out;
     }
 
     public void buy(Player p, Group g) {
         int cost = g.enchanterCost();
-        if (!pay(p, cost)) {
+        double price = groupMoney(g);
+        if (!pay(p, cost, price)) {
             return;
         }
         give(p, Items.mystery(g));
         p.playSound(p.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1, 1);
-        plugin.send(p, "bought", "%group%", g.color() + g.name(), "%cost%", String.valueOf(cost));
+        plugin.send(p, "bought", "%group%", g.color() + g.name(), "%cost%", paidText(cost, price));
     }
 
     public void buyScroll(Player p, String kind) {
         var sc = plugin.settings().scrolls.get(kind);
-        if (sc == null || !pay(p, sc.cost())) {
+        if (sc == null || !pay(p, sc.cost(), sc.money())) {
             return;
         }
         give(p, Items.scroll(kind, Percent.roll(sc.min(), sc.max(), ThreadLocalRandom.current())));
         p.playSound(p.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1, 1.3f);
         plugin.send(p, "bought", "%group%", sc.name().replace(" &7(%success%%)", "").replace("%success%", ""), "%cost%",
-                String.valueOf(sc.cost()));
+                paidText(sc.cost(), sc.money()));
     }
 
     /** Levels still missing for a price, 0 when it can be paid (always 0 in creative). */
@@ -57,7 +85,22 @@ public final class EnchanterMenu {
         return p.getGameMode() == GameMode.CREATIVE ? 0 : Math.max(0, cost - p.getLevel());
     }
 
-    private boolean pay(Player p, int cost) {
+    private String paidText(int levels, double price) {
+        return inMoney(price) ? money.format(price) : levels + " niveles";
+    }
+
+    private boolean pay(Player p, int cost, double price) {
+        if (inMoney(price)) {
+            if (p.getGameMode() == GameMode.CREATIVE) {
+                return true;
+            }
+            if (money.balance(p) < price || !money.take(p, price)) {
+                p.playSound(p.getLocation(), Sound.ENTITY_VILLAGER_NO, 1, 1);
+                plugin.send(p, "not-enough-money", "%cost%", money.format(price));
+                return false;
+            }
+            return true;
+        }
         if (missing(p, cost) > 0) {
             p.playSound(p.getLocation(), Sound.ENTITY_VILLAGER_NO, 1, 1);
             plugin.send(p, "not-enough-xp", "%cost%", String.valueOf(cost));

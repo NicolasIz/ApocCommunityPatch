@@ -22,6 +22,10 @@ spanish-texts: true
 # Solo un admin puede quitarlas con /ake uncurse <jugador> [maldicion|all].
 curses:
   permanent: true
+  # Lagrima del Fenix (pergamino "cleanse"): la unica forma de quitar una maldicion sin un admin. Viene desactivada.
+  # Si la activas, no se vende: dala como premio raro (por ejemplo, botin de un jefe de MythicMobs con
+  # "command{c=ake scroll <trigger.name> cleanse}").
+  cleanse-item: false
 
 # Libros y objetos Astrales: los mas poderosos. Solo se consiguen de un admin (/ake give).
 #   soulbound: no se pueden tirar, ni meter en cofres/shulkers/menus de tradeo, ni marcos, ni bundles.
@@ -31,6 +35,8 @@ curses:
 astral:
   soulbound: true
   keep-on-death: true
+  # Fuerza de los Astrales contra jugadores, en % (daño extra, rayos, robo de vida). 100 = igual que contra mobs.
+  pvp-power: 50
   bound-lore: '&d✦ Vinculado a &f%player%'
 
 # Invocaciones (efecto SUMMON:<criatura>:<segundos>:<cantidad>): criaturas de MythicMobs que luchan por quien las
@@ -92,6 +98,26 @@ loot:
 # ("Harvest III"). Si esta activo, al entrar o al coger el item se convierten solos a ArkEnchants.
 convert-advancedenchantments-lore: true
 
+# Equilibrio: cuanto pueden subir o bajar el daño de un golpe todos los encantamientos juntos (en %).
+# Con 200, un golpe hace como mucho el triple; con 80, un golpe recibido hace como minimo el 20%.
+# NEGATE_DAMAGE (anular el golpe entero) no cuenta para este limite.
+balance:
+  max-damage-bonus: 200
+  max-damage-reduction: 80
+
+# Combate entre jugadores: quien pega o recibe un golpe de otro jugador queda "en combate" estos segundos.
+# no-fly: en combate se pierde el vuelo que dan los encantamientos (Alas, Alas del Cosmos...).
+# no-fly-worlds: mundos donde ese vuelo nunca funciona (por ejemplo tu mundo PvP).
+combat:
+  tag-seconds: 15
+  no-fly: true
+  no-fly-worlds: []
+
+# Reciclaje (/ake reciclar o boton en /ake): los libros que no quieres dan experiencia (groups.<RAREZA>.recycle,
+# en puntos) y a veces un Polvo Magico.
+recycle:
+  dust-chance: 15
+
 # Mundos donde ningun encantamiento se activa.
 disabled-worlds: []
 
@@ -108,10 +134,13 @@ lore:
   format: '%group-color%%display% %level%'
   souls: '&cAlmas: &f%souls%'
   protected: '&f&l✦ PROTEGIDO &7(no se pierde al morir)'
+  slots: '&bRanuras extra: &f+%slots%'
 
 apply:
   # Cuantos encantamientos distintos puede tener un item.
   max-enchants: 9
+  # Ranuras que se pueden añadir como mucho con Orbes de Ranuras.
+  max-extra-slots: 6
   # Aplicar un libro del mismo nivel que ya tiene el item lo sube un nivel (hasta el maximo).
   upgrade-on-same-level: true
 
@@ -153,7 +182,7 @@ mystery-books:
 #   protect: el item no se pierde al morir ni se rompe si falla un libro (la proteccion se gasta al salvarlo).
 #   purify:  quita una maldicion al azar (solo si curses.permanent es false; si no, ni se vende).
 # success: rango del % de exito con que sale cada pergamino (acepta decimales, p. ej. 0.1-100).
-# cost: precio en niveles en /enchanter (0 = no se vende).
+# cost: precio en niveles en /enchanter (0 = no se vende). money: precio con dinero (si enchanter.currency es MONEY).
 scrolls:
   extract:
     material: INK_SAC
@@ -183,6 +212,36 @@ scrolls:
     success: 25-100
     cost: 35
 
+  # Polvo Magico: arrastralo encima de un LIBRO para subirle el % de exito (el % sale de "success").
+  dust:
+    material: GLOWSTONE_DUST
+    name: '&e&lPolvo Magico &7(+%success%%)'
+    lore:
+      - '&7Arrastralo encima de un libro para'
+      - '&7subir su probabilidad de exito.'
+      - '&e+%success%% &7de exito'
+    success: 3-15
+    cost: 15
+  # Orbe de Ranuras: arrastralo encima de un objeto para que admita mas encantamientos ("success" = ranuras).
+  slots:
+    material: HEART_OF_THE_SEA
+    name: '&b&lOrbe de Ranuras &7(+%success%)'
+    lore:
+      - '&7Arrastralo encima de un objeto para que'
+      - '&7admita &b%success% &7encantamiento(s) mas.'
+    success: 1
+    cost: 0
+  # Lagrima del Fenix: quita una maldicion al azar. Solo funciona con curses.cleanse-item: true.
+  cleanse:
+    material: GHAST_TEAR
+    name: '&d&lLagrima del Fenix &7(%success%%)'
+    lore:
+      - '&7Arrastrala encima de un objeto maldito'
+      - '&7para intentar quitarle una maldicion.'
+      - '&a%success%% &7de exito'
+    success: 10-40
+    cost: 0
+
 soul-tracker:
   material: PAPER
   name: '&f&lRastreador de almas'
@@ -193,18 +252,22 @@ soul-tracker:
 # /ake y /enchanter abren el mismo menu: libros por rareza en el centro, pergaminos a la derecha.
 enchanter:
   title: '&5⚡ &dEncantamientos &5⚡'
+  # XP = se paga con niveles de experiencia. MONEY = con el dinero del servidor (necesita Vault y un plugin de
+  # economia); lo que no tenga precio "money" se sigue pagando con niveles.
+  currency: XP
 
 # Ajustes de libros por grupo. Colores y nombres salen de groups.yml.
 # success / destroy: rango del porcentaje que sale al abrir un libro misterioso. Acepta decimales:
 # con 0.1-100 un libro puede salir con 0.1% de exito.
-# cost: niveles de experiencia en /enchanter.
+# cost: niveles de experiencia en /enchanter. money: precio con dinero (enchanter.currency: MONEY).
+# recycle: puntos de experiencia que da reciclar un libro de esa rareza.
 groups:
-  SIMPLE:    {success: 40-100, destroy: 0-30, cost: 5}
-  UNIQUE:    {success: 30-100, destroy: 0-35, cost: 10}
-  ELITE:     {success: 20-100, destroy: 0-40, cost: 18}
-  ULTIMATE:  {success: 10-100, destroy: 5-45, cost: 25}
-  LEGENDARY: {success: 1-100, destroy: 5-50, cost: 35}
-  FABLED:    {success: 0.1-100, destroy: 10-60, cost: 50}
+  SIMPLE:    {success: 40-100, destroy: 0-30, cost: 5, money: 500, recycle: 20}
+  UNIQUE:    {success: 30-100, destroy: 0-35, cost: 10, money: 1500, recycle: 40}
+  ELITE:     {success: 20-100, destroy: 0-40, cost: 18, money: 4000, recycle: 70}
+  ULTIMATE:  {success: 10-100, destroy: 5-45, cost: 25, money: 9000, recycle: 110}
+  LEGENDARY: {success: 1-100, destroy: 5-50, cost: 35, money: 20000, recycle: 170}
+  FABLED:    {success: 0.1-100, destroy: 10-60, cost: 50, money: 50000, recycle: 260}
   CURSE:     {success: 100-100, destroy: 0-0, cost: 0, enchanter: false}
   ASTRAL:    {success: 100-100, destroy: 0-0, cost: 0, enchanter: false}
 
@@ -255,3 +318,19 @@ messages:
   unbound: '&7Item desvinculado.'
   summoned: '&bHan acudido &f%count% &b(%creature%).'
   summon-failed: '&cNo se pudo invocar &f%creature%&c: no existe esa criatura ni en MythicMobs ni en vanilla.'
+  not-enough-money: '&cNecesitas &f%cost% &cpara comprar eso.'
+  dust-full: '&eEse libro ya tiene un 100% de exito.'
+  dust-applied: '&eEl libro ahora tiene un &f%success%% &ede exito.'
+  combine-level: '&cSolo se combinan dos libros del mismo encantamiento y el mismo nivel.'
+  combine-max: '&cEse libro ya esta en su nivel maximo.'
+  combined: '&aHas combinado los libros: %enchant%'
+  slots-max: '&cEse objeto ya tiene el maximo de ranuras extra (&f%max%&c).'
+  slots-added: '&bAhora el objeto admite &f%slots% &bencantamientos.'
+  cleanse-disabled: '&cLa Lagrima del Fenix esta desactivada en este servidor.'
+  table-empty: '&7Pon tu objeto en la casilla de la izquierda y el libro o pergamino en la del centro.'
+  table-nothing: '&cEso no se puede usar sobre ese objeto.'
+  recycle-empty: '&7Mete primero algun libro de encantamiento.'
+  recycled: '&aReciclados &f%books% &alibros: &f%xp% &apuntos de experiencia y &e%dust% &apolvo(s) magico(s).'
+  search-ask: '&eEscribe en el chat lo que buscas &7(nombre, efecto, objeto o id). &8Escribe "cancelar" para salir.'
+  search-cancelled: '&7Busqueda cancelada.'
+  search-none: '&cNo hay encantamientos con &f%query%&c.'

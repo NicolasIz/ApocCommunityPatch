@@ -39,6 +39,8 @@ public final class Context {
     public boolean tpDrops;
     public Material replaceDrop;
     public boolean revive;
+    /** Multiplies the damage of this enchant's effects on players (astral enchants in PvP, astral.pvp-power). */
+    public double power = 1;
     public final java.util.List<ItemStack> keep = new java.util.ArrayList<>();
 
     public Context(Trigger trigger, Player holder) {
@@ -64,6 +66,7 @@ public final class Context {
         c.caught = caught;
         c.hook = hook;
         c.projectile = projectile;
+        c.power = power;
         c.parent = this;
         return c;
     }

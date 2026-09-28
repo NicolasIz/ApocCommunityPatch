@@ -4,11 +4,8 @@ import com.arkcronist.enchants.ArkEnchants;
 import com.arkcronist.enchants.item.Items;
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import org.bukkit.Material;
 import org.bukkit.entity.Allay;
 import org.bukkit.entity.ArmorStand;
@@ -29,7 +26,6 @@ import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
@@ -48,7 +44,6 @@ public final class AstralListener implements Listener {
             Material.LECTERN, Material.JUKEBOX, Material.VAULT);
 
     private final ArkEnchants plugin;
-    private final Map<UUID, List<ItemStack>> kept = new HashMap<>();
 
     public AstralListener(ArkEnchants plugin) {
         this.plugin = plugin;
@@ -84,7 +79,7 @@ public final class AstralListener implements Listener {
             return;
         }
         Inventory top = e.getView().getTopInventory();
-        if (OWN.contains(top.getType())) {
+        if (OWN.contains(top.getType()) || com.arkcronist.enchants.gui.Stations.isStation(top)) {
             return;
         }
         Inventory clicked = e.getClickedInventory();
@@ -112,7 +107,7 @@ public final class AstralListener implements Listener {
             return;
         }
         Inventory top = e.getView().getTopInventory();
-        if (OWN.contains(top.getType())) {
+        if (OWN.contains(top.getType()) || com.arkcronist.enchants.gui.Stations.isStation(top)) {
             return;
         }
         for (int raw : e.getRawSlots()) {
@@ -192,20 +187,20 @@ public final class AstralListener implements Listener {
             }
         }
         if (!saved.isEmpty()) {
-            kept.computeIfAbsent(e.getEntity().getUniqueId(), k -> new ArrayList<>()).addAll(saved);
+            plugin.engine().saved.add(e.getEntity().getUniqueId(), saved);
         }
     }
 
+    /** Someone who logged off (or the server restarted) while dead gets their items when they are back. */
     @EventHandler
-    public void onRespawn(PlayerRespawnEvent e) {
-        List<ItemStack> back = kept.remove(e.getPlayer().getUniqueId());
-        if (back != null) {
-            Player p = e.getPlayer();
-            plugin.getServer().getScheduler().runTask(plugin, () -> {
-                for (ItemStack it : back) {
-                    p.getInventory().addItem(it).values().forEach(rest -> p.getWorld().dropItem(p.getLocation(), rest));
+    public void onJoin(org.bukkit.event.player.PlayerJoinEvent e) {
+        Player p = e.getPlayer();
+        if (!p.isDead() && plugin.engine().saved.has(p.getUniqueId())) {
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+                if (p.isOnline() && !p.isDead()) {
+                    plugin.engine().saved.giveBack(p);
                 }
-            });
+            }, 20);
         }
     }
 

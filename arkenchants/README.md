@@ -5,7 +5,7 @@ ItemsAdder. It is a separate plugin from ArkcronistGenerator and builds on its o
 
 ```
 cd arkenchants
-mvn package        # target/ArkEnchants-1.6.0.jar
+mvn package        # target/ArkEnchants-1.7.0.jar
 ```
 
 ## Why it does not break ItemsAdder
@@ -52,6 +52,36 @@ Book lore splits the description into short lines (a line break inside one lore 
 and adds when the enchant fires, its chance, its cooldown and its level; lines starting with `[normal]`,
 `[curse]` or `[astral]` only show on that kind of book. `spanish-texts: false` turns it all off.
 
+## Table, recycler and the new scrolls
+
+- `/ake mesa` (or the button in `/ake`): an enchanting table menu. Put the item and a book, scroll or dust in
+  and press the button; it does exactly what dragging does, which is easier on Bedrock (Geyser).
+- `/ake reciclar`: unwanted books turn into experience (`groups.<GROUP>.recycle` points each) with a
+  `recycle.dust-chance` % of magic dust per book. Astral books cannot be recycled.
+- Magic dust (`dust`): dragged onto a book, raises its success chance. Sold in `/enchanter`.
+- Two books of the same enchant and level dragged onto each other make one book a level higher (average
+  success, highest destroy chance).
+- Slot orb (`slots`): the item holds more enchants (`apply.max-extra-slots` at most). Not sold by default.
+- Phoenix tear (`cleanse`): the one way to remove a curse without an admin; off by default
+  (`curses.cleanse-item`). Meant as a rare reward, e.g. a MythicMobs boss drop running
+  `ake scroll <trigger.name> cleanse`.
+
+## Balance and PvP
+
+- `balance.max-damage-bonus` / `max-damage-reduction`: how far all enchants together can raise or lower one
+  hit (NEGATE_DAMAGE still cancels a hit completely).
+- `astral.pvp-power`: astral damage, lightning and life steal against players, in percent.
+- Players who hit or are hit by another player are in combat for `combat.tag-seconds`; with `combat.no-fly`
+  they lose enchant flight meanwhile, and `combat.no-fly-worlds` never allows it.
+- Items kept through death (protection scrolls, KEEP_ON_DEATH, astral items) are written to
+  `guardados.yml` at once and handed back on respawn or on the next join, so a restart loses nothing.
+
+## Paying with money
+
+`enchanter.currency: MONEY` charges `groups.<GROUP>.money` and `scrolls.<kind>.money` through Vault (reached
+by reflection, not a build dependency). Anything without a money price, or a server without Vault and an
+economy, keeps charging experience levels.
+
 ## Summons
 
 `SUMMON:<creature>:<seconds>:<amount>` calls allies. `<creature>` is a key under `summons.creatures` in
@@ -86,6 +116,7 @@ like books:
 - Protection (`protect`): the item is kept on death and survives a book that would destroy it; the
   protection is used up the first time it saves the item.
 - Purification (`purify`): takes a random curse off (only with `curses.permanent: false`).
+- Magic dust, slot orbs and the phoenix tear: see below. The admin menu has a search button (type in chat).
 
 Extraction and purification have their own success chance. All three are sold in `/enchanter` and given with
 `/arkenchants scroll <player> <extract|protect|purify> [amount] [success%]`.
@@ -153,5 +184,6 @@ type and REMOVE_ENCHANT.
 | `/arkenchants uncurse <player> [curse\|all]` | arkenchants.admin |
 | `/arkenchants bind\|unbind [player]` | arkenchants.admin |
 | `/arkenchants summon <creature> [seconds] [amount]` | arkenchants.admin |
+| `/arkenchants mesa`, `/arkenchants reciclar` | everyone |
 | `/arkenchants info` | everyone |
 | `/enchanter` (`/ce`) | arkenchants.enchanter (default: everyone) |

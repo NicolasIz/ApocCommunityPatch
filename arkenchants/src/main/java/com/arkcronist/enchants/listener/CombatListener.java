@@ -34,7 +34,6 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.persistence.PersistentDataType;
 
 /** Hits, shots, kills and deaths. */
 public final class CombatListener implements Listener {
@@ -43,7 +42,6 @@ public final class CombatListener implements Listener {
     /** The bow/crossbow/trident each flying projectile came from. */
     private final Map<UUID, ItemStack> launchers = new HashMap<>();
     /** Items KEEP_ON_DEATH saved, handed back on respawn. */
-    private final Map<UUID, List<ItemStack>> kept = new HashMap<>();
     private final Map<UUID, List<ItemStack>> pendingKeep = new HashMap<>();
 
     public CombatListener(Engine engine) {
@@ -131,6 +129,10 @@ public final class CombatListener implements Listener {
         } else if (damager instanceof Projectile pr && pr.getShooter() instanceof Player p) {
             shooter = p;
             launcher = launchers.get(pr.getUniqueId());
+        }
+        if (victim instanceof Player vp && real instanceof Player ap && vp != ap) {
+            engine.tagCombat(vp);
+            engine.tagCombat(ap);
         }
         LivingEntity attacker = melee != null ? melee : shooter != null ? shooter
                 : damager instanceof LivingEntity le ? le
@@ -317,7 +319,7 @@ public final class CombatListener implements Listener {
                 }
             }
             if (!saved.isEmpty()) {
-                kept.computeIfAbsent(dead.getUniqueId(), k -> new ArrayList<>()).addAll(saved);
+                engine.saved.add(dead.getUniqueId(), saved);
                 dead.sendMessage(com.arkcronist.enchants.text.Colors.of(engine.settings().prefix()
                         + engine.settings().msg("protection-death").replace("%count%", String.valueOf(saved.size()))));
             }
@@ -337,7 +339,7 @@ public final class CombatListener implements Listener {
                 }
             }
             if (!saved.isEmpty()) {
-                kept.computeIfAbsent(dead.getUniqueId(), k -> new ArrayList<>()).addAll(saved);
+                engine.saved.add(dead.getUniqueId(), saved);
             }
         }
         Player killer = dead.getKiller();
@@ -354,13 +356,13 @@ public final class CombatListener implements Listener {
 
     @EventHandler
     public void onRespawn(PlayerRespawnEvent e) {
-        List<ItemStack> back = kept.remove(e.getPlayer().getUniqueId());
-        if (back != null) {
-            for (ItemStack i : back) {
-                e.getPlayer().getInventory().addItem(i).values()
-                        .forEach(rest -> e.getPlayer().getWorld().dropItemNaturally(e.getPlayer().getLocation(), rest));
+        Player p = e.getPlayer();
+        // a tick later, once the player is really back in the world
+        Bukkit.getScheduler().runTask(engine.plugin, () -> {
+            if (p.isOnline() && !p.isDead()) {
+                engine.saved.giveBack(p);
             }
-        }
+        });
     }
 
     @EventHandler(priority = EventPriority.HIGH)

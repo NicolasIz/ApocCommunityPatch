@@ -71,7 +71,7 @@ public final class Items {
         }
         ItemMeta meta = item.getItemMeta();
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
-        if (!pdc.has(Keys.ENCHANTS) && !pdc.has(Keys.SOUL_TRACKER) && !pdc.has(Keys.PROTECTED)) {
+        if (!pdc.has(Keys.ENCHANTS) && !pdc.has(Keys.SOUL_TRACKER) && !pdc.has(Keys.PROTECTED) && !pdc.has(Keys.SLOTS)) {
             return false;
         }
         List<String> want = lines(pdc);
@@ -157,6 +157,10 @@ public final class Items {
         }
         if (pdc.has(Keys.PROTECTED)) {
             out.add(settings.protectedLore);
+        }
+        int extra = pdc.getOrDefault(Keys.SLOTS, PersistentDataType.INTEGER, 0);
+        if (extra > 0) {
+            out.add(settings.slotsLore.replace("%slots%", String.valueOf(extra)));
         }
         return out;
     }
@@ -498,6 +502,54 @@ public final class Items {
         }
         render(meta);
         item.setItemMeta(meta);
+    }
+
+    // ------------------------------------------------------------------ extra slots (Orbe de Ranuras)
+    public static int extraSlots(ItemStack item) {
+        return empty(item) || !item.hasItemMeta() ? 0
+                : item.getItemMeta().getPersistentDataContainer().getOrDefault(Keys.SLOTS, PersistentDataType.INTEGER, 0);
+    }
+
+    /** How many different enchants this item can hold: apply.max-enchants plus its orbs. */
+    public static int maxSlots(ItemStack item) {
+        return settings.maxEnchants + extraSlots(item);
+    }
+
+    public static void setExtraSlots(ItemStack item, int n) {
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) {
+            return;
+        }
+        if (n <= 0) {
+            meta.getPersistentDataContainer().remove(Keys.SLOTS);
+        } else {
+            meta.getPersistentDataContainer().set(Keys.SLOTS, PersistentDataType.INTEGER, n);
+        }
+        render(meta);
+        item.setItemMeta(meta);
+    }
+
+    /** Copies the astral owner of one item onto another (e.g. a book remade with more success). */
+    public static void copyOwner(ItemStack from, ItemStack to) {
+        java.util.UUID o = owner(from);
+        if (o == null) {
+            return;
+        }
+        String name = from.getItemMeta().getPersistentDataContainer().get(Keys.OWNER_NAME, PersistentDataType.STRING);
+        org.bukkit.entity.Player p = org.bukkit.Bukkit.getPlayer(o);
+        if (p != null) {
+            bind(to, p);
+            return;
+        }
+        ItemMeta meta = to.getItemMeta();
+        meta.getPersistentDataContainer().set(Keys.OWNER, PersistentDataType.STRING, o.toString());
+        if (name != null) {
+            meta.getPersistentDataContainer().set(Keys.OWNER_NAME, PersistentDataType.STRING, name);
+            List<Component> lore = meta.lore() == null ? new ArrayList<>() : new ArrayList<>(meta.lore());
+            lore.add(Colors.of(settings.boundLore.replace("%player%", name)));
+            meta.lore(lore);
+        }
+        to.setItemMeta(meta);
     }
 
     // ------------------------------------------------------------------ souls

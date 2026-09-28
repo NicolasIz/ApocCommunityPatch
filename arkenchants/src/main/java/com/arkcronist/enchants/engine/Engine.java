@@ -31,6 +31,9 @@ public final class Engine {
     public final Charges charges = new Charges();
     public final Clones clones = new Clones();
     public final Summons summons = new Summons(this);
+    public final com.arkcronist.enchants.item.SavedItems saved;
+    /** Last time each player hit or was hit by another player (combat tag). */
+    private final Map<UUID, Long> pvp = new HashMap<>();
     public final Effects effects;
     private final Placeholders placeholders = new Placeholders(this);
     private final Map<String, Long> cooldowns = new HashMap<>();
@@ -48,6 +51,20 @@ public final class Engine {
         this.registry = registry;
         this.settings = settings;
         this.effects = new Effects(this);
+        this.saved = new com.arkcronist.enchants.item.SavedItems(plugin.getDataFolder(), plugin.getLogger());
+    }
+
+    /** Marks a player as fighting another player; a player with enchant flight loses it at once. */
+    public void tagCombat(Player p) {
+        pvp.put(p.getUniqueId(), System.currentTimeMillis());
+        if (settings.noFlyInCombat) {
+            Effects.dropFlight(p);
+        }
+    }
+
+    public boolean inCombat(Player p) {
+        Long t = pvp.get(p.getUniqueId());
+        return t != null && System.currentTimeMillis() - t < settings.combatSeconds * 1000L;
     }
 
     public void reload(EnchantRegistry r, Settings s) {
@@ -116,6 +133,9 @@ public final class Engine {
             return;
         }
         Context c = base.forEnchant(item, e.id(), lvl);
+        if (e.group().equals("ASTRAL") && c.other() instanceof Player) {
+            c.power = settings.astralPvpPower / 100.0;
+        }
         Condition.Verdict v = Condition.check(level.conditions(), s -> Tags.resolve(placeholders.fill(s, c), ThreadLocalRandom.current()));
         if (v.stop()) {
             return;

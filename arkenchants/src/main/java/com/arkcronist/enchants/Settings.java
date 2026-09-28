@@ -34,7 +34,8 @@ public final class Settings {
     public final java.util.Map<String, Scroll> scrolls = new java.util.LinkedHashMap<>();
 
     /** One kind of scroll: looks, the success range it is sold/given with, and its /enchanter price in levels. */
-    public record Scroll(String kind, Material material, String name, List<String> lore, double min, double max, int cost) {
+    public record Scroll(String kind, Material material, String name, List<String> lore, double min, double max, int cost,
+                         double money) {
     }
     public final boolean setExtra;
     public final boolean setAdvanced;
@@ -58,6 +59,20 @@ public final class Settings {
     public final double summonAggro;
     /** Creatures SUMMON can call by name: MythicMobs ids tried in order, then a vanilla fallback. */
     public final java.util.Map<String, Creature> creatures = new java.util.LinkedHashMap<>();
+    public final boolean noFlyInCombat;
+    public final int combatSeconds;
+    public final Set<String> noFlyWorlds;
+    public final double astralPvpPower;
+    public final double maxDamageBonus;
+    public final double maxDamageReduction;
+    public final int maxExtraSlots;
+    public final String slotsLore;
+    public final boolean cleanseEnabled;
+    /** How /enchanter charges: XP (levels) or MONEY (Vault). */
+    public final boolean payWithMoney;
+    public final java.util.Map<String, Double> groupMoney = new java.util.HashMap<>();
+    public final java.util.Map<String, Integer> recycleXp = new java.util.HashMap<>();
+    public final double recycleDustChance;
 
     public record Creature(String key, List<String> mythic, org.bukkit.entity.EntityType vanilla, String name) {
     }
@@ -101,13 +116,17 @@ public final class Settings {
         String[][] defaults = {
             {"extract", "INK_SAC", "&8&lPergamino de Extraccion &7(%success%%)", "25-100", "30"},
             {"protect", "PAPER", "&f&lPergamino de Proteccion", "100", "25"},
-            {"purify", "GLOW_INK_SAC", "&b&lPergamino de Purificacion &7(%success%%)", "25-100", "35"}};
+            {"purify", "GLOW_INK_SAC", "&b&lPergamino de Purificacion &7(%success%%)", "25-100", "35"},
+            {"dust", "GLOWSTONE_DUST", "&e&lPolvo Magico &7(+%success%%)", "3-15", "15"},
+            {"slots", "HEART_OF_THE_SEA", "&b&lOrbe de Ranuras &7(+%success%)", "1", "0"},
+            {"cleanse", "GHAST_TEAR", "&d&lLagrima del Fenix &7(%success%%)", "10-40", "0"}};
         for (String[] d : defaults) {
             String base = "scrolls." + d[0] + ".";
             double[] range = com.arkcronist.enchants.load.EnchantLoader.range(c.getString(base + "success", d[3]), 100, 100);
             List<String> lore = c.getStringList(base + "lore");
             scrolls.put(d[0], new Scroll(d[0], material(c.getString(base + "material", d[1]), Material.PAPER),
-                    c.getString(base + "name", d[2]), lore, range[0], range[1], c.getInt(base + "cost", Integer.parseInt(d[4]))));
+                    c.getString(base + "name", d[2]), lore, range[0], range[1], c.getInt(base + "cost", Integer.parseInt(d[4])),
+                    c.getDouble(base + "money", 0)));
         }
         setExtra = c.getBoolean("sets.extra", true);
         setAdvanced = c.getBoolean("sets.advancedenchantments", true);
@@ -135,6 +154,29 @@ public final class Settings {
         astralKeepOnDeath = c.getBoolean("astral.keep-on-death", true);
         spanishTexts = c.getBoolean("spanish-texts", true);
         bookWrap = Math.max(20, c.getInt("books.wrap", 34));
+        noFlyInCombat = c.getBoolean("combat.no-fly", true);
+        combatSeconds = Math.max(1, c.getInt("combat.tag-seconds", 15));
+        noFlyWorlds = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        noFlyWorlds.addAll(c.getStringList("combat.no-fly-worlds"));
+        astralPvpPower = Math.max(0, c.getDouble("astral.pvp-power", 50));
+        maxDamageBonus = Math.max(0, c.getDouble("balance.max-damage-bonus", 200));
+        maxDamageReduction = Math.max(0, Math.min(100, c.getDouble("balance.max-damage-reduction", 80)));
+        maxExtraSlots = Math.max(0, c.getInt("apply.max-extra-slots", 6));
+        slotsLore = c.getString("lore.slots", "&bRanuras extra: &f+%slots%");
+        cleanseEnabled = c.getBoolean("curses.cleanse-item", false);
+        payWithMoney = "MONEY".equalsIgnoreCase(c.getString("enchanter.currency", "XP"));
+        var gs = c.getConfigurationSection("groups");
+        java.util.Map<String, Integer> recycleDefaults = java.util.Map.of("SIMPLE", 20, "UNIQUE", 40, "ELITE", 70,
+                "ULTIMATE", 110, "LEGENDARY", 170, "FABLED", 260);
+        recycleXp.putAll(recycleDefaults);
+        if (gs != null) {
+            for (String k : gs.getKeys(false)) {
+                String id = k.toUpperCase(java.util.Locale.ROOT);
+                groupMoney.put(id, gs.getDouble(k + ".money", 0));
+                recycleXp.put(id, gs.getInt(k + ".recycle", recycleDefaults.getOrDefault(id, 0)));
+            }
+        }
+        recycleDustChance = c.getDouble("recycle.dust-chance", 15);
         boundLore = c.getString("astral.bound-lore", "&d✦ Vinculado a &f%player%");
         summonMax = Math.max(1, c.getInt("summons.max-per-player", 6));
         summonLeash = Math.max(6, c.getDouble("summons.leash", 24));

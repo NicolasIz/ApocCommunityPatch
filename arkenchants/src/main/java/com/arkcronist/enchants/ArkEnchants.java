@@ -44,6 +44,8 @@ public final class ArkEnchants extends JavaPlugin {
     private BukkitTask passive;
     private BukkitTask jumpTask;
     private JumpListener jumps;
+    private com.arkcronist.enchants.item.Workbench workbench;
+    private com.arkcronist.enchants.gui.Stations stations;
 
     @Override
     public void onEnable() {
@@ -54,14 +56,18 @@ public final class ArkEnchants extends JavaPlugin {
         engine = new Engine(this, registry, settings);
         chargeConfig();
         enchanter = new EnchanterMenu(this);
+        workbench = new com.arkcronist.enchants.item.Workbench(this);
         var pm = getServer().getPluginManager();
         pm.registerEvents(new CombatListener(engine), this);
         pm.registerEvents(new BlockListener(engine), this);
         pm.registerEvents(new MiscListener(engine), this);
         pm.registerEvents(new BookListener(this), this);
         pm.registerEvents(new com.arkcronist.enchants.listener.AstralListener(this), this);
+        stations = new com.arkcronist.enchants.gui.Stations(this);
+        pm.registerEvents(stations, this);
         menus = new com.arkcronist.enchants.gui.Menus(this);
         pm.registerEvents(new com.arkcronist.enchants.gui.Menu.Clicks(), this);
+        pm.registerEvents(new com.arkcronist.enchants.gui.SearchChat(this), this);
         pm.registerEvents(new com.arkcronist.enchants.listener.LootListener(this), this);
         jumps = new JumpListener(settings.passiveInterval);
         pm.registerEvents(jumps, this);
@@ -161,6 +167,8 @@ public final class ArkEnchants extends JavaPlugin {
     public void load() {
         reloadConfig();
         settings = new Settings(getConfig());
+        com.arkcronist.enchants.engine.DamageMods.maxBonus = settings.maxDamageBonus;
+        com.arkcronist.enchants.engine.DamageMods.maxReduction = settings.maxDamageReduction;
         YamlConfiguration groupsYml = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "groups.yml"));
         Map<String, Group> groups = EnchantLoader.groups(groupsYml.getConfigurationSection("groups"),
                 getConfig().getConfigurationSection("groups"));
@@ -275,6 +283,14 @@ public final class ArkEnchants extends JavaPlugin {
 
     public Settings settings() {
         return settings;
+    }
+
+    public com.arkcronist.enchants.gui.Stations stations() {
+        return stations;
+    }
+
+    public com.arkcronist.enchants.item.Workbench workbench() {
+        return workbench;
     }
 
     public Engine engine() {
