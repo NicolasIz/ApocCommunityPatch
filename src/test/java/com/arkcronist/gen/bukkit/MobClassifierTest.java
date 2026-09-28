@@ -150,6 +150,54 @@ class MobClassifierTest {
     }
 
     @Test
+    @DisplayName("an NPC pack's figures are never enemies, whatever body they borrow")
+    void npcPacksAreNotEnemies() {
+        // All real, from the NPC packs on the server this was written for. Every one of them is
+        // built on a hostile body - HUSK, DROWNED, SKELETON - with its damage left at the body's,
+        // and every one of them read as HOSTILE and was headed for the spawn pools.
+
+        // Mercs & Merchants and Dark Kingdom: nothing in the name or the faction, only
+        // Invincible: true. A shopkeeper nobody can kill.
+        MobFacts merchant = new MobFacts("merchant_1", "HUSK", 20.0, "", "", MobFacts.UNKNOWN,
+                true, false);
+        assertEquals(Role.PROP, MobClassifier.classify(merchant).role());
+        MobFacts advisor = new MobFacts("dark_advisor", "HUSK", 20.0, "", "", MobFacts.UNKNOWN,
+                true, false);
+        assertEquals(Role.PROP, MobClassifier.classify(advisor).role());
+
+        // Medieval NPCs: not invincible, but its target selectors only clear. It can never pick
+        // anyone to attack.
+        MobFacts trader = new MobFacts("trader", "DROWNED", 20.0, "Trader", "", MobFacts.UNKNOWN,
+                false, true);
+        assertEquals(Role.PROP, MobClassifier.classify(trader).role());
+
+        // The pack says so. Crescent's MOVING variants fight back when hit, but they are townsfolk
+        // for a town, filed under faction NPC; Elite NPCs' aggressive guards the same.
+        assertEquals(Role.PROP, MobClassifier.classify(
+                new MobFacts("Naga_MOVING", "DROWNED", 30.0, "", "NPC")).role());
+        assertEquals(Role.PROP, MobClassifier.classify(
+                new MobFacts("ECNPCs-Aggressive-Elf_Guard", "SKELETON", 40.0, "", "ECNPCs", 5.0))
+                .role());
+        assertEquals(Role.PROP, roleOf("fantasy_npc_blacksmith", "HUSK", 20.0));
+    }
+
+    @Test
+    @DisplayName("the NPC signals leave real enemies alone")
+    void npcSignalsDoNotCatchEnemies() {
+        // The signals default to false, so every mob read before they existed is judged exactly as
+        // it was.
+        assertEquals(Role.HOSTILE, roleOf("ncr_Skeleton_Tank", "ZOMBIE", 70.0));
+        assertEquals(Role.HOSTILE, roleOf("cursed_knight", "VINDICATOR", 40.0));
+        // A mob with target selectors of its own is not "never targets" - only one that clears
+        // them and adds nothing is.
+        MobFacts goblin = new MobFacts("am_goblin_melee", "ZOMBIE", 20.0, "", "Monsters", 4.0,
+                false, false);
+        assertEquals(Role.HOSTILE, MobClassifier.classify(goblin).role());
+        // And "villager" is a body word, not an NPC one: a zombie villager brute is still a brute.
+        assertEquals(Role.HOSTILE, roleOf("zombie_villager_brute", "ZOMBIE_VILLAGER", 30.0));
+    }
+
+    @Test
     @DisplayName("a MythicMobs that will not say the damage is not taken as zero")
     void damageUnknownIsNotZero() {
         // The five-argument constructor is every caller written before damage was read, and the

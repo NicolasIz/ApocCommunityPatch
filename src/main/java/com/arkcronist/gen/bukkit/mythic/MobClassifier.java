@@ -79,6 +79,20 @@ public final class MobClassifier {
     private static final Set<String> PROP_FACTIONS = Set.of(
             "GUI", "PROP", "PROPS", "VFX", "FX", "DISPLAY", "HOLOGRAM", "MARKER", "INTERNAL");
 
+    /**
+     * Factions NPC packs file their figures under.
+     *
+     * <p>Not scenery in the {@link #PROP_FACTIONS} sense - some of these fight back when hit - but
+     * the same answer for a spawn table: a pack that calls its mobs NPCs made townsfolk, guards and
+     * shopkeepers to be placed by hand, not enemies for the world to produce.</p>
+     */
+    private static final Set<String> NPC_FACTIONS = Set.of(
+            "NPC", "NPCS", "ECNPCS", "TOWNSFOLK", "CITIZEN", "CITIZENS", "VILLAGER", "VILLAGERS");
+
+    /** Words that mark a name as an NPC's: fantasy_npc_banker, ECNPCs-Passive-Elf_Mage. */
+    private static final Set<String> NPC_WORDS = Set.of(
+            "npc", "npcs", "ecnpcs", "townsfolk", "standstill");
+
     private static final Set<String> PET_WORDS = Set.of("pet", "pets", "companion", "mount", "minion");
 
     /**
@@ -173,6 +187,31 @@ public final class MobClassifier {
                 && PROP_FACTIONS.contains(facts.faction().trim().toUpperCase(Locale.ROOT))) {
             return new Verdict(Role.PROP, Habitat.ANY,
                     "its author filed it under faction " + facts.faction() + ", which is scenery");
+        }
+
+        // NPCs. Placed by hand, never produced by the world - see NPC_FACTIONS. Three signals, any
+        // one of which is enough: the pack says so (faction or name), the mob cannot be killed, or
+        // it can never choose a target. The last two are what catch an NPC pack that labels
+        // nothing: a merchant on a HUSK with Invincible: true, a king whose target selectors only
+        // clear. Both reached the spawn pools on a real server before this existed.
+        if (!facts.faction().isBlank()
+                && NPC_FACTIONS.contains(facts.faction().trim().toUpperCase(Locale.ROOT))) {
+            return new Verdict(Role.PROP, Habitat.ANY,
+                    "its author filed it under faction " + facts.faction() + ": an NPC, not an enemy");
+        }
+        for (String word : words) {
+            if (NPC_WORDS.contains(word)) {
+                return new Verdict(Role.PROP, Habitat.ANY,
+                        "its name contains '" + word + "': an NPC, not an enemy");
+            }
+        }
+        if (facts.invincible()) {
+            return new Verdict(Role.PROP, Habitat.ANY,
+                    "it is invincible, which is an NPC or a prop, never something to fight");
+        }
+        if (facts.neverTargets()) {
+            return new Verdict(Role.PROP, Habitat.ANY,
+                    "its target selectors only clear, so it never attacks anyone: an NPC");
         }
 
         // Scenery that nobody bothered to label. A decorative NPC pack builds its figures on a

@@ -198,6 +198,7 @@ cada veredicto guarda **el motivo** por el que se tomó, y `/ag mythic <nombre>`
 | veredicto | cómo se decide | qué se hace con él |
 |---|---|---|
 | `PROP` | base `ARMOR_STAND`, `MARKER`, `FALLING_BLOCK`…, o palabras como `_vfx`, `_proj`, `geyser`, `boulder`, `hitbox` | **nunca aparece** |
+| `PROP` (NPC) | `Invincible: true`; `AITargetSelectors` que solo hacen `clear`; facción `NPC`/`ECNPCs`/`Townsfolk`; o `npc`, `townsfolk`, `standstill` en el nombre | **nunca aparece**: un NPC se pone a mano |
 | `PET` | `pet`, `companion`, `mount`, `minion` en el nombre | nunca aparece |
 | `BOSS` | vida ≥ `boss-health` (250), o `king`, `lord`, `titan`, `ancient`, `warden`… | nunca aparece solo; se listan para que **tú** los pongas en `boss-table` |
 | `HOSTILE` | lo que queda, y tiene tipo base o vida | sí aparece |
@@ -219,6 +220,10 @@ guiones, guiones bajos, espacios y las mayúsculas del camelCase antes de mirar 
 mago: un `ARMOR_STAND` sin vida ni IA. Métele eso a una lista de spawn y el mundo se llena de soportes
 invisibles. Todos los packs traen algunos — `spdr_stomp_vfx`, `Lava_Geyser`, `cursed_arrow_vfx` — y son
 la única clase de error aquí que es fácil de cometer y caro de deshacer.
+
+**Los NPC entran en `PROP` por lo mismo.** Un pack de NPCs monta a sus mercaderes, reyes y guardias sobre
+`HUSK`, `DROWNED` o `SKELETON` por la forma del cuerpo, y sin mirar nada más eran `HOSTILE`: el
+mercader invencible acababa saliendo por el mundo como un monstruo al que no se puede matar.
 
 #### Qué no toca
 

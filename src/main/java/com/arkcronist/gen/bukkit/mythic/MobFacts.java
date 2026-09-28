@@ -14,9 +14,12 @@ package com.arkcronist.gen.bukkit.mythic;
  * @param displayName what a player sees over its head, or empty
  * @param faction     the MythicMobs faction, or empty - few packs set it
  * @param damage      its configured damage, or {@link #UNKNOWN} when it could not be read
+ * @param invincible  whether its options make it impossible to kill; false when unknown
+ * @param neverTargets whether its target selectors do nothing but clear, so it can never pick a
+ *                    victim; false when unknown
  */
 public record MobFacts(String name, String entityType, double health, String displayName,
-                       String faction, double damage) {
+                       String faction, double damage, boolean invincible, boolean neverTargets) {
 
     /**
      * What a number that could not be read looks like.
@@ -33,6 +36,12 @@ public record MobFacts(String name, String entityType, double health, String dis
         this(name, entityType, health, displayName, faction, UNKNOWN);
     }
 
+    /** Everything but the two NPC signals, for callers written before they were read. */
+    public MobFacts(String name, String entityType, double health, String displayName,
+                    String faction, double damage) {
+        this(name, entityType, health, displayName, faction, damage, false, false);
+    }
+
     public MobFacts {
         name = name == null ? "" : name.trim();
         entityType = entityType == null ? "" : entityType.trim().toUpperCase(java.util.Locale.ROOT);
@@ -42,7 +51,7 @@ public record MobFacts(String name, String entityType, double health, String dis
 
     /** Just the name, for the common case of a pack that says nothing else. */
     public static MobFacts of(String name) {
-        return new MobFacts(name, "", 0.0, "", "", UNKNOWN);
+        return new MobFacts(name, "", 0.0, "", "", UNKNOWN, false, false);
     }
 
     /** Whether the damage came back at all. */

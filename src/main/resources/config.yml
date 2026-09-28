@@ -778,6 +778,9 @@ hostile-mobs:
   #               geyser, boulder... es un efecto visual, no un enemigo. Meter un
   #               ARMOR_STAND en una lista de spawn te llena el mundo de soportes
   #               invisibles, y esta es la razon principal de que esto exista.
+  #               Tambien los NPC: Invincible: true, target selectors que solo
+  #               hacen clear, faccion NPC/ECNPCs, o "npc" en el nombre. Un
+  #               mercader o un rey se ponen a mano, no los saca el mundo.
   #    * PET   -> nunca aparece. pet, companion, mount, minion en el nombre.
   #    * BOSS  -> nunca aparece solo. Vida >= boss-health, o king/lord/titan/...
   #               en el nombre. Se listan para que TU los pongas en boss-table.

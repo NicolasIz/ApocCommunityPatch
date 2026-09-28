@@ -44,6 +44,9 @@ public final class MythicCatalogue {
     private static final String[] DISPLAY_GETTERS = {"getDisplayName", "getName"};
     private static final String[] FACTION_GETTERS = {"getFaction"};
     private static final String[] DAMAGE_GETTERS = {"getDamage", "getBaseDamage"};
+    private static final String[] INVINCIBLE_GETTERS = {"getIsInvincible", "isInvincible",
+            "getInvincible"};
+    private static final String[] CONFIG_GETTERS = {"getConfig"};
 
     private MythicCatalogue() {
     }
@@ -112,10 +115,69 @@ public final class MythicCatalogue {
             }
             facts.add(new MobFacts(name, text(mob, TYPE_GETTERS), number(mob, HEALTH_GETTERS),
                     text(mob, DISPLAY_GETTERS), text(mob, FACTION_GETTERS),
-                    numberOrUnknown(mob, DAMAGE_GETTERS)));
+                    numberOrUnknown(mob, DAMAGE_GETTERS), invincible(mob), neverTargets(mob)));
         }
         facts.sort(Comparator.comparing(f -> f.name().toLowerCase(java.util.Locale.ROOT)));
         return List.copyOf(facts);
+    }
+
+    /**
+     * Whether the mob is set up so nothing can kill it.
+     *
+     * <p>An NPC pack's figures are the case this is for: a merchant built on a {@code HUSK} for its
+     * shape, with {@code Invincible: true} so players cannot kill the shopkeeper. Nothing else about
+     * it says "not an enemy" - it has the husk's damage and no telling name - and without this it
+     * went into the spawn pools and walked out into the world, unkillable.</p>
+     *
+     * <p>Asked of the mob first and of its config second, because the getter has moved between
+     * versions and the config key has not. False when neither answers.</p>
+     */
+    private static boolean invincible(Object mob) {
+        Object value = firstResult(mob.getClass(), mob, INVINCIBLE_GETTERS);
+        if (value instanceof Boolean flag) {
+            return flag;
+        }
+        Object config = firstResult(mob.getClass(), mob, CONFIG_GETTERS);
+        Object option = config == null ? null : call(config, "getBoolean", "Options.Invincible");
+        return option instanceof Boolean flag && flag;
+    }
+
+    /**
+     * Whether the mob's target selectors do nothing but clear the vanilla ones.
+     *
+     * <p>{@code AITargetSelectors: [0 clear]} is how a pack writes "this never picks a victim": a
+     * trader who stands and looks at players, a king on a throne. A mob like that is scenery
+     * whatever it is built on. A mob with no target selectors at all keeps its vanilla ones and
+     * says nothing here.</p>
+     */
+    private static boolean neverTargets(Object mob) {
+        Object config = firstResult(mob.getClass(), mob, CONFIG_GETTERS);
+        Object value = config == null ? null : call(config, "getStringList", "AITargetSelectors");
+        if (!(value instanceof Collection<?> selectors) || selectors.isEmpty()) {
+            return false;
+        }
+        for (Object selector : selectors) {
+            String goal = String.valueOf(selector).trim().replaceFirst("^\\d+\\s+", "");
+            if (!goal.equalsIgnoreCase("clear")) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** A one-string-argument method's result, or null when there is none or it fails. */
+    private static Object call(Object target, String name, String argument) {
+        try {
+            Method method = target.getClass().getMethod(name, String.class);
+            try {
+                method.setAccessible(true);
+            } catch (RuntimeException ignored) {
+                // May still be invokable.
+            }
+            return method.invoke(target, argument);
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            return null;
+        }
     }
 
     /** The first of these no-argument getters that returns anything. */
