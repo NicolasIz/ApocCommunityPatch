@@ -40,20 +40,21 @@ class HostileMobsConfigTest {
             "spider_melee", "spider_trapper", "spider_poison", "spider_elite",
             // Cursed Mobs.
             "cursed_knight", "cursed_archer", "cursed_mage",
-            // Dungeon Skeletons V1 - Volcanic Cinder expansion, by E-magination.
-            "dSkeleton_footman_Cinder_em", "dSkeleton_swordman_Cinder_em", "dSkeleton_Archer_Cinder_em",
-            "dSkeleton_Warrior_Cinder_em", "dSkeleton_Halberdier_Cinder_em", "dSkeleton_Wizard_Cinder_em",
-            "dSkeleton_Tank_Cinder_em",
+            // RPG Skeletons Vol 1 and Vol 2, by Necron.
+            "ncr_Skeleton_Spearman", "ncr_Skeleton_Warrior", "ncr_Skeleton_Archer", "ncr_Skeleton_Mage",
+            "ncr_Skeleton_Tank", "ncr_Skeleton_Sphere", "ncr_Skeleton_Crossbow", "ncr_Skeleton_Assassin",
             // RPG Monster Series: Howling Nether. Blaze_King is a boss and belongs in boss-table,
             // not in a list that replaces every blaze in the dimension.
             "Lava_Mite", "Lava_Piranha", "Fire_Imp", "Nether_Mushroom", "Lost_Soul", "Hellhound",
             "Dark_Imp");
 
-    /** The Volcanic Cinder names. The whole point of them is that they stay in the Nether. */
-    private static final Set<String> CINDER = Set.of(
-            "dSkeleton_footman_Cinder_em", "dSkeleton_swordman_Cinder_em", "dSkeleton_Archer_Cinder_em",
-            "dSkeleton_Warrior_Cinder_em", "dSkeleton_Halberdier_Cinder_em", "dSkeleton_Wizard_Cinder_em",
-            "dSkeleton_Tank_Cinder_em");
+    /**
+     * The Necron skeletons, which took the Nether over from the Volcanic Cinder ones and with it
+     * the rule that they stay there.
+     */
+    private static final Set<String> NETHER_SKELETONS = Set.of(
+            "ncr_Skeleton_Spearman", "ncr_Skeleton_Warrior", "ncr_Skeleton_Archer", "ncr_Skeleton_Mage",
+            "ncr_Skeleton_Tank", "ncr_Skeleton_Sphere", "ncr_Skeleton_Crossbow", "ncr_Skeleton_Assassin");
 
     /**
      * The entries in those packs that must never appear in a spawn list.
@@ -72,6 +73,8 @@ class HostileMobsConfigTest {
             // Lava_Geyser is an ARMOR_STAND effect and Blaze_Minion is a summon of the Blaze_King,
             // not something the world should be producing on its own.
             "Lava_Geyser", "Blaze_Minion",
+            // The assassin's thrown dagger: an invincible WOLF with no AI.
+            "ncr_Skeleton_Assassin_dagger",
             "skeleton_mage_proj", "spider_trap", "spider_pois", "spdr_stomp_vfx", "spdr_stomp_vfx_small",
             "cursed_slash_vfx", "cursed_cast_vfx", "cursed_spiral_vfx", "cursed_ray_vfx",
             "cursed_flames_vfx", "cursed_hollow_vfx", "cursed_arrow_vfx", "cursed_arrow_rain_vfx");
@@ -168,24 +171,24 @@ class HostileMobsConfigTest {
     }
 
     @Test
-    @DisplayName("the volcanic skeletons appear in the Nether and nowhere else")
-    void theCinderSkeletonsStayInTheNether() {
+    @DisplayName("the Nether skeletons appear in the Nether and nowhere else")
+    void theNetherSkeletonsStayInTheNether() {
         // This was the instruction in so many words, and it is the one thing here that a typo could
-        // undo without anybody noticing until a player met a volcanic skeleton on a green hillside.
+        // undo without anybody noticing until a player met a Nether skeleton on a green hillside.
         List<String> escaped = new ArrayList<>();
         for (String name : overworldNames()) {
-            if (CINDER.contains(name)) {
+            if (NETHER_SKELETONS.contains(name)) {
                 escaped.add(name);
             }
         }
         assertTrue(escaped.isEmpty(),
-                "these are the Volcanic Cinder skeletons and they are reachable outside the Nether: "
+                "these are the Nether skeletons and they are reachable outside the Nether: "
                         + escaped);
 
         List<String> down = new ArrayList<>(flatten(nether().get("table")));
         down.addAll(flatten(ambient().get("nether")));
-        assertTrue(down.stream().anyMatch(CINDER::contains),
-                "nothing in the Nether lists is a volcanic skeleton, so they would never appear at all");
+        assertTrue(down.stream().anyMatch(NETHER_SKELETONS::contains),
+                "nothing in the Nether lists is a Nether skeleton, so they would never appear at all");
 
         // What is NOT asserted, and was: that the Nether holds nothing but volcanic skeletons. The
         // instruction was that the volcanic ones appear only in the Nether, which is a rule about
@@ -234,7 +237,7 @@ class HostileMobsConfigTest {
         assertTrue(names.stream().anyMatch(n -> n.startsWith("skeleton_")), "no skeleton is ever used");
         assertTrue(names.stream().anyMatch(n -> n.startsWith("spider_")), "no spider is ever used");
         assertTrue(names.stream().anyMatch(n -> n.startsWith("cursed_")), "no cursed mob is ever used");
-        assertTrue(names.stream().anyMatch(CINDER::contains), "no volcanic skeleton is ever used");
+        assertTrue(names.stream().anyMatch(NETHER_SKELETONS::contains), "no Nether skeleton is ever used");
         assertTrue(table().size() >= 4,
                 "only " + table().size() + " vanilla types are replaced, which leaves most of the "
                         + "world's mobs vanilla");

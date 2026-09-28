@@ -137,11 +137,11 @@ Los packs que trae configurados de serie son cinco, de tres autores:
 | Skeleton Mobs *(Amonde)* | melee, archer, mage, elite |
 | Spider Mobs *(Amonde)* | melee, trapper, poison, elite |
 | Cursed Mobs | knight, archer, mage |
-| Dungeon Skeletons V1 · Volcanic Cinder *(E-magination)* | footman, swordman, halberdier, warrior, tank, archer, wizard |
+| RPG Skeletons Vol 1 y Vol 2 *(Necron)* | spearman, warrior, archer, mage, tank, sphere, crossbow, assassin |
 
-**Los Volcanic Cinder son una expansión, no un pack suelto.** Necesitan el pack base *Dungeon
-Skeletons V1* instalado; sin él esos nombres no existen para MythicMobs y el mob se queda vanilla,
-que es exactamente lo que hace este plugin cuando no puede cumplir.
+**Los esqueletos de Necron son los del Nether** (sustituyen a los Volcanic Cinder, que eran una
+expansión y sin su pack base no cargaban). `ncr_Skeleton_Assassin_dagger` no es un enemigo: es la
+daga que lanza el asesino, y no está en ninguna lista.
 
 **Los packs no van dentro del plugin.** Son assets de pago y sus guías dicen expresamente que no se
 compartan, así que este repositorio no contiene ni un `.bbmodel` ni un `.yml` de MythicMobs. El

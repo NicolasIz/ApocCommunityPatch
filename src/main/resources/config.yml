@@ -585,7 +585,7 @@ hostile-mobs:
   #  El Nether NO lo genera este plugin: es el mundo vanilla del servidor. Por
   #  eso no se puede elegir por preset como el overworld, y se elige por ser el
   #  Nether. Esa distincion es justo lo que permite tener a los esqueletos
-  #  volcanicos alli abajo y en ningun otro sitio.
+  #  de Necron alli abajo y en ningun otro sitio.
   nether:
     enabled: true
 
@@ -593,12 +593,13 @@ hostile-mobs:
     # quieres uno, ponlo aqui por nombre.
     worlds: []
 
-    # Los Volcanic Cinder son una EXPANSION: necesitan instalado el pack base
-    # "Dungeon Skeletons V1" de E-magination. Sin el, estos nombres no existen
-    # para MythicMobs y no pasara nada (se queda el mob vanilla).
+    # Los esqueletos de Necron (packs "RPG Skeletons" Vol 1 y Vol 2). Los de
+    # cuerpo a cuerpo toman el sitio de los wither skeleton de las fortalezas;
+    # los de distancia y los magos, el de los esqueletos. Si no tienes los
+    # packs instalados, estos nombres no existen y se queda el mob vanilla.
     table:
-      WITHER_SKELETON: [dSkeleton_Warrior_Cinder_em, dSkeleton_Tank_Cinder_em, dSkeleton_Halberdier_Cinder_em]
-      SKELETON: [dSkeleton_footman_Cinder_em, dSkeleton_swordman_Cinder_em, dSkeleton_Archer_Cinder_em, dSkeleton_Wizard_Cinder_em]
+      WITHER_SKELETON: [ncr_Skeleton_Warrior, ncr_Skeleton_Tank, ncr_Skeleton_Spearman, ncr_Skeleton_Assassin]
+      SKELETON: [ncr_Skeleton_Archer, ncr_Skeleton_Crossbow, ncr_Skeleton_Mage, ncr_Skeleton_Sphere]
       # Del pack "RPG Monster Series: Howling Nether". Si no lo tienes instalado,
       # estos nombres no existen para MythicMobs y se queda el mob vanilla.
       #
@@ -684,15 +685,17 @@ hostile-mobs:
       - am_goblin_melee
       - skeleton_archer
 
-    # Lo que saca en el Nether. Solo los volcanicos, que es lo que se pidio.
+    # Lo que saca en el Nether: los esqueletos de Necron. ncr_Skeleton_Assassin_dagger
+    # NO va aqui: es la daga que lanza el asesino (un lobo invencible sin IA).
     nether:
-      - dSkeleton_footman_Cinder_em
-      - dSkeleton_swordman_Cinder_em
-      - dSkeleton_Archer_Cinder_em
-      - dSkeleton_Warrior_Cinder_em
-      - dSkeleton_Halberdier_Cinder_em
-      - dSkeleton_Wizard_Cinder_em
-      - dSkeleton_Tank_Cinder_em
+      - ncr_Skeleton_Spearman
+      - ncr_Skeleton_Warrior
+      - ncr_Skeleton_Archer
+      - ncr_Skeleton_Mage
+      - ncr_Skeleton_Tank
+      - ncr_Skeleton_Sphere
+      - ncr_Skeleton_Crossbow
+      - ncr_Skeleton_Assassin
 
     # Lo que saca en el End. Vacia por lo mismo que la tabla del End.
     end: []
@@ -753,7 +756,7 @@ hostile-mobs:
     # Estructura -> lista exacta de mobs. Gana a la eleccion por nombre.
     # La clave va ENTRE COMILLAS porque lleva dos puntos.
     #   table:
-    #     "incendium:forbidden_castle": [dSkeleton_Warrior_Cinder_em, dSkeleton_Tank_Cinder_em]
+    #     "incendium:forbidden_castle": [ncr_Skeleton_Warrior, ncr_Skeleton_Tank]
     #     "ethrium:catacombs": [skeleton_melee, skeleton_mage]
     table: {}
 
