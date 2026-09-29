@@ -1,8 +1,9 @@
 package com.arkcronist.content.core.pack;
 
-import com.arkcronist.content.core.definition.ItemAssets;
+import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.definition.ItemBehaviour;
 import com.arkcronist.content.core.definition.ItemDefinition;
+import com.arkcronist.content.core.definition.ModelSource;
 import com.arkcronist.content.core.definition.ResourceLocation;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -14,7 +15,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -46,10 +50,10 @@ class PackCompilerTest {
 
         Path pack = temp.resolve("pack");
         PackCompiler.Result result = new PackCompiler(SETTINGS).compile(pack, List.of(
-                item("ruby", demo, loc("demo:item/ruby"), null, ItemAssets.GENERATED),
-                item("ruby_sword", demo, null, loc("demo:item/ruby_sword"), loc("minecraft:item/handheld")),
-                item("letter", demo, null, null, ItemAssets.GENERATED),
-                item("vanilla_look", demo, loc("minecraft:item/diamond"), null, ItemAssets.GENERATED)));
+                item("ruby", provided(demo, "demo:item/ruby")),
+                item("ruby_sword", flat(demo, "ruby_sword", "demo:item/ruby_sword", "minecraft:item/handheld")),
+                item("letter", null),
+                item("vanilla_look", provided(demo, "minecraft:item/diamond"))), Map.of());
 
         assertEquals(List.of(), result.problems());
         assertEquals(3, result.itemDefinitions());
@@ -99,8 +103,8 @@ class PackCompilerTest {
         write(pack, "assets/demo/items/removed_item.json", "{}");
 
         PackCompiler.Result result = new PackCompiler(SETTINGS).compile(pack, List.of(
-                item("ghost", demo, loc("demo:item/ghost"), null, ItemAssets.GENERATED),
-                item("photo", demo, null, loc("demo:item/photo"), ItemAssets.GENERATED)));
+                item("ghost", provided(demo, "demo:item/ghost")),
+                item("photo", flat(demo, "photo", "demo:item/photo", "minecraft:item/generated"))), Map.of());
 
         assertEquals(2, result.problems().size(), result.problems().toString());
         assertTrue(result.problems().get(0).startsWith("demo:ghost: model demo:item/ghost not found"),
@@ -121,9 +125,9 @@ class PackCompilerTest {
 
         Path pack = temp.resolve("pack");
         PackCompiler.Result result = new PackCompiler(SETTINGS).compile(pack, List.of(
-                item("a", first, null, loc("demo:item/shared"), ItemAssets.GENERATED),
-                item("b", second, null, loc("demo:item/shared"), ItemAssets.GENERATED),
-                item("c", third, null, loc("demo:item/shared"), ItemAssets.GENERATED)));
+                item("a", flat(first, "a", "demo:item/shared", "minecraft:item/generated")),
+                item("b", flat(second, "b", "demo:item/shared", "minecraft:item/generated")),
+                item("c", flat(third, "c", "demo:item/shared", "minecraft:item/generated"))), Map.of());
 
         // Identical bytes are not a conflict; different ones are, and the first item keeps the path.
         assertEquals(1, result.problems().size(), result.problems().toString());
@@ -132,12 +136,100 @@ class PackCompilerTest {
         assertArrayEquals(png("one"), Files.readAllBytes(pack.resolve("assets/demo/textures/item/shared.png")));
     }
 
+    @Test
+    void customBlocksGetACubeModelAndTheirNoteBlockStates() throws IOException {
+        Path demo = temp.resolve("contents/demo");
+        write(demo, "textures/block/ruby_block.png", png("ruby block"));
+        write(demo, "textures/block/amber_block.png", png("amber block"));
+        Path pack = temp.resolve("pack");
+
+        PackCompiler.Result result = new PackCompiler(SETTINGS).compile(pack, List.of(
+                item("ruby_block", cube(demo, "ruby_block")),
+                item("amber_block", cube(demo, "amber_block"))), Map.of(
+                "demo:ruby_block", NoteBlockState.fromIndex(1),
+                "demo:amber_block", NoteBlockState.fromIndex(51)));
+
+        assertEquals(List.of(), result.problems());
+        assertEquals(2, result.customBlockStates());
+
+        JsonObject cube = json(pack.resolve("assets/demo/models/block/ruby_block.json"));
+        assertEquals("minecraft:block/cube_all", cube.get("parent").getAsString());
+        assertEquals("demo:block/ruby_block", cube.getAsJsonObject("textures").get("all").getAsString());
+        assertEquals("demo:block/ruby_block", itemModelTarget(pack.resolve("assets/demo/items/ruby_block.json")));
+
+        // Written where the client looks for the note block's states - the block's own namespace.
+        assertFalse(Files.exists(pack.resolve("assets/demo/blockstates")));
+        JsonObject variants = json(pack.resolve("assets/minecraft/blockstates/note_block.json"))
+                .getAsJsonObject("variants");
+        assertEquals(23 * 25 * 2, variants.size());
+        assertEquals("demo:block/ruby_block", model(variants, "instrument=harp,note=0,powered=true"));
+        assertEquals("demo:block/amber_block", model(variants, "instrument=basedrum,note=0,powered=true"));
+        assertEquals("minecraft:block/note_block", model(variants, "instrument=harp,note=0,powered=false"));
+        assertEquals("minecraft:block/note_block", model(variants, "instrument=piglin,note=24,powered=true"));
+    }
+
+    @Test
+    void theNoteBlockFileIsTheSameBytesEveryBuildAndAbsentWithoutBlocks() throws IOException {
+        Path demo = temp.resolve("contents/demo");
+        write(demo, "textures/block/ruby_block.png", png("ruby block"));
+        List<ItemDefinition> items = List.of(item("ruby_block", cube(demo, "ruby_block")));
+        Map<String, NoteBlockState> states = Map.of("demo:ruby_block", NoteBlockState.fromIndex(7));
+        Path first = temp.resolve("first");
+        Path second = temp.resolve("second");
+
+        new PackCompiler(SETTINGS).compile(first, items, states);
+        new PackCompiler(SETTINGS).compile(second, items, new HashMap<>(states));
+        assertArrayEquals(Files.readAllBytes(first.resolve("assets/minecraft/blockstates/note_block.json")),
+                Files.readAllBytes(second.resolve("assets/minecraft/blockstates/note_block.json")));
+
+        Path none = temp.resolve("none");
+        new PackCompiler(SETTINGS).compile(none, items, Map.of());
+        assertFalse(Files.exists(none.resolve("assets/minecraft")));
+    }
+
+    @Test
+    void generatedModelsKeepTheirTextureVariablesInAFixedOrder() throws IOException {
+        Path demo = temp.resolve("contents/demo");
+        write(demo, "textures/block/log_side.png", png("side"));
+        write(demo, "textures/block/log_top.png", png("top"));
+        Map<String, ResourceLocation> textures = new LinkedHashMap<>();
+        textures.put("side", loc("demo:block/log_side"));
+        textures.put("end", loc("demo:block/log_top"));
+        Path pack = temp.resolve("pack");
+
+        new PackCompiler(SETTINGS).compile(pack, List.of(item("log", new ModelSource.Generated(demo,
+                loc("demo:block/log"), loc("minecraft:block/cube_column"), textures))), Map.of());
+
+        String written = Files.readString(pack.resolve("assets/demo/models/block/log.json"));
+        assertTrue(written.indexOf("\"end\"") < written.indexOf("\"side\""), written);
+        assertTrue(Files.exists(pack.resolve("assets/demo/textures/block/log_side.png")));
+        assertTrue(Files.exists(pack.resolve("assets/demo/textures/block/log_top.png")));
+    }
+
     // ---------------------------------------------------------------- fixtures
 
-    static ItemDefinition item(String id, Path root, ResourceLocation model, ResourceLocation texture,
-                               ResourceLocation parent) {
-        return new ItemDefinition("demo", id, "PAPER", null, List.of(),
-                new ItemAssets(root, model, texture, parent), ItemBehaviour.DEFAULT, root.resolve("items.yml"));
+    /** What the loader makes of {@code texture:} on a custom block. */
+    static ModelSource cube(Path root, String id) {
+        return new ModelSource.Generated(root, loc("demo:block/" + id), ModelSource.CUBE_ALL,
+                Map.of("all", loc("demo:block/" + id)));
+    }
+
+    private static String model(JsonObject variants, String key) {
+        return variants.getAsJsonObject(key).get("model").getAsString();
+    }
+
+    static ItemDefinition item(String id, ModelSource model) {
+        return new ItemDefinition("demo", id, "PAPER", null, List.of(), model, ItemBehaviour.DEFAULT, null,
+                Path.of("items.yml"));
+    }
+
+    static ModelSource provided(Path root, String model) {
+        return new ModelSource.Provided(root, loc(model));
+    }
+
+    /** What the loader makes of {@code texture:} on a plain item. */
+    static ModelSource flat(Path root, String id, String texture, String parent) {
+        return new ModelSource.Generated(root, loc("demo:item/" + id), loc(parent), Map.of("layer0", loc(texture)));
     }
 
     static ResourceLocation loc(String text) {

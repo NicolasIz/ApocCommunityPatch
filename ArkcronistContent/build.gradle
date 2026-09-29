@@ -23,13 +23,16 @@ repositories {
 }
 
 dependencies {
-    // Provided by the server at runtime; it also brings Adventure, MiniMessage, Brigadier, Gson and
-    // SnakeYAML, so the plugin jar ships nothing but its own classes.
+    // Provided by the server at runtime; it also brings Adventure, MiniMessage, Brigadier, Gson,
+    // SnakeYAML and JOML, and the server ships the SQLite JDBC driver, so the plugin jar holds
+    // nothing but its own classes.
     compileOnly "io.papermc.paper:paper-api:${paperVersion}"
 
-    // The core package (loader, pack compiler, zip, hash, web server) is tested without a server,
-    // but against the same Gson and SnakeYAML the server provides.
+    // The core package (loader, pack compiler, zip, hash, web server, storage) is tested without a
+    // server, but against the same Gson and SnakeYAML the server provides.
     testImplementation "io.papermc.paper:paper-api:${paperVersion}"
+    // The server ships this driver; the tests need their own copy to open a real SQLite file.
+    testImplementation 'org.xerial:sqlite-jdbc:3.47.0.0'
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

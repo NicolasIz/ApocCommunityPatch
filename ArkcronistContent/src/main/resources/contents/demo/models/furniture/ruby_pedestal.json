@@ -1,0 +1,38 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "stone": "demo:furniture/pedestal_stone",
+    "gem": "demo:block/ruby_block",
+    "particle": "#stone"
+  },
+  "elements": [
+    {
+      "from": [2, 0, 2], "to": [14, 2, 14],
+      "faces": {
+        "north": {"texture": "#stone"}, "south": {"texture": "#stone"}, "east": {"texture": "#stone"},
+        "west": {"texture": "#stone"}, "up": {"texture": "#stone"}, "down": {"texture": "#stone"}
+      }
+    },
+    {
+      "from": [5, 2, 5], "to": [11, 11, 11],
+      "faces": {
+        "north": {"texture": "#stone"}, "south": {"texture": "#stone"}, "east": {"texture": "#stone"},
+        "west": {"texture": "#stone"}, "up": {"texture": "#stone"}, "down": {"texture": "#stone"}
+      }
+    },
+    {
+      "from": [3, 11, 3], "to": [13, 13, 13],
+      "faces": {
+        "north": {"texture": "#stone"}, "south": {"texture": "#stone"}, "east": {"texture": "#stone"},
+        "west": {"texture": "#stone"}, "up": {"texture": "#stone"}, "down": {"texture": "#stone"}
+      }
+    },
+    {
+      "from": [6, 13, 6], "to": [10, 16, 10],
+      "faces": {
+        "north": {"texture": "#gem"}, "south": {"texture": "#gem"}, "east": {"texture": "#gem"},
+        "west": {"texture": "#gem"}, "up": {"texture": "#gem"}, "down": {"texture": "#gem"}
+      }
+    }
+  ]
+}

@@ -1,8 +1,10 @@
 package com.arkcronist.content.core.loader;
 
-import com.arkcronist.content.core.definition.ItemAssets;
+import com.arkcronist.content.core.definition.ContentType;
 import com.arkcronist.content.core.definition.ItemBehaviour;
 import com.arkcronist.content.core.definition.ItemDefinition;
+import com.arkcronist.content.core.definition.ModelSource;
+import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.definition.ResourceLocation;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
@@ -22,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -40,6 +43,10 @@ import java.util.stream.Stream;
  *     textures/item/ruby_sword.png   resource.texture: item/ruby_sword
  * </pre>
  *
+ * <p>Every entry under {@code items:} is an item. {@code type: custom_block} and
+ * {@code type: custom_furniture} make it something that is placed into the world as well, with
+ * its own {@code block:} or {@code furniture:} section; see {@link ContentType}.</p>
+ *
  * <p>A file's namespace is its {@code namespace:} key, or failing that the name of the content
  * pack folder it sits in. Files are read in path order, so when two define the same id the one
  * that wins is the same on every restart - and the other is reported, never silently dropped.</p>
@@ -51,6 +58,7 @@ import java.util.stream.Stream;
 public final class ContentLoader {
 
     private static final Pattern ITEM_ID = Pattern.compile("[a-z0-9_.-]+");
+    private static final Pattern TEXTURE_VARIABLE = Pattern.compile("[a-z0-9_]+");
 
     /**
      * Reads every {@code .yml} and {@code .yaml} file under {@code contentsDir}.
@@ -173,41 +181,193 @@ public final class ContentLoader {
             problems.add(prefix + "invalid id (allowed: a-z 0-9 _ . -)");
             return null;
         }
-
-        String material = text(section, "material", prefix, problems);
-        if (material == null || material.isBlank()) {
-            problems.add(prefix + "'material' is required, e.g. material: PAPER");
+        ContentType type = type(section, prefix, problems);
+        if (type == null) {
             return null;
         }
+        unusedSection(section, "block", ContentType.CUSTOM_BLOCK, type, prefix, problems);
+        unusedSection(section, "furniture", ContentType.CUSTOM_FURNITURE, type, prefix, problems);
 
         String displayName = text(section, "display-name", prefix, problems);
         List<String> lore = lines(section, "lore", prefix, problems);
-        ItemAssets assets = assets(namespace, section(section, "resource", prefix, problems),
+        ModelSource model = model(namespace, id, type, section(section, "resource", prefix, problems),
                 sourceRoot, prefix, problems);
         ItemBehaviour behaviour = behaviour(section(section, "behaviour", prefix, problems),
                 prefix, problems);
 
-        return new ItemDefinition(namespace, id, material.trim(), displayName, lore, assets,
-                behaviour, file);
+        if (type == ContentType.ITEM) {
+            String material = text(section, "material", prefix, problems);
+            if (material == null || material.isBlank()) {
+                problems.add(prefix + "'material' is required, e.g. material: PAPER");
+                return null;
+            }
+            return new ItemDefinition(namespace, id, material.trim(), displayName, lore, model,
+                    behaviour, null, file);
+        }
+
+        // Blocks and furniture: the material is what the placement needs, the look is mandatory, and
+        // the item has to stay placeable.
+        if (model == null) {
+            problems.add(prefix + "a " + type.yamlName() + " needs resource.model, resource.texture"
+                    + " or resource.textures - without one it would look like its support block");
+            return null;
+        }
+        Placement placement = type == ContentType.CUSTOM_BLOCK
+                ? block(section(section, "block", prefix, problems), prefix, problems)
+                : furniture(section(section, "furniture", prefix, problems), prefix, problems);
+        String material = placement instanceof Placement.Furniture furniture
+                ? furniture.support().name()
+                : "NOTE_BLOCK";
+        if (section.containsKey("material")) {
+            problems.add(prefix + "'material' is ignored - a " + type.yamlName() + " is always "
+                    + material + " underneath");
+        }
+        if (behaviour.cancelVanillaUse()) {
+            problems.add(prefix + "'cancel-vanilla-use' is ignored - it would stop the "
+                    + type.yamlName() + " being placed");
+        }
+        return new ItemDefinition(namespace, id, material, displayName, lore, model,
+                new ItemBehaviour(false, true), placement, file);
     }
 
-    private static ItemAssets assets(String namespace, Map<?, ?> section, Path sourceRoot,
-                                     String prefix, List<String> problems) {
-        if (section == null) {
-            return ItemAssets.none(sourceRoot);
+    private static ContentType type(Map<?, ?> section, String prefix, List<String> problems) {
+        String raw = text(section, "type", prefix, problems);
+        if (raw == null || raw.isBlank()) {
+            return ContentType.ITEM;
         }
-        ResourceLocation model = location(section, "model", namespace, prefix, problems);
-        ResourceLocation texture = location(section, "texture", namespace, prefix, problems);
-        // Parents are nearly always vanilla (item/generated, item/handheld), so a bare parent reads
-        // the way it would inside a model file.
-        ResourceLocation parent = location(section, "parent", ResourceLocation.MINECRAFT, prefix, problems);
+        Optional<ContentType> type = ContentType.parse(raw);
+        if (type.isEmpty()) {
+            problems.add(prefix + "unknown type '" + raw.trim() + "' (item, custom_block, custom_furniture)");
+            return null;
+        }
+        return type.get();
+    }
 
-        if (model != null && texture != null) {
-            problems.add(prefix + "'texture' is ignored because 'model' is set"
-                    + " - the textures the model uses are copied with it");
-            texture = null;
+    /**
+     * How the entry is drawn.
+     *
+     * <ul>
+     *   <li>{@code model} - a model file from the content pack, used as it is;</li>
+     *   <li>{@code texture} - one texture: a flat item ({@code item/generated}, {@code layer0}) or,
+     *       for a block, a cube with that texture on every face ({@code block/cube_all},
+     *       {@code all});</li>
+     *   <li>{@code textures} + {@code parent} - any vanilla-style parent with its own texture
+     *       variables, e.g. {@code block/cube_column} with {@code end} and {@code side}.</li>
+     * </ul>
+     */
+    private static ModelSource model(String namespace, String id, ContentType type, Map<?, ?> resource,
+                                     Path sourceRoot, String prefix, List<String> problems) {
+        if (resource == null) {
+            return null;
         }
-        return new ItemAssets(sourceRoot, model, texture, parent != null ? parent : ItemAssets.GENERATED);
+        ResourceLocation model = location(resource, "model", namespace, prefix, problems);
+        ResourceLocation texture = location(resource, "texture", namespace, prefix, problems);
+        Map<String, ResourceLocation> textures = textureVariables(resource, namespace, prefix, problems);
+        // Parents are nearly always vanilla (item/generated, block/cube_all), so a bare parent reads
+        // the way it would inside a model file.
+        ResourceLocation parent = location(resource, "parent", ResourceLocation.MINECRAFT, prefix, problems);
+
+        if (model != null) {
+            if (texture != null || !textures.isEmpty() || parent != null) {
+                problems.add(prefix + "'texture', 'textures' and 'parent' are ignored because 'model' is set"
+                        + " - the textures the model uses are copied with it");
+            }
+            return new ModelSource.Provided(sourceRoot, model);
+        }
+
+        boolean block = type == ContentType.CUSTOM_BLOCK;
+        Map<String, ResourceLocation> variables = new LinkedHashMap<>(textures);
+        if (texture != null) {
+            variables.putIfAbsent(block ? "all" : "layer0", texture);
+        }
+        if (variables.isEmpty()) {
+            if (parent != null) {
+                problems.add(prefix + "'parent' is ignored without 'texture' or 'textures'");
+            }
+            return null;
+        }
+        ResourceLocation location = new ResourceLocation(namespace, (block ? "block/" : "item/") + id);
+        ResourceLocation defaultParent = block ? ModelSource.CUBE_ALL : ModelSource.ITEM_GENERATED;
+        return new ModelSource.Generated(sourceRoot, location, parent != null ? parent : defaultParent, variables);
+    }
+
+    /** {@code textures:} - variable name to texture. Blockbench numbers its variables, so 0 is a valid name. */
+    private static Map<String, ResourceLocation> textureVariables(Map<?, ?> resource, String namespace,
+                                                                  String prefix, List<String> problems) {
+        Map<?, ?> section = section(resource, "textures", prefix, problems);
+        if (section == null) {
+            return Map.of();
+        }
+        Map<String, ResourceLocation> textures = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : section.entrySet()) {
+            String variable = String.valueOf(entry.getKey());
+            if (!TEXTURE_VARIABLE.matcher(variable).matches()) {
+                problems.add(prefix + "texture variable '" + variable + "' (allowed: a-z 0-9 _)");
+                continue;
+            }
+            ResourceLocation texture = location(entry.getValue(), "textures." + variable, namespace, prefix, problems);
+            if (texture != null) {
+                textures.put(variable, texture);
+            }
+        }
+        return textures;
+    }
+
+    private static Placement.Block block(Map<?, ?> section, String prefix, List<String> problems) {
+        return new Placement.Block(section == null || flag(section, "drop-self", true, prefix, problems));
+    }
+
+    private static Placement.Furniture furniture(Map<?, ?> section, String prefix, List<String> problems) {
+        if (section == null) {
+            return new Placement.Furniture(Placement.Support.BARRIER, 0, true, Placement.Display.DEFAULT);
+        }
+
+        Placement.Support support = Placement.Support.BARRIER;
+        String rawSupport = text(section, "support", prefix, problems);
+        if (rawSupport != null) {
+            try {
+                support = Placement.Support.valueOf(rawSupport.trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException exception) {
+                problems.add(prefix + "'support' must be BARRIER or LIGHT, not '" + rawSupport.trim()
+                        + "'; using BARRIER");
+            }
+        }
+
+        int light = integer(section, "light", 0, prefix, problems);
+        if (light < 0 || light > 15) {
+            int clamped = Math.max(0, Math.min(15, light));
+            problems.add(prefix + "'light' must be 0-15; using " + clamped);
+            light = clamped;
+        }
+        if (support != Placement.Support.LIGHT && section.containsKey("light")) {
+            problems.add(prefix + "'light' only applies to a LIGHT support");
+            light = 0;
+        }
+
+        return new Placement.Furniture(support, light,
+                flag(section, "face-player", true, prefix, problems),
+                display(section(section, "display", prefix, problems), prefix, problems));
+    }
+
+    private static Placement.Display display(Map<?, ?> section, String prefix, List<String> problems) {
+        if (section == null) {
+            return Placement.Display.DEFAULT;
+        }
+        String transform = Placement.Display.DEFAULT.transform();
+        String rawTransform = text(section, "transform", prefix, problems);
+        if (rawTransform != null) {
+            String upper = rawTransform.trim().toUpperCase(Locale.ROOT);
+            if (Placement.Display.TRANSFORMS.contains(upper)) {
+                transform = upper;
+            } else {
+                problems.add(prefix + "'display.transform' must be one of " + Placement.Display.TRANSFORMS
+                        + "; using " + transform);
+            }
+        }
+        return new Placement.Display(transform,
+                vector(section, "translation", Placement.Vec3.ZERO, prefix, problems),
+                vector(section, "scale", Placement.Vec3.ONE, prefix, problems),
+                vector(section, "rotation", Placement.Vec3.ZERO, prefix, problems));
     }
 
     private static ItemBehaviour behaviour(Map<?, ?> section, String prefix, List<String> problems) {
@@ -219,11 +379,27 @@ public final class ContentLoader {
                 flag(section, "placeable", ItemBehaviour.DEFAULT.placeable(), prefix, problems));
     }
 
+    private static void unusedSection(Map<?, ?> section, String key, ContentType owner, ContentType type,
+                                      String prefix, List<String> problems) {
+        if (type != owner && section.containsKey(key)) {
+            problems.add(prefix + "'" + key + "' is only read when type is " + owner.yamlName());
+        }
+    }
+
     // ---------------------------------------------------------------- typed reads
 
     private static ResourceLocation location(Map<?, ?> section, String key, String defaultNamespace,
                                              String prefix, List<String> problems) {
-        String raw = text(section, key, prefix, problems);
+        return location(section.get(key), key, defaultNamespace, prefix, problems);
+    }
+
+    private static ResourceLocation location(Object node, String key, String defaultNamespace,
+                                             String prefix, List<String> problems) {
+        if (node instanceof Map<?, ?> || node instanceof List<?>) {
+            problems.add(prefix + "'" + key + "' should be a single value");
+            return null;
+        }
+        String raw = node == null ? null : String.valueOf(node);
         if (raw == null || raw.isBlank()) {
             return null;
         }
@@ -269,6 +445,39 @@ public final class ContentLoader {
             return List.of();
         }
         return List.of(String.valueOf(value));
+    }
+
+    private static int integer(Map<?, ?> section, String key, int fallback, String prefix, List<String> problems) {
+        Object value = section.get(key);
+        if (value == null) {
+            return fallback;
+        }
+        if (value instanceof Integer || value instanceof Long) {
+            return ((Number) value).intValue();
+        }
+        problems.add(prefix + "'" + key + "' should be a whole number; using " + fallback);
+        return fallback;
+    }
+
+    /** A number for all three axes, or a list of exactly three: {@code 0.5} or {@code [0, 0.5, 0]}. */
+    private static Placement.Vec3 vector(Map<?, ?> section, String key, Placement.Vec3 fallback,
+                                         String prefix, List<String> problems) {
+        Object value = section.get(key);
+        if (value == null) {
+            return fallback;
+        }
+        if (value instanceof Number number) {
+            float n = number.floatValue();
+            return new Placement.Vec3(n, n, n);
+        }
+        if (value instanceof List<?> list && list.size() == 3
+                && list.stream().allMatch(element -> element instanceof Number)) {
+            return new Placement.Vec3(((Number) list.get(0)).floatValue(), ((Number) list.get(1)).floatValue(),
+                    ((Number) list.get(2)).floatValue());
+        }
+        problems.add(prefix + "'" + key + "' should be a number or a list of three, e.g. [0, 0.5, 0]; using "
+                + "[" + fallback.x() + ", " + fallback.y() + ", " + fallback.z() + "]");
+        return fallback;
     }
 
     private static boolean flag(Map<?, ?> section, String key, boolean fallback, String prefix,

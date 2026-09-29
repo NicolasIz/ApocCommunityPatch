@@ -1,0 +1,57 @@
+# ---------------------------------------------------------------------------
+#  Demo custom blocks and furniture
+# ---------------------------------------------------------------------------
+#  Same content pack as items.yml, so the same namespace: the folder's name.
+#  Blocks and furniture are items first - /customgive gives them - and 'type'
+#  says what placing one does. 'material' is implied and cannot be set.
+#
+#     /customgive <player> demo:ruby_block
+#     /customgive <player> demo:ruby_pedestal
+# ---------------------------------------------------------------------------
+
+items:
+
+  # A note block held in a state of its own (one of 799), drawn with this
+  # block's model. One texture means the same on all six faces (cube_all);
+  # 'textures' plus 'parent' allows any vanilla shape, e.g. cube_column.
+  ruby_block:
+    type: custom_block
+    display-name: "<red>Block of Ruby"
+    resource:
+      texture: block/ruby_block
+    block:
+      # Outside creative, breaking it drops this item rather than a note block.
+      drop-self: true
+
+  # A 3D model - a Blockbench export - shown by an item display standing on an
+  # invisible barrier. Its textures are found through the model file: the gem
+  # on top reuses the ruby block's texture.
+  ruby_pedestal:
+    type: custom_furniture
+    display-name: "<gold>Ruby Pedestal"
+    lore:
+      - "<gray>Something precious belongs on top."
+    resource:
+      model: furniture/ruby_pedestal
+    furniture:
+      support: BARRIER        # solid; LIGHT is walk-through and can glow
+      face-player: true       # turns to face whoever places it
+      display:
+        transform: NONE       # draw the model exactly as authored
+        translation: [0, 0, 0]
+        scale: 1.0            # or [x, y, z]
+        rotation: [0, 0, 0]   # degrees around x, y, z
+
+  # The same model, smaller, on a light block: players walk through it and it
+  # lights the room.
+  ruby_lamp:
+    type: custom_furniture
+    display-name: "<gold>Ruby Lamp"
+    resource:
+      model: furniture/ruby_pedestal
+    furniture:
+      support: LIGHT
+      light: 12
+      display:
+        scale: 0.6
+        translation: [0, -0.2, 0]

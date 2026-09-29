@@ -1,7 +1,8 @@
 package com.arkcronist.content.core.pack;
 
-import com.arkcronist.content.core.definition.ItemAssets;
+import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.definition.ItemDefinition;
+import com.arkcronist.content.core.definition.ModelSource;
 import com.arkcronist.content.core.definition.ResourceLocation;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -23,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Stream;
 
 /**
@@ -32,10 +34,13 @@ import java.util.stream.Stream;
  * <ul>
  *   <li>{@code items/<id>.json} - the item model definition the stack's {@code item_model}
  *       component points at, which in turn names the model to draw;</li>
- *   <li>{@code models/...json} - the item's model, copied from the content pack, or a flat one
- *       generated from a lone texture;</li>
+ *   <li>{@code models/...json} - the item's model, copied from the content pack, or one generated
+ *       from a parent and textures (a flat item, a {@code cube_all} block);</li>
  *   <li>{@code textures/...png} - every texture those models use.</li>
  * </ul>
+ *
+ * <p>When there are custom blocks it also writes {@code assets/minecraft/blockstates/note_block.json},
+ * which is how the client learns to draw a note block state as one of them.</p>
  *
  * <p>Only what is referenced is copied. A model is read, and its {@code parent} and
  * {@code textures} followed, for as long as they stay inside the item's namespace; anything in
@@ -52,13 +57,18 @@ public final class PackCompiler {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
     private static final byte[] PNG_SIGNATURE = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'};
 
+    /** What the pack draws for every note block state that is not a custom block's. */
+    private static final String VANILLA_NOTE_BLOCK = "minecraft:block/note_block";
+
     /**
      * What a compile wrote.
      *
-     * @param problems missing or unreadable files and conflicting paths, each naming the item that
-     *                 ran into it
+     * @param customBlockStates note block states mapped to a custom block's model
+     * @param problems          missing or unreadable files and conflicting paths, each naming the
+     *                          item that ran into it
      */
-    public record Result(int itemDefinitions, int models, int textures, List<String> problems) {
+    public record Result(int itemDefinitions, int models, int textures, int customBlockStates,
+                         List<String> problems) {
 
         public Result {
             problems = List.copyOf(problems);
@@ -71,8 +81,14 @@ public final class PackCompiler {
         this.settings = settings;
     }
 
-    /** Deletes {@code packDir} and writes the pack for {@code items} into it. */
-    public Result compile(Path packDir, Collection<ItemDefinition> items) throws IOException {
+    /**
+     * Deletes {@code packDir} and writes the pack for {@code items} into it.
+     *
+     * @param noteBlockStates the state each custom block is drawn through, by full id; empty leaves
+     *                        the vanilla note block untouched
+     */
+    public Result compile(Path packDir, Collection<ItemDefinition> items,
+                          Map<String, NoteBlockState> noteBlockStates) throws IOException {
         Run run = new Run(packDir);
         run.reset();
         run.writeText("pack.mcmeta", GSON.toJson(settings.mcmeta()) + "\n");
@@ -84,7 +100,8 @@ public final class PackCompiler {
         for (ItemDefinition item : ordered) {
             run.item(item);
         }
-        return new Result(run.itemDefinitions, run.models, run.textures, run.problems);
+        run.noteBlockStates(ordered, noteBlockStates);
+        return new Result(run.itemDefinitions, run.models, run.textures, run.customBlockStates, run.problems);
     }
 
     /** State for one compile. */
@@ -101,6 +118,7 @@ public final class PackCompiler {
         private int itemDefinitions;
         private int models;
         private int textures;
+        private int customBlockStates;
 
         Run(Path packDir) {
             this.packDir = packDir;
@@ -120,33 +138,85 @@ public final class PackCompiler {
         void item(ItemDefinition item) throws IOException {
             scaffold(item.namespace());
 
-            ItemAssets assets = item.assets();
-            String origin = item.fullId();
-            ResourceLocation model;
-            if (assets.model() != null) {
-                model = assets.model();
-                // Another namespace is someone else's to supply - vanilla, or another content pack.
-                if (model.namespace().equals(item.namespace())) {
-                    copyModel(assets.sourceRoot(), model, origin);
-                }
-            } else if (assets.texture() != null) {
-                model = new ResourceLocation(item.namespace(), "item/" + item.id());
-                generateFlatModel(model, assets.parent(), assets.texture(), origin);
-                if (assets.texture().namespace().equals(item.namespace())) {
-                    copyTexture(assets.sourceRoot(), assets.texture(), origin);
-                }
-            } else {
+            ModelSource source = item.model();
+            if (source == null) {
                 return;
+            }
+            String origin = item.fullId();
+            switch (source) {
+                case ModelSource.Provided provided -> {
+                    // Another namespace is someone else's to supply - vanilla, or another content pack.
+                    if (provided.location().namespace().equals(item.namespace())) {
+                        copyModel(provided.sourceRoot(), provided.location(), origin);
+                    }
+                }
+                case ModelSource.Generated generated -> {
+                    generateModel(generated, origin);
+                    for (ResourceLocation texture : generated.textures().values()) {
+                        if (texture.namespace().equals(item.namespace())) {
+                            copyTexture(generated.sourceRoot(), texture, origin);
+                        }
+                    }
+                }
             }
 
             JsonObject target = new JsonObject();
             target.addProperty("type", "minecraft:model");
-            target.addProperty("model", model.toString());
+            target.addProperty("model", source.location().toString());
             JsonObject definition = new JsonObject();
             definition.add("model", target);
             if (place(item.itemModel().assetPath("items", ".json"), json(definition), origin)) {
                 itemDefinitions++;
             }
+        }
+
+        /**
+         * {@code assets/minecraft/blockstates/note_block.json}: which model the client draws for every
+         * note block state.
+         *
+         * <p>It has to live in the minecraft namespace - the client finds a block's states by the
+         * block's own id, and the block is {@code minecraft:note_block} - and it has to name a model
+         * for every state, all {@code 23 x 25 x 2}, or the client draws the missing-model cube for the
+         * ones it leaves out. States that belong to a custom block get its model; every other state,
+         * the vanilla state included, keeps the plain note block. Written in a fixed order, so the same
+         * assignments always give the same bytes.</p>
+         */
+        void noteBlockStates(List<ItemDefinition> ordered, Map<String, NoteBlockState> states) throws IOException {
+            if (states.isEmpty()) {
+                return;
+            }
+            Map<String, ResourceLocation> models = new HashMap<>();
+            for (ItemDefinition item : ordered) {
+                if (item.model() != null) {
+                    models.put(item.fullId(), item.model().location());
+                }
+            }
+            Map<String, String> byVariant = new HashMap<>();
+            for (Map.Entry<String, NoteBlockState> entry : new TreeMap<>(states).entrySet()) {
+                ResourceLocation model = models.get(entry.getKey());
+                if (model == null) {
+                    problems.add(entry.getKey() + ": has a note block state but no model - it will look like a note block");
+                    continue;
+                }
+                byVariant.put(entry.getValue().variantKey(), model.toString());
+                customBlockStates++;
+            }
+
+            JsonObject variants = new JsonObject();
+            for (String instrument : NoteBlockState.ALL_INSTRUMENTS) {
+                for (int note = 0; note < NoteBlockState.NOTES; note++) {
+                    for (boolean powered : new boolean[] {false, true}) {
+                        String key = new NoteBlockState(instrument, note, powered).variantKey();
+                        JsonObject variant = new JsonObject();
+                        variant.addProperty("model", byVariant.getOrDefault(key, VANILLA_NOTE_BLOCK));
+                        variants.add(key, variant);
+                    }
+                }
+            }
+            JsonObject root = new JsonObject();
+            root.add("variants", variants);
+            Files.createDirectories(packDir.resolve("assets/minecraft/blockstates"));
+            place("assets/minecraft/blockstates/note_block.json", json(root), "note blocks");
         }
 
         /** The vanilla layout for a namespace, created even while it is still empty. */
@@ -225,14 +295,15 @@ public final class PackCompiler {
             }
         }
 
-        private void generateFlatModel(ResourceLocation model, ResourceLocation parent,
-                                       ResourceLocation texture, String origin) throws IOException {
-            JsonObject layers = new JsonObject();
-            layers.addProperty("layer0", texture.toString());
+        private void generateModel(ModelSource.Generated model, String origin) throws IOException {
+            JsonObject variables = new JsonObject();
+            for (Map.Entry<String, ResourceLocation> texture : model.textures().entrySet()) {
+                variables.addProperty(texture.getKey(), texture.getValue().toString());
+            }
             JsonObject json = new JsonObject();
-            json.addProperty("parent", parent.toString());
-            json.add("textures", layers);
-            if (place(model.assetPath("models", ".json"), json(json), origin)) {
+            json.addProperty("parent", model.parent().toString());
+            json.add("textures", variables);
+            if (place(model.location().assetPath("models", ".json"), json(json), origin)) {
                 models++;
             }
         }

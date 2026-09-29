@@ -2,6 +2,7 @@ package com.arkcronist.content.bukkit.item;
 
 import com.arkcronist.content.core.definition.ItemBehaviour;
 import com.arkcronist.content.core.definition.ItemDefinition;
+import com.arkcronist.content.core.definition.Placement;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -62,10 +63,15 @@ public record CustomItem(ItemDefinition definition, Material material, @Nullable
 
     /** False for an item with no model or texture, which keeps its material's look. */
     public boolean hasModel() {
-        return definition.assets().hasLook();
+        return definition.model() != null;
     }
 
     public ItemBehaviour behaviour() {
         return definition.behaviour();
+    }
+
+    /** What placing it does, or null for a plain item. */
+    public @Nullable Placement placement() {
+        return definition.placement();
     }
 }

@@ -18,9 +18,9 @@ import java.util.Optional;
  * <p>The pattern for any new interception is the one used here: find the stack involved, ask
  * {@link ItemFactory#identify} whether it is custom, and either enforce an
  * {@code ItemBehaviour} flag or fire a {@code CustomItemEvent} subclass and honour its outcome.
- * Candidates that fit straight in: projectiles launched by custom items, custom items dropped or
- * picked up, and custom blocks placed from custom items (a note block or mushroom state per block,
- * restored when broken).</p>
+ * Candidates that fit straight in: projectiles launched by custom items, and custom items dropped
+ * or picked up. Custom blocks and furniture have listeners of their own,
+ * {@link CustomBlockListener} and {@link FurnitureListener}.</p>
  */
 public final class WorldInterceptionListener implements Listener {
 
@@ -32,7 +32,8 @@ public final class WorldInterceptionListener implements Listener {
 
     /**
      * A custom item made from a block material would otherwise be placed as that plain vanilla
-     * block, losing its identity for good. Refused unless the item says it is {@code placeable}.
+     * block, losing its identity for good. Refused unless the item says it is {@code placeable} -
+     * which custom blocks and furniture always are.
      */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent event) {

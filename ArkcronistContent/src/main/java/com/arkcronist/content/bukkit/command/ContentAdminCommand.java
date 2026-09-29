@@ -2,6 +2,7 @@ package com.arkcronist.content.bukkit.command;
 
 import com.arkcronist.content.bukkit.ArkContentPlugin;
 import com.arkcronist.content.bukkit.ContentPipeline;
+import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.pack.PackArtifact;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.context.CommandContext;
@@ -47,7 +48,8 @@ public final class ContentAdminCommand {
                         + " See the console for the cause.", NamedTextColor.RED));
                 return;
             }
-            sender.sendMessage(Component.text(report.items() + " item(s), pack " + shortHash(report.sha1Hex())
+            sender.sendMessage(Component.text(report.items() + " item(s), " + report.blocks() + " block(s), pack "
+                    + shortHash(report.sha1Hex())
                     + (report.changed() ? ", sent to online players" : ", unchanged")
                     + " (" + report.millis() + " ms).", NamedTextColor.GREEN));
             if (!report.problems().isEmpty()) {
@@ -63,7 +65,11 @@ public final class ContentAdminCommand {
         PackArtifact pack = plugin.delivery().current();
         String url = plugin.delivery().currentUrl();
 
-        sender.sendMessage(Component.text("Custom items: " + plugin.items().size(), NamedTextColor.GOLD));
+        sender.sendMessage(Component.text("Custom items: " + plugin.items().size() + ", of which blocks: "
+                + plugin.blocks().size() + " (of " + (NoteBlockState.CAPACITY - 1) + " note block states)",
+                NamedTextColor.GOLD));
+        sender.sendMessage(Component.text("Placed blocks and furniture in loaded worlds: " + plugin.placed().size(),
+                NamedTextColor.GRAY));
         sender.sendMessage(Component.text(pack == null
                 ? "Pack: not built yet"
                 : "Pack: " + pack.entries() + " file(s), " + (pack.size() / 1024) + " KiB, sha1 " + pack.sha1Hex(),
