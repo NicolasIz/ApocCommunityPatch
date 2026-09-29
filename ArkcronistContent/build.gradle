@@ -1,0 +1,65 @@
+plugins {
+    id 'java'
+    // `./gradlew runServer` - a throwaway Paper server with this plugin installed.
+    id 'xyz.jpenilla.run-paper' version '3.1.0'
+}
+
+group = 'com.arkcronist'
+version = '0.1.0'
+description = 'Custom items from YAML, drawn by a resource pack the plugin compiles, zips, hashes and serves itself.'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'papermc'
+        url = 'https://repo.papermc.io/repository/maven-public/'
+    }
+}
+
+dependencies {
+    // Provided by the server at runtime; it also brings Adventure, MiniMessage, Brigadier, Gson and
+    // SnakeYAML, so the plugin jar ships nothing but its own classes.
+    compileOnly "io.papermc.paper:paper-api:${paperVersion}"
+
+    // The core package (loader, pack compiler, zip, hash, web server) is tested without a server,
+    // but against the same Gson and SnakeYAML the server provides.
+    testImplementation "io.papermc.paper:paper-api:${paperVersion}"
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+    options.compilerArgs += ['-Xlint:deprecation', '-Xlint:unchecked']
+}
+
+processResources {
+    def props = [version: project.version]
+    inputs.properties props
+    filteringCharset = 'UTF-8'
+    filesMatching('paper-plugin.yml') {
+        expand props
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jar {
+    manifest {
+        attributes('Implementation-Title': project.name, 'Implementation-Version': project.version)
+    }
+}
+
+tasks.named('runServer') {
+    minecraftVersion(runServerVersion)
+}

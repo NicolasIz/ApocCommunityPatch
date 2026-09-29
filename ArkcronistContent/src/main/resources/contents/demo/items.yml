@@ -1,0 +1,49 @@
+# ---------------------------------------------------------------------------
+#  Demo content pack
+# ---------------------------------------------------------------------------
+#  Every .yml under contents/<pack>/ is read. Paths under 'resource' are relative
+#  to this pack's own folders, without the extension:
+#
+#     resource.model:   item/ruby         -> contents/demo/models/item/ruby.json
+#     resource.texture: item/ruby_sword   -> contents/demo/textures/item/ruby_sword.png
+#
+#  Give one with:  /customgive <player> demo:ruby   (or just 'ruby')
+# ---------------------------------------------------------------------------
+
+# Defaults to the folder name. a-z 0-9 _ . - only; 'minecraft' is reserved.
+namespace: demo
+
+items:
+
+  # A hand-written model. The compiler copies it, follows its 'parent' and
+  # 'textures' within the demo namespace, and copies those files too.
+  ruby:
+    material: PAPER
+    display-name: "<red>Ruby"
+    lore:
+      - "<gray>Cut from the deep caves."
+    resource:
+      model: item/ruby
+    behaviour:
+      # Paper has no use of its own, but a ruby made of an ender pearl would be
+      # thrown on right click. This stops the base material's own use.
+      cancel-vanilla-use: true
+
+  # Only a texture: a flat model is generated for it. 'parent' picks how it is
+  # held - item/handheld is the angle vanilla uses for swords and tools.
+  ruby_sword:
+    material: DIAMOND_SWORD
+    display-name: "<gradient:#ff6b6b:#b3001b>Ruby Sword</gradient>"
+    lore:
+      - "<gray>Keener than diamond, and far prettier."
+    resource:
+      texture: item/ruby_sword
+      parent: item/handheld
+
+  # No resource section: the item keeps its material's look, but is still a
+  # custom item - its own name, recognised by listeners.
+  sealed_letter:
+    material: PAPER
+    display-name: "<gold>Sealed Letter"
+    lore:
+      - "<gray>The wax seal is unbroken."

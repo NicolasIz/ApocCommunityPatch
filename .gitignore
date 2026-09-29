@@ -2,6 +2,10 @@ target/
 *.class
 *.jar
 !*/lib/*.jar
+!**/gradle/wrapper/gradle-wrapper.jar
+.gradle/
+build/
+ArkcronistContent/run/
 .idea/
 *.iml
 .vscode/

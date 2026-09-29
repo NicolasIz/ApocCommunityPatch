@@ -1,0 +1,47 @@
+# ---------------------------------------------------------------------------
+#  ArkcronistContent
+# ---------------------------------------------------------------------------
+#  Items are defined in plugins/ArkcronistContent/contents/ - one folder per
+#  content pack, any number of .yml files inside it. See contents/demo/ for a
+#  worked example (written the first time the plugin starts).
+#
+#  /arkcontent reload rebuilds items and the resource pack from contents/.
+#  Changes to THIS file need a restart.
+# ---------------------------------------------------------------------------
+
+# Write the demo content pack into contents/ when that folder does not exist yet.
+extract-examples: true
+
+pack:
+  # Shown in the client's resource pack list. MiniMessage.
+  description: "<gold>Arkcronist</gold> <gray>custom content"
+  # Resource pack formats the pack declares it supports. 46 is 1.21.4, the first
+  # release that can draw these items at all; 99 leaves room for later clients.
+  # 'format' must lie between the two.
+  format: 46
+  min-format: 46
+  max-format: 99
+
+http:
+  # The built-in web server that hands the pack to players. With it off, the pack
+  # is still built (plugins/ArkcronistContent/output/resource_pack.zip) for you to
+  # host elsewhere, and nothing is sent to players.
+  enabled: true
+  # Interface to listen on. 0.0.0.0 means all of them.
+  bind-address: "0.0.0.0"
+  # Must be reachable from players' machines: open or forward it like the game port.
+  port: 8163
+  # The address players' clients download from - your public IP or domain, NOT
+  # 0.0.0.0. Empty means server-ip from server.properties; if that is empty too,
+  # 127.0.0.1, which only works for a client on this same machine.
+  public-address: ""
+  # Downloads served at the same time. More players than this simply queue.
+  threads: 4
+
+delivery:
+  # Send the pack to every player as they join.
+  send-on-join: true
+  # Players who decline a required pack are disconnected by their own client.
+  required: true
+  # Shown on the download prompt. MiniMessage. Empty keeps the client's own text.
+  prompt: "<yellow>This server uses custom items.</yellow> <gray>Accept the resource pack to see them."
