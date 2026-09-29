@@ -13,6 +13,8 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.CommandSender;
 
+import java.util.List;
+
 /**
  * {@code /arkcontent reload} and {@code /arkcontent info}.
  */
@@ -73,6 +75,9 @@ public final class ContentAdminCommand {
         sender.sendMessage(Component.text(pack == null
                 ? "Pack: not built yet"
                 : "Pack: " + pack.entries() + " file(s), " + (pack.size() / 1024) + " KiB, sha1 " + pack.sha1Hex(),
+                NamedTextColor.GRAY));
+        List<String> hooks = plugin.hooks().active();
+        sender.sendMessage(Component.text("Hooks: " + (hooks.isEmpty() ? "none" : String.join(", ", hooks)),
                 NamedTextColor.GRAY));
         sender.sendMessage(Component.text(plugin.httpRunning()
                 ? "Web server: " + (url != null ? url : "running, waiting for the first build")

@@ -233,12 +233,37 @@ class ContentLoaderTest {
         assertEquals("LIGHT", lamp.material());
         assertEquals(new Placement.Furniture(Placement.Support.LIGHT, 12, false, new Placement.Display("FIXED",
                 new Placement.Vec3(0, 0.25f, -0.5f), new Placement.Vec3(0.5f, 0.5f, 0.5f),
-                new Placement.Vec3(0, 90, 0))), lamp.placement());
+                new Placement.Vec3(0, 90, 0)), null), lamp.placement());
 
         ItemDefinition chair = report.items().get(1);
         assertEquals("BARRIER", chair.material());
-        assertEquals(new Placement.Furniture(Placement.Support.BARRIER, 0, true, Placement.Display.DEFAULT),
+        assertEquals(new Placement.Furniture(Placement.Support.BARRIER, 0, true, Placement.Display.DEFAULT, null),
                 chair.placement());
+    }
+
+    @Test
+    void furnitureCanNameAModelEngineBlueprintEitherWay() throws IOException {
+        write("demo/furniture.yml", """
+                items:
+                  throne:
+                    type: custom_furniture
+                    resource:
+                      model: furniture/throne
+                    furniture:
+                      modelengine-id: royal_throne
+                  dragon_statue:
+                    type: custom_furniture
+                    resource:
+                      model: furniture/dragon
+                    furniture:
+                      modelengine_id: "  dragon_idle  "
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+
+        assertEquals(List.of(), report.problems());
+        assertEquals("royal_throne", ((Placement.Furniture) report.items().get(0).placement()).modelEngineId());
+        assertEquals("dragon_idle", ((Placement.Furniture) report.items().get(1).placement()).modelEngineId());
     }
 
     @Test

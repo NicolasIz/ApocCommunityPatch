@@ -206,6 +206,48 @@ class PackCompilerTest {
         assertTrue(Files.exists(pack.resolve("assets/demo/textures/block/log_top.png")));
     }
 
+    @Test
+    void anotherPluginsPackIsMergedAndOurFilesWinClashes() throws IOException {
+        Path demo = temp.resolve("contents/demo");
+        write(demo, "textures/item/ruby.png", png("ours"));
+        Path armor = temp.resolve("plugins/MythicArmor/pack");
+        write(armor, "pack.mcmeta", "{ \"pack\": { \"pack_format\": 1 } }");
+        write(armor, "assets/mythicarmor/equipment/ruby.json", "{ \"layers\": {} }");
+        write(armor, "assets/mythicarmor/textures/entity/equipment/humanoid/ruby.png", png("armor"));
+        write(armor, "assets/demo/textures/item/ruby.png", png("theirs"));
+        Path pack = temp.resolve("pack");
+
+        PackCompiler.Result result = new PackCompiler(SETTINGS).compile(pack,
+                List.of(item("ruby", flat(demo, "ruby", "demo:item/ruby", "minecraft:item/generated"))), Map.of(),
+                List.of(new ExternalPack("MythicArmor", armor), new ExternalPack("Missing", temp.resolve("nowhere"))));
+
+        assertEquals(2, result.externalFiles());
+        assertTrue(Files.exists(pack.resolve("assets/mythicarmor/equipment/ruby.json")));
+        assertTrue(Files.exists(pack.resolve("assets/mythicarmor/textures/entity/equipment/humanoid/ruby.png")));
+        // Our pack.mcmeta, and our texture where both supply one.
+        assertEquals(46, json(pack.resolve("pack.mcmeta")).getAsJsonObject("pack").get("pack_format").getAsInt());
+        assertArrayEquals(png("ours"), Files.readAllBytes(pack.resolve("assets/demo/textures/item/ruby.png")));
+        assertEquals(2, result.problems().size(), result.problems().toString());
+        assertTrue(result.problems().stream().anyMatch(p -> p.startsWith("MythicArmor pack: assets/demo/textures/item/ruby.png")));
+        assertTrue(result.problems().stream().anyMatch(p -> p.startsWith("Missing pack: no assets folder")));
+    }
+
+    @Test
+    void anotherPluginsPackCannotLinkToFilesOutsideIt() throws IOException {
+        write(temp, "server/secret.txt", "password");
+        Path secret = temp.resolve("server/secret.txt");
+        Path armor = temp.resolve("plugins/MythicArmor/pack");
+        write(armor, "assets/mythicarmor/equipment/ruby.json", "{ \"layers\": {} }");
+        Files.createSymbolicLink(armor.resolve("assets/mythicarmor/leak.txt"), secret);
+        Path pack = temp.resolve("pack");
+
+        PackCompiler.Result result = new PackCompiler(SETTINGS).compile(pack, List.of(), Map.of(),
+                List.of(new ExternalPack("MythicArmor", armor)));
+
+        assertEquals(1, result.externalFiles());
+        assertFalse(Files.exists(pack.resolve("assets/mythicarmor/leak.txt")));
+    }
+
     // ---------------------------------------------------------------- fixtures
 
     /** What the loader makes of {@code texture:} on a custom block. */

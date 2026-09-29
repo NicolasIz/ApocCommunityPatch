@@ -8,6 +8,7 @@ import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
@@ -19,7 +20,10 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.world.EntitiesLoadEvent;
 import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.plugin.Plugin;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -33,10 +37,12 @@ import java.util.Optional;
  */
 public final class FurnitureListener implements Listener {
 
+    private final Plugin plugin;
     private final FurnitureService furniture;
     private final ItemFactory items;
 
-    public FurnitureListener(FurnitureService furniture, ItemFactory items) {
+    public FurnitureListener(Plugin plugin, FurnitureService furniture, ItemFactory items) {
+        this.plugin = plugin;
         this.furniture = furniture;
         this.items = items;
     }
@@ -120,10 +126,20 @@ public final class FurnitureListener implements Listener {
      */
     @EventHandler(priority = EventPriority.MONITOR)
     public void onEntitiesLoad(EntitiesLoadEvent event) {
+        List<Entity> displays = new ArrayList<>();
         for (Entity entity : event.getEntities()) {
             if (furniture.isOrphan(entity)) {
                 entity.remove();
+            } else if (entity instanceof ItemDisplay) {
+                displays.add(entity);
             }
         }
+        if (displays.isEmpty()) {
+            return;
+        }
+        // A tick later, so ModelEngine gets to restore its own saved models first.
+        plugin.getServer().getScheduler().runTask(plugin, () -> displays.stream()
+                .filter(Entity::isValid)
+                .forEach(furniture::restoreModel));
     }
 }

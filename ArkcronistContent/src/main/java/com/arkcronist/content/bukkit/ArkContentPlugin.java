@@ -5,6 +5,7 @@ import com.arkcronist.content.bukkit.block.CustomBlockService;
 import com.arkcronist.content.bukkit.command.ContentAdminCommand;
 import com.arkcronist.content.bukkit.command.CustomGiveCommand;
 import com.arkcronist.content.bukkit.furniture.FurnitureService;
+import com.arkcronist.content.bukkit.hooks.HookManager;
 import com.arkcronist.content.bukkit.item.ItemFactory;
 import com.arkcronist.content.bukkit.item.ItemRegistry;
 import com.arkcronist.content.bukkit.listener.CustomBlockListener;
@@ -42,6 +43,7 @@ import java.util.concurrent.CompletableFuture;
  *   <li>{@link ItemRegistry} / {@link ItemFactory} - the loaded items, and stacks of them;</li>
  *   <li>{@link BlockRegistry} / {@link CustomBlockService} - custom blocks as note block states;</li>
  *   <li>{@link FurnitureService} - furniture as a support block plus an item display;</li>
+ *   <li>{@link HookManager} - MythicMobs, ModelEngine and MythicArmor, each only when installed;</li>
  *   <li>{@link PlacedContentStore} / {@link DatabaseManager} - where blocks and furniture stand,
  *       in memory and in SQLite;</li>
  *   <li>{@link PackDelivery} / {@link PackHttpServer} - the live pack, and the web server for it;</li>
@@ -61,6 +63,7 @@ public final class ArkContentPlugin extends JavaPlugin {
     private DatabaseManager database;
     private PlacedContentStore placed;
     private PackDelivery delivery;
+    private HookManager hooks;
     /** Set by the worker once the port is bound; read from the main thread. */
     private volatile PackHttpServer http;
     private ContentPipeline pipeline;
@@ -79,8 +82,12 @@ public final class ArkContentPlugin extends JavaPlugin {
         this.delivery = new PackDelivery(settings);
         this.pipeline = new ContentPipeline(this, settings, items, blocks, delivery);
 
+        // Hooks start before anything that uses them, and before the first rebuild reports to them.
+        this.hooks = new HookManager(this);
+        hooks.enable();
+
         CustomBlockService blockService = new CustomBlockService(getServer(), blocks, itemFactory, placed);
-        FurnitureService furniture = new FurnitureService(this, items, itemFactory, placed);
+        FurnitureService furniture = new FurnitureService(this, items, itemFactory, placed, hooks);
 
         PluginManager plugins = getServer().getPluginManager();
         plugins.registerEvents(new PackDeliveryListener(delivery, settings, getLogger()), this);
@@ -88,7 +95,7 @@ public final class ArkContentPlugin extends JavaPlugin {
         plugins.registerEvents(new ItemCombatListener(itemFactory), this);
         plugins.registerEvents(new WorldInterceptionListener(itemFactory), this);
         plugins.registerEvents(new CustomBlockListener(blockService, itemFactory), this);
-        plugins.registerEvents(new FurnitureListener(furniture, itemFactory), this);
+        plugins.registerEvents(new FurnitureListener(this, furniture, itemFactory), this);
         plugins.registerEvents(new PlacedContentListener(placed, blockService, furniture, getLogger()), this);
 
         openStorage();
@@ -204,6 +211,11 @@ public final class ArkContentPlugin extends JavaPlugin {
 
     public PackDelivery delivery() {
         return delivery;
+    }
+
+    /** Integrations with MythicMobs, ModelEngine and MythicArmor, whichever are installed. */
+    public HookManager hooks() {
+        return hooks;
     }
 
     public ContentPipeline pipeline() {

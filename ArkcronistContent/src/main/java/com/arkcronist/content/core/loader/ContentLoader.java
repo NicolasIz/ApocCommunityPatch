@@ -319,7 +319,7 @@ public final class ContentLoader {
 
     private static Placement.Furniture furniture(Map<?, ?> section, String prefix, List<String> problems) {
         if (section == null) {
-            return new Placement.Furniture(Placement.Support.BARRIER, 0, true, Placement.Display.DEFAULT);
+            return new Placement.Furniture(Placement.Support.BARRIER, 0, true, Placement.Display.DEFAULT, null);
         }
 
         Placement.Support support = Placement.Support.BARRIER;
@@ -346,7 +346,18 @@ public final class ContentLoader {
 
         return new Placement.Furniture(support, light,
                 flag(section, "face-player", true, prefix, problems),
-                display(section(section, "display", prefix, problems), prefix, problems));
+                display(section(section, "display", prefix, problems), prefix, problems),
+                modelEngineId(section, prefix, problems));
+    }
+
+    /**
+     * A ModelEngine blueprint id. Accepted as {@code modelengine-id} or, for configs written for
+     * ModelEngine's own naming, {@code modelengine_id}.
+     */
+    private static String modelEngineId(Map<?, ?> section, String prefix, List<String> problems) {
+        String key = section.containsKey("modelengine-id") ? "modelengine-id" : "modelengine_id";
+        String id = text(section, key, prefix, problems);
+        return id == null || id.isBlank() ? null : id.trim();
     }
 
     private static Placement.Display display(Map<?, ?> section, String prefix, List<String> problems) {

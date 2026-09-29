@@ -11,6 +11,7 @@ import com.arkcronist.content.core.definition.ItemDefinition;
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.loader.ContentLoader;
 import com.arkcronist.content.core.loader.LoadReport;
+import com.arkcronist.content.core.pack.ExternalPack;
 import com.arkcronist.content.core.pack.PackArtifact;
 import com.arkcronist.content.core.pack.PackCompiler;
 import com.arkcronist.content.core.pack.PackZipper;
@@ -24,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -105,6 +107,9 @@ public final class ContentPipeline {
 
     private final ExecutorService worker;
     private final Executor mainThread;
+
+    /** Other plugins' packs to merge into ours, by name. Set from the main thread, read by the worker. */
+    private final Map<String, ExternalPack> externalPacks = new ConcurrentHashMap<>();
 
     /** The rebuild in progress, or the last one. Main thread only. */
     private CompletableFuture<?> last = CompletableFuture.completedFuture(null);
@@ -231,7 +236,8 @@ public final class ContentPipeline {
             List<ItemDefinition> definitions = build.items().values().stream()
                     .map(CustomItem::definition)
                     .toList();
-            PackCompiler.Result result = compiler.compile(packDir, definitions, build.noteBlocks());
+            PackCompiler.Result result = compiler.compile(packDir, definitions, build.noteBlocks(),
+                    List.copyOf(externalPacks.values()));
             build.problems().addAll(result.problems());
             return build;
         } catch (IOException exception) {
@@ -274,6 +280,9 @@ public final class ContentPipeline {
                     plugin.getServer().createBlockData(entry.getValue().asBlockData())));
         }
         blocks.replace(customBlocks);
+        if (plugin.hooks() != null) {
+            plugin.hooks().contentReloaded();
+        }
         boolean changed = delivery.publish(build.artifact());
         if (changed) {
             delivery.sendAll(plugin.getServer().getOnlinePlayers());
@@ -300,6 +309,16 @@ public final class ContentPipeline {
                 + (report.problems().isEmpty() ? "" : ", " + report.problems().size() + " problem(s) above")
                 + (url != null ? ". Served at " + url : ". Built-in web server is off; host "
                         + zipFile + " yourself."));
+    }
+
+    /**
+     * Merges another plugin's pack into ours from now on, and rebuilds so players get it. A second
+     * call with the same name replaces the first. Main thread.
+     */
+    public void mergeExternalPack(ExternalPack pack) {
+        externalPacks.put(pack.name(), pack);
+        logger.info("Merging the " + pack.name() + " resource pack from " + pack.root() + " into ours.");
+        rebuild();
     }
 
     /** Stops the worker. Called from onDisable. */

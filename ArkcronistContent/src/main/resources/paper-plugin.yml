@@ -9,6 +9,26 @@ website: https://github.com/NicolasIz/ApocCommunityPatch
 api-version: '1.21.8'
 folia-supported: false
 
+# Optional integrations. join-classpath lets the hooks see these plugins' classes; none is
+# required, and without one its hook simply stays off.
+dependencies:
+  server:
+    # Loads after this plugin: MythicMobs reads its mobs, and asks for drop types such as
+    # arkcontent{item=...}, as it enables - this plugin has to be listening by then.
+    MythicMobs:
+      load: AFTER
+      required: false
+      join-classpath: true
+    ModelEngine:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    # Loads after this plugin for the same reason: its first pack is generated as it enables.
+    MythicArmor:
+      load: AFTER
+      required: false
+      join-classpath: true
+
 # Commands are not declared here: a Paper plugin registers them through Brigadier at runtime
 # (see ArkContentPlugin#onEnable). Permissions still are.
 permissions:

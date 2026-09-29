@@ -30,10 +30,13 @@ public sealed interface Placement {
      * A piece of furniture: an invisible support block, and an item display on it that draws the
      * model.
      *
-     * @param light      light level of a {@link Support#LIGHT} support, 0-15
-     * @param facePlayer turn to face whoever placed it, snapped to the nearest quarter turn
+     * @param light         light level of a {@link Support#LIGHT} support, 0-15
+     * @param facePlayer    turn to face whoever placed it, snapped to the nearest quarter turn
+     * @param modelEngineId a ModelEngine blueprint to draw it with instead, when ModelEngine is
+     *                      installed; null to always use the item display
      */
-    record Furniture(Support support, int light, boolean facePlayer, Display display) implements Placement {
+    record Furniture(Support support, int light, boolean facePlayer, Display display, String modelEngineId)
+            implements Placement {
 
         @Override
         public ContentType type() {

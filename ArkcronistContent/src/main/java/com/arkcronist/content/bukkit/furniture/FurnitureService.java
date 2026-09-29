@@ -1,5 +1,7 @@
 package com.arkcronist.content.bukkit.furniture;
 
+import com.arkcronist.content.bukkit.hooks.HookManager;
+import com.arkcronist.content.bukkit.hooks.ModelEngineBridge;
 import com.arkcronist.content.bukkit.item.CustomItem;
 import com.arkcronist.content.bukkit.item.ItemFactory;
 import com.arkcronist.content.bukkit.item.ItemRegistry;
@@ -25,6 +27,7 @@ import org.joml.Vector3f;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.logging.Level;
 
 /**
  * Furniture: an invisible support block that gives it a body, and an {@link ItemDisplay} on that
@@ -55,14 +58,17 @@ public final class FurnitureService {
     private final ItemRegistry registry;
     private final ItemFactory items;
     private final PlacedContentStore store;
+    private final HookManager hooks;
     private final NamespacedKey furnitureTag;
     private final NamespacedKey anchorTag;
 
-    public FurnitureService(Plugin plugin, ItemRegistry registry, ItemFactory items, PlacedContentStore store) {
+    public FurnitureService(Plugin plugin, ItemRegistry registry, ItemFactory items, PlacedContentStore store,
+                            HookManager hooks) {
         this.plugin = plugin;
         this.registry = registry;
         this.items = items;
         this.store = store;
+        this.hooks = hooks;
         this.furnitureTag = new NamespacedKey(plugin, "furniture");
         this.anchorTag = new NamespacedKey(plugin, "furniture_anchor");
     }
@@ -96,6 +102,41 @@ public final class FurnitureService {
         link(block, display.getUniqueId());
         store.add(new PlacedContent(block.getWorld().getUID(), block.getX(), block.getY(), block.getZ(),
                 item.id(), PlacedContent.Kind.FURNITURE));
+        attachModelEngine(display, furniture);
+    }
+
+    /**
+     * Hands the look to ModelEngine when the furniture names a blueprint and ModelEngine is here.
+     * Anything short of success leaves the item display drawing the item model.
+     */
+    private void attachModelEngine(Entity display, Placement.Furniture furniture) {
+        ModelEngineBridge modelEngine = hooks.modelEngine();
+        if (furniture.modelEngineId() == null || modelEngine == null) {
+            return;
+        }
+        try {
+            modelEngine.attach(display, furniture.modelEngineId(), furniture.display().scale());
+        } catch (RuntimeException | LinkageError error) {
+            plugin.getLogger().log(Level.WARNING, "ModelEngine could not draw blueprint '" + furniture.modelEngineId()
+                    + "'; the furniture keeps its item model.", error);
+        }
+    }
+
+    /**
+     * A furniture display that has just loaded gets its ModelEngine model back, in case ModelEngine
+     * did not restore it itself.
+     */
+    public void restoreModel(Entity entity) {
+        ModelEngineBridge modelEngine = hooks.modelEngine();
+        if (modelEngine == null || !(entity instanceof ItemDisplay)) {
+            return;
+        }
+        String id = entity.getPersistentDataContainer().get(furnitureTag, PersistentDataType.STRING);
+        Optional<CustomItem> item = id == null ? Optional.empty() : registry.get(id);
+        if (item.isPresent() && item.get().placement() instanceof Placement.Furniture furniture
+                && furniture.modelEngineId() != null && !modelEngine.isAttached(entity)) {
+            attachModelEngine(entity, furniture);
+        }
     }
 
     /** Everything is set before the entity joins the world, so no client ever sees it half-made. */
@@ -156,6 +197,14 @@ public final class FurnitureService {
             display = findDisplay(block);
         }
         if (display != null) {
+            ModelEngineBridge modelEngine = hooks.modelEngine();
+            if (modelEngine != null) {
+                try {
+                    modelEngine.detach(display);
+                } catch (RuntimeException | LinkageError error) {
+                    plugin.getLogger().log(Level.WARNING, "ModelEngine could not remove a furniture model", error);
+                }
+            }
             display.remove();
         }
         unlink(block);

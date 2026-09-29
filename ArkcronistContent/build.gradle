@@ -21,6 +21,11 @@ def useLocalPaperApi = localPaperApi.isFile()
 
 repositories {
     mavenCentral()
+    // MythicMobs, ModelEngine and MythicArmor's APIs, for the optional hooks.
+    maven {
+        name = 'lumine'
+        url = 'https://mvn.lumine.io/repository/maven-public/'
+    }
     if (!useLocalPaperApi) {
         maven {
             name = 'papermc'
@@ -62,6 +67,12 @@ dependencies {
         compileOnly "io.papermc.paper:paper-api:${paperVersion}"
         testImplementation "io.papermc.paper:paper-api:${paperVersion}"
     }
+
+    // Only the hook packages touch these, and only when the plugin is installed on the server.
+    // Mythic-Dist is the whole MythicMobs jar, libraries shaded in; nothing of it is pulled further.
+    compileOnly('io.lumine:Mythic-Dist:5.13.0') { transitive = false }
+    compileOnly('com.ticxo.modelengine:ModelEngine:R4.2.0') { transitive = false }
+    compileOnly('net.mythic.armor:mythicarmor-api:5.13.4') { transitive = false }
 
     // The core package (loader, pack compiler, zip, hash, web server, storage) is tested without a
     // server, but against the same Gson and SnakeYAML the server provides.

@@ -11,6 +11,9 @@ SQLite. El mismo concepto que ItemsAdder u Oraxen, reducido a una base limpia so
 /arkcontent info                           ítems y bloques cargados, colocados, hash del pack, URL
 ```
 
+Con MythicMobs, ModelEngine o MythicArmor instalados se integra con ellos (sección 5); sin
+ellos funciona igual.
+
 El plugin se compila contra la API de Paper 1.21.8 y declara esa versión como mínima. El componente
 `item_model` y la carpeta `assets/<namespace>/items/`, en los que se apoya todo, existen desde 1.21.4,
 pero solo se ha verificado contra 1.21.8.
@@ -28,6 +31,10 @@ pero solo se ha verificado contra 1.21.8.
 `paper-api` se descarga del repositorio de Paper. En una máquina que no llega a `repo.papermc.io`,
 deja `paper-api.jar` y `brigadier.jar` (1.3.10) en `libs/` y el build los usa en su lugar; ver
 `libs/README.md`.
+
+Las APIs de MythicMobs (`Mythic-Dist` 5.13.0), ModelEngine (R4.2.0) y MythicArmor
+(`mythicarmor-api` 5.13.4) vienen de `mvn.lumine.io`, también `compileOnly`: solo hacen falta para
+compilar los ganchos, no van dentro del JAR.
 
 El wrapper fija Gradle 9.8.0. `paper-api` se declara `compileOnly`: el servidor ya trae Adventure,
 MiniMessage, Brigadier, Gson, SnakeYAML y JOML, y el driver JDBC de SQLite viene con el propio
@@ -73,6 +80,7 @@ ArkcronistContent/
         │   │   ├── PackCompiler           assets/<ns>/{items,models,textures}, pack.mcmeta y el
         │   │   │                          blockstate de minecraft:note_block
         │   │   ├── PackSettings           contenido de pack.mcmeta
+        │   │   ├── ExternalPack           assets de otro plugin que se fusionan en el nuestro
         │   │   ├── PackZipper             ZIP determinista, escritura atómica, versión asíncrona
         │   │   ├── Sha1                   hash del ZIP (bytes y hex)
         │   │   └── PackArtifact           bytes + hash del pack publicado
@@ -92,6 +100,11 @@ ArkcronistContent/
             │   └── CustomBlockService     reconocer, colocar, olvidar, resincronizar
             ├── furniture/FurnitureService soporte invisible + ItemDisplay + vínculo en el chunk
             ├── pack/PackDelivery          pack vivo + envío con setResourcePack
+            ├── hooks/                     integraciones opcionales, una por paquete:
+            │   ├── HookManager            detecta cada plugin y arranca su gancho aislado
+            │   ├── mythicmobs/            tipo de drop arkcontent{item=...} + ItemSupplier
+            │   ├── modelengine/           muebles dibujados con un blueprint de ModelEngine
+            │   └── mythicarmor/           fusiona el pack generado por MythicArmor
             ├── command/                   CustomGiveCommand, ContentAdminCommand (Brigadier)
             ├── listener/                  uso, combate, mundo, bloques, muebles, almacenamiento,
             │                              entrega del pack
@@ -164,6 +177,7 @@ items:
         translation: [0, 0, 0]  # bloques, desde el centro del bloque
         scale: 1.0              # o [x, y, z]
         rotation: [0, 0, 0]     # grados en x, y, z
+      modelengine-id: pedestal  # opcional: con ModelEngine, dibuja este blueprint (sección 5)
 ```
 
 | Clave | Obligatoria | Qué hace |
@@ -178,6 +192,7 @@ items:
 | `resource.parent` | no | Parent del modelo generado. Sin namespace significa `minecraft:`. |
 | `block.drop-self` | no | `false` hace que el bloque no suelte nada. |
 | `furniture.*` | no | Soporte, luz, orientación y transformación del display (ver arriba). |
+| `furniture.modelengine-id` | no | Blueprint de ModelEngine que dibuja el mueble. También vale `modelengine_id`. Sin ModelEngine se ignora y se usa `resource`. |
 | `behaviour.cancel-vanilla-use` | no | `true` anula el uso vanilla del material al hacer clic. |
 | `behaviour.placeable` | no | `true` deja colocar como bloque un ítem cuyo material es un bloque. |
 
@@ -321,7 +336,92 @@ Para que funcione desde fuera:
 Con `http.enabled: false` el pack se sigue compilando en `output/resource_pack.zip` para alojarlo en
 otro sitio, y el plugin no envía nada.
 
-## 5. Extender
+## 5. Integraciones
+
+Todas opcionales. `paper-plugin.yml` declara los tres plugins como dependencias con
+`required: false` y `join-classpath: true`; cada gancho vive en su propio paquete bajo `hooks/`, es
+el único código que nombra clases del otro plugin y solo se crea si esas clases existen. Si algo
+falla al crearlo (una versión con otra API), se avisa en consola y el resto del plugin sigue sin ese
+gancho. `/arkcontent info` muestra cuáles están activos (`Hooks: MythicMobs, ...`).
+
+| Plugin | Orden de carga | Por qué |
+|---|---|---|
+| MythicMobs | después de este | lee sus mobs al habilitarse y pregunta entonces por `arkcontent{...}`: hay que estar escuchando ya |
+| ModelEngine | antes de este | su API tiene que estar lista antes de que carguen los muebles del mundo |
+| MythicArmor | después de este | genera su primer pack al habilitarse |
+
+### MythicMobs
+
+Los ítems se usan en los archivos de mobs como un tipo de drop, tanto en `Equipment` como en
+`Drops` (MythicMobs lee ambos como tablas de drops):
+
+```yaml
+RubyKnight:
+  Type: ZOMBIE
+  Equipment:
+  - arkcontent{item=demo:ruby_sword} HAND
+  Drops:
+  - arkcontent{item=demo:ruby} 1-3 0.5      # cantidad y probabilidad, como cualquier drop
+  - arkcontent{item=demo:ruby_block} 1
+```
+
+El ítem sale de `ItemFactory` como con `/customgive`: mismo `item_model`, nombre, lore y etiqueta
+PDC, así que el resto del plugin lo reconoce. El id se resuelve en cada drop, de modo que
+`/arkcontent reload` se refleja sin recargar MythicMobs. Un id que no existe se avisa una vez en
+consola y no suelta nada.
+
+`demo:ruby` a secas **no** funciona: MythicMobs interpreta cualquier `:` en el nombre de un drop
+como el formato antiguo `MATERIAL:data` antes de preguntar a ningún plugin. Por eso el id va entre
+llaves.
+
+Además, cada namespace se registra como `ItemSupplier` en el `ItemManager` de MythicMobs, para
+código que pida ítems a MythicMobs por namespace. MythicMobs 5.13 no consulta esos suppliers al leer
+sus archivos de mobs, así que en configuración la forma válida es `arkcontent{item=...}`.
+
+Verificado en un Paper 1.21.8 real con MythicMobs 5.13.0: el mob aparece con `demo:ruby_sword`
+(modelo, nombre, lore y PDC correctos), los drops salen como entradas separadas, y
+`/arkcontent reload` y `/mm reload` funcionan con el gancho activo.
+
+### ModelEngine
+
+Un mueble con `furniture.modelengine-id` (o `modelengine_id`) se dibuja con ese blueprint en lugar
+del modelo de ítem:
+
+```yaml
+  ruby_statue:
+    type: custom_furniture
+    resource:
+      model: furniture/ruby_pedestal   # sigue siendo obligatorio: icono del ítem y respaldo
+    furniture:
+      support: BARRIER
+      modelengine-id: ruby_statue      # id del blueprint en ModelEngine
+      display:
+        scale: 1.0                     # se aplica también al modelo de ModelEngine
+```
+
+El mueble conserva todo lo demás —soporte, vínculo en el chunk, fila en SQLite, rotura—. El
+`ItemDisplay` sigue existiendo como entidad base: `ModelEngineAPI.getOrCreateModeledEntity(display)`
+le añade el modelo y ModelEngine oculta el display. El modelo se marca para guardarse con la entidad,
+y al cargar un chunk se vuelve a poner si ModelEngine no lo ha restaurado. Al romper el mueble se
+destruye el modelo y luego el display.
+
+Sin ModelEngine, la clave se ignora y el mueble se dibuja con su modelo de ítem. Lo mismo si
+ModelEngine no tiene ese blueprint (aviso en consola, una vez por blueprint) o falla al crearlo. Así,
+quitar ModelEngine nunca deja muebles invisibles.
+
+### MythicArmor
+
+La API de MythicArmor (`net.mythic.armor:mythicarmor-api`) es **de solo lectura**: permite consultar
+sus piezas (`MythicArmorAPI#getItems`) y dónde generó su pack, pero no tiene ningún método para
+registrar armaduras desde fuera. Inyectar las armaduras de este plugin en su registro no es posible.
+
+Lo que sí hace el gancho es que sus armaduras se vean con **un único pack**: cada vez que
+MythicArmor genera el suyo (`MythicArmorGeneratePackEvent`), los `assets/` de esa carpeta se
+fusionan en el nuestro y se recompila. Si una ruta existe en los dos, gana la nuestra y se avisa en
+consola. Si MythicArmor también envía su propio pack a los jugadores, desactívalo en su
+configuración para que no reciban dos.
+
+## 6. Extender
 
 Los listeners solo reconocen el ítem y disparan un evento; el comportamiento va en quien lo escuche:
 
@@ -349,7 +449,7 @@ Desde otro plugin, los registros están en `JavaPlugin.getPlugin(ArkContentPlugi
 ser un plugin de Paper, ese otro plugin debe declararlo como dependencia en su `paper-plugin.yml`
 con `join-classpath: true` para ver sus clases.
 
-## 6. Límites conocidos
+## 7. Límites conocidos
 
 - Cambiar nombre o lore en el YAML no actualiza las stacks ya entregadas (el modelo sí).
 - `/arkcontent reload` no relee `config.yml`: puerto y dirección del servidor HTTP piden reinicio.
@@ -363,5 +463,13 @@ con `join-classpath: true` para ver sus clases.
   `FurnitureListener#onUse`). Sujetar un ítem de mueble muestra las partículas de barrier/light
   que el cliente dibuja al sostener esos materiales.
 - La caché guarda en memoria todo lo colocado en los mundos cargados (~100 bytes por entrada).
+- MythicMobs: los ítems se referencian como `arkcontent{item=ns:id}`, no como `ns:id` (ver
+  sección 5).
+- ModelEngine: el gancho se compila contra la API real R4.2.0, pero no se ha podido probar en un
+  servidor aquí (el artefacto público es solo la API, sin el plugin). Del modelo solo se aplica
+  `scale`; `translation` y `rotation` afectan al display oculto.
+- MythicArmor: no se pueden añadir armaduras a su registro (API de solo lectura). Armaduras 3D
+  propias desde YAML (componente `equippable` de 1.21.2+) serían la alternativa nativa; aún no
+  están implementadas.
 - El pack se envía en `PlayerJoinEvent`. En 1.21.7+ Paper permite enviarlo durante la fase de
   configuración, antes de entrar al mundo; es el siguiente paso natural.

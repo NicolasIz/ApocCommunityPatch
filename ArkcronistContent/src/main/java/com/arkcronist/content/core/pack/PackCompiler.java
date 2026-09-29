@@ -14,6 +14,7 @@ import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -64,11 +65,12 @@ public final class PackCompiler {
      * What a compile wrote.
      *
      * @param customBlockStates note block states mapped to a custom block's model
+     * @param externalFiles     files taken from other plugins' packs
      * @param problems          missing or unreadable files and conflicting paths, each naming the
      *                          item that ran into it
      */
     public record Result(int itemDefinitions, int models, int textures, int customBlockStates,
-                         List<String> problems) {
+                         int externalFiles, List<String> problems) {
 
         public Result {
             problems = List.copyOf(problems);
@@ -81,14 +83,22 @@ public final class PackCompiler {
         this.settings = settings;
     }
 
+    /** {@link #compile(Path, Collection, Map, List)} with no other plugin's pack to merge. */
+    public Result compile(Path packDir, Collection<ItemDefinition> items,
+                          Map<String, NoteBlockState> noteBlockStates) throws IOException {
+        return compile(packDir, items, noteBlockStates, List.of());
+    }
+
     /**
      * Deletes {@code packDir} and writes the pack for {@code items} into it.
      *
      * @param noteBlockStates the state each custom block is drawn through, by full id; empty leaves
      *                        the vanilla note block untouched
+     * @param externalPacks   other plugins' packs to merge in, after this plugin's own files
      */
     public Result compile(Path packDir, Collection<ItemDefinition> items,
-                          Map<String, NoteBlockState> noteBlockStates) throws IOException {
+                          Map<String, NoteBlockState> noteBlockStates,
+                          List<ExternalPack> externalPacks) throws IOException {
         Run run = new Run(packDir);
         run.reset();
         run.writeText("pack.mcmeta", GSON.toJson(settings.mcmeta()) + "\n");
@@ -101,7 +111,11 @@ public final class PackCompiler {
             run.item(item);
         }
         run.noteBlockStates(ordered, noteBlockStates);
-        return new Result(run.itemDefinitions, run.models, run.textures, run.customBlockStates, run.problems);
+        for (ExternalPack pack : externalPacks.stream().sorted(Comparator.comparing(ExternalPack::name)).toList()) {
+            run.merge(pack);
+        }
+        return new Result(run.itemDefinitions, run.models, run.textures, run.customBlockStates,
+                run.externalFiles, run.problems);
     }
 
     /** State for one compile. */
@@ -119,6 +133,7 @@ public final class PackCompiler {
         private int models;
         private int textures;
         private int customBlockStates;
+        private int externalFiles;
 
         Run(Path packDir) {
             this.packDir = packDir;
@@ -217,6 +232,30 @@ public final class PackCompiler {
             root.add("variants", variants);
             Files.createDirectories(packDir.resolve("assets/minecraft/blockstates"));
             place("assets/minecraft/blockstates/note_block.json", json(root), "note blocks");
+        }
+
+        /**
+         * Copies another plugin's {@code assets/} in. Runs after this plugin's own files, so a path
+         * both supply keeps this plugin's version, and {@link #place} reports the clash.
+         */
+        void merge(ExternalPack pack) throws IOException {
+            Path assets = pack.root().resolve("assets");
+            if (!Files.isDirectory(assets)) {
+                problems.add(pack.name() + " pack: no assets folder in " + pack.root() + " - nothing merged");
+                return;
+            }
+            // Links are not followed: the pack is served publicly, and a link could point anywhere.
+            List<Path> files;
+            try (Stream<Path> walk = Files.walk(assets)) {
+                files = walk.filter(file -> Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)).sorted().toList();
+            }
+            for (Path file : files) {
+                Path relative = pack.root().relativize(file);
+                String name = relative.toString().replace(relative.getFileSystem().getSeparator(), "/");
+                if (place(name, Files.readAllBytes(file), pack.name() + " pack")) {
+                    externalFiles++;
+                }
+            }
         }
 
         /** The vanilla layout for a namespace, created even while it is still empty. */

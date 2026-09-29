@@ -36,6 +36,9 @@ items:
     furniture:
       support: BARRIER        # solid; LIGHT is walk-through and can glow
       face-player: true       # turns to face whoever places it
+      # With ModelEngine installed, a blueprint can draw it instead. Without
+      # ModelEngine, or without that blueprint, the model above is used.
+      # modelengine-id: ruby_pedestal
       display:
         transform: NONE       # draw the model exactly as authored
         translation: [0, 0, 0]
