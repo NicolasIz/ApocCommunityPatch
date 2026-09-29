@@ -135,6 +135,48 @@ public final class MobClassifier {
                 && !NEVER_STOOD_IN_FOR.contains(entityType.trim().toUpperCase(Locale.ROOT));
     }
 
+    /**
+     * MythicMobs target selectors that never pick a player by themselves.
+     *
+     * <p>{@code attacker} and {@code hurtbyentity} only answer a hit: a guard or a townsperson who
+     * fights back is still not something the world should send after players. The rest pick other
+     * mobs. A selector not in this list - {@code players}, {@code otherfaction}, a
+     * {@code specifictype} or anything this build has never heard of - counts as aggressive, so an
+     * unfamiliar pack is never quietly emptied out of the spawn pools.</p>
+     */
+    private static final Set<String> PEACEFUL_SELECTORS = Set.of(
+            "clear", "attacker", "hurtbyentity", "hurtbytarget", "monsters", "villagers", "golems",
+            "otherfactionmonsters", "otherfactionvillagers");
+
+    /**
+     * Whether a mob with these target selectors, on this body, never goes after a player unless a
+     * player hits it first.
+     *
+     * <p>Two ways to be that. Target selectors that are all in {@link #PEACEFUL_SELECTORS} - an NPC
+     * pack's {@code [clear]}, a guard's {@code [clear, attacker]}. Or no target selectors at all on
+     * a body whose own AI never hunts players - a pig, a villager, a wolf - which is how a
+     * decorative figure keeps the animal's harmless behaviour. A hostile body with no selectors
+     * keeps its vanilla hunting and is left alone.</p>
+     *
+     * @param selectors the {@code AITargetSelectors} lines as written, priorities included
+     * @param type      the vanilla entity it is built on
+     */
+    public static boolean neverGoesForPlayers(java.util.Collection<String> selectors, String type) {
+        if (selectors == null || selectors.isEmpty()) {
+            return type != null && !type.isBlank() && !standsInFor(type);
+        }
+        for (String line : selectors) {
+            String goal = line == null ? "" : line.trim().replaceFirst("^\\d+\\s+", "");
+            // "specifictype{types=PLAYER}" and the like: only the selector's name decides.
+            int brace = goal.indexOf('{');
+            String name = (brace >= 0 ? goal.substring(0, brace) : goal).trim().toLowerCase(Locale.ROOT);
+            if (!name.isEmpty() && !PEACEFUL_SELECTORS.contains(name)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private static final Set<String> BOSS_WORDS = Set.of(
             "boss", "king", "queen", "lord", "elder", "archon", "overlord", "titan", "ancient",
             "warden", "matron", "champion", "monarch", "emperor", "god", "avatar", "leviathan");
@@ -211,7 +253,8 @@ public final class MobClassifier {
         }
         if (facts.neverTargets()) {
             return new Verdict(Role.PROP, Habitat.ANY,
-                    "its target selectors only clear, so it never attacks anyone: an NPC");
+                    "it never goes after a player on its own (its target selectors, or a passive"
+                            + " body with no selectors): an NPC or a neutral mob, not an enemy");
         }
 
         // Scenery that nobody bothered to label. A decorative NPC pack builds its figures on a

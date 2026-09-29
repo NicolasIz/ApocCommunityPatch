@@ -51,6 +51,7 @@ public final class ArkcronistPlugin extends JavaPlugin {
     public void onEnable() {
         ensureUsableConfig();
         this.arkConfig = new ArkConfig(getConfig());
+        com.arkcronist.gen.bukkit.mobs.MobFit.neverMove(arkConfig.neverMoveMobs());
         this.lootRules = com.arkcronist.gen.bukkit.loot.LootRules.read(getConfig(), getLogger()::warning);
         this.worlds = new WorldRegistry(this);
         this.dimensions = new com.arkcronist.gen.bukkit.world.DimensionManager(this);
@@ -507,6 +508,7 @@ public final class ArkcronistPlugin extends JavaPlugin {
     public void reload() {
         reloadConfig();
         this.arkConfig = new ArkConfig(getConfig());
+        com.arkcronist.gen.bukkit.mobs.MobFit.neverMove(arkConfig.neverMoveMobs());
         this.lootRules = com.arkcronist.gen.bukkit.loot.LootRules.read(getConfig(), getLogger()::warning);
         startAmbientSpawner();
         // Re-read here rather than only at startup: a reload is how an operator applies a new

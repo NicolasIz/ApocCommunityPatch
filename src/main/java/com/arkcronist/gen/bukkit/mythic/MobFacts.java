@@ -15,8 +15,8 @@ package com.arkcronist.gen.bukkit.mythic;
  * @param faction     the MythicMobs faction, or empty - few packs set it
  * @param damage      its configured damage, or {@link #UNKNOWN} when it could not be read
  * @param invincible  whether its options make it impossible to kill; false when unknown
- * @param neverTargets whether its target selectors do nothing but clear, so it can never pick a
- *                    victim; false when unknown
+ * @param neverTargets whether it never goes after a player on its own - see
+ *                    {@link MobClassifier#neverGoesForPlayers}; false when unknown
  */
 public record MobFacts(String name, String entityType, double health, String displayName,
                        String faction, double damage, boolean invincible, boolean neverTargets) {

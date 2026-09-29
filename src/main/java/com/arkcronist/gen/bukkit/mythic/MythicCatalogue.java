@@ -113,9 +113,10 @@ public final class MythicCatalogue {
             if (name.isBlank()) {
                 continue;
             }
-            facts.add(new MobFacts(name, text(mob, TYPE_GETTERS), number(mob, HEALTH_GETTERS),
+            String type = text(mob, TYPE_GETTERS);
+            facts.add(new MobFacts(name, type, number(mob, HEALTH_GETTERS),
                     text(mob, DISPLAY_GETTERS), text(mob, FACTION_GETTERS),
-                    numberOrUnknown(mob, DAMAGE_GETTERS), invincible(mob), neverTargets(mob)));
+                    numberOrUnknown(mob, DAMAGE_GETTERS), invincible(mob), neverTargets(mob, type)));
         }
         facts.sort(Comparator.comparing(f -> f.name().toLowerCase(java.util.Locale.ROOT)));
         return List.copyOf(facts);
@@ -143,26 +144,26 @@ public final class MythicCatalogue {
     }
 
     /**
-     * Whether the mob's target selectors do nothing but clear the vanilla ones.
+     * Whether the mob never goes after a player on its own.
      *
      * <p>{@code AITargetSelectors: [0 clear]} is how a pack writes "this never picks a victim": a
-     * trader who stands and looks at players, a king on a throne. A mob like that is scenery
-     * whatever it is built on. A mob with no target selectors at all keeps its vanilla ones and
-     * says nothing here.</p>
+     * trader who stands and looks at players, a king on a throne. {@code [clear, attacker]} is a
+     * guard that only hits back. Neither is an enemy for the world to produce. See
+     * {@link MobClassifier#neverGoesForPlayers}.</p>
      */
-    private static boolean neverTargets(Object mob) {
+    private static boolean neverTargets(Object mob, String type) {
         Object config = firstResult(mob.getClass(), mob, CONFIG_GETTERS);
-        Object value = config == null ? null : call(config, "getStringList", "AITargetSelectors");
-        if (!(value instanceof Collection<?> selectors) || selectors.isEmpty()) {
+        if (config == null) {
             return false;
         }
-        for (Object selector : selectors) {
-            String goal = String.valueOf(selector).trim().replaceFirst("^\\d+\\s+", "");
-            if (!goal.equalsIgnoreCase("clear")) {
-                return false;
+        Object value = call(config, "getStringList", "AITargetSelectors");
+        List<String> selectors = new ArrayList<>();
+        if (value instanceof Collection<?> list) {
+            for (Object selector : list) {
+                selectors.add(String.valueOf(selector));
             }
         }
-        return true;
+        return MobClassifier.neverGoesForPlayers(selectors, type);
     }
 
     /** A one-string-argument method's result, or null when there is none or it fails. */

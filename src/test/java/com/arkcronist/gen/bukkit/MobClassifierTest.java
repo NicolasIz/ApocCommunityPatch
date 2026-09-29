@@ -198,6 +198,32 @@ class MobClassifierTest {
     }
 
     @Test
+    @DisplayName("a mob that never goes after players on its own is not an enemy")
+    void neutralMobsAreNotEnemies() {
+        java.util.List<String> none = java.util.List.of();
+        // The real tree ents: they clear and then go for attackers, players and other factions.
+        assertFalse(MobClassifier.neverGoesForPlayers(
+                java.util.List.of("clear", "attacker", "players", "OtherFaction"), "HUSK"));
+        // Their decoy stump only clears.
+        assertTrue(MobClassifier.neverGoesForPlayers(java.util.List.of("clear"), "WOLF"));
+        // A guard that only hits back, priorities included the way packs write them.
+        assertTrue(MobClassifier.neverGoesForPlayers(java.util.List.of("0 clear", "1 attacker"), "HUSK"));
+        // One that goes for monsters and villagers but never for a player.
+        assertTrue(MobClassifier.neverGoesForPlayers(
+                java.util.List.of("clear", "monsters", "OtherFactionVillagers"), "IRON_GOLEM"));
+        // A selector this build does not know counts as aggressive, so no pack is emptied by guesswork.
+        assertFalse(MobClassifier.neverGoesForPlayers(
+                java.util.List.of("clear", "specifictype{types=PLAYER}"), "SKELETON"));
+        assertFalse(MobClassifier.neverGoesForPlayers(java.util.List.of("clear", "somethingNew"), "PIG"));
+        // No selectors at all: the body's own AI decides. A husk hunts players; a pig never does.
+        assertFalse(MobClassifier.neverGoesForPlayers(none, "HUSK"));
+        assertTrue(MobClassifier.neverGoesForPlayers(none, "PIG"));
+        assertTrue(MobClassifier.neverGoesForPlayers(none, "VILLAGER"));
+        // Nothing known about the body: nothing decided.
+        assertFalse(MobClassifier.neverGoesForPlayers(none, ""));
+    }
+
+    @Test
     @DisplayName("a MythicMobs that will not say the damage is not taken as zero")
     void damageUnknownIsNotZero() {
         // The five-argument constructor is every caller written before damage was read, and the

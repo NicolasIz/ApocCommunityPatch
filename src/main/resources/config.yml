@@ -487,6 +487,14 @@ hostile-mobs:
   # se tocan. Para limpiar los que ya haya: /ag mobs purge
   despawn-like-vanilla: true
 
+  # Mobs que NUNCA se mueven de sitio cuando se ahogan dentro de un bloque: solo se
+  # les quita el dano de asfixia. Es para los tree ents: miden 3-4 bloques y viven
+  # entre arboles, siempre tienen la cabeza metida en un tronco u hojas, y moverlos
+  # una y otra vez los hacia parpadear y no atacar. Se compara con un trozo del
+  # nombre del mob. Ademas, ningun mob que este peleando se mueve, y los demas como
+  # mucho una vez cada 10 segundos. [] = sin excepciones.
+  never-move: [tree_ent, entling, bark_beast]
+
   # ---------------------------------------------------------------------------
   #  LIMITADOR: cuantos mobs de MythicMobs puede poner el plugin
   # ---------------------------------------------------------------------------

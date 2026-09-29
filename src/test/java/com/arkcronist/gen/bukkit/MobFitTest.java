@@ -21,6 +21,31 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class MobFitTest {
 
+    @Test
+    @DisplayName("tree ents are never moved out of a tree")
+    void treeEntsAreNeverMoved() {
+        java.util.List<String> words = MobFit.DEFAULT_NEVER_MOVE;
+        for (String ent : new String[]{"oak_tree_ent", "dark_oak_elder_tree_ent", "sakura_entling",
+                "hellbark_bark_beast", "aspen_ravager_tree_ent"}) {
+            assertTrue(MobFit.neverMoves(ent, words), ent);
+        }
+        assertFalse(MobFit.neverMoves("am_goblin_brute", words));
+        assertFalse(MobFit.neverMoves("ncr_Skeleton_Tank", words));
+        assertFalse(MobFit.neverMoves(null, words));
+        // An empty list in config.yml switches the exception off.
+        assertFalse(MobFit.neverMoves("oak_tree_ent", java.util.List.of()));
+    }
+
+    @Test
+    @DisplayName("a mob in a fight is never moved, and an idle one at most every ten seconds")
+    void choking() {
+        assertFalse(com.arkcronist.gen.bukkit.mobs.SuffocationGuard.shouldMove(true, null, 0));
+        assertFalse(com.arkcronist.gen.bukkit.mobs.SuffocationGuard.shouldMove(true, 0L, 1_000_000));
+        assertTrue(com.arkcronist.gen.bukkit.mobs.SuffocationGuard.shouldMove(false, null, 5_000));
+        assertFalse(com.arkcronist.gen.bukkit.mobs.SuffocationGuard.shouldMove(false, 5_000L, 9_000));
+        assertTrue(com.arkcronist.gen.bukkit.mobs.SuffocationGuard.shouldMove(false, 5_000L, 15_000));
+    }
+
     /** A world that is empty apart from the block positions named. */
     private static MobFit.Solid wallAt(int... coords) {
         Set<String> solid = new HashSet<>();

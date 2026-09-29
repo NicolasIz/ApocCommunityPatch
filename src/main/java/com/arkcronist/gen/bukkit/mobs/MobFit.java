@@ -64,6 +64,46 @@ public final class MobFit {
     private MobFit() {
     }
 
+    /** What {@code hostile-mobs.never-move} holds when config.yml does not say. */
+    public static final java.util.List<String> DEFAULT_NEVER_MOVE =
+            java.util.List.of("tree_ent", "entling", "bark_beast");
+
+    /** Name parts from {@code hostile-mobs.never-move}; set whenever the config is read. */
+    private static volatile java.util.List<String> neverMove = DEFAULT_NEVER_MOVE;
+
+    public static void neverMove(java.util.List<String> words) {
+        neverMove = words == null ? java.util.List.of() : java.util.List.copyOf(words);
+    }
+
+    /**
+     * Whether a mob of this MythicMobs name is left where it is, however buried it looks.
+     *
+     * <p>The tree ents. They are three or four blocks of trunk and branches living in forests, so
+     * their head is in a log or in leaves every few steps - and leaves are not passable. Checked the
+     * normal way they read as buried all the time: they were moved on every suffocation tick,
+     * flickering back and forth, dropping their target and never finishing an attack, and at spawn
+     * a forest was often "no place for them" and they were taken out again. They walk out of a tree
+     * on their own; all they need is not to take the damage while they do.</p>
+     */
+    public static boolean neverMoves(String mythicName, java.util.Collection<String> words) {
+        if (mythicName == null || mythicName.isBlank()) {
+            return false;
+        }
+        String name = mythicName.toLowerCase(java.util.Locale.ROOT);
+        for (String word : words) {
+            if (!word.isEmpty() && name.contains(word)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** {@link #neverMoves(String, java.util.Collection)} for a mob in the world, with the config's list. */
+    public static boolean neverMoves(Entity entity) {
+        return entity != null && MythicBridge.available()
+                && neverMoves(MythicBridge.nameOf(entity), neverMove);
+    }
+
     /**
      * Whether this mob is standing inside something solid right now.
      *
@@ -130,7 +170,7 @@ public final class MobFit {
         if (entity == null || !entity.isValid()) {
             return false;
         }
-        if (!buried(entity)) {
+        if (neverMoves(entity) || !buried(entity)) {
             return true;
         }
         Location where = entity.getLocation();

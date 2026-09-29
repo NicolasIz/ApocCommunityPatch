@@ -305,6 +305,24 @@ public final class ArkConfig {
     }
 
     /**
+     * Parts of MythicMobs names whose mobs are never moved out of a block, only kept from choking.
+     * The tree ents unless config.yml says otherwise. See
+     * {@link com.arkcronist.gen.bukkit.mobs.MobFit#neverMoves(String, java.util.Collection)}.
+     */
+    public java.util.List<String> neverMoveMobs() {
+        if (!config.isSet("hostile-mobs.never-move")) {
+            return com.arkcronist.gen.bukkit.mobs.MobFit.DEFAULT_NEVER_MOVE;
+        }
+        java.util.List<String> out = new java.util.ArrayList<>();
+        for (String word : config.getStringList("hostile-mobs.never-move")) {
+            if (word != null && !word.isBlank()) {
+                out.add(word.trim().toLowerCase(java.util.Locale.ROOT));
+            }
+        }
+        return java.util.List.copyOf(out);
+    }
+
+    /**
      * Whether the plugin stops adding MythicMobs mobs where there are already enough. On unless
      * config.yml turns it off, with the numbers below.
      */
