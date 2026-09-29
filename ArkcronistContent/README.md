@@ -1,6 +1,6 @@
 # ArkcronistContent
 
-Motor de contenido personalizado para **Paper 1.21.4+**, Java 21: define ítems, bloques y muebles en
+Motor de contenido personalizado para **Paper 1.21.8+**, Java 21: define ítems, bloques y muebles en
 YAML y el plugin compila su propio resource pack, lo empaqueta en ZIP, calcula su SHA-1, lo sirve con
 un servidor HTTP integrado y se lo envía a cada jugador. Los bloques y muebles colocados se guardan en
 SQLite. El mismo concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer.
@@ -11,8 +11,9 @@ SQLite. El mismo concepto que ItemsAdder u Oraxen, reducido a una base limpia so
 /arkcontent info                           ítems y bloques cargados, colocados, hash del pack, URL
 ```
 
-El mínimo es 1.21.4 porque es la versión que introdujo el componente `item_model` y la carpeta
-`assets/<namespace>/items/`, en los que se apoya todo el plugin.
+El plugin se compila contra la API de Paper 1.21.8 y declara esa versión como mínima. El componente
+`item_model` y la carpeta `assets/<namespace>/items/`, en los que se apoya todo, existen desde 1.21.4,
+pero solo se ha verificado contra 1.21.8.
 
 ---
 
@@ -23,6 +24,10 @@ El mínimo es 1.21.4 porque es la versión que introdujo el componente `item_mod
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
+
+`paper-api` se descarga del repositorio de Paper. En una máquina que no llega a `repo.papermc.io`,
+deja `paper-api.jar` y `brigadier.jar` (1.3.10) en `libs/` y el build los usa en su lugar; ver
+`libs/README.md`.
 
 El wrapper fija Gradle 9.8.0. `paper-api` se declara `compileOnly`: el servidor ya trae Adventure,
 MiniMessage, Brigadier, Gson, SnakeYAML y JOML, y el driver JDBC de SQLite viene con el propio

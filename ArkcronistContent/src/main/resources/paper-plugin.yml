@@ -4,9 +4,9 @@ main: com.arkcronist.content.bukkit.ArkContentPlugin
 description: Custom items from YAML, drawn by a resource pack the plugin compiles, zips, hashes and serves itself.
 author: Arkcronist
 website: https://github.com/NicolasIz/ApocCommunityPatch
-# 1.21.4 introduced the item_model component and the assets/<namespace>/items/ folder this plugin
-# is built on; nothing older can draw these items.
-api-version: '1.21.4'
+# Compiled against the 1.21.8 API. (1.21.4 introduced the item_model component and the
+# assets/<namespace>/items/ folder this plugin is built on; nothing older can draw these items.)
+api-version: '1.21.8'
 folia-supported: false
 
 # Commands are not declared here: a Paper plugin registers them through Brigadier at runtime
