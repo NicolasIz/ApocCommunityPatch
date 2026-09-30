@@ -9,6 +9,8 @@ import com.arkcronist.content.core.block.NoteBlockAllocator;
 import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.definition.ItemDefinition;
 import com.arkcronist.content.core.definition.Placement;
+import com.arkcronist.content.core.importer.ImportReport;
+import com.arkcronist.content.core.importer.ItemsAdderImporter;
 import com.arkcronist.content.core.loader.ContentLoader;
 import com.arkcronist.content.core.loader.LoadReport;
 import com.arkcronist.content.core.pack.ExternalPack;
@@ -24,7 +26,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -47,6 +51,9 @@ import java.util.logging.Logger;
  *             -> zip resource_pack.zip -> SHA-1
  *   main    : swap item + block registries and live pack, resend to online players
  * </pre>
+ *
+ * <p>The ItemsAdder import writes into contents/, so it runs on the same worker and in the same
+ * queue: never while a rebuild is reading the files it writes.</p>
  *
  * <p>Rebuilds never overlap. Each one starts only after the previous has fully finished, including
  * its main-thread step, so two quick reloads cannot interleave their writes into the same folder.
@@ -101,6 +108,7 @@ public final class ContentPipeline {
     private final PackCompiler compiler;
 
     private final Path contentsDir;
+    private final Path importDir;
     private final Path packDir;
     private final Path zipFile;
     private final Path noteBlockStateFile;
@@ -126,6 +134,7 @@ public final class ContentPipeline {
 
         Path data = plugin.getDataFolder().toPath();
         this.contentsDir = data.resolve("contents");
+        this.importDir = data.resolve("import");
         this.packDir = data.resolve("pack");
         this.zipFile = data.resolve("output").resolve("resource_pack.zip");
         this.noteBlockStateFile = data.resolve("data").resolve("note_block_states.json");
@@ -170,6 +179,60 @@ public final class ContentPipeline {
         });
         last = next;
         return next;
+    }
+
+    /**
+     * Converts the ItemsAdder packs in import/ into content files under contents/ - see
+     * {@link ItemsAdderImporter}. The reading, converting and copying all happen on the worker, in
+     * line with rebuilds: never while one is reading contents/. It does not rebuild; the caller
+     * decides whether to. Call from the main thread.
+     *
+     * @return completes on the worker, with the report already logged
+     */
+    public CompletableFuture<ImportReport> importFromItemsAdder() {
+        return exclusive(() -> {
+            ImportReport report = new ItemsAdderImporter().run(importDir, contentsDir);
+            logImport(report);
+            return report;
+        });
+    }
+
+    /**
+     * Runs {@code task} on the worker once any rebuild in progress has finished; the next rebuild
+     * waits for it in turn. Main thread.
+     */
+    private <T> CompletableFuture<T> exclusive(Callable<T> task) {
+        CompletableFuture<T> next = last
+                .handle((ignored, error) -> null)
+                .thenApplyAsync(ignored -> {
+                    try {
+                        return task.call();
+                    } catch (Exception exception) {
+                        throw new CompletionException(exception);
+                    }
+                }, worker);
+        last = next;
+        return next;
+    }
+
+    private void logImport(ImportReport report) {
+        if (report.empty()) {
+            logger.info("Nothing to import in " + importDir + ". Copy ItemsAdder's contents folder, or one"
+                    + " pack from it, in there and run /arkcontent import again.");
+            return;
+        }
+        for (String note : report.notes()) {
+            logger.info("[import] " + note);
+        }
+        for (String problem : report.problems()) {
+            logger.warning("[import] " + problem);
+        }
+        for (String file : report.written()) {
+            logger.info("[import] wrote contents/" + file);
+        }
+        logger.info("ItemsAdder import: " + report.items() + " item(s) from " + report.converted() + " file(s), "
+                + report.resources() + " model/texture file(s) copied, " + report.skipped() + " item(s) skipped"
+                + (report.problems().isEmpty() ? "" : ", " + report.problems().size() + " problem(s) above") + ".");
     }
 
     private CompletableFuture<Report> stages() {
@@ -282,6 +345,9 @@ public final class ContentPipeline {
         blocks.replace(customBlocks);
         if (plugin.hooks() != null) {
             plugin.hooks().contentReloaded();
+        }
+        if (plugin.menus() != null) {
+            plugin.menus().refreshOpen();
         }
         boolean changed = delivery.publish(build.artifact());
         if (changed) {

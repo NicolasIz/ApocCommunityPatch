@@ -9,7 +9,15 @@ SQLite. El mismo concepto que ItemsAdder u Oraxen, reducido a una base limpia so
 /customgive <jugador> <item> [cantidad]    entrega un ítem (acepta @a, @p...; autocompleta ids)
 /arkcontent reload                         recompila ítems y pack sin reiniciar
 /arkcontent info                           ítems y bloques cargados, colocados, hash del pack, URL
+/arkcontent import                         convierte los packs de ItemsAdder de import/ (sección 6)
+/arkcontent menu                           explorador de todo el contenido cargado (sección 7)
 ```
+
+| Permiso | Por defecto | Para |
+|---|---|---|
+| `arkcontent.give` | op | `/customgive`, y sacar ítems del explorador |
+| `arkcontent.admin` | op | `reload`, `info`, `import` |
+| `arkcontent.menu` | op | abrir el explorador (solo mirar, si no tiene `arkcontent.give`) |
 
 Con MythicMobs, ModelEngine o MythicArmor instalados se integra con ellos (sección 5); sin
 ellos funciona igual.
@@ -76,6 +84,12 @@ ArkcronistContent/
         │   ├── loader/
         │   │   ├── ContentLoader          escanea contents/ y parsea los .yml (SnakeYAML seguro)
         │   │   └── LoadReport             ítems leídos + problemas encontrados
+        │   ├── importer/
+        │   │   ├── ItemsAdderImporter     import/ (formato ItemsAdder) -> contents/ (este formato)
+        │   │   ├── AssetIndex             modelos y texturas en las 5 estructuras de ItemsAdder
+        │   │   ├── LegacyText             &c, &#rrggbb... -> MiniMessage
+        │   │   └── Rotations              cuaterniones / eje-ángulo -> grados x, y, z
+        │   ├── menu/Page                  paginación del explorador
         │   ├── pack/
         │   │   ├── PackCompiler           assets/<ns>/{items,models,textures}, pack.mcmeta y el
         │   │   │                          blockstate de minecraft:note_block
@@ -100,6 +114,8 @@ ArkcronistContent/
             │   └── CustomBlockService     reconocer, colocar, olvidar, resincronizar
             ├── furniture/FurnitureService soporte invisible + ItemDisplay + vínculo en el chunk
             ├── pack/PackDelivery          pack vivo + envío con setResourcePack
+            ├── menu/                      ContentMenu (inventario paginado), ContentMenus,
+            │                              ContentMenuListener (bloquea todo movimiento)
             ├── hooks/                     integraciones opcionales, una por paquete:
             │   ├── HookManager            detecta cada plugin y arranca su gancho aislado
             │   ├── mythicmobs/            tipo de drop arkcontent{item=...} + ItemSupplier
@@ -421,7 +437,85 @@ fusionan en el nuestro y se recompila. Si una ruta existe en los dos, gana la nu
 consola. Si MythicArmor también envía su propio pack a los jugadores, desactívalo en su
 configuración para que no reciban dos.
 
-## 6. Extender
+## 6. Importar desde ItemsAdder
+
+```
+plugins/ArkcronistContent/import/     <- copia aquí plugins/ItemsAdder/contents/ (o un pack suelto)
+/arkcontent import                    <- convierte, copia recursos y recompila
+```
+
+El importador lee todo lo que haya en `import/`, en cualquiera de las cinco estructuras de carpetas
+que acepta ItemsAdder (`configs/` + `models/`/`textures/`, `resourcepack/assets/<ns>/`,
+`resourcepack/<ns>/`, `assets/<ns>/` o `<ns>/`). Por cada archivo de ItemsAdder con `items:` escribe
+`contents/<namespace>/imported/<su ruta en import/>`, y copia cada modelo, textura y animación
+(`.png.mcmeta`) que usan esos ítems a `contents/<namespace>/models|textures/`, que es donde el
+loader y el compilador del pack los buscan. Después recompila, y los ítems ya están en el juego.
+
+| ItemsAdder | Aquí |
+|---|---|
+| `name` / `display_name`, `lore` | `display-name`, `lore`: claves de diccionario resueltas (`dictionary`, prefiere inglés); `&c`, `§l`, `&#ff8800`, `&x&f&f...` pasan a MiniMessage |
+| `resource.material` / `material` | `material` (solo ítems) |
+| `resource` con `generate: true` + `textures` | `resource.texture` (o `textures` + `parent`); espadas y herramientas con `item/handheld` |
+| `resource.model_path` / `graphics.model` | `resource.model`, con el modelo, sus padres y sus texturas copiados |
+| `graphics.texture` / `graphics.textures` / `graphics.parent` | igual, con el padre por defecto de ItemsAdder (`block/cube` o `cube_all` en bloques) |
+| `resource.model_id` (CustomModelData) | innecesario: cada ítem tiene su `item_model` |
+| `behaviours.block` | `type: custom_block`; 6 texturas en el orden de ItemsAdder (down, east, north, south, up, west); `drop_when_mined` / `cancel_drop` -> `block.drop-self` |
+| `behaviours.furniture` | `type: custom_furniture`; `solid` -> `BARRIER`, si no `LIGHT` con `light_level`; `fixed_rotation` -> `face-player: false`; `display_transformation` (transform, translation, scale, left/right_rotation) -> `furniture.display` |
+
+Arreglos que hace de paso: un modelo exportado de Blockbench con texturas sin namespace
+(`"item/espada"`, que el cliente busca en `minecraft:`) se corrige en la copia a `mi_ns:item/espada`
+cuando esa textura está en el pack; y a los bloques de seis caras se les da textura de partículas.
+
+Lo que no tiene equivalente —recetas, loot, eventos, durabilidad, encantamientos, sonidos, hitbox de
+más de un bloque, `variant_of`— no se importa, y **se lista por ítem** en la consola en vez de
+perderse en silencio. En el juego, el comando resume: ítems importados, archivos copiados, y cuántos
+problemas y notas hay en consola.
+
+Garantías:
+
+- **Un archivo roto no para la importación.** YAML inválido, un ítem mal formado, una textura que
+  falta: se informa con archivo, línea o ítem, y el resto sigue.
+- **Nada fuera de `import/`.** No se siguen enlaces simbólicos y toda ruta se valida como las de los
+  archivos de contenido (sin `..`), porque lo copiado acaba en un pack público.
+- **Idempotente y no destructivo.** `import/` no se modifica. Un recurso que ya existe en
+  `contents/` con otros bytes se conserva (y se avisa). Los `.yml` convertidos llevan una cabecera
+  que los marca como generados: reimportar solo sobrescribe esos, nunca uno escrito a mano. Para
+  editar uno a mano, sácalo de `imported/`.
+- **Asíncrono.** Leer, convertir y copiar ocurren en el hilo `ArkContent-Worker`, en la misma cola que
+  las recompilaciones: nunca mientras una está leyendo `contents/`. El hilo principal solo recibe el
+  resultado.
+
+Diferencias que conviene revisar tras importar: todos los bloques son note blocks (sólidos y opacos,
+aunque en ItemsAdder fueran `REAL_TRANSPARENT`, `REAL_WIRE` o `TILE`); los muebles se dibujan con un
+item display en el centro del bloque, así que si ItemsAdder usaba un armor stand o un marco, la altura
+puede necesitar ajustar `furniture.display.translation`; y los bloques ya colocados en un mundo por
+ItemsAdder no se migran (sus estados de note block eran los de ItemsAdder).
+
+## 7. Explorador de contenido
+
+`/arkcontent menu` (o `/arkcontent` a secas) abre un cofre de 6 filas con todo lo cargado, en tres
+pestañas —Items, Blocks, Furniture; los textos del juego están en inglés, como el resto de mensajes
+del plugin— de 45 por página, ordenado por id:
+
+```
+filas 1-5   los ítems: el ItemStack real de ItemFactory, con su item_model, nombre y lore
+fila 6      [Previous] [Items] [Blocks] [Furniture] [Page n of m] [Close] [Next]
+```
+
+Cada casilla muestra el ítem tal como es —el cliente dibuja su modelo 3D en la casilla— con su id
+debajo del lore. Con `arkcontent.give`, clic toma uno y mayúsculas+clic una pila, siempre al
+inventario principal (si no cabe, se dice; nunca se tira al suelo). Sin ese permiso el menú es solo
+para mirar.
+
+Nada sale del menú de otra forma. Se cancela **todo** clic y arrastre mientras está abierto, en el
+menú y en el inventario del jugador debajo (mayúsculas+clic, teclas numéricas, Q, doble clic para
+recoger, arrastrar, cambio a la otra mano), primero con prioridad `LOWEST` y otra vez en `HIGHEST`
+por si otro plugin lo descancelara. El ítem que se entrega es siempre una pila nueva de
+`ItemFactory`, resuelta por id contra el registro en ese momento, nunca la de la casilla. Una
+recompilación refresca los menús abiertos, y al deshabilitar el plugin se cierran (sin su listener
+serían un cofre normal lleno de ítems).
+
+## 8. Extender
 
 Los listeners solo reconocen el ítem y disparan un evento; el comportamiento va en quien lo escuche:
 
@@ -449,7 +543,7 @@ Desde otro plugin, los registros están en `JavaPlugin.getPlugin(ArkContentPlugi
 ser un plugin de Paper, ese otro plugin debe declararlo como dependencia en su `paper-plugin.yml`
 con `join-classpath: true` para ver sus clases.
 
-## 7. Límites conocidos
+## 9. Límites conocidos
 
 - Cambiar nombre o lore en el YAML no actualiza las stacks ya entregadas (el modelo sí).
 - `/arkcontent reload` no relee `config.yml`: puerto y dirección del servidor HTTP piden reinicio.
@@ -459,6 +553,9 @@ con `join-classpath: true` para ver sus clases.
   pick-block (clic central) da un note block vanilla.
 - Note blocks vanilla que ya estuvieran afinados en el mundo antes de definir bloques pueden
   coincidir con el estado de un bloque personalizado y verse como él.
+- Importar desde ItemsAdder convierte configuración y recursos, no mundos: los bloques y muebles
+  que ItemsAdder ya colocó siguen siendo suyos. Recetas, loot, eventos y demás se listan como no
+  importados.
 - Muebles de un solo bloque de hitbox; sin interacción de clic derecho todavía (el gancho está en
   `FurnitureListener#onUse`). Sujetar un ítem de mueble muestra las partículas de barrier/light
   que el cliente dibuja al sostener esos materiales.

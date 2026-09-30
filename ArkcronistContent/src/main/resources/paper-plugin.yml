@@ -33,8 +33,11 @@ dependencies:
 # (see ArkContentPlugin#onEnable). Permissions still are.
 permissions:
   arkcontent.give:
-    description: Use /customgive.
+    description: Use /customgive, and take items out of the content browser.
     default: op
   arkcontent.admin:
-    description: Use /arkcontent reload and /arkcontent info.
+    description: Use /arkcontent reload, info and import.
+    default: op
+  arkcontent.menu:
+    description: Open the content browser (/arkcontent menu). Taking items out of it needs arkcontent.give.
     default: op
