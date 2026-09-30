@@ -9,7 +9,8 @@ import java.util.UUID;
  * @param world     the world's UID, which survives renaming the world folder
  * @param contentId {@code namespace:id} of what stands there
  */
-public record PlacedContent(UUID world, int x, int y, int z, String contentId, Kind kind) {
+public record PlacedContent(UUID world, int x, int y, int z, String contentId, Kind kind)
+        implements PositionIndex.Positioned {
 
     /** The {@code type} column. Stored by name, so the order here can change freely. */
     public enum Kind {
@@ -17,7 +18,7 @@ public record PlacedContent(UUID world, int x, int y, int z, String contentId, K
         FURNITURE
     }
 
-    /** The position packed as {@link BlockKey} does it. */
+    @Override
     public long key() {
         return BlockKey.pack(x, y, z);
     }

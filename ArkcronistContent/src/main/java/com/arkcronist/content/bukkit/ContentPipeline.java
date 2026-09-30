@@ -2,11 +2,14 @@ package com.arkcronist.content.bukkit;
 
 import com.arkcronist.content.bukkit.block.BlockRegistry;
 import com.arkcronist.content.bukkit.block.CustomBlock;
+import com.arkcronist.content.bukkit.emoji.EmojiRegistry;
 import com.arkcronist.content.bukkit.item.CustomItem;
 import com.arkcronist.content.bukkit.item.ItemRegistry;
 import com.arkcronist.content.bukkit.pack.PackDelivery;
+import com.arkcronist.content.core.allocation.StableAllocator;
 import com.arkcronist.content.core.block.NoteBlockAllocator;
 import com.arkcronist.content.core.block.NoteBlockState;
+import com.arkcronist.content.core.definition.EmojiDefinition;
 import com.arkcronist.content.core.definition.ItemDefinition;
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.importer.ImportReport;
@@ -17,6 +20,8 @@ import com.arkcronist.content.core.pack.ExternalPack;
 import com.arkcronist.content.core.pack.PackArtifact;
 import com.arkcronist.content.core.pack.PackCompiler;
 import com.arkcronist.content.core.pack.PackZipper;
+
+import org.bukkit.Material;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -47,9 +52,9 @@ import java.util.logging.Logger;
  * size therefore costs the server's tick nothing but that final swap.</p>
  *
  * <pre>
- *   worker  : load contents/*.yml -> assign note block states -> compile pack/
- *             -> zip resource_pack.zip -> SHA-1
- *   main    : swap item + block registries and live pack, resend to online players
+ *   worker  : load contents/*.yml -> assign note block states and emoji characters
+ *             -> compile pack/ -> zip resource_pack.zip -> SHA-1
+ *   main    : swap item, block and emoji registries and live pack, resend to online players
  * </pre>
  *
  * <p>The ItemsAdder import writes into contents/, so it runs on the same worker and in the same
@@ -70,7 +75,16 @@ public final class ContentPipeline {
             "contents/demo/blocks.yml",
             "contents/demo/textures/block/ruby_block.png",
             "contents/demo/models/furniture/ruby_pedestal.json",
-            "contents/demo/textures/furniture/pedestal_stone.png");
+            "contents/demo/textures/furniture/pedestal_stone.png",
+            "contents/demo/crops.yml",
+            "contents/demo/textures/item/ruby_seeds.png",
+            "contents/demo/textures/crop/ruby_stage_0.png",
+            "contents/demo/textures/crop/ruby_stage_1.png",
+            "contents/demo/textures/crop/ruby_stage_2.png",
+            "contents/demo/textures/crop/ruby_stage_3.png",
+            "contents/demo/emojis.yml",
+            "contents/demo/textures/emoji/ruby.png",
+            "contents/demo/textures/emoji/heart.png");
 
     /**
      * What one rebuild did.
@@ -78,24 +92,38 @@ public final class ContentPipeline {
      * @param changed  whether the pack's content moved, and players were sent it again
      * @param problems everything that was skipped or looked wrong, already logged
      */
-    public record Report(int items, int blocks, int files, String sha1Hex, int bytes, boolean changed,
+    public record Report(int items, int blocks, int emojis, int files, String sha1Hex, int bytes, boolean changed,
                          List<String> problems, long millis) {
     }
+
+    /** Emoji characters: Unicode's private use area, which no font draws until a pack says so. */
+    private static final StableAllocator EMOJI_CHARACTERS = new StableAllocator(0xE000, 0xF8FF, "emoji character",
+            "to emojis no longer defined; remove those from emoji_characters.json once no sign or book uses them");
 
     /**
      * One rebuild's progress, handed from stage to stage.
      *
      * @param noteBlocks the state each custom block got, by id
+     * @param emojis     every emoji defined, and the character it got once assigned
      */
     private record Build(Map<String, CustomItem> items, Map<String, NoteBlockState> noteBlocks,
+                         List<EmojiDefinition> emojiDefinitions, Map<EmojiDefinition, Integer> emojis,
                          List<String> problems, int files, PackArtifact artifact) {
 
+        Build withNoteBlocks(Map<String, NoteBlockState> noteBlocks) {
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, problems, files, artifact);
+        }
+
+        Build withEmojis(Map<EmojiDefinition, Integer> emojis) {
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, problems, files, artifact);
+        }
+
         Build withFiles(int files) {
-            return new Build(items, noteBlocks, problems, files, artifact);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, problems, files, artifact);
         }
 
         Build withArtifact(PackArtifact artifact) {
-            return new Build(items, noteBlocks, problems, files, artifact);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, problems, files, artifact);
         }
     }
 
@@ -103,6 +131,7 @@ public final class ContentPipeline {
     private final EngineSettings settings;
     private final ItemRegistry registry;
     private final BlockRegistry blocks;
+    private final EmojiRegistry emojis;
     private final PackDelivery delivery;
     private final Logger logger;
     private final PackCompiler compiler;
@@ -112,6 +141,7 @@ public final class ContentPipeline {
     private final Path packDir;
     private final Path zipFile;
     private final Path noteBlockStateFile;
+    private final Path emojiCharacterFile;
 
     private final ExecutorService worker;
     private final Executor mainThread;
@@ -123,11 +153,12 @@ public final class ContentPipeline {
     private CompletableFuture<?> last = CompletableFuture.completedFuture(null);
 
     public ContentPipeline(ArkContentPlugin plugin, EngineSettings settings, ItemRegistry registry,
-                           BlockRegistry blocks, PackDelivery delivery) {
+                           BlockRegistry blocks, EmojiRegistry emojis, PackDelivery delivery) {
         this.plugin = plugin;
         this.settings = settings;
         this.registry = registry;
         this.blocks = blocks;
+        this.emojis = emojis;
         this.delivery = delivery;
         this.logger = plugin.getLogger();
         this.compiler = new PackCompiler(settings.pack().toPackSettings());
@@ -138,6 +169,7 @@ public final class ContentPipeline {
         this.packDir = data.resolve("pack");
         this.zipFile = data.resolve("output").resolve("resource_pack.zip");
         this.noteBlockStateFile = data.resolve("data").resolve("note_block_states.json");
+        this.emojiCharacterFile = data.resolve("data").resolve("emoji_characters.json");
 
         this.worker = Executors.newSingleThreadExecutor(runnable -> {
             Thread thread = new Thread(runnable, "ArkContent-Worker");
@@ -239,6 +271,7 @@ public final class ContentPipeline {
         long started = System.nanoTime();
         return CompletableFuture.supplyAsync(this::loadItems, worker)
                 .thenApplyAsync(this::assignNoteBlockStates, worker)
+                .thenApplyAsync(this::assignEmojiCharacters, worker)
                 .thenApplyAsync(this::compilePack, worker)
                 .thenComposeAsync(this::zipPack, worker)
                 .thenApplyAsync(this::hashPack, worker)
@@ -261,7 +294,64 @@ public final class ContentPipeline {
                     items.put(item.id(), item);
                 }
             }
-            return new Build(items, Map.of(), problems, 0, null);
+            checkCrops(items, problems);
+            return new Build(items, Map.of(), report.emojis(), Map.of(), problems, 0, null);
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
+        }
+    }
+
+    /**
+     * What a crop drops and what it grows on name materials and items the server has to know. Only
+     * reported: a drop that does not resolve is skipped at harvest, a soil that does not is never
+     * planted on.
+     */
+    private static void checkCrops(Map<String, CustomItem> items, List<String> problems) {
+        for (CustomItem item : items.values()) {
+            if (!(item.placement() instanceof Placement.Crop crop)) {
+                continue;
+            }
+            for (Placement.Drop drop : crop.drops()) {
+                boolean custom = items.containsKey(drop.item());
+                Material material = custom ? null : Material.matchMaterial(drop.item());
+                if (!custom && (material == null || !material.isItem() || material.isAir())) {
+                    problems.add(item.id() + ": drop '" + drop.item() + "' is neither a custom item nor a material");
+                }
+            }
+            for (String soil : crop.soils()) {
+                Material material = Material.matchMaterial(soil);
+                if (material == null || !material.isBlock()) {
+                    problems.add(item.id() + ": soil '" + soil + "' is not a block");
+                }
+            }
+        }
+    }
+
+    /**
+     * A private-use character for every emoji: the one it had before, or the lowest free one. Kept
+     * in data/emoji_characters.json, because the character is what a sign or a book saves - hand it
+     * to another emoji and every sign showing a ruby shows that instead.
+     */
+    private Build assignEmojiCharacters(Build build) {
+        try {
+            List<String> names = build.emojiDefinitions().stream().map(EmojiDefinition::name).toList();
+            Map<String, Integer> previous = StableAllocator.read(emojiCharacterFile);
+            if (names.isEmpty() && previous.isEmpty()) {
+                return build;
+            }
+            StableAllocator.Allocation allocation = EMOJI_CHARACTERS.allocate(previous, names);
+            if (allocation.changed()) {
+                StableAllocator.write(emojiCharacterFile, allocation.assignments());
+            }
+            build.problems().addAll(allocation.problems());
+            Map<EmojiDefinition, Integer> characters = new LinkedHashMap<>();
+            for (EmojiDefinition emoji : build.emojiDefinitions()) {
+                Integer character = allocation.active().get(emoji.name());
+                if (character != null) {
+                    characters.put(emoji, character);
+                }
+            }
+            return build.withEmojis(characters);
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
@@ -287,7 +377,7 @@ public final class ContentPipeline {
                 NoteBlockAllocator.write(noteBlockStateFile, allocation.assignments());
             }
             build.problems().addAll(allocation.problems());
-            return new Build(build.items(), allocation.active(), build.problems(), build.files(), build.artifact());
+            return build.withNoteBlocks(allocation.active());
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
@@ -299,7 +389,7 @@ public final class ContentPipeline {
             List<ItemDefinition> definitions = build.items().values().stream()
                     .map(CustomItem::definition)
                     .toList();
-            PackCompiler.Result result = compiler.compile(packDir, definitions, build.noteBlocks(),
+            PackCompiler.Result result = compiler.compile(packDir, definitions, build.noteBlocks(), build.emojis(),
                     List.copyOf(externalPacks.values()));
             build.problems().addAll(result.problems());
             return build;
@@ -343,6 +433,7 @@ public final class ContentPipeline {
                     plugin.getServer().createBlockData(entry.getValue().asBlockData())));
         }
         blocks.replace(customBlocks);
+        emojis.replace(build.emojis());
         if (plugin.hooks() != null) {
             plugin.hooks().contentReloaded();
         }
@@ -355,7 +446,8 @@ public final class ContentPipeline {
         }
 
         PackArtifact pack = build.artifact();
-        Report report = new Report(build.items().size(), customBlocks.size(), pack.entries(), pack.sha1Hex(), pack.size(),
+        Report report = new Report(build.items().size(), customBlocks.size(), build.emojis().size(), pack.entries(),
+                pack.sha1Hex(), pack.size(),
                 changed, List.copyOf(build.problems()),
                 TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started));
         log(report);
@@ -367,7 +459,8 @@ public final class ContentPipeline {
             logger.warning(problem);
         }
         String url = delivery.currentUrl();
-        logger.info(report.items() + " custom item(s) (" + report.blocks() + " block(s)), pack of "
+        logger.info(report.items() + " custom item(s) (" + report.blocks() + " block(s)), " + report.emojis()
+                + " emoji(s), pack of "
                 + report.files() + " file(s), "
                 + (report.bytes() / 1024) + " KiB, sha1 " + report.sha1Hex()
                 + (report.changed() ? "" : " (unchanged)")

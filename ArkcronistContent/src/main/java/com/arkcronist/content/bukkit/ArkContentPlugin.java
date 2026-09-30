@@ -4,7 +4,14 @@ import com.arkcronist.content.bukkit.block.BlockRegistry;
 import com.arkcronist.content.bukkit.block.CustomBlockService;
 import com.arkcronist.content.bukkit.command.ContentAdminCommand;
 import com.arkcronist.content.bukkit.command.CustomGiveCommand;
+import com.arkcronist.content.bukkit.command.EmojiCommand;
+import com.arkcronist.content.bukkit.crop.CropListener;
+import com.arkcronist.content.bukkit.crop.CropService;
+import com.arkcronist.content.bukkit.crop.CropTicker;
+import com.arkcronist.content.bukkit.emoji.ChatEmojiListener;
+import com.arkcronist.content.bukkit.emoji.EmojiRegistry;
 import com.arkcronist.content.bukkit.furniture.FurnitureService;
+import com.arkcronist.content.bukkit.furniture.SeatService;
 import com.arkcronist.content.bukkit.hooks.HookManager;
 import com.arkcronist.content.bukkit.item.ItemFactory;
 import com.arkcronist.content.bukkit.item.ItemRegistry;
@@ -18,6 +25,7 @@ import com.arkcronist.content.bukkit.listener.WorldInterceptionListener;
 import com.arkcronist.content.bukkit.menu.ContentMenuListener;
 import com.arkcronist.content.bukkit.menu.ContentMenus;
 import com.arkcronist.content.bukkit.pack.PackDelivery;
+import com.arkcronist.content.core.crop.CropStore;
 import com.arkcronist.content.core.http.PackHttpServer;
 import com.arkcronist.content.core.storage.DatabaseManager;
 import com.arkcronist.content.core.storage.PlacedContentStore;
@@ -44,7 +52,10 @@ import java.util.concurrent.CompletableFuture;
  *   <li>{@link ContentPipeline} - the rebuild, disk work on a worker, the swap on the main thread;</li>
  *   <li>{@link ItemRegistry} / {@link ItemFactory} - the loaded items, and stacks of them;</li>
  *   <li>{@link BlockRegistry} / {@link CustomBlockService} - custom blocks as note block states;</li>
- *   <li>{@link FurnitureService} - furniture as a support block plus an item display;</li>
+ *   <li>{@link FurnitureService} / {@link SeatService} - furniture as a support block plus an item
+ *       display, and sitting on it;</li>
+ *   <li>{@link CropService} / {@link CropTicker} - crops, and their growth off the main thread;</li>
+ *   <li>{@link EmojiRegistry} - chat emojis, drawn by the pack's font;</li>
  *   <li>{@link HookManager} - MythicMobs, ModelEngine and MythicArmor, each only when installed;</li>
  *   <li>{@link ContentMenus} - the in-game browser of everything loaded;</li>
  *   <li>{@link PlacedContentStore} / {@link DatabaseManager} - where blocks and furniture stand,
@@ -63,8 +74,13 @@ public final class ArkContentPlugin extends JavaPlugin {
     private ItemRegistry items;
     private ItemFactory itemFactory;
     private BlockRegistry blocks;
+    private EmojiRegistry emojis;
     private DatabaseManager database;
     private PlacedContentStore placed;
+    private CropStore cropStore;
+    private CropService crops;
+    private CropTicker cropTicker;
+    private SeatService seats;
     private PackDelivery delivery;
     private HookManager hooks;
     private ContentMenus menus;
@@ -80,11 +96,13 @@ public final class ArkContentPlugin extends JavaPlugin {
         this.items = new ItemRegistry();
         this.itemFactory = new ItemFactory(this, items);
         this.blocks = new BlockRegistry();
+        this.emojis = new EmojiRegistry();
         this.database = new DatabaseManager(getDataFolder().toPath().resolve("data").resolve("world_content.db"),
                 getLogger());
         this.placed = new PlacedContentStore(database, getLogger());
+        this.cropStore = new CropStore(database, getLogger());
         this.delivery = new PackDelivery(settings);
-        this.pipeline = new ContentPipeline(this, settings, items, blocks, delivery);
+        this.pipeline = new ContentPipeline(this, settings, items, blocks, emojis, delivery);
 
         // Hooks start before anything that uses them, and before the first rebuild reports to them.
         this.hooks = new HookManager(this);
@@ -92,6 +110,11 @@ public final class ArkContentPlugin extends JavaPlugin {
 
         CustomBlockService blockService = new CustomBlockService(getServer(), blocks, itemFactory, placed);
         FurnitureService furniture = new FurnitureService(this, items, itemFactory, placed, hooks);
+        this.seats = new SeatService(this);
+        this.crops = new CropService(this, items, itemFactory, cropStore);
+        this.cropTicker = new CropTicker(this, crops, settings.crops().tickSeconds());
+        furniture.stopAt(block -> crops.at(block).isPresent());
+        crops.stopAt(block -> furniture.identify(block).isPresent());
         this.menus = new ContentMenus(getServer(), items, itemFactory);
 
         PluginManager plugins = getServer().getPluginManager();
@@ -100,7 +123,9 @@ public final class ArkContentPlugin extends JavaPlugin {
         plugins.registerEvents(new ItemCombatListener(itemFactory), this);
         plugins.registerEvents(new WorldInterceptionListener(itemFactory), this);
         plugins.registerEvents(new CustomBlockListener(blockService, itemFactory), this);
-        plugins.registerEvents(new FurnitureListener(this, furniture, itemFactory), this);
+        plugins.registerEvents(new FurnitureListener(this, furniture, seats, itemFactory), this);
+        plugins.registerEvents(new CropListener(this, crops, itemFactory), this);
+        plugins.registerEvents(new ChatEmojiListener(emojis), this);
         plugins.registerEvents(new PlacedContentListener(placed, blockService, furniture, getLogger()), this);
         plugins.registerEvents(new ContentMenuListener(this), this);
 
@@ -114,6 +139,7 @@ public final class ArkContentPlugin extends JavaPlugin {
                     "Give custom items to players");
             commands.register(new ContentAdminCommand(this).build(),
                     "Rebuild or inspect the custom content", List.of("acontent"));
+            commands.register(new EmojiCommand(emojis).build(), "List the chat emojis", List.of("emoji"));
         });
 
         if (settings.http().enabled()) {
@@ -121,6 +147,7 @@ public final class ArkContentPlugin extends JavaPlugin {
         }
         // Everything from here happens off the main thread; onEnable returns straight away.
         pipeline.rebuild();
+        cropTicker.start();
     }
 
     /**
@@ -131,6 +158,7 @@ public final class ArkContentPlugin extends JavaPlugin {
      */
     private void openStorage() {
         List<UUID> worlds = getServer().getWorlds().stream().map(World::getUID).toList();
+        getServer().getWorlds().forEach(crops::worldLoaded);
         database.open().exceptionally(error -> {
             Throwable cause = error.getCause() != null ? error.getCause() : error;
             getLogger().severe("Could not open the placed content database: " + cause.getMessage()
@@ -148,6 +176,11 @@ public final class ArkContentPlugin extends JavaPlugin {
                         + ". Blocks are still recognised by their state and furniture by its chunk link.");
             }
         });
+        CompletableFuture.allOf(worlds.stream().map(world -> cropStore.loadWorld(world).exceptionally(error -> {
+            getLogger().warning("Could not read the crops of world " + world + ": " + error.getMessage());
+            return 0;
+        })).toArray(CompletableFuture[]::new)).thenRun(() ->
+                getLogger().info(cropStore.size() + " crop(s) loaded from " + worlds.size() + " world(s)."));
     }
 
     /**
@@ -181,6 +214,16 @@ public final class ArkContentPlugin extends JavaPlugin {
     public void onDisable() {
         if (menus != null) {
             menus.closeAll();
+        }
+        if (seats != null) {
+            seats.releaseAll();
+        }
+        if (cropTicker != null) {
+            cropTicker.stop();
+        }
+        // Progress within a stage lives in memory; queued here, it is written before the database closes.
+        if (cropStore != null) {
+            cropStore.worlds().forEach(cropStore::saveWorld);
         }
         if (pipeline != null) {
             pipeline.shutdown();
@@ -225,6 +268,16 @@ public final class ArkContentPlugin extends JavaPlugin {
     /** Integrations with MythicMobs, ModelEngine and MythicArmor, whichever are installed. */
     public HookManager hooks() {
         return hooks;
+    }
+
+    /** Every loaded chat emoji. */
+    public EmojiRegistry emojis() {
+        return emojis;
+    }
+
+    /** Planted crops. */
+    public CropService crops() {
+        return crops;
     }
 
     /** Opens and refreshes the content browser. */

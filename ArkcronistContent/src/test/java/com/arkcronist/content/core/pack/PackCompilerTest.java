@@ -2,9 +2,12 @@ package com.arkcronist.content.core.pack;
 
 import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.definition.ItemBehaviour;
+import com.arkcronist.content.core.definition.Placement;
+import com.arkcronist.content.core.definition.EmojiDefinition;
 import com.arkcronist.content.core.definition.ItemDefinition;
 import com.arkcronist.content.core.definition.ModelSource;
 import com.arkcronist.content.core.definition.ResourceLocation;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
@@ -246,6 +249,69 @@ class PackCompilerTest {
 
         assertEquals(1, result.externalFiles());
         assertFalse(Files.exists(pack.resolve("assets/mythicarmor/leak.txt")));
+    }
+
+    @Test
+    void everyCropStageGetsItsModelAndAnItemDefinition() throws IOException {
+        Path demo = temp.resolve("contents/demo");
+        write(demo, "textures/crop/berry_0.png", png("0"));
+        write(demo, "textures/crop/berry_1.png", png("1"));
+        write(demo, "models/crop/berry_grown.json", "{\"parent\": \"block/cross\", \"textures\": {\"cross\": \"demo:crop/berry_1\"}}");
+        List<ModelSource> stages = List.of(
+                new ModelSource.Generated(demo, loc("demo:block/berry_stage_0"), loc("block/cross"), Map.of("cross", loc("demo:crop/berry_0"))),
+                new ModelSource.Provided(demo, loc("demo:crop/berry_grown")));
+        ItemDefinition berry = new ItemDefinition("demo", "berry", "PAPER", null, List.of(), stages.get(1),
+                ItemBehaviour.DEFAULT, new Placement.Crop(stages, 60, 9, List.of("FARMLAND"), true, List.of()),
+                Path.of("crops.yml"));
+        Path pack = temp.resolve("pack");
+
+        PackCompiler.Result result = new PackCompiler(SETTINGS).compile(pack, List.of(berry), Map.of());
+
+        assertEquals(List.of(), result.problems());
+        assertEquals("demo:block/berry_stage_0",
+                json(pack.resolve("assets/demo/items/berry/stage_0.json")).getAsJsonObject("model").get("model").getAsString());
+        assertEquals("demo:crop/berry_grown",
+                json(pack.resolve("assets/demo/items/berry/stage_1.json")).getAsJsonObject("model").get("model").getAsString());
+        assertEquals("demo:crop/berry_grown",
+                json(pack.resolve("assets/demo/items/berry.json")).getAsJsonObject("model").get("model").getAsString());
+        assertEquals("demo:crop/berry_0",
+                json(pack.resolve("assets/demo/models/block/berry_stage_0.json")).getAsJsonObject("textures").get("cross").getAsString());
+        assertTrue(Files.exists(pack.resolve("assets/demo/textures/crop/berry_1.png")));
+        assertEquals(3, result.itemDefinitions());
+    }
+
+    @Test
+    void emojisBecomeBitmapGlyphsOfTheDefaultFontInCharacterOrder() throws IOException {
+        Path demo = temp.resolve("contents/demo");
+        write(demo, "textures/emoji/ruby.png", png("ruby"));
+        write(demo, "textures/emoji/heart.png", png("heart"));
+        EmojiDefinition ruby = new EmojiDefinition("demo", "ruby", loc("demo:emoji/ruby"), 8, 7, null, demo, Path.of("e.yml"));
+        EmojiDefinition heart = new EmojiDefinition("demo", "heart", loc("demo:emoji/heart"), 10, 8, null, demo, Path.of("e.yml"));
+        EmojiDefinition missing = new EmojiDefinition("demo", "gone", loc("demo:emoji/gone"), 8, 7, null, demo, Path.of("e.yml"));
+        Path pack = temp.resolve("pack");
+
+        PackCompiler.Result result = new PackCompiler(SETTINGS).compile(pack, List.of(), Map.of(),
+                Map.of(ruby, 0xE001, heart, 0xE000, missing, 0xE002), List.of());
+
+        assertEquals(3, result.glyphs());
+        assertEquals(1, result.problems().size(), result.problems().toString());
+        assertTrue(result.problems().get(0).startsWith("emoji :gone:: texture demo:emoji/gone not found"));
+        JsonArray providers = json(pack.resolve("assets/minecraft/font/default.json")).getAsJsonArray("providers");
+        JsonObject first = providers.get(0).getAsJsonObject();
+        assertEquals("bitmap", first.get("type").getAsString());
+        assertEquals("demo:emoji/heart.png", first.get("file").getAsString());
+        assertEquals(10, first.get("height").getAsInt());
+        assertEquals(8, first.get("ascent").getAsInt());
+        assertEquals("\uE000", first.getAsJsonArray("chars").get(0).getAsString());
+        assertEquals("\uE001", providers.get(1).getAsJsonObject().getAsJsonArray("chars").get(0).getAsString());
+        assertTrue(Files.exists(pack.resolve("assets/demo/textures/emoji/ruby.png")));
+    }
+
+    @Test
+    void noEmojisMeansNoFontFile() throws IOException {
+        new PackCompiler(SETTINGS).compile(temp.resolve("pack"), List.of(), Map.of());
+
+        assertFalse(Files.exists(temp.resolve("pack/assets/minecraft/font")));
     }
 
     // ---------------------------------------------------------------- fixtures

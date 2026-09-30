@@ -1,11 +1,14 @@
 package com.arkcronist.content.core.pack;
 
 import com.arkcronist.content.core.block.NoteBlockState;
+import com.arkcronist.content.core.definition.EmojiDefinition;
 import com.arkcronist.content.core.definition.ItemDefinition;
 import com.arkcronist.content.core.definition.ModelSource;
+import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.definition.ResourceLocation;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
@@ -65,12 +68,13 @@ public final class PackCompiler {
      * What a compile wrote.
      *
      * @param customBlockStates note block states mapped to a custom block's model
+     * @param glyphs            emojis written into the font
      * @param externalFiles     files taken from other plugins' packs
      * @param problems          missing or unreadable files and conflicting paths, each naming the
      *                          item that ran into it
      */
     public record Result(int itemDefinitions, int models, int textures, int customBlockStates,
-                         int externalFiles, List<String> problems) {
+                         int glyphs, int externalFiles, List<String> problems) {
 
         public Result {
             problems = List.copyOf(problems);
@@ -99,6 +103,21 @@ public final class PackCompiler {
     public Result compile(Path packDir, Collection<ItemDefinition> items,
                           Map<String, NoteBlockState> noteBlockStates,
                           List<ExternalPack> externalPacks) throws IOException {
+        return compile(packDir, items, noteBlockStates, Map.of(), externalPacks);
+    }
+
+    /**
+     * Deletes {@code packDir} and writes the pack for {@code items} into it.
+     *
+     * @param noteBlockStates the state each custom block is drawn through, by full id; empty leaves
+     *                        the vanilla note block untouched
+     * @param glyphs          the character each emoji is drawn as; empty writes no font
+     * @param externalPacks   other plugins' packs to merge in, after this plugin's own files
+     */
+    public Result compile(Path packDir, Collection<ItemDefinition> items,
+                          Map<String, NoteBlockState> noteBlockStates,
+                          Map<EmojiDefinition, Integer> glyphs,
+                          List<ExternalPack> externalPacks) throws IOException {
         Run run = new Run(packDir);
         run.reset();
         run.writeText("pack.mcmeta", GSON.toJson(settings.mcmeta()) + "\n");
@@ -111,11 +130,12 @@ public final class PackCompiler {
             run.item(item);
         }
         run.noteBlockStates(ordered, noteBlockStates);
+        run.font(glyphs);
         for (ExternalPack pack : externalPacks.stream().sorted(Comparator.comparing(ExternalPack::name)).toList()) {
             run.merge(pack);
         }
         return new Result(run.itemDefinitions, run.models, run.textures, run.customBlockStates,
-                run.externalFiles, run.problems);
+                run.glyphs, run.externalFiles, run.problems);
     }
 
     /** State for one compile. */
@@ -133,6 +153,7 @@ public final class PackCompiler {
         private int models;
         private int textures;
         private int customBlockStates;
+        private int glyphs;
         private int externalFiles;
 
         Run(Path packDir) {
@@ -158,31 +179,97 @@ public final class PackCompiler {
                 return;
             }
             String origin = item.fullId();
+            // Another namespace is someone else's to supply - vanilla, or another content pack.
+            look(item.namespace(), source, origin);
+
+            if (place(item.itemModel().assetPath("items", ".json"), itemDefinition(source.location()), origin)) {
+                itemDefinitions++;
+            }
+            if (item.placement() instanceof Placement.Crop crop) {
+                stages(item, crop, origin);
+            }
+        }
+
+        /**
+         * A crop's stages: each stage's model, and an item definition for it at
+         * {@code <namespace>:<id>/stage_<n>} - the key the crop's display is switched to as it grows.
+         */
+        private void stages(ItemDefinition item, Placement.Crop crop, String origin) throws IOException {
+            for (int stage = 0; stage < crop.stages().size(); stage++) {
+                ModelSource model = crop.stages().get(stage);
+                String stageOrigin = origin + " stage " + stage;
+                look(item.namespace(), model, stageOrigin);
+                ResourceLocation key = Placement.Crop.stageItemModel(item.itemModel(), stage);
+                if (place(key.assetPath("items", ".json"), itemDefinition(model.location()), stageOrigin)) {
+                    itemDefinitions++;
+                }
+            }
+        }
+
+        /** Writes or copies a model and the textures it needs from its namespace. */
+        private void look(String namespace, ModelSource source, String origin) throws IOException {
             switch (source) {
                 case ModelSource.Provided provided -> {
-                    // Another namespace is someone else's to supply - vanilla, or another content pack.
-                    if (provided.location().namespace().equals(item.namespace())) {
+                    if (provided.location().namespace().equals(namespace)) {
                         copyModel(provided.sourceRoot(), provided.location(), origin);
                     }
                 }
                 case ModelSource.Generated generated -> {
                     generateModel(generated, origin);
                     for (ResourceLocation texture : generated.textures().values()) {
-                        if (texture.namespace().equals(item.namespace())) {
+                        if (texture.namespace().equals(namespace)) {
                             copyTexture(generated.sourceRoot(), texture, origin);
                         }
                     }
                 }
             }
+        }
 
+        private static byte[] itemDefinition(ResourceLocation model) {
             JsonObject target = new JsonObject();
             target.addProperty("type", "minecraft:model");
-            target.addProperty("model", source.location().toString());
+            target.addProperty("model", model.toString());
             JsonObject definition = new JsonObject();
             definition.add("model", target);
-            if (place(item.itemModel().assetPath("items", ".json"), json(definition), origin)) {
-                itemDefinitions++;
+            return json(definition);
+        }
+
+        /**
+         * {@code assets/minecraft/font/default.json}: one bitmap glyph per emoji, on a private-use
+         * character. In the default font, so the character draws anywhere text does - chat, signs,
+         * books, and other plugins' scoreboards and menus. The client merges this file with the
+         * vanilla one rather than replacing it, so every other character is untouched. Written in
+         * character order: the same emojis give the same bytes.
+         */
+        void font(Map<EmojiDefinition, Integer> characters) throws IOException {
+            if (characters.isEmpty()) {
+                return;
             }
+            JsonArray providers = new JsonArray();
+            List<Map.Entry<EmojiDefinition, Integer>> ordered = characters.entrySet().stream()
+                    .sorted(Map.Entry.comparingByValue())
+                    .toList();
+            for (Map.Entry<EmojiDefinition, Integer> glyph : ordered) {
+                EmojiDefinition emoji = glyph.getKey();
+                String origin = "emoji :" + emoji.name() + ":";
+                if (emoji.texture().namespace().equals(emoji.namespace())) {
+                    copyTexture(emoji.sourceRoot(), emoji.texture(), origin);
+                }
+                JsonObject provider = new JsonObject();
+                provider.addProperty("type", "bitmap");
+                provider.addProperty("file", emoji.texture() + ".png");
+                provider.addProperty("ascent", emoji.ascent());
+                provider.addProperty("height", emoji.height());
+                JsonArray chars = new JsonArray();
+                chars.add(new String(Character.toChars(glyph.getValue())));
+                provider.add("chars", chars);
+                providers.add(provider);
+                glyphs++;
+            }
+            JsonObject font = new JsonObject();
+            font.add("providers", providers);
+            Files.createDirectories(packDir.resolve("assets/minecraft/font"));
+            place("assets/minecraft/font/default.json", json(font), "emojis");
         }
 
         /**

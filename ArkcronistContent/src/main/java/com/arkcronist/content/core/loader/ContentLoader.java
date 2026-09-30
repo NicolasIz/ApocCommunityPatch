@@ -1,6 +1,7 @@
 package com.arkcronist.content.core.loader;
 
 import com.arkcronist.content.core.definition.ContentType;
+import com.arkcronist.content.core.definition.EmojiDefinition;
 import com.arkcronist.content.core.definition.ItemBehaviour;
 import com.arkcronist.content.core.definition.ItemDefinition;
 import com.arkcronist.content.core.definition.ModelSource;
@@ -25,6 +26,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -59,6 +61,13 @@ public final class ContentLoader {
 
     private static final Pattern ITEM_ID = Pattern.compile("[a-z0-9_.-]+");
     private static final Pattern TEXTURE_VARIABLE = Pattern.compile("[a-z0-9_]+");
+    /** Typed between two colons in chat, so no colon and nothing a sentence would run into. */
+    private static final Pattern EMOJI_NAME = Pattern.compile("[a-z0-9_]+");
+    private static final Pattern AMOUNT_RANGE = Pattern.compile("(\\d+)\\s*-\\s*(\\d+)");
+
+    /** Vanilla's own glyph size: a capital letter is 8 pixels high, 7 of them above the baseline. */
+    private static final int EMOJI_HEIGHT = 8;
+    private static final int EMOJI_ASCENT = 7;
 
     /**
      * Reads every {@code .yml} and {@code .yaml} file under {@code contentsDir}.
@@ -80,15 +89,16 @@ public final class ContentLoader {
         }
 
         Map<String, ItemDefinition> items = new LinkedHashMap<>();
+        Map<String, EmojiDefinition> emojis = new LinkedHashMap<>();
         List<String> problems = new ArrayList<>();
         for (Path file : files) {
-            readFile(contentsDir, file, items, problems);
+            readFile(contentsDir, file, items, emojis, problems);
         }
-        return new LoadReport(new ArrayList<>(items.values()), problems);
+        return new LoadReport(new ArrayList<>(items.values()), new ArrayList<>(emojis.values()), problems);
     }
 
     private void readFile(Path contentsDir, Path file, Map<String, ItemDefinition> items,
-                          List<String> problems) {
+                          Map<String, EmojiDefinition> emojis, List<String> problems) {
         String where = unix(contentsDir.relativize(file));
 
         Object document;
@@ -118,8 +128,10 @@ public final class ContentLoader {
             return;
         }
 
-        // A file without items is not an error: it may hold another kind of content this version
-        // does not read yet.
+        readEmojis(root.get("emojis"), namespace, sourceRoot, file, where, contentsDir, emojis, problems);
+
+        // A file without items is not an error: it may hold only emojis, or another kind of
+        // content this version does not read yet.
         Object itemsNode = root.get("items");
         if (itemsNode == null) {
             return;
@@ -187,6 +199,7 @@ public final class ContentLoader {
         }
         unusedSection(section, "block", ContentType.CUSTOM_BLOCK, type, prefix, problems);
         unusedSection(section, "furniture", ContentType.CUSTOM_FURNITURE, type, prefix, problems);
+        unusedSection(section, "crop", ContentType.CUSTOM_CROP, type, prefix, problems);
 
         String displayName = text(section, "display-name", prefix, problems);
         List<String> lore = lines(section, "lore", prefix, problems);
@@ -203,6 +216,10 @@ public final class ContentLoader {
             }
             return new ItemDefinition(namespace, id, material.trim(), displayName, lore, model,
                     behaviour, null, file);
+        }
+
+        if (type == ContentType.CUSTOM_CROP) {
+            return crop(namespace, id, section, model, displayName, lore, sourceRoot, file, prefix, problems);
         }
 
         // Blocks and furniture: the material is what the placement needs, the look is mandatory, and
@@ -319,7 +336,7 @@ public final class ContentLoader {
 
     private static Placement.Furniture furniture(Map<?, ?> section, String prefix, List<String> problems) {
         if (section == null) {
-            return new Placement.Furniture(Placement.Support.BARRIER, 0, true, Placement.Display.DEFAULT, null);
+            return new Placement.Furniture(Placement.Support.BARRIER, 0, true, Placement.Display.DEFAULT, null, null);
         }
 
         Placement.Support support = Placement.Support.BARRIER;
@@ -347,7 +364,215 @@ public final class ContentLoader {
         return new Placement.Furniture(support, light,
                 flag(section, "face-player", true, prefix, problems),
                 display(section(section, "display", prefix, problems), prefix, problems),
-                modelEngineId(section, prefix, problems));
+                modelEngineId(section, prefix, problems),
+                seat(section, prefix, problems));
+    }
+
+    /** {@code interactable: seat}, and where the seat is: {@code seat-height}, blocks above the floor. */
+    private static Placement.Seat seat(Map<?, ?> section, String prefix, List<String> problems) {
+        String interactable = text(section, "interactable", prefix, problems);
+        boolean seat = interactable != null && interactable.trim().equalsIgnoreCase("seat");
+        if (interactable != null && !seat && !interactable.isBlank()) {
+            problems.add(prefix + "'interactable' can only be 'seat', not '" + interactable.trim() + "'");
+        }
+        if (!seat) {
+            if (section.containsKey("seat-height")) {
+                problems.add(prefix + "'seat-height' is only read with interactable: seat");
+            }
+            return null;
+        }
+        Object height = section.get("seat-height");
+        if (height == null) {
+            return Placement.Seat.DEFAULT;
+        }
+        if (height instanceof Number number && number.doubleValue() >= 0 && number.doubleValue() <= 2) {
+            return new Placement.Seat(number.floatValue());
+        }
+        problems.add(prefix + "'seat-height' should be a number from 0 to 2; using " + Placement.Seat.DEFAULT.height());
+        return Placement.Seat.DEFAULT;
+    }
+
+    /**
+     * A crop. The item itself is the seed: it is always paper underneath, planted by this plugin
+     * rather than placed by vanilla, and without its own {@code resource} it is drawn as its fully
+     * grown stage.
+     */
+    private static ItemDefinition crop(String namespace, String id, Map<?, ?> section, ModelSource model,
+                                       String displayName, List<String> lore, Path sourceRoot, Path file,
+                                       String prefix, List<String> problems) {
+        Map<?, ?> crop = section(section, "crop", prefix, problems);
+        if (crop == null) {
+            problems.add(prefix + "a custom_crop needs a 'crop' section with its 'stages'");
+            return null;
+        }
+        Object stagesNode = crop.get("stages");
+        if (!(stagesNode instanceof List<?> stageList) || stageList.size() < 2) {
+            problems.add(prefix + "'crop.stages' should list at least two stages, first to fully grown");
+            return null;
+        }
+        List<ModelSource> stages = new ArrayList<>();
+        for (int stage = 0; stage < stageList.size(); stage++) {
+            String stagePrefix = prefix + "stage " + stage + ": ";
+            Object entry = stageList.get(stage);
+            // A bare string is the one texture of a cross, like a sapling or a flower.
+            Map<?, ?> stageSection = entry instanceof String texture ? Map.of("texture", texture) : entry instanceof Map<?, ?> map ? map : null;
+            ModelSource stageModel = stageSection == null ? null
+                    : stageModel(namespace, id, stage, stageSection, sourceRoot, stagePrefix, problems);
+            if (stageModel == null) {
+                problems.add(stagePrefix + "needs 'model', 'texture' or 'textures' - the crop is skipped");
+                return null;
+            }
+            stages.add(stageModel);
+        }
+
+        int stageSeconds = integer(crop, "stage-seconds", 120, prefix, problems);
+        if (stageSeconds < 1) {
+            problems.add(prefix + "'stage-seconds' must be at least 1; using 120");
+            stageSeconds = 120;
+        }
+        int minLight = integer(crop, "min-light", 9, prefix, problems);
+        if (minLight < 0 || minLight > 15) {
+            problems.add(prefix + "'min-light' must be 0-15; using 9");
+            minLight = 9;
+        }
+        List<String> soils = lines(crop, "soil", prefix, problems).stream()
+                .map(soil -> soil.trim().toUpperCase(Locale.ROOT))
+                .filter(soil -> !soil.isEmpty())
+                .toList();
+        List<Placement.Drop> drops = drops(crop.get("drops"), prefix, problems);
+
+        if (section.containsKey("material")) {
+            problems.add(prefix + "'material' is ignored - a custom_crop's item is always PAPER underneath");
+        }
+        ModelSource look = model != null ? model : stages.get(stages.size() - 1);
+        Placement.Crop placement = new Placement.Crop(stages, stageSeconds, minLight,
+                soils.isEmpty() ? List.of("FARMLAND") : soils, flag(crop, "bone-meal", true, prefix, problems), drops);
+        // Placeable, like blocks and furniture: planting places the crop's block, through a real
+        // BlockPlaceEvent that the guard against placing custom items must let through.
+        return new ItemDefinition(namespace, id, "PAPER", displayName, lore, look, new ItemBehaviour(false, true),
+                placement, file);
+    }
+
+    /**
+     * One stage's look. The same keys as {@code resource}, but a lone {@code texture} makes a
+     * {@code block/cross} - two crossed planes, like every vanilla sapling and flower - since a
+     * crop drawn as a cube or a flat item would look like neither.
+     */
+    private static ModelSource stageModel(String namespace, String id, int stage, Map<?, ?> section, Path sourceRoot,
+                                          String prefix, List<String> problems) {
+        ResourceLocation model = location(section, "model", namespace, prefix, problems);
+        if (model != null) {
+            return new ModelSource.Provided(sourceRoot, model);
+        }
+        ResourceLocation texture = location(section, "texture", namespace, prefix, problems);
+        Map<String, ResourceLocation> variables = new LinkedHashMap<>(textureVariables(section, namespace, prefix, problems));
+        ResourceLocation parent = location(section, "parent", ResourceLocation.MINECRAFT, prefix, problems);
+        if (texture != null) {
+            variables.putIfAbsent(parent == null ? "cross" : "crop", texture);
+        }
+        if (variables.isEmpty()) {
+            return null;
+        }
+        if (parent == null) {
+            parent = new ResourceLocation(ResourceLocation.MINECRAFT, variables.containsKey("crop") ? "block/crop" : "block/cross");
+        }
+        return new ModelSource.Generated(sourceRoot, new ResourceLocation(namespace, "block/" + id + "_stage_" + stage),
+                parent, variables);
+    }
+
+    /** {@code drops:} - each an item (custom {@code ns:id} or vanilla), an amount and a chance. */
+    private static List<Placement.Drop> drops(Object node, String prefix, List<String> problems) {
+        if (node == null) {
+            return List.of();
+        }
+        if (!(node instanceof List<?> list)) {
+            problems.add(prefix + "'crop.drops' should be a list");
+            return List.of();
+        }
+        List<Placement.Drop> drops = new ArrayList<>();
+        for (Object entry : list) {
+            if (!(entry instanceof Map<?, ?> drop) || drop.get("item") == null) {
+                problems.add(prefix + "each of 'crop.drops' needs at least 'item'");
+                continue;
+            }
+            String item = String.valueOf(drop.get("item")).trim();
+            int min = 1;
+            int max = 1;
+            Object amount = drop.get("amount");
+            if (amount instanceof Integer || amount instanceof Long) {
+                min = max = ((Number) amount).intValue();
+            } else if (amount != null) {
+                Matcher range = AMOUNT_RANGE.matcher(String.valueOf(amount).trim());
+                if (range.matches()) {
+                    min = Integer.parseInt(range.group(1));
+                    max = Integer.parseInt(range.group(2));
+                } else {
+                    problems.add(prefix + "drop " + item + ": 'amount' should be a number or a range like 1-3; using 1");
+                }
+            }
+            if (min < 1 || max < min) {
+                problems.add(prefix + "drop " + item + ": amount " + min + "-" + max + " makes no sense; using 1");
+                min = max = 1;
+            }
+            double chance = 1;
+            if (drop.get("chance") instanceof Number number) {
+                chance = number.doubleValue();
+            } else if (drop.get("chance") != null) {
+                problems.add(prefix + "drop " + item + ": 'chance' should be a number from 0 to 1; using 1");
+            }
+            if (chance <= 0 || chance > 1) {
+                problems.add(prefix + "drop " + item + ": 'chance' must be above 0 and at most 1; using 1");
+                chance = 1;
+            }
+            drops.add(new Placement.Drop(item, min, max, chance));
+        }
+        return drops;
+    }
+
+    /**
+     * {@code emojis:} - name to texture, or name to a section with {@code texture}, {@code height},
+     * {@code ascent} and {@code permission}. Names are shared by every namespace, since chat has no
+     * room for one: the first file, in path order, keeps a name.
+     */
+    private static void readEmojis(Object node, String namespace, Path sourceRoot, Path file, String where,
+                                   Path contentsDir, Map<String, EmojiDefinition> emojis, List<String> problems) {
+        if (node == null) {
+            return;
+        }
+        if (!(node instanceof Map<?, ?> section)) {
+            problems.add(where + ": 'emojis' should be a section of emoji names");
+            return;
+        }
+        for (Map.Entry<?, ?> entry : section.entrySet()) {
+            String name = String.valueOf(entry.getKey());
+            String prefix = where + " > emoji " + name + ": ";
+            if (!EMOJI_NAME.matcher(name).matches()) {
+                problems.add(prefix + "invalid name (allowed: a-z 0-9 _)");
+                continue;
+            }
+            Map<?, ?> emoji = entry.getValue() instanceof Map<?, ?> map ? map : Map.of("texture", String.valueOf(entry.getValue()));
+            ResourceLocation texture = location(emoji, "texture", namespace, prefix, problems);
+            if (texture == null) {
+                problems.add(prefix + "needs 'texture', e.g. emoji/" + name);
+                continue;
+            }
+            int height = integer(emoji, "height", EMOJI_HEIGHT, prefix, problems);
+            int ascent = integer(emoji, "ascent", Math.min(EMOJI_ASCENT, height), prefix, problems);
+            if (height < 1 || height > 256 || ascent > height) {
+                problems.add(prefix + "'height' must be 1-256 and 'ascent' no more than it; using "
+                        + EMOJI_HEIGHT + " and " + EMOJI_ASCENT);
+                height = EMOJI_HEIGHT;
+                ascent = EMOJI_ASCENT;
+            }
+            String permission = text(emoji, "permission", prefix, problems);
+            EmojiDefinition definition = new EmojiDefinition(namespace, name, texture, height, ascent,
+                    permission == null || permission.isBlank() ? null : permission.trim(), sourceRoot, file);
+            EmojiDefinition earlier = emojis.putIfAbsent(name, definition);
+            if (earlier != null) {
+                problems.add(prefix + "already defined in " + unix(contentsDir.relativize(earlier.source()))
+                        + " - this one is ignored");
+            }
+        }
     }
 
     /**

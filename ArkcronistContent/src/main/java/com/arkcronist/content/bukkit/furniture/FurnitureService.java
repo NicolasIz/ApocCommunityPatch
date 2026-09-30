@@ -27,6 +27,7 @@ import org.joml.Vector3f;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.logging.Level;
 
 /**
@@ -61,6 +62,8 @@ public final class FurnitureService {
     private final HookManager hooks;
     private final NamespacedKey furnitureTag;
     private final NamespacedKey anchorTag;
+    /** Something else living in an invisible block, which a punch at furniture must not pass through. */
+    private Predicate<Block> obstacle = block -> false;
 
     public FurnitureService(Plugin plugin, ItemRegistry registry, ItemFactory items, PlacedContentStore store,
                             HookManager hooks) {
@@ -71,6 +74,11 @@ public final class FurnitureService {
         this.hooks = hooks;
         this.furnitureTag = new NamespacedKey(plugin, "furniture");
         this.anchorTag = new NamespacedKey(plugin, "furniture_anchor");
+    }
+
+    /** Crops live in light blocks too: a ray looking for furniture stops at one, instead of reaching past it. */
+    public void stopAt(Predicate<Block> obstacle) {
+        this.obstacle = obstacle;
     }
 
     public static boolean isSupport(Material material) {
@@ -173,6 +181,19 @@ public final class FurnitureService {
                 : Optional.ofNullable(display.getPersistentDataContainer().get(furnitureTag, PersistentDataType.STRING));
     }
 
+    /** The definition of the furniture standing on this block, if it is still defined as furniture. */
+    public Optional<Placement.Furniture> definition(Block block) {
+        return identify(block).flatMap(registry::get).map(CustomItem::placement)
+                .filter(Placement.Furniture.class::isInstance).map(Placement.Furniture.class::cast);
+    }
+
+    /** The direction the furniture on this block faces: its display's yaw. */
+    public Optional<Float> facing(Block block) {
+        UUID linked = linkedDisplay(block);
+        Entity display = linked == null ? null : plugin.getServer().getEntity(linked);
+        return display == null ? Optional.empty() : Optional.of(display.getLocation().getYaw());
+    }
+
     /**
      * Whether furniture claims this position, whatever block is there right now. Used before a block
      * replaces a light-block support, which vanilla treats like air.
@@ -228,7 +249,7 @@ public final class FurnitureService {
             if (identify(block).isPresent()) {
                 return Optional.of(block);
             }
-            if (!block.isPassable()) {
+            if (!block.isPassable() || obstacle.test(block)) {
                 return Optional.empty();
             }
         }

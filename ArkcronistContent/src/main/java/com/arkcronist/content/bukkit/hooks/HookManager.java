@@ -1,9 +1,12 @@
 package com.arkcronist.content.bukkit.hooks;
 
 import com.arkcronist.content.bukkit.ArkContentPlugin;
+import com.arkcronist.content.bukkit.hooks.iris.IrisHook;
 import com.arkcronist.content.bukkit.hooks.modelengine.ModelEngineHook;
 import com.arkcronist.content.bukkit.hooks.mythicarmor.MythicArmorHook;
 import com.arkcronist.content.bukkit.hooks.mythicmobs.MythicMobsHook;
+import com.arkcronist.content.bukkit.hooks.placeholderapi.ArkContentExpansion;
+import com.arkcronist.content.bukkit.hooks.shopgui.ShopGuiPlusHook;
 import org.bukkit.event.Listener;
 import org.jetbrains.annotations.Nullable;
 
@@ -57,6 +60,27 @@ public final class HookManager {
         if (mythicArmor != null) {
             listen(mythicArmor);
         }
+
+        // Loads before this plugin; registered at once, so TAB and DeluxeMenus find it from the start.
+        create("PlaceholderAPI", "me.clip.placeholderapi.expansion.PlaceholderExpansion", () -> {
+            ArkContentExpansion expansion = new ArkContentExpansion(plugin.getPluginMeta().getVersion(),
+                    plugin.emojis(), plugin.items(), plugin.itemFactory());
+            if (!expansion.register()) {
+                throw new IllegalStateException("PlaceholderAPI refused the arkcontent expansion");
+            }
+            return expansion;
+        });
+
+        // Loads after this plugin: the hook listens for the moment ShopGUI+ asks for item providers.
+        ShopGuiPlusHook shopGui = create("ShopGUI+", "net.brcdev.shopgui.event.ShopGUIPlusPostEnableEvent",
+                () -> new ShopGuiPlusHook(plugin.items(), plugin.itemFactory(), logger));
+        if (shopGui != null) {
+            listen(shopGui);
+        }
+
+        // Iris loads first - it generates worlds - so its data service is running by now.
+        create("Iris", "com.volmit.iris.core.link.ExternalDataProvider",
+                () -> new IrisHook(plugin.getName(), plugin.blocks(), plugin.items(), plugin.itemFactory()));
     }
 
     /** The ModelEngine bridge, or null without ModelEngine. */

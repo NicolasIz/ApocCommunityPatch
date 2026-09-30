@@ -1,0 +1,15 @@
+# ---------------------------------------------------------------------------
+#  Demo chat emojis
+# ---------------------------------------------------------------------------
+#  Typed between colons in chat - :ruby: - and drawn from a 16x16 texture by
+#  the pack's font. /emojis lists them. %arkcontent_emoji_ruby% gives the same
+#  character to TAB, DeluxeMenus and anything else reading placeholders.
+# ---------------------------------------------------------------------------
+
+emojis:
+  ruby: emoji/ruby                  # textures/emoji/ruby.png
+  heart:
+    texture: emoji/heart
+    height: 8                       # font pixels; a line of chat is 9
+    ascent: 7                       # how far above the baseline it reaches
+    # permission: arkcontent.emoji.heart   # uncomment to make it a perk

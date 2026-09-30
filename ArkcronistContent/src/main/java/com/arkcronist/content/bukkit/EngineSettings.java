@@ -14,7 +14,7 @@ import java.util.logging.Logger;
 /**
  * config.yml, read once and then immutable, so any thread may hold on to it.
  */
-public record EngineSettings(boolean extractExamples, Pack pack, Http http, Delivery delivery) {
+public record EngineSettings(boolean extractExamples, Pack pack, Http http, Delivery delivery, Crops crops) {
 
     /** pack.mcmeta. {@code description} is MiniMessage. */
     public record Pack(String description, int format, int minFormat, int maxFormat) {
@@ -58,12 +58,22 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, Deli
     public record Delivery(boolean sendOnJoin, boolean required, Component prompt) {
     }
 
+    /**
+     * Custom crops.
+     *
+     * @param tickSeconds how often the growth scheduler adds time to every crop; growth is measured
+     *                    in seconds either way, this only sets how finely it is applied
+     */
+    public record Crops(int tickSeconds) {
+    }
+
     static EngineSettings read(FileConfiguration config, String serverIp, Logger logger) {
         return new EngineSettings(
                 config.getBoolean("extract-examples", true),
                 readPack(section(config, "pack"), logger),
                 readHttp(section(config, "http"), serverIp, logger),
-                readDelivery(section(config, "delivery")));
+                readDelivery(section(config, "delivery")),
+                new Crops(Math.max(1, Math.min(60, section(config, "crops").getInt("tick-seconds", 5)))));
     }
 
     private static Pack readPack(ConfigurationSection section, Logger logger) {

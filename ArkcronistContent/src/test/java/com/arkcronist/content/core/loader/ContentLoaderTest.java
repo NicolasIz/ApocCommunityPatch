@@ -233,11 +233,11 @@ class ContentLoaderTest {
         assertEquals("LIGHT", lamp.material());
         assertEquals(new Placement.Furniture(Placement.Support.LIGHT, 12, false, new Placement.Display("FIXED",
                 new Placement.Vec3(0, 0.25f, -0.5f), new Placement.Vec3(0.5f, 0.5f, 0.5f),
-                new Placement.Vec3(0, 90, 0)), null), lamp.placement());
+                new Placement.Vec3(0, 90, 0)), null, null), lamp.placement());
 
         ItemDefinition chair = report.items().get(1);
         assertEquals("BARRIER", chair.material());
-        assertEquals(new Placement.Furniture(Placement.Support.BARRIER, 0, true, Placement.Display.DEFAULT, null),
+        assertEquals(new Placement.Furniture(Placement.Support.BARRIER, 0, true, Placement.Display.DEFAULT, null, null),
                 chair.placement());
     }
 
@@ -347,6 +347,154 @@ class ContentLoaderTest {
         ModelSource.Generated gem = (ModelSource.Generated) report.items().get(1).model();
         assertEquals(ModelSource.ITEM_GENERATED, gem.parent());
         assertEquals(new ResourceLocation("demo", "item/gem_shine"), gem.textures().get("1"));
+    }
+
+    @Test
+    void aCropReadsItsStagesDropsAndGrowthSettings() throws IOException {
+        write("demo/crops.yml", """
+                namespace: demo
+                items:
+                  ruby_seeds:
+                    type: custom_crop
+                    display-name: "<red>Ruby Seeds"
+                    resource:
+                      texture: item/ruby_seeds
+                    crop:
+                      stage-seconds: 30
+                      min-light: 0
+                      soil: [farmland, soul_sand]
+                      bone-meal: false
+                      stages:
+                        - crop/ruby_0
+                        - texture: crop/ruby_1
+                          parent: block/crop
+                        - model: crop/ruby_grown
+                      drops:
+                        - item: demo:ruby
+                          amount: 1-3
+                          chance: 0.5
+                        - item: WHEAT
+                          amount: 2
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+
+        assertEquals(List.of(), report.problems());
+        ItemDefinition seeds = report.items().get(0);
+        assertEquals(ContentType.CUSTOM_CROP, seeds.type());
+        assertEquals("PAPER", seeds.material());
+        assertTrue(seeds.behaviour().placeable());
+        Placement.Crop crop = (Placement.Crop) seeds.placement();
+        assertEquals(30, crop.stageSeconds());
+        assertEquals(0, crop.minLight());
+        assertEquals(List.of("FARMLAND", "SOUL_SAND"), crop.soils());
+        assertFalse(crop.boneMeal());
+        assertEquals(2, crop.lastStage());
+        assertEquals(new ModelSource.Generated(contents.resolve("demo"), new ResourceLocation("demo", "block/ruby_seeds_stage_0"),
+                new ResourceLocation("minecraft", "block/cross"), Map.of("cross", new ResourceLocation("demo", "crop/ruby_0"))),
+                crop.stages().get(0));
+        assertEquals(Map.of("crop", new ResourceLocation("demo", "crop/ruby_1")),
+                ((ModelSource.Generated) crop.stages().get(1)).textures());
+        assertEquals(new ModelSource.Provided(contents.resolve("demo"), new ResourceLocation("demo", "crop/ruby_grown")),
+                crop.stages().get(2));
+        assertEquals(List.of(new Placement.Drop("demo:ruby", 1, 3, 0.5), new Placement.Drop("WHEAT", 2, 2, 1)), crop.drops());
+        assertEquals(new ResourceLocation("demo", "ruby_seeds/stage_2"),
+                Placement.Crop.stageItemModel(seeds.itemModel(), 2));
+    }
+
+    @Test
+    void aCropWithoutItsOwnLookIsDrawnAsItsGrownStage() throws IOException {
+        write("demo/crops.yml", """
+                namespace: demo
+                items:
+                  berry:
+                    type: custom_crop
+                    material: DIAMOND
+                    crop:
+                      stages: [crop/berry_0, crop/berry_1]
+                      stage-seconds: 0
+                      drops: [{item: demo:berry, amount: 0-2, chance: 3}]
+                  lonely:
+                    type: custom_crop
+                    crop:
+                      stages: [crop/only_one]
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+
+        assertEquals(1, report.items().size());
+        ItemDefinition berry = report.items().get(0);
+        Placement.Crop crop = (Placement.Crop) berry.placement();
+        assertEquals(crop.stages().get(1), berry.model());
+        assertEquals(List.of("FARMLAND"), crop.soils());
+        assertEquals(120, crop.stageSeconds());
+        assertEquals(List.of(new Placement.Drop("demo:berry", 1, 1, 1)), crop.drops());
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("'material' is ignored")), report.problems().toString());
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("'stage-seconds' must be at least 1")));
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("amount 0-2 makes no sense")));
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("'chance' must be above 0")));
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("demo:lonely: 'crop.stages' should list at least two")));
+    }
+
+    @Test
+    void furnitureCanBeASeat() throws IOException {
+        write("demo/chairs.yml", """
+                namespace: demo
+                items:
+                  chair:
+                    type: custom_furniture
+                    resource: {model: furniture/chair}
+                    furniture:
+                      interactable: seat
+                      seat-height: 0.4
+                  stool:
+                    type: custom_furniture
+                    resource: {model: furniture/stool}
+                    furniture: {interactable: SEAT}
+                  table:
+                    type: custom_furniture
+                    resource: {model: furniture/table}
+                    furniture: {interactable: bed, seat-height: 1}
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+
+        assertEquals(new Placement.Seat(0.4f), ((Placement.Furniture) report.items().get(0).placement()).seat());
+        assertEquals(Placement.Seat.DEFAULT, ((Placement.Furniture) report.items().get(1).placement()).seat());
+        assertNull(((Placement.Furniture) report.items().get(2).placement()).seat());
+        assertEquals(2, report.problems().size(), report.problems().toString());
+    }
+
+    @Test
+    void emojisAreReadFromAnyContentFileAndNamesAreShared() throws IOException {
+        write("demo/emojis.yml", """
+                namespace: demo
+                emojis:
+                  ruby: emoji/ruby
+                  heart:
+                    texture: emoji/heart
+                    height: 10
+                    ascent: 8
+                    permission: vip.emoji
+                  "Bad Name": emoji/x
+                """);
+        write("other/emojis.yml", """
+                namespace: other
+                emojis:
+                  ruby: emoji/other_ruby
+                  tall: {texture: emoji/tall, height: 4, ascent: 9}
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+
+        assertEquals(List.of("ruby", "heart", "tall"), report.emojis().stream().map(e -> e.name()).toList());
+        assertEquals("demo", report.emojis().get(0).namespace());
+        assertEquals(new ResourceLocation("demo", "emoji/heart"), report.emojis().get(1).texture());
+        assertEquals(10, report.emojis().get(1).height());
+        assertEquals("vip.emoji", report.emojis().get(1).permission());
+        assertEquals(8, report.emojis().get(2).height());
+        assertEquals(3, report.problems().size(), report.problems().toString());
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("emoji ruby: already defined in demo/emojis.yml")));
     }
 
     @Test

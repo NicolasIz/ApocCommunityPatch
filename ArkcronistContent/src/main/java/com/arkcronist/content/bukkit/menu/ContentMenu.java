@@ -30,11 +30,11 @@ import java.util.Set;
 
 /**
  * One player's content browser: a 54-slot chest view of every loaded custom item, split into
- * items, blocks and furniture, 45 to a page.
+ * items, blocks, furniture and crops, 45 to a page.
  *
  * <pre>
  *   rows 1-5   the items themselves - real stacks from {@link ItemFactory}, item_model and all
- *   row 6      [prev] [ ] [Items] [Blocks] [Furniture] [ ] [page] [close] [next]
+ *   row 6      [prev] [ ] [Items] [Blocks] [Furniture] [Crops] [page] [close] [next]
  * </pre>
  *
  * <p>The inventory belongs to no block or entity; this object is its holder, which is how the
@@ -56,7 +56,8 @@ public final class ContentMenu implements InventoryHolder {
     static final int CLOSE = 52;
     static final int NEXT = 53;
     private static final Map<Integer, ContentType> TABS = Map.of(
-            47, ContentType.ITEM, 48, ContentType.CUSTOM_BLOCK, 49, ContentType.CUSTOM_FURNITURE);
+            47, ContentType.ITEM, 48, ContentType.CUSTOM_BLOCK, 49, ContentType.CUSTOM_FURNITURE,
+            50, ContentType.CUSTOM_CROP);
 
     private static final Component TITLE = Component.text("Custom content");
 
@@ -246,6 +247,7 @@ public final class ContentMenu implements InventoryHolder {
             case ITEM -> Material.DIAMOND;
             case CUSTOM_BLOCK -> Material.BRICKS;
             case CUSTOM_FURNITURE -> Material.PAINTING;
+            case CUSTOM_CROP -> Material.WHEAT;
         };
     }
 
@@ -254,6 +256,7 @@ public final class ContentMenu implements InventoryHolder {
             case ITEM -> "Items";
             case CUSTOM_BLOCK -> "Blocks";
             case CUSTOM_FURNITURE -> "Furniture";
+            case CUSTOM_CROP -> "Crops";
         };
     }
 }

@@ -28,6 +28,21 @@ dependencies:
       load: AFTER
       required: false
       join-classpath: true
+    # Placeholders for TAB, DeluxeMenus and others: registered as this plugin enables.
+    PlaceholderAPI:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    # Asks for item providers as it enables, so this plugin has to be listening by then.
+    ShopGUIPlus:
+      load: AFTER
+      required: false
+      join-classpath: true
+    # A world generator, enabled early; the block provider is registered with it at once.
+    Iris:
+      load: BEFORE
+      required: false
+      join-classpath: true
 
 # Commands are not declared here: a Paper plugin registers them through Brigadier at runtime
 # (see ArkContentPlugin#onEnable). Permissions still are.
@@ -38,6 +53,9 @@ permissions:
   arkcontent.admin:
     description: Use /arkcontent reload, info and import.
     default: op
+  arkcontent.emojis:
+    description: Use /emojis to list the chat emojis. Using an emoji needs nothing, unless it names its own permission.
+    default: true
   arkcontent.menu:
     description: Open the content browser (/arkcontent menu). Taking items out of it needs arkcontent.give.
     default: op

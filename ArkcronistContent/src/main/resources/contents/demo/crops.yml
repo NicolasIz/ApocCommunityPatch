@@ -1,0 +1,38 @@
+# ---------------------------------------------------------------------------
+#  Demo crop
+# ---------------------------------------------------------------------------
+#  The item is the seed: right-click the top of farmland with it to plant.
+#  It grows through its stages on its own - faster with bone meal - and a
+#  punch harvests it: its drops when fully grown, the seed back before that.
+#
+#     /customgive <player> demo:ruby_seeds
+# ---------------------------------------------------------------------------
+
+items:
+
+  ruby_seeds:
+    type: custom_crop
+    display-name: "<red>Ruby Seeds"
+    lore:
+      - "<gray>Plant on farmland."
+    resource:
+      texture: item/ruby_seeds      # the seed item's own icon
+    crop:
+      # One entry per stage, first to fully grown. A bare texture is drawn as a
+      # cross, like a sapling; 'texture' + 'parent: block/crop' gives the #
+      # shape of wheat; 'model' takes any model file.
+      stages:
+        - crop/ruby_stage_0
+        - crop/ruby_stage_1
+        - crop/ruby_stage_2
+        - crop/ruby_stage_3
+      stage-seconds: 90              # per stage, give or take a fifth
+      min-light: 9                   # like vanilla crops; 0 grows in the dark
+      soil: [FARMLAND]
+      bone-meal: true
+      drops:                         # when fully grown
+        - item: demo:ruby
+          amount: 1-2
+        - item: demo:ruby_seeds
+          amount: 1-2
+          chance: 0.75

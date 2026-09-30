@@ -45,3 +45,9 @@ delivery:
   required: true
   # Shown on the download prompt. MiniMessage. Empty keeps the client's own text.
   prompt: "<yellow>This server uses custom items.</yellow> <gray>Accept the resource pack to see them."
+
+crops:
+  # How often, in seconds, the growth scheduler adds time to every crop in a loaded
+  # chunk. It runs off the main thread; only a crop moving to its next stage costs
+  # the server tick anything. Growth speed itself is each crop's stage-seconds.
+  tick-seconds: 5

@@ -1,7 +1,7 @@
 # ArkcronistContent
 
-Motor de contenido personalizado para **Paper 1.21.8+**, Java 21: define ítems, bloques y muebles en
-YAML y el plugin compila su propio resource pack, lo empaqueta en ZIP, calcula su SHA-1, lo sirve con
+Motor de contenido personalizado para **Paper 1.21.8+**, Java 21: define ítems, bloques, muebles,
+cultivos y emojis de chat en YAML y el plugin compila su propio resource pack, lo empaqueta en ZIP, calcula su SHA-1, lo sirve con
 un servidor HTTP integrado y se lo envía a cada jugador. Los bloques y muebles colocados se guardan en
 SQLite. El mismo concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer.
 
@@ -11,6 +11,7 @@ SQLite. El mismo concepto que ItemsAdder u Oraxen, reducido a una base limpia so
 /arkcontent info                           ítems y bloques cargados, colocados, hash del pack, URL
 /arkcontent import                         convierte los packs de ItemsAdder de import/ (sección 6)
 /arkcontent menu                           explorador de todo el contenido cargado (sección 7)
+/emojis                                    los emojis de chat disponibles, dibujados (sección 4)
 ```
 
 | Permiso | Por defecto | Para |
@@ -18,9 +19,10 @@ SQLite. El mismo concepto que ItemsAdder u Oraxen, reducido a una base limpia so
 | `arkcontent.give` | op | `/customgive`, y sacar ítems del explorador |
 | `arkcontent.admin` | op | `reload`, `info`, `import` |
 | `arkcontent.menu` | op | abrir el explorador (solo mirar, si no tiene `arkcontent.give`) |
+| `arkcontent.emojis` | todos | `/emojis`. Usar un emoji no necesita permiso, salvo que el emoji declare el suyo |
 
-Con MythicMobs, ModelEngine o MythicArmor instalados se integra con ellos (sección 5); sin
-ellos funciona igual.
+Con MythicMobs, ModelEngine, MythicArmor, PlaceholderAPI (y a través de él TAB y DeluxeMenus),
+ShopGUI+ o Iris instalados se integra con ellos (sección 5); sin ellos funciona igual.
 
 El plugin se compila contra la API de Paper 1.21.8 y declara esa versión como mínima. El componente
 `item_model` y la carpeta `assets/<namespace>/items/`, en los que se apoya todo, existen desde 1.21.4,
@@ -31,7 +33,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-0.1.0.jar
+./gradlew build          # -> build/libs/ArkcronistContent-1.1.0.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -72,9 +74,14 @@ ArkcronistContent/
         │   │   ├── ModelSource            modelo aportado, o generado desde parent + texturas
         │   │   ├── ItemBehaviour          qué conserva del material base
         │   │   └── ResourceLocation       namespace:ruta validado (anti path traversal)
+        │   ├── allocation/StableAllocator números estables por id (estados de note block, emojis)
         │   ├── block/
         │   │   ├── NoteBlockState         los 800 estados de note block ↔ índice ↔ texto
         │   │   └── NoteBlockAllocator     asignación estable bloque → estado, persistida en JSON
+        │   ├── crop/
+        │   │   ├── PlantedCrop            un cultivo plantado: posición, etapa, progreso
+        │   │   ├── CropGrowth             la aritmética del crecimiento, sin mundo
+        │   │   └── CropStore              memoria + SQLite de los cultivos
         │   ├── storage/
         │   │   ├── DatabaseManager        SQLite (JDBC) en su propio hilo, API con CompletableFuture
         │   │   ├── PlacedContentIndex     caché en memoria: ConcurrentHashMap por mundo y posición
@@ -112,11 +119,15 @@ ArkcronistContent/
             │   ├── BlockRegistry          el mapa global de bloques: por id y por estado
             │   ├── CustomBlock            ítem + estado + BlockData listo para aplicar
             │   └── CustomBlockService     reconocer, colocar, olvidar, resincronizar
-            ├── furniture/FurnitureService soporte invisible + ItemDisplay + vínculo en el chunk
+            ├── furniture/                 FurnitureService (soporte + ItemDisplay + vínculo en el
+            │                              chunk), SeatService (asientos)
+            ├── crop/                      CropService, CropTicker (crecimiento asíncrono), CropListener
+            ├── emoji/                     EmojiRegistry, ChatEmojiListener (AsyncChatEvent)
             ├── pack/PackDelivery          pack vivo + envío con setResourcePack
             ├── menu/                      ContentMenu (inventario paginado), ContentMenus,
             │                              ContentMenuListener (bloquea todo movimiento)
-            ├── hooks/                     integraciones opcionales, una por paquete:
+            ├── hooks/                     integraciones opcionales, una por paquete (también
+            │                              placeholderapi/, shopgui/, iris/):
             │   ├── HookManager            detecta cada plugin y arranca su gancho aislado
             │   ├── mythicmobs/            tipo de drop arkcontent{item=...} + ItemSupplier
             │   ├── modelengine/           muebles dibujados con un blueprint de ModelEngine
@@ -352,9 +363,105 @@ Para que funcione desde fuera:
 Con `http.enabled: false` el pack se sigue compilando en `output/resource_pack.zip` para alojarlo en
 otro sitio, y el plugin no envía nada.
 
+### Cultivos (`custom_crop`)
+
+```yaml
+items:
+  ruby_seeds:
+    type: custom_crop           # el ítem es la semilla
+    resource:
+      texture: item/ruby_seeds  # su icono (opcional: sin él se dibuja como la última etapa)
+    crop:
+      stages:                   # una por etapa, de recién plantado a maduro; mínimo dos
+        - crop/ruby_stage_0     # textura sola: modelo en cruz (block/cross), como un retoño
+        - texture: crop/ruby_stage_1
+          parent: block/crop    # la forma en # del trigo
+        - model: crop/ruby_grown # cualquier modelo
+      stage-seconds: 90         # por etapa, ± un 20 % según la posición
+      min-light: 9              # como los cultivos vanilla; 0 crece a oscuras
+      soil: [FARMLAND]          # dónde se puede plantar
+      bone-meal: true
+      drops:                    # al cosechar maduro; antes devuelve la semilla
+        - item: demo:ruby       # ítem propio o material vanilla (WHEAT)
+          amount: 1-3
+          chance: 0.75
+```
+
+- **Mundo.** Clic derecho con la semilla sobre la cara superior del suelo: se coloca un bloque de luz
+  invisible (nivel 0) y un `ItemDisplay` con el modelo de la etapa. Cada etapa tiene su propia
+  definición de ítem en el pack (`<ns>:<id>/stage_<n>`), así que crecer es solo cambiar el
+  `item_model` del display. Se dispara un `BlockPlaceEvent` real al plantar y un `BlockBreakEvent`
+  real al cosechar, así que los plugins de protección deciden.
+- **Crecimiento asíncrono.** Cada `crops.tick-seconds` (config, 5 por defecto) un hilo del
+  planificador asíncrono de Bukkit suma el tiempo real transcurrido a todos los cultivos de chunks
+  cargados y detecta cuáles terminaron su etapa. Al hilo principal solo le llega esa lista corta, en
+  una tarea, y solo si no está vacía: comprueba luz y suelo, cambia el modelo y, al madurar, lanza
+  partículas (`HAPPY_VILLAGER` y `END_ROD`) y un sonido. Una huerta de miles de cultivos creciendo
+  no cuesta nada al tick. Como en vanilla, no crecen en chunks descargados.
+- **Tiempo determinista.** La variación de ±20 % sale de la posición y la etapa, no del azar: un campo
+  sembrado de golpe no madura en el mismo tick, y el mismo cultivo tarda siempre lo mismo.
+- **Cosecha y pérdidas.** Un golpe lo cosecha (se sigue la línea de visión, el bloque de luz no se
+  puede apuntar). También lo arrancan, soltando lo suyo: romper o pisotear el suelo, vaciar un cubo
+  sobre él, una explosión bajo él. El agua que corre no puede entrar en un bloque de luz, así que un
+  cultivo la detiene como una valla. La tierra de cultivo bajo un cultivo no se seca. Los pistones
+  que lo moverían se bloquean.
+- **Harina de hueso**: una etapa por clic, con partículas. Un clic sobre un bloque llega al servidor
+  dos veces (uso sobre el bloque y uso en el aire), así que se aplica como mucho una vez cada 4 ticks
+  por jugador.
+- **Persistencia.** Tabla `custom_crops` (mundo, x, y, z, id, etapa, progreso) en el mismo SQLite,
+  todo con `CompletableFuture` en el hilo `ArkContent-DB`. Plantar, cosechar y cada cambio de etapa
+  se guardan al momento; el progreso dentro de una etapa vive en memoria y se guarda de una vez, en
+  una transacción por mundo, al descargarse el mundo o apagar el servidor. Una base de datos de la
+  1.0 gana la tabla sola al abrirla (esquema 1 → 2).
+
+### Emojis de chat
+
+```yaml
+emojis:                         # en cualquier archivo de contenido
+  ruby: emoji/ruby              # textures/emoji/ruby.png, normalmente 16x16
+  heart:
+    texture: emoji/heart
+    height: 8                   # píxeles de fuente (una línea de chat mide 9)
+    ascent: 7
+    permission: vip.emojis      # opcional: sin él, todos pueden usarlo
+```
+
+- Cada emoji recibe un carácter del área de uso privado de Unicode (`U+E000`–`U+F8FF`) y el
+  compilador escribe un proveedor `bitmap` en `assets/minecraft/font/default.json`. Es la fuente por
+  defecto, así que el carácter se dibuja en cualquier texto: chat, carteles, libros, y los menús,
+  scoreboards y tablists de otros plugins. El cliente combina ese archivo con el vanilla, no lo
+  reemplaza.
+- **Asignación estable**, como los estados de note block: `data/emoji_characters.json` guarda qué
+  carácter tiene cada emoji para siempre, y uno eliminado queda retirado. Un cartel con un rubí
+  seguirá mostrando un rubí aunque se añadan o quiten otros emojis.
+- **Chat asíncrono.** Un listener de `AsyncChatEvent` (fuera del hilo principal, como Paper entrega
+  el chat) sustituye cada `:nombre:` que el jugador puede usar por su carácter: en blanco (para que
+  la imagen conserve sus colores dentro de un chat coloreado), sin negrita, y con el texto original
+  al pasar el ratón. Cualquier otra cosa entre dos puntos —una hora, un emoji sin permiso— queda
+  igual. Trabaja sobre el componente del mensaje antes de formatearlo, así que EssentialsChat y
+  compañía formatean un mensaje que ya lleva el emoji.
+- `/emojis` los muestra dibujados, y un clic escribe la palabra clave.
+
+### Asientos
+
+```yaml
+  ruby_stool:
+    type: custom_furniture
+    furniture:
+      interactable: seat
+      seat-height: 0.6          # dónde queda el que se sienta, en bloques sobre el suelo
+```
+
+Clic derecho sobre el mueble (también a través de un soporte `LIGHT`, siguiendo la línea de visión):
+se crea en el hilo principal un `ItemDisplay` vacío —invisible y sin caja de colisión— y el jugador
+lo monta con la postura vanilla de ir sentado, mirando hacia donde mira el mueble. Agacharse lo
+levanta: el asiento desaparece y el jugador queda de pie sobre el mueble, no dentro de su barrera.
+Si ya hay alguien sentado se avisa. El asiento nunca se guarda con el chunk; romper el mueble,
+desconectarse o apagar el plugin también lo retiran.
+
 ## 5. Integraciones
 
-Todas opcionales. `paper-plugin.yml` declara los tres plugins como dependencias con
+Todas opcionales. `paper-plugin.yml` declara cada plugin como dependencia con
 `required: false` y `join-classpath: true`; cada gancho vive en su propio paquete bajo `hooks/`, es
 el único código que nombra clases del otro plugin y solo se crea si esas clases existen. Si algo
 falla al crearlo (una versión con otra API), se avisa en consola y el resto del plugin sigue sin ese
@@ -365,6 +472,9 @@ gancho. `/arkcontent info` muestra cuáles están activos (`Hooks: MythicMobs, .
 | MythicMobs | después de este | lee sus mobs al habilitarse y pregunta entonces por `arkcontent{...}`: hay que estar escuchando ya |
 | ModelEngine | antes de este | su API tiene que estar lista antes de que carguen los muebles del mundo |
 | MythicArmor | después de este | genera su primer pack al habilitarse |
+| PlaceholderAPI | antes de este | la expansión se registra al habilitarse este plugin |
+| ShopGUI+ | después de este | pide los proveedores de ítems al habilitarse (`ShopGUIPlusPostEnableEvent`) |
+| Iris | antes de este | genera mundos; su servicio de datos tiene que estar en marcha |
 
 ### MythicMobs
 
@@ -436,6 +546,82 @@ MythicArmor genera el suyo (`MythicArmorGeneratePackEvent`), los `assets/` de es
 fusionan en el nuestro y se recompila. Si una ruta existe en los dos, gana la nuestra y se avisa en
 consola. Si MythicArmor también envía su propio pack a los jugadores, desactívalo en su
 configuración para que no reciban dos.
+
+### PlaceholderAPI, TAB y DeluxeMenus
+
+Con PlaceholderAPI instalado se registra la expansión `arkcontent`:
+
+| Placeholder | Devuelve |
+|---|---|
+| `%arkcontent_emoji_<nombre>%` | el carácter del emoji, que el pack dibuja como su imagen |
+| `%arkcontent_held%` | id del ítem personalizado en la mano principal, o vacío |
+| `%arkcontent_items%` | cuántos ítems personalizados hay cargados |
+
+**TAB** (NEZNAMY) lee placeholders de PlaceholderAPI en cabecera, pie, prefijos y nombres, así que
+un emoji en la tablist es `header: "&fBienvenido %arkcontent_emoji_heart%"`. El `&f` delante
+conserva los colores de la imagen: el carácter toma el color del texto que lo rodea.
+
+**DeluxeMenus** lee los mismos placeholders en nombres y lore, y además tiene la opción nativa
+`item_model`, que es exactamente la clave que usan estos ítems. Un botón con la apariencia del rubí,
+que además lo entrega:
+
+```yaml
+ruby_button:
+  material: PAPER
+  item_model: demo:ruby            # el modelo del pack: el mismo que ve quien tiene el ítem
+  display_name: "&cRubí %arkcontent_emoji_ruby%"
+  slot: 13
+  left_click_commands:
+    - "[console] customgive %player_name% demo:ruby 1"
+```
+
+Verificado: con PlaceholderAPI 2.11.6 en un Paper 1.21.8 real, `/papi parse` devuelve el carácter
+del emoji y el número de ítems.
+
+### ShopGUI+
+
+Los ítems se usan en las tiendas con la clave `arkcontent` dentro de `item:`:
+
+```yaml
+items:
+  ruby:
+    type: item
+    item:
+      arkcontent: demo:ruby
+    buyPrice: 100
+    sellPrice: 20
+```
+
+La tienda muestra —y el comprador recibe— la misma pila que `/customgive`, con su `item_model`;
+para vender, el ítem se reconoce por la etiqueta del plugin, no por su nombre. El proveedor se
+registra en `ShopGUIPlusPostEnableEvent`, el momento que pide la API de ShopGUI+ (ya arrancado,
+tiendas aún sin cargar). Compilado contra `shopgui-api` 3.2.0 (ShopGUI+ 1.111.0 o posterior);
+ShopGUI+ es de pago y no se ha podido ejecutar aquí.
+
+### Iris
+
+Registra un proveedor de datos en Iris, así que un pack de Iris puede nombrar un bloque
+personalizado por su id en cualquier sitio que acepte un bloque. Un filón de rubí, en el JSON de un
+bioma o una región:
+
+```json
+"ores": [{
+  "palette": [{"block": "demo:ruby_block"}],
+  "minHeight": -32,
+  "maxHeight": 32
+}]
+```
+
+Lo que recibe Iris es el propio estado de note block del bloque, así que se coloca tan rápido como
+la piedra —sin entidad ni llamada posterior— y se reconoce como bloque personalizado al romperlo.
+Los ítems sirven igual en las tablas de botín de Iris. Iris llama desde sus hilos de generación; los
+registros que lee se sustituyen enteros en cada recompilación y nunca se bloquean.
+
+Iris no publica su API: el gancho se compila contra una copia exacta de las firmas de Iris 3.9.2 (la
+versión para 1.21.x), en un source set propio que nunca entra en el jar. Se comprobó, referencia por
+referencia, que el código compilado solo usa firmas que existen tal cual en Iris 3.9.2; no se ha
+podido ejecutar con Iris real aquí. Los chunks que Iris genera antes de que este plugin arranque
+(el área de spawn de un mundo nuevo) no tienen aún el proveedor: pregenera después de arrancar.
 
 ## 6. Importar desde ItemsAdder
 
@@ -553,6 +739,11 @@ con `join-classpath: true` para ver sus clases.
   pick-block (clic central) da un note block vanilla.
 - Note blocks vanilla que ya estuvieran afinados en el mundo antes de definir bloques pueden
   coincidir con el estado de un bloque personalizado y verse como él.
+- Cultivos: uno por bloque, siempre sobre el suelo configurado y dibujados con un `ItemDisplay` cada
+  uno; para granjas enormes, eso son muchas entidades de display (baratas, pero entidades).
+- Emojis: se reemplazan en el chat; en carteles y libros funcionan si se escribe el carácter (o se
+  pega desde `/emojis`), no la palabra clave.
+- Asientos: uno por mueble, con la altura fija de `seat-height`.
 - Importar desde ItemsAdder convierte configuración y recursos, no mundos: los bloques y muebles
   que ItemsAdder ya colocó siguen siendo suyos. Recetas, loot, eventos y demás se listan como no
   importados.

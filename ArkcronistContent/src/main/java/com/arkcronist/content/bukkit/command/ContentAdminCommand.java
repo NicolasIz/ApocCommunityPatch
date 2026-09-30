@@ -146,7 +146,8 @@ public final class ContentAdminCommand {
                         + " See the console for the cause.", NamedTextColor.RED));
                 return;
             }
-            sender.sendMessage(Component.text(report.items() + " item(s), " + report.blocks() + " block(s), pack "
+            sender.sendMessage(Component.text(report.items() + " item(s), " + report.blocks() + " block(s), "
+                    + report.emojis() + " emoji(s), pack "
                     + shortHash(report.sha1Hex())
                     + (report.changed() ? ", sent to online players" : ", unchanged")
                     + " (" + report.millis() + " ms).", NamedTextColor.GREEN));
@@ -165,7 +166,8 @@ public final class ContentAdminCommand {
         sender.sendMessage(Component.text("Custom items: " + plugin.items().size() + ", of which blocks: "
                 + plugin.blocks().size() + " (of " + (NoteBlockState.CAPACITY - 1) + " note block states)",
                 NamedTextColor.GOLD));
-        sender.sendMessage(Component.text("Placed blocks and furniture in loaded worlds: " + plugin.placed().size(),
+        sender.sendMessage(Component.text("Placed blocks and furniture in loaded worlds: " + plugin.placed().size()
+                + ", crops: " + plugin.crops().store().size() + "; chat emojis: " + plugin.emojis().size(),
                 NamedTextColor.GRAY));
         sender.sendMessage(Component.text(pack == null
                 ? "Pack: not built yet"

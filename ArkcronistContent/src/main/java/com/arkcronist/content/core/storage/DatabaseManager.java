@@ -1,5 +1,7 @@
 package com.arkcronist.content.core.storage;
 
+import com.arkcronist.content.core.crop.PlantedCrop;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -10,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -22,7 +25,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * The SQLite file that remembers where custom blocks and furniture stand.
+ * The SQLite file that remembers where custom blocks and furniture stand, and how far each crop
+ * has grown.
  *
  * <p>Every statement runs on one thread of its own, and every method returns at once with a
  * future. One thread is not a limitation here but the design: SQLite allows a single writer, one
@@ -39,9 +43,13 @@ import java.util.logging.Logger;
 public final class DatabaseManager {
 
     public static final String TABLE = "custom_blocks_world";
+    public static final String CROP_TABLE = "custom_crops";
 
-    /** Bumped with each change to the schema, so a later version knows what it opened. */
-    private static final int SCHEMA_VERSION = 1;
+    /**
+     * Bumped with each change to the schema, so a later version knows what it opened.
+     * 1: custom_blocks_world. 2: custom_crops added; a version 1 file gains the table on open.
+     */
+    static final int SCHEMA_VERSION = 2;
 
     private static final String CREATE_TABLE = """
             CREATE TABLE IF NOT EXISTS custom_blocks_world (
@@ -53,6 +61,24 @@ public final class DatabaseManager {
                 type       TEXT    NOT NULL CHECK (type IN ('BLOCK', 'FURNITURE')),
                 PRIMARY KEY (world_uuid, x, y, z)
             ) WITHOUT ROWID""";
+
+    private static final String CREATE_CROP_TABLE = """
+            CREATE TABLE IF NOT EXISTS custom_crops (
+                world_uuid TEXT    NOT NULL,
+                x          INTEGER NOT NULL,
+                y          INTEGER NOT NULL,
+                z          INTEGER NOT NULL,
+                crop_id    TEXT    NOT NULL,
+                stage      INTEGER NOT NULL CHECK (stage >= 0),
+                progress   INTEGER NOT NULL DEFAULT 0 CHECK (progress >= 0),
+                PRIMARY KEY (world_uuid, x, y, z)
+            ) WITHOUT ROWID""";
+
+    private static final String UPSERT_CROP = "INSERT OR REPLACE INTO " + CROP_TABLE
+            + " (world_uuid, x, y, z, crop_id, stage, progress) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    private static final String DELETE_CROP = "DELETE FROM " + CROP_TABLE + " WHERE world_uuid = ? AND x = ? AND y = ? AND z = ?";
+    private static final String SELECT_CROPS = "SELECT x, y, z, crop_id, stage, progress FROM " + CROP_TABLE
+            + " WHERE world_uuid = ?";
 
     private static final String UPSERT = "INSERT OR REPLACE INTO " + TABLE
             + " (world_uuid, x, y, z, block_id, type) VALUES (?, ?, ?, ?, ?, ?)";
@@ -138,6 +164,78 @@ public final class DatabaseManager {
         }, false);
     }
 
+    // ---------------------------------------------------------------- crops
+
+    /** Records a crop and how far it has grown, replacing whatever was recorded at its position. */
+    public CompletableFuture<Void> saveCrop(PlantedCrop crop) {
+        return saveCrops(List.of(crop));
+    }
+
+    /**
+     * Records many crops in one transaction - one disk sync, however many rows. Used to save every
+     * crop's progress at once when a world unloads or the server stops.
+     */
+    public CompletableFuture<Void> saveCrops(Collection<PlantedCrop> crops) {
+        List<PlantedCrop> rows = List.copyOf(crops);
+        return submit(connection -> {
+            if (rows.isEmpty()) {
+                return null;
+            }
+            boolean autoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+            try (PreparedStatement statement = connection.prepareStatement(UPSERT_CROP)) {
+                for (PlantedCrop crop : rows) {
+                    statement.setString(1, crop.world().toString());
+                    statement.setInt(2, crop.x());
+                    statement.setInt(3, crop.y());
+                    statement.setInt(4, crop.z());
+                    statement.setString(5, crop.cropId());
+                    statement.setInt(6, crop.stage());
+                    statement.setLong(7, crop.progress());
+                    statement.addBatch();
+                }
+                statement.executeBatch();
+                connection.commit();
+            } catch (SQLException exception) {
+                connection.rollback();
+                throw exception;
+            } finally {
+                connection.setAutoCommit(autoCommit);
+            }
+            return null;
+        }, false);
+    }
+
+    /** @return whether there was a crop to delete */
+    public CompletableFuture<Boolean> deleteCrop(UUID world, int x, int y, int z) {
+        return submit(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(DELETE_CROP)) {
+                statement.setString(1, world.toString());
+                statement.setInt(2, x);
+                statement.setInt(3, y);
+                statement.setInt(4, z);
+                return statement.executeUpdate() > 0;
+            }
+        }, false);
+    }
+
+    /** Every crop of one world. */
+    public CompletableFuture<List<PlantedCrop>> loadCrops(UUID world) {
+        return submit(connection -> {
+            List<PlantedCrop> rows = new ArrayList<>();
+            try (PreparedStatement statement = connection.prepareStatement(SELECT_CROPS)) {
+                statement.setString(1, world.toString());
+                try (ResultSet result = statement.executeQuery()) {
+                    while (result.next()) {
+                        rows.add(new PlantedCrop(world, result.getInt(1), result.getInt(2), result.getInt(3),
+                                result.getString(4), result.getInt(5), result.getLong(6)));
+                    }
+                }
+            }
+            return rows;
+        }, false);
+    }
+
     /**
      * Lets every queued statement finish, then closes the file. Blocks for at most ten seconds;
      * called once, from the plugin's shutdown.
@@ -200,10 +298,16 @@ public final class DatabaseManager {
             statement.execute("PRAGMA journal_mode=WAL");
             statement.execute("PRAGMA synchronous=NORMAL");
             statement.execute(CREATE_TABLE);
-            try (ResultSet version = statement.executeQuery("PRAGMA user_version")) {
-                if (version.next() && version.getInt(1) == 0) {
-                    statement.execute("PRAGMA user_version=" + SCHEMA_VERSION);
-                }
+            statement.execute(CREATE_CROP_TABLE);
+            int version;
+            try (ResultSet result = statement.executeQuery("PRAGMA user_version")) {
+                version = result.next() ? result.getInt(1) : 0;
+            }
+            if (version < SCHEMA_VERSION) {
+                statement.execute("PRAGMA user_version=" + SCHEMA_VERSION);
+            } else if (version > SCHEMA_VERSION) {
+                logger.warning(file.getFileName() + " was written by a newer version of the plugin (schema "
+                        + version + "); tables it does not know are left alone.");
             }
         } catch (SQLException exception) {
             opened.close();

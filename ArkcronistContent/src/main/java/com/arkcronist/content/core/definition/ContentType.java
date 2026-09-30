@@ -17,7 +17,9 @@ public enum ContentType {
     /** Placed as a note block in a state reserved for it. */
     CUSTOM_BLOCK("custom_block"),
     /** Placed as an invisible support block with an item display showing its model. */
-    CUSTOM_FURNITURE("custom_furniture");
+    CUSTOM_FURNITURE("custom_furniture"),
+    /** Planted on soil, and grows through stages - each its own model - until it can be harvested. */
+    CUSTOM_CROP("custom_crop");
 
     private final String yamlName;
 
