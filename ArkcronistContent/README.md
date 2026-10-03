@@ -2,7 +2,7 @@
 
 Motor de contenido personalizado para **Paper 1.21.8+**, Java 21: define ítems, bloques, muebles
 (también asientos, muebles con inventario, cofres con animaciones de Blockbench y camas de dos
-bloques), cultivos y emojis de chat en YAML y el plugin compila
+bloques), armaduras (con cascos 3D), cultivos y emojis de chat en YAML y el plugin compila
 su propio resource pack, lo empaqueta en ZIP, calcula su SHA-1, lo sirve con un servidor HTTP
 integrado —o lo sube solo a un servicio de almacenamiento— y se lo envía a cada jugador. Los bloques
 y muebles colocados, los cultivos y lo guardado en los muebles se conservan en SQLite. El mismo
@@ -85,6 +85,7 @@ ArkcronistContent/
         ├── core/                          ── sin Bukkit ──
         │   ├── definition/
         │   │   ├── ItemDefinition         una entrada tal como la describe el YAML
+        │   │   ├── Equipment              cómo se lleva puesto: hueco, asset de equipo, modelo en la cabeza
         │   │   ├── ContentType            item · custom_block · custom_furniture
         │   │   ├── Placement              qué pone en el mundo: Block o Furniture (+ Display)
         │   │   ├── ModelSource            modelo aportado, o generado desde parent + texturas
@@ -143,7 +144,7 @@ ArkcronistContent/
             ├── item/
             │   ├── CustomItem             el ítem validado contra el servidor
             │   ├── ItemRegistry           el mapa global namespace:id -> CustomItem
-            │   └── ItemFactory            crea ItemStacks (setItemModel) y los reconoce
+            │   └── ItemFactory            crea ItemStacks (setItemModel, equippable) y los reconoce
             ├── block/
             │   ├── BlockRegistry          el mapa global de bloques: por id y por estado
             │   ├── CustomBlock            ítem + estado + BlockData listo para aplicar
@@ -189,11 +190,14 @@ Cada carpeta directamente bajo `plugins/ArkcronistContent/contents/` es un pack 
 contents/demo/
 ├── items.yml                          ítems
 ├── blocks.yml                         bloques y muebles
+├── armor.yml                          el set del Caballero del Rubí de Sangre (sección 4)
 ├── models/
-│   ├── item/ruby.json
+│   ├── item/ruby.json, ruby_helmet_worn.json
 │   └── furniture/ruby_pedestal.json   modelo 3D (export de Blockbench), ruby_crate.json
 └── textures/
-    ├── item/ruby.png, ruby_sword.png
+    ├── item/ruby.png, ruby_sword.png, ruby_helmet.png…
+    ├── entity/equipment/humanoid/ruby_armor.png           capas de armadura (64×32)
+    ├── entity/equipment/humanoid_leggings/ruby_armor.png
     ├── block/ruby_block.png
     └── furniture/pedestal_stone.png, ruby_crate.png
 ```
@@ -709,6 +713,97 @@ a cada plugin de habilidades instalado: AuraSkills (Mining / Farming), mcMMO (Mi
 SkillAPI·ProSkillAPI y Fabled (experiencia de clase, como rotura de bloque). Para esos plugins un
 note block o un bloque de luz no valen nada por sí solos; así se pagan.
 
+### Armaduras (`equipment`)
+
+Desde 1.21.4 una armadura no necesita un material propio: el componente de ítem `equippable` dice
+en qué hueco se lleva y qué **asset de equipo** la dibuja. El plugin lee la sección `equipment:` de
+un ítem (`type: item`), pone el componente en la stack y escribe el asset en el pack.
+
+```yaml
+# contents/demo/armor.yml
+items:
+  ruby_chestplate:
+    material: NETHERITE_CHESTPLATE      # armadura, dureza, resistencia al empuje y sonido: de netherita
+    display-name: "<!i><gradient:#ff5a6e:#b3122e:#5e0716><b>Coraza del Rubí de Sangre</b></gradient>"
+    resource:
+      texture: item/ruby_chestplate     # el icono del inventario
+    equipment:
+      slot: CHEST                       # HEAD, CHEST, LEGS o FEET
+      asset: ruby_armor                 # -> demo:ruby_armor
+
+  ruby_helmet:
+    material: NETHERITE_HELMET
+    resource:
+      texture: item/ruby_helmet
+    equipment:
+      slot: HEAD
+      model: item/ruby_helmet_worn      # en la cabeza se dibuja este modelo 3D, no una capa
+```
+
+Con `asset: ruby_armor` el compilador escribe `assets/demo/equipment/ruby_armor.json` con una capa
+por cada textura que encuentra, y copia esas texturas:
+
+| Capa | Textura (64×32, el mismo patrón que una armadura vanilla) | La usan |
+|---|---|---|
+| `humanoid` | `textures/entity/equipment/humanoid/ruby_armor.png` | casco, pechera, botas |
+| `humanoid_leggings` | `textures/entity/equipment/humanoid_leggings/ruby_armor.png` | grebas |
+
+Todas las piezas de un set nombran el mismo asset; el archivo se escribe una vez. Las capas van
+pegadas al cuerpo, infladas 1 px (0,5 px las grebas), como cualquier armadura vanilla. La antigua
+ruta `textures/models/armor/*_layer_1.png` ya no la lee el cliente en 1.21.4+.
+
+En la stack, el `equippable` es el del material base con solo el asset cambiado: se conserva el
+sonido de equipar, que se pueda poner con clic derecho, con un dispensador o intercambiar, y las
+estadísticas siguen siendo las del material (`attribute_modifiers` de la netherita). Si el hueco no
+es el del material (un `PAPER` con `slot: HEAD`), se crea un `equippable` nuevo para ese hueco.
+
+**Casco con modelo 3D.** Si el `equippable` de un casco tiene asset, el cliente dibuja la capa de
+armadura y **nunca** el modelo del ítem; sin asset, dibuja el modelo del ítem en la cabeza (como una
+calabaza). Por eso `equipment.model` va sin `asset`: el plugin quita el asset de la stack y escribe
+una definición de ítem que elige por contexto:
+
+```json
+{ "model": { "type": "minecraft:select", "property": "minecraft:display_context",
+    "cases": [ { "when": "head", "model": { "type": "minecraft:model", "model": "demo:item/ruby_helmet_worn" } } ],
+    "fallback": { "type": "minecraft:model", "model": "demo:item/ruby_helmet" } } }
+```
+
+En la cabeza, el modelo 3D; en el inventario, la mano o el suelo, el icono plano. El cliente dibuja
+un ítem de cabeza a 0,625 de su tamaño, centrado en la cabeza y girado 180°: un cubo de 0 a 16 se ve
+de 10 px, lo mismo que un casco inflado 1 px. El de la demo es ese cubo con la textura del casco
+aprobado (su cara superior lleva `"rotation": 180`, porque la cara `up` de un modelo va al revés que
+la del patrón de la cabeza), dos cuernos escalonados con punta de rubí y una cresta: 10 cubos que
+sobresalen 3,75 px por encima y 3,4 px por los lados, rompiendo la silueta vanilla sin taparla. Las
+texturas de un modelo van en `textures/item/` (u otra carpeta del atlas de bloques), no en
+`entity/equipment/`.
+
+El cargador avisa de lo que el jugador vería mal: un hueco que no existe; una pieza cuya capa no
+está (sería invisible: `worn on LEGS, demo:ruby_armor is drawn from textures/entity/equipment/humanoid_leggings/ruby_armor.png,
+which is not in demo`); `model` fuera de la cabeza (se ignora); `model` y `asset` juntos en la
+cabeza (gana el asset, que es lo que el cliente dibujaría); `model` sin `resource`; o un modelo que
+no está en `models/`.
+
+El reparto del set de la demo, medido sobre los píxeles visibles: 74 % acero ennegrecido y 26 %
+rubí (casco 66/34, pechera 79/21, grebas 73/27, botas 79/21).
+
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (v1.4)
+
+Un bot (Mineflayer) recibe las cuatro piezas con `/customgive`. Se pone el casco y la pechera con
+clic derecho y las grebas y las botas colocándolas en su hueco del inventario. Un segundo bot mira:
+
+| Comprobación | Resultado |
+|---|---|
+| `data get entity Tester equipment` | casco: `equippable {slot: head, equip_sound: …equip_netherite}` sin `asset_id`; pechera, grebas y botas: `asset_id: "demo:ruby_armor"`; las cuatro con su `item_model` |
+| Lo que recibe otro jugador (`entity_equipment`) | las mismas cuatro stacks: `item_model` `demo:ruby_*`, el casco sin asset y el resto con `demo:ruby_armor` |
+| `attribute … armor / armor_toughness / knockback_resistance` | 20 / 12 / 0,4: netherita completa |
+| `damage Tester 10 minecraft:mob_attack` | 20 → 17,2 de vida (2,8 de daño, lo que da la fórmula con 20 de armadura y 12 de dureza) |
+| Reconectar | el cliente recibe las cuatro piezas en los huecos de armadura 5–8: se guardan con el jugador |
+| Pack generado | `equipment/ruby_armor.json` con las dos capas, sus dos texturas, `items/ruby_helmet.json` con el `select` de arriba, el modelo y la textura del casco |
+
+Lo que no se puede comprobar aquí es el dibujo en un cliente de Minecraft real (no hay ninguno en
+este entorno): las rutas, el formato de los archivos y los componentes son los que lee el cliente
+1.21.4+, y la lámina de presentación reproduce ese dibujo a partir de los mismos archivos.
+
 ## 5. Integraciones
 
 Todas opcionales. `paper-plugin.yml` declara cada plugin como dependencia con
@@ -1189,8 +1284,10 @@ con `join-classpath: true` para ver sus clases.
 - ModelEngine: el gancho se compila contra la API real R4.2.0, pero no se ha podido probar en un
   servidor aquí (el artefacto público es solo la API, sin el plugin). Del modelo solo se aplica
   `scale`; `translation` y `rotation` afectan al display oculto.
-- MythicArmor: no se pueden añadir armaduras a su registro (API de solo lectura). Armaduras 3D
-  propias desde YAML (componente `equippable` de 1.21.2+) serían la alternativa nativa; aún no
-  están implementadas.
+- MythicArmor: no se pueden añadir armaduras a su registro (API de solo lectura); las armaduras
+  propias se definen con `equipment:` (sección 4).
+- Armaduras: el modelo 3D solo se dibuja en la cabeza; pechera, grebas y botas son capas planas
+  (como las vanilla). Un casco con modelo no tiene capa de armadura, así que tampoco muestra
+  adornos (armor trims). El dibujo en un cliente real no se ha podido verificar aquí (sección 4).
 - El pack se envía en `PlayerJoinEvent`. En 1.21.7+ Paper permite enviarlo durante la fase de
   configuración, antes de entrar al mundo; es el siguiente paso natural.

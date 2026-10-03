@@ -1,6 +1,12 @@
 package com.arkcronist.content.bukkit.item;
 
+import com.arkcronist.content.core.definition.Equipment;
+import com.arkcronist.content.core.definition.ResourceLocation;
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.Equippable;
+import net.kyori.adventure.key.Key;
 import org.bukkit.NamespacedKey;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
@@ -55,7 +61,26 @@ public final class ItemFactory {
             }
             meta.getPersistentDataContainer().set(idKey, PersistentDataType.STRING, item.id());
         });
+        Equipment equipment = item.definition().equipment();
+        if (equipment != null) {
+            stack.setData(DataComponentTypes.EQUIPPABLE, equippable(stack, equipment));
+        }
         return stack;
+    }
+
+    /**
+     * The {@code equippable} component of a worn item. Worn where its base material is - a
+     * netherite chestplate as a chestplate - it is the material's own, keeping its equip sound and
+     * that it can be dispensed and swapped, with only the asset changed; anywhere else, a plain one.
+     * A worn model has no asset at all: the client draws a head item's model only when there is none.
+     */
+    static Equippable equippable(ItemStack stack, Equipment equipment) {
+        EquipmentSlot slot = EquipmentSlot.valueOf(equipment.slot().name());
+        Equippable base = stack.getData(DataComponentTypes.EQUIPPABLE);
+        Equippable.Builder builder = base != null && base.slot() == slot ? base.toBuilder() : Equippable.equippable(slot);
+        ResourceLocation asset = equipment.asset();
+        builder.assetId(asset == null ? null : Key.key(asset.namespace(), asset.path()));
+        return builder.build();
     }
 
     /**

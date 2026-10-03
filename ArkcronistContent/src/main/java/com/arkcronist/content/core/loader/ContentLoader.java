@@ -4,6 +4,7 @@ import com.arkcronist.content.core.animation.AnimatedModel;
 import com.arkcronist.content.core.animation.BbModelReader;
 import com.arkcronist.content.core.definition.ContentType;
 import com.arkcronist.content.core.definition.EmojiDefinition;
+import com.arkcronist.content.core.definition.Equipment;
 import com.arkcronist.content.core.definition.ItemBehaviour;
 import com.arkcronist.content.core.definition.ItemDefinition;
 import com.arkcronist.content.core.definition.ModelSource;
@@ -212,9 +213,78 @@ public final class ContentLoader {
                 prefix, problems);
 
         double price = price(section, prefix, problems);
+        Map<?, ?> equipment = section(section, "equipment", prefix, problems);
         ItemDefinition item = readTyped(namespace, id, type, section, displayName, lore, model, behaviour, sourceRoot,
                 file, prefix, problems);
-        return item == null || price == 0 ? item : item.withPrice(price);
+        if (item == null) {
+            return null;
+        }
+        if (price != 0) {
+            item = item.withPrice(price);
+        }
+        if (equipment != null) {
+            if (type != ContentType.ITEM) {
+                problems.add(prefix + "'equipment' is only read on items worn as armour (type: item)");
+            } else {
+                item = item.withEquipment(equipment(namespace, equipment, model, sourceRoot, prefix, problems));
+            }
+        }
+        return item;
+    }
+
+    /**
+     * {@code equipment:} - how the item is worn. Each problem is reported against what the player
+     * would see: a piece with no texture for its slot would be invisible, a worn model next to an
+     * asset would never be drawn.
+     */
+    private static Equipment equipment(String namespace, Map<?, ?> section, ModelSource model, Path sourceRoot,
+                                       String prefix, List<String> problems) {
+        String rawSlot = text(section, "slot", prefix, problems);
+        Equipment.Slot slot = rawSlot == null ? null : Equipment.Slot.parse(rawSlot);
+        if (slot == null) {
+            problems.add(prefix + "'equipment.slot' must be HEAD, CHEST, LEGS or FEET"
+                    + (rawSlot == null ? "" : ", not '" + rawSlot.trim() + "'") + "; the item is not worn");
+            return null;
+        }
+        ResourceLocation asset = location(section, "asset", namespace, prefix, problems);
+        List<String> layers = new ArrayList<>();
+        if (asset != null && asset.namespace().equals(namespace)) {
+            for (String layer : Equipment.LAYERS) {
+                if (Files.isRegularFile(texturePath(sourceRoot, Equipment.layerTexture(asset, layer)))) {
+                    layers.add(layer);
+                }
+            }
+            if (!layers.contains(slot.layer)) {
+                problems.add(prefix + "worn on " + slot + ", " + asset + " is drawn from textures/"
+                        + Equipment.layerTexture(asset, slot.layer).path() + ".png, which is not in "
+                        + sourceRoot.getFileName() + " - the piece would be invisible");
+            }
+        }
+
+        ResourceLocation wornModel = location(section, "model", namespace, prefix, problems);
+        ModelSource worn = null;
+        if (wornModel != null) {
+            if (slot != Equipment.Slot.HEAD) {
+                problems.add(prefix + "'equipment.model' is drawn on the head only; ignored on " + slot);
+            } else if (asset != null) {
+                problems.add(prefix + "'equipment.model' and 'equipment.asset' do not go together on the head: the"
+                        + " client draws the armour layer and never the model. Using the asset");
+            } else if (model == null) {
+                problems.add(prefix + "'equipment.model' needs a 'resource' too: the look the item keeps everywhere"
+                        + " but on the head");
+            } else if (wornModel.namespace().equals(namespace)
+                    && !Files.isRegularFile(sourceRoot.resolve("models").resolve(wornModel.path() + ".json"))) {
+                problems.add(prefix + "'equipment.model' " + wornModel.path() + ".json is not in "
+                        + sourceRoot.getFileName() + "/models/");
+            } else {
+                worn = new ModelSource.Provided(sourceRoot, wornModel);
+            }
+        }
+        return new Equipment(slot, asset, layers, worn, sourceRoot);
+    }
+
+    private static Path texturePath(Path sourceRoot, ResourceLocation texture) {
+        return sourceRoot.resolve("textures").resolve(texture.path() + ".png");
     }
 
     private static ItemDefinition readTyped(String namespace, String id, ContentType type, Map<?, ?> section,

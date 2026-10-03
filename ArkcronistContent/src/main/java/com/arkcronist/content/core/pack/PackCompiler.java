@@ -3,6 +3,7 @@ package com.arkcronist.content.core.pack;
 import com.arkcronist.content.core.animation.AnimatedModel;
 import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.definition.EmojiDefinition;
+import com.arkcronist.content.core.definition.Equipment;
 import com.arkcronist.content.core.definition.ItemDefinition;
 import com.arkcronist.content.core.definition.ModelSource;
 import com.arkcronist.content.core.definition.Placement;
@@ -174,6 +175,10 @@ public final class PackCompiler {
 
         void item(ItemDefinition item) throws IOException {
             scaffold(item.namespace());
+            Equipment equipment = item.equipment();
+            if (equipment != null && equipment.asset() != null) {
+                equipmentAsset(item.namespace(), equipment, item.fullId());
+            }
 
             ModelSource source = item.model();
             if (source == null) {
@@ -183,7 +188,14 @@ public final class PackCompiler {
             // Another namespace is someone else's to supply - vanilla, or another content pack.
             look(item.namespace(), source, origin);
 
-            if (place(item.itemModel().assetPath("items", ".json"), itemDefinition(source.location()), origin)) {
+            ModelSource worn = equipment == null ? null : equipment.worn();
+            if (worn != null) {
+                look(item.namespace(), worn, origin);
+            }
+            byte[] definition = worn == null
+                    ? itemDefinition(source.location())
+                    : wornItemDefinition(source.location(), worn.location());
+            if (place(item.itemModel().assetPath("items", ".json"), definition, origin)) {
                 itemDefinitions++;
             }
             if (item.placement() instanceof Placement.Crop crop) {
@@ -260,6 +272,58 @@ public final class PackCompiler {
                     }
                 }
             }
+        }
+
+        /**
+         * {@code assets/<namespace>/equipment/<asset>.json}: the armour layers the {@code equippable}
+         * component's {@code asset_id} names, one entry per layer texture found, and those textures.
+         * Every piece of a set names the same asset; the file is written once.
+         */
+        private void equipmentAsset(String namespace, Equipment equipment, String origin) throws IOException {
+            ResourceLocation asset = equipment.asset();
+            if (!asset.namespace().equals(namespace) || equipment.layers().isEmpty()) {
+                // Another namespace's asset - minecraft:netherite - is only referenced; one with no
+                // textures was reported by the loader.
+                return;
+            }
+            JsonObject layers = new JsonObject();
+            for (String layer : equipment.layers()) {
+                JsonObject entry = new JsonObject();
+                entry.addProperty("texture", asset.toString());
+                JsonArray list = new JsonArray();
+                list.add(entry);
+                layers.add(layer, list);
+                copyTexture(equipment.sourceRoot(), Equipment.layerTexture(asset, layer), origin);
+            }
+            JsonObject descriptor = new JsonObject();
+            descriptor.add("layers", layers);
+            place(asset.assetPath("equipment", ".json"), json(descriptor), origin);
+        }
+
+        /**
+         * An item definition that draws {@code worn} on a player's head and {@code model} everywhere
+         * else - the inventory, a hand, the ground.
+         */
+        private static byte[] wornItemDefinition(ResourceLocation model, ResourceLocation worn) {
+            JsonObject onHead = new JsonObject();
+            onHead.addProperty("type", "minecraft:model");
+            onHead.addProperty("model", worn.toString());
+            JsonObject headCase = new JsonObject();
+            headCase.addProperty("when", "head");
+            headCase.add("model", onHead);
+            JsonArray cases = new JsonArray();
+            cases.add(headCase);
+            JsonObject elsewhere = new JsonObject();
+            elsewhere.addProperty("type", "minecraft:model");
+            elsewhere.addProperty("model", model.toString());
+            JsonObject select = new JsonObject();
+            select.addProperty("type", "minecraft:select");
+            select.addProperty("property", "minecraft:display_context");
+            select.add("cases", cases);
+            select.add("fallback", elsewhere);
+            JsonObject definition = new JsonObject();
+            definition.add("model", select);
+            return json(definition);
         }
 
         private static byte[] itemDefinition(ResourceLocation model) {

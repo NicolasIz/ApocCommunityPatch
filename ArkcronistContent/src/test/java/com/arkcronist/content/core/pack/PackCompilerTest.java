@@ -7,6 +7,7 @@ import com.arkcronist.content.core.animation.AnimatedModel;
 import com.arkcronist.content.core.animation.BbModelReader;
 import com.arkcronist.content.core.animation.BbModelReaderTest;
 import com.arkcronist.content.core.definition.EmojiDefinition;
+import com.arkcronist.content.core.definition.Equipment;
 import com.arkcronist.content.core.definition.ItemDefinition;
 import com.arkcronist.content.core.definition.ModelSource;
 import com.arkcronist.content.core.definition.ResourceLocation;
@@ -347,6 +348,77 @@ class PackCompilerTest {
         new PackCompiler(SETTINGS).compile(temp.resolve("pack"), List.of(), Map.of());
 
         assertFalse(Files.exists(temp.resolve("pack/assets/minecraft/font")));
+    }
+
+    @Test
+    void armourWritesItsEquipmentAssetOnceWithItsLayerTextures() throws IOException {
+        Path demo = temp.resolve("contents/demo");
+        write(demo, "textures/entity/equipment/humanoid/ruby_armor.png", png("body"));
+        write(demo, "textures/entity/equipment/humanoid_leggings/ruby_armor.png", png("legs"));
+        write(demo, "textures/item/ruby_chestplate.png", png("chest icon"));
+        write(demo, "textures/item/ruby_boots.png", png("boots icon"));
+        List<String> layers = List.of("humanoid", "humanoid_leggings");
+        ResourceLocation asset = loc("demo:ruby_armor");
+
+        Path pack = temp.resolve("pack");
+        PackCompiler.Result result = new PackCompiler(SETTINGS).compile(pack, List.of(
+                item("ruby_chestplate", flat(demo, "ruby_chestplate", "demo:item/ruby_chestplate", "minecraft:item/generated"))
+                        .withEquipment(new Equipment(Equipment.Slot.CHEST, asset, layers, null, demo)),
+                item("ruby_boots", flat(demo, "ruby_boots", "demo:item/ruby_boots", "minecraft:item/generated"))
+                        .withEquipment(new Equipment(Equipment.Slot.FEET, asset, layers, null, demo)),
+                item("borrowed", null).withEquipment(
+                        new Equipment(Equipment.Slot.CHEST, loc("minecraft:netherite"), List.of(), null, demo))),
+                Map.of());
+
+        assertEquals(List.of(), result.problems(), "two pieces naming one asset is not a clash");
+        Path assets = pack.resolve("assets/demo");
+        JsonObject equipment = json(assets.resolve("equipment/ruby_armor.json")).getAsJsonObject("layers");
+        assertEquals(java.util.Set.of("humanoid", "humanoid_leggings"), equipment.keySet());
+        for (String layer : layers) {
+            JsonArray entries = equipment.getAsJsonArray(layer);
+            assertEquals(1, entries.size());
+            assertEquals("demo:ruby_armor", entries.get(0).getAsJsonObject().get("texture").getAsString());
+        }
+        assertArrayEquals(png("body"), Files.readAllBytes(assets.resolve("textures/entity/equipment/humanoid/ruby_armor.png")));
+        assertArrayEquals(png("legs"),
+                Files.readAllBytes(assets.resolve("textures/entity/equipment/humanoid_leggings/ruby_armor.png")));
+        assertFalse(Files.exists(pack.resolve("assets/minecraft/equipment")), "vanilla's asset is only named");
+        assertEquals("demo:item/ruby_chestplate", itemModelTarget(assets.resolve("items/ruby_chestplate.json")),
+                "an armour piece keeps its plain icon");
+    }
+
+    @Test
+    void aHelmetWornAsAModelIsDrawnByDisplayContext() throws IOException {
+        Path demo = temp.resolve("contents/demo");
+        write(demo, "models/item/ruby_helmet_worn.json", """
+                { "textures": { "helm": "demo:item/ruby_helmet_worn" },
+                  "elements": [ { "from": [0, 0, 0], "to": [16, 16, 16], "faces": {} } ] }
+                """);
+        write(demo, "textures/item/ruby_helmet_worn.png", png("worn"));
+        write(demo, "textures/item/ruby_helmet.png", png("icon"));
+
+        Path pack = temp.resolve("pack");
+        PackCompiler.Result result = new PackCompiler(SETTINGS).compile(pack, List.of(
+                item("ruby_helmet", flat(demo, "ruby_helmet", "demo:item/ruby_helmet", "minecraft:item/generated"))
+                        .withEquipment(new Equipment(Equipment.Slot.HEAD, null, List.of(),
+                                provided(demo, "demo:item/ruby_helmet_worn"), demo))), Map.of());
+
+        assertEquals(List.of(), result.problems());
+        Path assets = pack.resolve("assets/demo");
+        JsonObject select = json(assets.resolve("items/ruby_helmet.json")).getAsJsonObject("model");
+        assertEquals("minecraft:select", select.get("type").getAsString());
+        assertEquals("minecraft:display_context", select.get("property").getAsString());
+        JsonArray cases = select.getAsJsonArray("cases");
+        assertEquals(1, cases.size());
+        JsonObject head = cases.get(0).getAsJsonObject();
+        assertEquals("head", head.get("when").getAsString());
+        assertEquals("demo:item/ruby_helmet_worn", head.getAsJsonObject("model").get("model").getAsString());
+        assertEquals("demo:item/ruby_helmet", select.getAsJsonObject("fallback").get("model").getAsString(),
+                "the icon everywhere but on the head");
+        assertTrue(Files.isRegularFile(assets.resolve("models/item/ruby_helmet_worn.json")));
+        assertArrayEquals(png("worn"), Files.readAllBytes(assets.resolve("textures/item/ruby_helmet_worn.png")));
+        assertArrayEquals(png("icon"), Files.readAllBytes(assets.resolve("textures/item/ruby_helmet.png")));
+        assertFalse(Files.exists(assets.resolve("equipment")), "no asset: the client would draw it over the model");
     }
 
     // ---------------------------------------------------------------- fixtures

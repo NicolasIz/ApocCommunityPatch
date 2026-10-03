@@ -3,6 +3,7 @@ package com.arkcronist.content.core.loader;
 import com.arkcronist.content.core.animation.AnimatedModel;
 import com.arkcronist.content.core.animation.BbModelReaderTest;
 import com.arkcronist.content.core.definition.ContentType;
+import com.arkcronist.content.core.definition.Equipment;
 import com.arkcronist.content.core.definition.ItemDefinition;
 import com.arkcronist.content.core.definition.ModelSource;
 import com.arkcronist.content.core.definition.Placement;
@@ -698,6 +699,122 @@ class ContentLoaderTest {
 
         assertTrue(report.items().isEmpty());
         assertTrue(report.problems().isEmpty());
+    }
+
+    @Test
+    void readsArmourWornThroughAnEquipmentAsset() throws IOException {
+        write("demo/textures/entity/equipment/humanoid/ruby_armor.png", "png");
+        write("demo/textures/entity/equipment/humanoid_leggings/ruby_armor.png", "png");
+        write("demo/armor.yml", """
+                items:
+                  ruby_chestplate:
+                    material: NETHERITE_CHESTPLATE
+                    resource: {texture: item/ruby_chestplate}
+                    equipment: {slot: chest, asset: ruby_armor}
+                  ruby_leggings:
+                    material: NETHERITE_LEGGINGS
+                    resource: {texture: item/ruby_leggings}
+                    equipment: {slot: LEGS, asset: demo:ruby_armor}
+                  plain:
+                    material: PAPER
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+
+        assertEquals(List.of(), report.problems());
+        Equipment chest = report.items().get(0).equipment();
+        assertEquals(Equipment.Slot.CHEST, chest.slot());
+        assertEquals(new ResourceLocation("demo", "ruby_armor"), chest.asset());
+        assertEquals(List.of("humanoid", "humanoid_leggings"), chest.layers(), "every layer found, in order");
+        assertNull(chest.worn());
+        assertEquals(contents.resolve("demo"), chest.sourceRoot());
+        assertEquals(Equipment.Slot.LEGS, report.items().get(1).equipment().slot());
+        assertNull(report.items().get(2).equipment(), "not worn unless it says so");
+    }
+
+    @Test
+    void aHelmetCanBeWornAsItsOwnModel() throws IOException {
+        write("demo/models/item/horned_helm.json", "{}");
+        write("demo/armor.yml", """
+                items:
+                  helm:
+                    material: NETHERITE_HELMET
+                    resource: {texture: item/helm}
+                    equipment: {slot: head, model: item/horned_helm}
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+
+        assertEquals(List.of(), report.problems());
+        Equipment helm = report.items().get(0).equipment();
+        assertEquals(Equipment.Slot.HEAD, helm.slot());
+        assertNull(helm.asset(), "an asset would hide the model");
+        ModelSource.Provided worn = (ModelSource.Provided) helm.worn();
+        assertEquals(new ResourceLocation("demo", "item/horned_helm"), worn.location());
+        assertEquals(contents.resolve("demo"), worn.sourceRoot());
+    }
+
+    @Test
+    void equipmentMistakesAreReportedAgainstWhatThePlayerWouldSee() throws IOException {
+        write("demo/textures/entity/equipment/humanoid/ruby_armor.png", "png");
+        write("demo/models/item/horns.json", "{}");
+        write("demo/armor.yml", """
+                items:
+                  tail:
+                    material: PAPER
+                    equipment: {slot: TAIL}
+                  noslot:
+                    material: PAPER
+                    equipment: {asset: ruby_armor}
+                  greaves:
+                    material: NETHERITE_LEGGINGS
+                    equipment: {slot: LEGS, asset: ruby_armor}
+                  cuirass:
+                    material: NETHERITE_CHESTPLATE
+                    equipment: {slot: CHEST, model: item/horns}
+                  both:
+                    material: NETHERITE_HELMET
+                    resource: {texture: item/both}
+                    equipment: {slot: HEAD, asset: ruby_armor, model: item/horns}
+                  bare:
+                    material: NETHERITE_HELMET
+                    equipment: {slot: HEAD, model: item/horns}
+                  missing:
+                    material: NETHERITE_HELMET
+                    resource: {texture: item/missing}
+                    equipment: {slot: HEAD, model: item/nowhere}
+                  rock:
+                    type: custom_block
+                    resource: {texture: block/rock}
+                    equipment: {slot: HEAD}
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+        List<String> problems = report.problems();
+        Map<String, ItemDefinition> items = new java.util.HashMap<>();
+        report.items().forEach(item -> items.put(item.id(), item));
+
+        assertProblem(problems, "tail", "'equipment.slot' must be HEAD, CHEST, LEGS or FEET, not 'TAIL'");
+        assertNull(items.get("tail").equipment(), "an item still loads, just not worn");
+        assertProblem(problems, "noslot", "'equipment.slot' must be HEAD, CHEST, LEGS or FEET; the item is not worn");
+        assertProblem(problems, "greaves",
+                "textures/entity/equipment/humanoid_leggings/ruby_armor.png, which is not in demo - the piece would be invisible");
+        assertEquals(List.of("humanoid"), items.get("greaves").equipment().layers());
+        assertProblem(problems, "cuirass", "'equipment.model' is drawn on the head only; ignored on CHEST");
+        assertNull(items.get("cuirass").equipment().worn());
+        assertProblem(problems, "both", "do not go together on the head");
+        assertEquals(new ResourceLocation("demo", "ruby_armor"), items.get("both").equipment().asset());
+        assertNull(items.get("both").equipment().worn(), "the asset wins: it is what the client draws");
+        assertProblem(problems, "bare", "'equipment.model' needs a 'resource' too");
+        assertProblem(problems, "missing", "'equipment.model' item/nowhere.json is not in demo/models/");
+        assertNull(items.get("missing").equipment().worn());
+        assertProblem(problems, "rock", "'equipment' is only read on items worn as armour (type: item)");
+        assertNull(items.get("rock").equipment());
+    }
+
+    private static void assertProblem(List<String> problems, String id, String text) {
+        assertTrue(problems.stream().anyMatch(p -> p.contains(id) && p.contains(text)),
+                id + ": expected '" + text + "' in " + problems);
     }
 
     private void write(String relative, String text) throws IOException {

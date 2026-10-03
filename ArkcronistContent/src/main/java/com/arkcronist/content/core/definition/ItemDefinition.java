@@ -1,5 +1,7 @@
 package com.arkcronist.content.core.definition;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.nio.file.Path;
 import java.util.List;
 
@@ -26,10 +28,11 @@ import java.util.List;
  * @param source      the content file it came from, for messages
  * @param price       what one costs in the content shop ({@code /arkcontent shop}, with Vault);
  *                    0 when it is not for sale
+ * @param equipment   how it is worn - armour - or null for an item that is not
  */
 public record ItemDefinition(String namespace, String id, String material, String displayName,
                              List<String> lore, ModelSource model, ItemBehaviour behaviour,
-                             Placement placement, Path source, double price) {
+                             Placement placement, Path source, double price, @Nullable Equipment equipment) {
 
     public ItemDefinition {
         lore = List.copyOf(lore);
@@ -38,12 +41,25 @@ public record ItemDefinition(String namespace, String id, String material, Strin
     /** An item that is not for sale. */
     public ItemDefinition(String namespace, String id, String material, String displayName, List<String> lore,
                           ModelSource model, ItemBehaviour behaviour, Placement placement, Path source) {
-        this(namespace, id, material, displayName, lore, model, behaviour, placement, source, 0);
+        this(namespace, id, material, displayName, lore, model, behaviour, placement, source, 0, null);
+    }
+
+    /** An item that is not worn. */
+    public ItemDefinition(String namespace, String id, String material, String displayName, List<String> lore,
+                          ModelSource model, ItemBehaviour behaviour, Placement placement, Path source, double price) {
+        this(namespace, id, material, displayName, lore, model, behaviour, placement, source, price, null);
     }
 
     /** The same item with a price: what one costs in the content shop, through Vault. 0 is not for sale. */
     public ItemDefinition withPrice(double price) {
-        return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price);
+        return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
+                equipment);
+    }
+
+    /** The same item, worn as {@code equipment}. */
+    public ItemDefinition withEquipment(@Nullable Equipment equipment) {
+        return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
+                equipment);
     }
 
     /** {@code namespace:id}, the key the item is registered, given and recognised by. */

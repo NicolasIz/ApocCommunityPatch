@@ -1,0 +1,91 @@
+# ---------------------------------------------------------------------------
+#  Set: Caballero del Rubí de Sangre (Blood Ruby Knight)
+# ---------------------------------------------------------------------------
+#     /customgive <player> demo:ruby_helmet
+#     /customgive <player> demo:ruby_chestplate
+#     /customgive <player> demo:ruby_leggings
+#     /customgive <player> demo:ruby_boots
+#
+#  'equipment' makes an item armour, through Minecraft's equippable component
+#  (1.21.4+):
+#
+#    slot   HEAD, CHEST, LEGS or FEET
+#    asset  a set of armour layers. The pack gets assets/demo/equipment/
+#           ruby_armor.json, written from the textures found under
+#           textures/entity/equipment/<layer>/ruby_armor.png - 'humanoid' for
+#           helmet, chestplate and boots, 'humanoid_leggings' for leggings.
+#    model  instead of an asset, on the head only: a 3D model drawn on the
+#           player's head - the helmet's horns. The item keeps its 'resource'
+#           look in inventories and hands.
+#
+#  The base material gives the stats: netherite is 3 / 8 / 6 / 3 armour,
+#  3 toughness and 10 % knockback resistance per piece, its durability, its
+#  equip sound, and it does not burn in lava.
+# ---------------------------------------------------------------------------
+
+items:
+
+  ruby_helmet:
+    material: NETHERITE_HELMET
+    display-name: "<!i><gradient:#ff5a6e:#b3122e:#5e0716><b>Yelmo del Rubí de Sangre</b></gradient>"
+    lore:
+      - "<!i><dark_gray>───────────────────"
+      - "<!i><gray>Forjado en titanio negro y templado"
+      - "<!i><gray>en la sangre de un dragón carmesí."
+      - "<!i><#ff566a>❖ <gray>Sus ojos arden en la oscuridad."
+      - "<!i><dark_gray>───────────────────"
+      - "<!i><#980d24>Set del Caballero del Rubí de Sangre <dark_gray>(1/4)"
+    resource:
+      texture: item/ruby_helmet
+    equipment:
+      slot: HEAD
+      # Horns and a crest, in 3D: models/item/ruby_helmet_worn.json.
+      model: item/ruby_helmet_worn
+
+  ruby_chestplate:
+    material: NETHERITE_CHESTPLATE
+    display-name: "<!i><gradient:#ff5a6e:#b3122e:#5e0716><b>Coraza del Rubí de Sangre</b></gradient>"
+    lore:
+      - "<!i><dark_gray>───────────────────"
+      - "<!i><gray>En su pecho late un corazón de rubí"
+      - "<!i><gray>que nunca dejó de sangrar."
+      - "<!i><#ff566a>❖ <gray>Hombreras de placa con remaches de cristal."
+      - "<!i><dark_gray>───────────────────"
+      - "<!i><#980d24>Set del Caballero del Rubí de Sangre <dark_gray>(2/4)"
+    resource:
+      texture: item/ruby_chestplate
+    equipment:
+      slot: CHEST
+      asset: ruby_armor
+
+  ruby_leggings:
+    material: NETHERITE_LEGGINGS
+    display-name: "<!i><gradient:#ff5a6e:#b3122e:#5e0716><b>Grebas del Rubí de Sangre</b></gradient>"
+    lore:
+      - "<!i><dark_gray>───────────────────"
+      - "<!i><gray>Rodilleras de rubí tallado, cinturón"
+      - "<!i><gray>de cuero teñido en carmesí."
+      - "<!i><#ff566a>❖ <gray>Ni un paso atrás."
+      - "<!i><dark_gray>───────────────────"
+      - "<!i><#980d24>Set del Caballero del Rubí de Sangre <dark_gray>(3/4)"
+    resource:
+      texture: item/ruby_leggings
+    equipment:
+      slot: LEGS
+      asset: ruby_armor
+
+  ruby_boots:
+    material: NETHERITE_BOOTS
+    display-name: "<!i><gradient:#ff5a6e:#b3122e:#5e0716><b>Botas del Rubí de Sangre</b></gradient>"
+    lore:
+      - "<!i><dark_gray>───────────────────"
+      - "<!i><gray>Punteras de cristal que dejan"
+      - "<!i><gray>huellas rojas sobre la nieve."
+      - "<!i><#ff566a>❖ <gray>Sabatones de acero ennegrecido."
+      - "<!i><dark_gray>───────────────────"
+      - "<!i><#980d24>Set del Caballero del Rubí de Sangre <dark_gray>(4/4)"
+    resource:
+      texture: item/ruby_boots
+    equipment:
+      slot: FEET
+      asset: ruby_armor

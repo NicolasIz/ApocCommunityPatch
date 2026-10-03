@@ -1,0 +1,699 @@
+{
+  "textures": {
+    "helm": "demo:item/ruby_helmet_worn",
+    "particle": "#helm"
+  },
+  "elements": [
+    {
+      "name": "shell",
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            4,
+            4,
+            8
+          ],
+          "texture": "#helm"
+        },
+        "east": {
+          "uv": [
+            4,
+            4,
+            8,
+            8
+          ],
+          "texture": "#helm"
+        },
+        "south": {
+          "uv": [
+            12,
+            4,
+            16,
+            8
+          ],
+          "texture": "#helm"
+        },
+        "west": {
+          "uv": [
+            8,
+            4,
+            12,
+            8
+          ],
+          "texture": "#helm"
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            4,
+            4
+          ],
+          "rotation": 180,
+          "texture": "#helm"
+        },
+        "down": {
+          "uv": [
+            4,
+            0,
+            8,
+            4
+          ],
+          "texture": "#helm"
+        }
+      }
+    },
+    {
+      "name": "left_horn_root",
+      "from": [
+        -2,
+        9,
+        5
+      ],
+      "to": [
+        0,
+        12,
+        9
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            8,
+            2,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "east": {
+          "uv": [
+            0,
+            8,
+            2,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "south": {
+          "uv": [
+            0,
+            8,
+            2,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "west": {
+          "uv": [
+            0,
+            8,
+            2,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "up": {
+          "uv": [
+            0,
+            8,
+            2,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "down": {
+          "uv": [
+            0,
+            8,
+            2,
+            10
+          ],
+          "texture": "#helm"
+        }
+      }
+    },
+    {
+      "name": "left_horn_rise",
+      "from": [
+        -4,
+        11,
+        5.5
+      ],
+      "to": [
+        -1,
+        15,
+        8.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "east": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "south": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "west": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "up": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "down": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        }
+      }
+    },
+    {
+      "name": "left_horn_sweep",
+      "from": [
+        -5,
+        15,
+        6
+      ],
+      "to": [
+        -3,
+        19,
+        8
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "east": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "south": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "west": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "up": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "down": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        }
+      }
+    },
+    {
+      "name": "left_horn_point",
+      "from": [
+        -5.5,
+        19,
+        6.5
+      ],
+      "to": [
+        -4,
+        22,
+        7.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            8,
+            6,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "east": {
+          "uv": [
+            4,
+            8,
+            6,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "south": {
+          "uv": [
+            4,
+            8,
+            6,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "west": {
+          "uv": [
+            4,
+            8,
+            6,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "up": {
+          "uv": [
+            4,
+            8,
+            6,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "down": {
+          "uv": [
+            4,
+            8,
+            6,
+            10
+          ],
+          "texture": "#helm"
+        }
+      }
+    },
+    {
+      "name": "right_horn_root",
+      "from": [
+        16,
+        9,
+        5
+      ],
+      "to": [
+        18,
+        12,
+        9
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            8,
+            2,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "east": {
+          "uv": [
+            0,
+            8,
+            2,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "south": {
+          "uv": [
+            0,
+            8,
+            2,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "west": {
+          "uv": [
+            0,
+            8,
+            2,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "up": {
+          "uv": [
+            0,
+            8,
+            2,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "down": {
+          "uv": [
+            0,
+            8,
+            2,
+            10
+          ],
+          "texture": "#helm"
+        }
+      }
+    },
+    {
+      "name": "right_horn_rise",
+      "from": [
+        17,
+        11,
+        5.5
+      ],
+      "to": [
+        20,
+        15,
+        8.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "east": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "south": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "west": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "up": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "down": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        }
+      }
+    },
+    {
+      "name": "right_horn_sweep",
+      "from": [
+        19,
+        15,
+        6
+      ],
+      "to": [
+        21,
+        19,
+        8
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "east": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "south": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "west": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "up": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "down": {
+          "uv": [
+            2,
+            8,
+            4,
+            10
+          ],
+          "texture": "#helm"
+        }
+      }
+    },
+    {
+      "name": "right_horn_point",
+      "from": [
+        20,
+        19,
+        6.5
+      ],
+      "to": [
+        21.5,
+        22,
+        7.5
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            4,
+            8,
+            6,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "east": {
+          "uv": [
+            4,
+            8,
+            6,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "south": {
+          "uv": [
+            4,
+            8,
+            6,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "west": {
+          "uv": [
+            4,
+            8,
+            6,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "up": {
+          "uv": [
+            4,
+            8,
+            6,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "down": {
+          "uv": [
+            4,
+            8,
+            6,
+            10
+          ],
+          "texture": "#helm"
+        }
+      }
+    },
+    {
+      "name": "crest",
+      "from": [
+        7.25,
+        16,
+        3
+      ],
+      "to": [
+        8.75,
+        17.5,
+        13
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            6,
+            8,
+            8,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "east": {
+          "uv": [
+            6,
+            8,
+            8,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "south": {
+          "uv": [
+            6,
+            8,
+            8,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "west": {
+          "uv": [
+            6,
+            8,
+            8,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "up": {
+          "uv": [
+            6,
+            8,
+            8,
+            10
+          ],
+          "texture": "#helm"
+        },
+        "down": {
+          "uv": [
+            6,
+            8,
+            8,
+            10
+          ],
+          "texture": "#helm"
+        }
+      }
+    }
+  ]
+}
