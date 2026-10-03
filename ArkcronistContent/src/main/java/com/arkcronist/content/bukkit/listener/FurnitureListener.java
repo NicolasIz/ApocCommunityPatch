@@ -11,8 +11,11 @@ import com.arkcronist.content.core.definition.Placement;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Tag;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockState;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
@@ -22,19 +25,28 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityDismountEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.inventory.InventoryMoveItemEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.world.EntitiesLoadEvent;
 import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.plugin.Plugin;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 
@@ -50,6 +62,10 @@ import java.util.Optional;
  * light block cannot even be targeted - so a punch at the furniture is turned into a
  * {@code BlockBreakEvent} here. Either way the event is fired for real, so protection plugins decide
  * as they would for any block, and the removal itself happens in one place, {@link #onBreak}.</p>
+ *
+ * <p>A chest or bed support is the real vanilla block, and is mined, used and blown up as one -
+ * except that what it drops is the furniture's item, a chest's own inventory is never opened or
+ * reached by a hopper, and a chest never becomes half of a double chest.</p>
  */
 public final class FurnitureListener implements Listener {
 
@@ -79,18 +95,21 @@ public final class FurnitureListener implements Listener {
         }
     }
 
+    /** A bed is placed as a {@code BlockMultiPlaceEvent}, which reaches this too, its block the foot. */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent event) {
+        Block block = event.getBlockPlaced();
         Optional<CustomItem> item = items.identify(event.getItemInHand());
         if (item.isEmpty() || !(item.get().placement() instanceof Placement.Furniture spec)) {
+            if (block.getType() == Material.CHEST) {
+                // A vanilla chest placed beside a furniture chest is not joined to it.
+                furniture.keepSingle(block);
+            }
             return;
         }
-        Block block = event.getBlockPlaced();
-        if (block.getType() == FurnitureService.material(spec.support())) {
-            furniture.place(block, event.getPlayer(), item.get(), spec);
-            if (spec.storage() != null) {
-                storage.placed(block);
-            }
+        if (FurnitureService.matches(block, spec)
+                && furniture.place(block, event.getPlayer(), item.get(), spec) && spec.storage() != null) {
+            storage.placed(block);
         }
     }
 
@@ -98,6 +117,10 @@ public final class FurnitureListener implements Listener {
      * A right click on a seat sits on it, and on storage furniture opens it; sneaking, the click is
      * left to vanilla, to place a block against the furniture. Any other furniture does not react as
      * its support block would: holding a light item, a click on a light block steps its light level.
+     *
+     * <p>A chest opens when a vanilla chest would: not sneaking, or sneaking with both hands empty -
+     * and its own inventory never does. A bed is left to vanilla altogether: sleeping in it is the
+     * point.</p>
      *
      * <p>A light-block support cannot be clicked at all, so a click that lands on the floor behind
      * it, or in the air, is followed along the line of sight to find it - the same way a punch is.</p>
@@ -112,14 +135,21 @@ public final class FurnitureListener implements Listener {
         Block clicked = event.getClickedBlock();
         boolean clickedFurniture = clicked != null && furniture.identify(clicked).isPresent();
         Optional<Block> support = clickedFurniture ? Optional.of(clicked) : furniture.target(event.getPlayer());
+        if (support.isPresent() && Tag.BEDS.isTagged(support.get().getType())) {
+            return;
+        }
         Optional<CustomItem> item = support.flatMap(furniture::item);
         Placement.Furniture definition = item.map(CustomItem::placement).filter(Placement.Furniture.class::isInstance)
                 .map(Placement.Furniture.class::cast).orElse(null);
         boolean interactive = definition != null && (definition.seat() != null || definition.storage() != null);
-        if (interactive && !event.getPlayer().isSneaking()) {
+        Player player = event.getPlayer();
+        boolean chest = support.isPresent() && support.get().getType() == Material.CHEST;
+        boolean sneakingThrough = player.isSneaking()
+                && !(chest && player.getInventory().getItemInMainHand().isEmpty()
+                && player.getInventory().getItemInOffHand().isEmpty());
+        if (interactive && !sneakingThrough) {
             // Both hands' clicks are taken, so the off hand does not place a block against the furniture.
             event.setCancelled(true);
-            Player player = event.getPlayer();
             if (event.getHand() != EquipmentSlot.HAND) {
                 return;
             }
@@ -167,6 +197,37 @@ public final class FurnitureListener implements Listener {
         storage.worldUnloaded(event.getWorld());
     }
 
+    /**
+     * A furniture chest's own inventory stays empty and shut: whatever opens it - a plugin, a
+     * command - is refused, since the furniture's storage is what players use.
+     */
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onChestOpen(InventoryOpenEvent event) {
+        if (isFurnitureChest(event.getInventory())) {
+            event.setCancelled(true);
+        }
+    }
+
+    /** Hoppers, hopper minecarts and droppers neither fill nor empty a furniture chest. */
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onHopper(InventoryMoveItemEvent event) {
+        if (isFurnitureChest(event.getSource()) || isFurnitureChest(event.getDestination())) {
+            event.setCancelled(true);
+        }
+    }
+
+    private boolean isFurnitureChest(Inventory inventory) {
+        if (inventory.getType() != InventoryType.CHEST || inventory.getHolder(false) instanceof StorageService.Holder) {
+            return false;
+        }
+        Location at = inventory.getLocation();
+        if (at == null || at.getWorld() == null) {
+            return false;
+        }
+        Block block = at.getBlock();
+        return block.getType() == Material.CHEST && furniture.identify(block).isPresent();
+    }
+
     // ---------------------------------------------------------------- seats
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -200,7 +261,8 @@ public final class FurnitureListener implements Listener {
         Optional<Block> target = clicked != null && furniture.identify(clicked).isPresent()
                 ? Optional.of(clicked)
                 : furniture.target(event.getPlayer());
-        if (target.isEmpty()) {
+        if (target.isEmpty() || FurnitureService.isVanillaBlock(target.get().getType())) {
+            // Nothing here, or a chest or bed: mined like the vanilla block it is.
             return;
         }
         // Keeps vanilla from also breaking a clicked barrier in creative: there is one path, below.
@@ -218,6 +280,15 @@ public final class FurnitureListener implements Listener {
         }
     }
 
+    /** A chest or bed support drops the furniture's item, not its own. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void noVanillaDrop(BlockBreakEvent event) {
+        Block block = event.getBlock();
+        if (FurnitureService.isVanillaBlock(block.getType()) && furniture.identify(block).isPresent()) {
+            event.setDropItems(false);
+        }
+    }
+
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
@@ -227,6 +298,66 @@ public final class FurnitureListener implements Listener {
             storage.broken(block);
             furniture.remove(block, id, player.getGameMode() != GameMode.CREATIVE);
         });
+    }
+
+    // HIGHEST: this breaks blocks itself, so it runs as late as it can while the list may still be
+    // changed, leaving other plugins every chance to cancel the explosion first.
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onEntityExplode(EntityExplodeEvent event) {
+        explode(event.blockList(), event.getLocation(), event.getEntity());
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onBlockExplode(BlockExplodeEvent event) {
+        explode(event.blockList(), event.getBlock().getLocation(), null);
+    }
+
+    /**
+     * A bed used outside the overworld blows up - and vanilla removes both halves before the
+     * explosion is even announced, so the furniture goes whether or not anyone cancels the blast.
+     */
+    // Not ignoreCancelled, for that reason.
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onBedExplode(BlockExplodeEvent event) {
+        BlockState exploded = event.getExplodedBlockState();
+        if (exploded != null && Tag.BEDS.isTagged(exploded.getType())
+                && !Tag.BEDS.isTagged(exploded.getBlock().getType())) {
+            furniture.exploded(exploded.getBlock());
+        }
+    }
+
+    /**
+     * Barriers and light blocks shrug off explosions; chests and beds do not. Furniture standing on
+     * one is taken out of the explosion's list and, if every protection plugin lets this explosion
+     * destroy it, broken here - its item and its storage dropped, a bed's two halves together;
+     * otherwise it is left standing.
+     */
+    private void explode(List<Block> destroyed, Location origin, @Nullable Entity source) {
+        for (Iterator<Block> it = destroyed.iterator(); it.hasNext(); ) {
+            Block block = it.next();
+            if (!FurnitureService.isVanillaBlock(block.getType())) {
+                continue;
+            }
+            Optional<String> id = furniture.identify(block);
+            if (id.isEmpty()) {
+                continue;
+            }
+            it.remove();
+            if (protection.allowsExplosion(block, origin, source)) {
+                seats.release(block);
+                storage.broken(block);
+                furniture.remove(block, id.get(), true);
+                block.setType(Material.AIR, false);
+            }
+        }
+    }
+
+    /** A wither ploughing through, or any other mob changing a block: furniture is not theirs to take. */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onEntityChangeBlock(EntityChangeBlockEvent event) {
+        if (furniture.identify(event.getBlock()).isPresent()) {
+            event.setCancelled(true);
+        }
     }
 
     /**
@@ -249,6 +380,6 @@ public final class FurnitureListener implements Listener {
         // A tick later, so ModelEngine gets to restore its own saved models first.
         plugin.getServer().getScheduler().runTask(plugin, () -> displays.stream()
                 .filter(Entity::isValid)
-                .forEach(furniture::restoreModel));
+                .forEach(furniture::restore));
     }
 }

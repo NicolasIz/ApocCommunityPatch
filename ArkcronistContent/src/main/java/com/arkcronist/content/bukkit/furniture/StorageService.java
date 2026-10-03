@@ -6,7 +6,6 @@ import com.arkcronist.content.core.storage.StoredInventory;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
-import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.HumanEntity;
@@ -63,9 +62,28 @@ import java.util.logging.Logger;
  *       something until they are emptied.</li>
  * </ul>
  *
+ * <h2>Opening and closing</h2>
+ * <p>The furniture is told - see {@link Lid} - when its inventory starts being used and when it
+ * stops: in the same tick as the click that opens it, before the database has even answered, and
+ * when its last viewer closes it. That is when a chest's lid swings and its sound plays.</p>
+ *
  * <p>Main thread only, apart from the futures' own work.</p>
  */
 public final class StorageService {
+
+    /** What the furniture does as its inventory starts and stops being used: its lid, its sound. */
+    public interface Lid {
+
+        /** Someone opened it, nobody having it open before. */
+        void opened(Block support);
+
+        /**
+         * Nobody has it open any more.
+         *
+         * @param animate false when the server is stopping: there is no time left to animate
+         */
+        void closed(Block support, boolean animate);
+    }
 
     /** How far a player can be from the furniture and keep its inventory open, as for a chest. */
     private static final double REACH = 8;
@@ -123,13 +141,15 @@ public final class StorageService {
     private final Plugin plugin;
     private final DatabaseManager database;
     private final Logger logger;
+    private final Lid lid;
     private final Map<Key, Session> sessions = new HashMap<>();
     private BukkitTask ticker;
     private int seconds;
 
-    public StorageService(Plugin plugin, DatabaseManager database) {
+    public StorageService(Plugin plugin, DatabaseManager database, Lid lid) {
         this.plugin = plugin;
         this.database = database;
+        this.lid = lid;
         this.logger = plugin.getLogger();
     }
 
@@ -149,6 +169,7 @@ public final class StorageService {
             Session loading = new Session(new Holder(key, furnitureId), spec, title);
             sessions.put(key, loading);
             loading.waiting.add(player.getUniqueId());
+            lid.opened(support);
             database.loadInventory(key.world(), key.x(), key.y(), key.z())
                     .whenComplete((stored, error) -> onMain(() -> loaded(loading, stored, error)));
             return;
@@ -167,7 +188,7 @@ public final class StorageService {
             return;
         }
         if (error != null) {
-            sessions.remove(key);
+            end(session, true);
             Throwable cause = error.getCause() != null ? error.getCause() : error;
             logger.warning("Could not read the storage at " + describe(key) + ": " + cause.getMessage());
             tellWaiting(session, "This storage cannot be opened right now.");
@@ -178,7 +199,7 @@ public final class StorageService {
             items = stored == null || stored.isEmpty() ? new ItemStack[0] : ItemStack.deserializeItemsFromBytes(stored.get().contents());
         } catch (RuntimeException exception) {
             // Opened empty, it would be saved empty on close: refused instead, the bytes left as they are.
-            sessions.remove(key);
+            end(session, true);
             logger.log(Level.SEVERE, "The contents saved for the storage at " + describe(key) + " cannot be read;"
                     + " it stays shut and its row in " + DatabaseManager.STORAGE_TABLE + " is left untouched.", exception);
             tellWaiting(session, "This storage cannot be opened: its contents could not be read.");
@@ -203,15 +224,23 @@ public final class StorageService {
         session.waiting.clear();
         if (inventory.getViewers().isEmpty()) {
             // Everyone who asked walked away or logged off while it loaded.
-            sessions.remove(key);
+            end(session, true);
         }
     }
 
     private void show(Player player, Session session) {
-        boolean first = session.inventory.getViewers().isEmpty();
         player.openInventory(session.inventory);
-        if (first && !session.inventory.getViewers().isEmpty()) {
-            sound(session.holder.key, Sound.BLOCK_BARREL_OPEN);
+    }
+
+    /** The session is over: forgotten, and the furniture told, if it is still the one in memory. */
+    private void end(Session session, boolean animate) {
+        Key key = session.holder.key;
+        if (sessions.get(key) == session) {
+            sessions.remove(key);
+        }
+        World world = plugin.getServer().getWorld(key.world());
+        if (world != null && world.isChunkLoaded(key.x() >> 4, key.z() >> 4)) {
+            lid.closed(world.getBlockAt(key.x(), key.y(), key.z()), animate);
         }
     }
 
@@ -227,8 +256,7 @@ public final class StorageService {
         save(session);
         boolean othersLooking = inventory.getViewers().stream().anyMatch(viewer -> viewer != player);
         if (!othersLooking) {
-            sessions.remove(holder.key);
-            sound(holder.key, Sound.BLOCK_BARREL_CLOSE);
+            end(session, true);
         }
     }
 
@@ -308,7 +336,11 @@ public final class StorageService {
         }
         List<Session> open = List.copyOf(sessions.values());
         sessions.clear();
-        open.forEach(this::closeAndSave);
+        for (Session session : open) {
+            closeAndSave(session);
+            // The lid shuts now, so the displays are not saved with it open.
+            end(session, false);
+        }
     }
 
     /** How many storage inventories are in memory: open, or being read. */
@@ -413,12 +445,6 @@ public final class StorageService {
         }
     }
 
-    private void sound(Key key, Sound sound) {
-        World world = plugin.getServer().getWorld(key.world());
-        if (world != null) {
-            world.playSound(new Location(world, key.x() + 0.5, key.y() + 0.5, key.z() + 0.5), sound, 0.6f, 1f);
-        }
-    }
 
     private void onMain(Runnable task) {
         if (plugin.isEnabled()) {

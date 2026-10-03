@@ -438,7 +438,8 @@ public final class ContentLoader {
             problems.add(prefix + "'face-player' is ignored: a " + support + " faces the way vanilla placed it");
         }
 
-        Placement.Animated animated = animated(namespace, id, section, sourceRoot, prefix, problems);
+        Placement.Animated animated = animated(namespace, id, section, sourceRoot, interactable.equals("storage"),
+                prefix, problems);
         String modelEngineId = modelEngineId(section, prefix, problems);
         if (animated != null && modelEngineId != null) {
             problems.add(prefix + "both 'animated-model' and 'modelengine-id' are set; the animated model is used");
@@ -473,8 +474,12 @@ public final class ContentLoader {
      * {@code animated-model:} a Blockbench project under {@code models/}, drawn bone by bone, and
      * {@code animations:} which of its animations play as its inventory opens and closes.
      */
+    /**
+     * {@code animated-model}, and which of its animations open and close it. Only storage opens and
+     * closes, so only storage is told when one of the two is missing.
+     */
     private static Placement.Animated animated(String namespace, String id, Map<?, ?> section, Path sourceRoot,
-                                               String prefix, List<String> problems) {
+                                               boolean storage, String prefix, List<String> problems) {
         Map<?, ?> names = section(section, "animations", prefix, problems);
         String raw = text(section, "animated-model", prefix, problems);
         if (raw == null || raw.isBlank()) {
@@ -503,7 +508,7 @@ public final class ContentLoader {
         String open = names == null ? "open" : Objects.requireNonNullElse(text(names, "open", prefix, problems), "open");
         String close = names == null ? "close" : Objects.requireNonNullElse(text(names, "close", prefix, problems), "close");
         for (String animation : List.of(open, close)) {
-            if (!model.clips().containsKey(animation) && (names != null || !model.clips().isEmpty())) {
+            if (!model.clips().containsKey(animation) && (names != null || (storage && !model.clips().isEmpty()))) {
                 problems.add(prefix + path + ".bbmodel has no animation '" + animation + "' (it has: "
                         + (model.clips().isEmpty() ? "none" : String.join(", ", model.clips().keySet())) + ")");
             }

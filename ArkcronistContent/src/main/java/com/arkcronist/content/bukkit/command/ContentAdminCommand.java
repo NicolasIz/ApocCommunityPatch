@@ -7,24 +7,28 @@ import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.importer.ImportReport;
 import com.arkcronist.content.core.pack.PackArtifact;
 import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 
 /**
- * {@code /arkcontent}: {@code reload}, {@code info} and {@code import} for admins, {@code menu} for
- * anyone allowed to browse. On its own, run by a player who may browse, it opens the menu.
+ * {@code /arkcontent}: {@code reload}, {@code info}, {@code import} and {@code animate} for admins,
+ * {@code menu} for anyone allowed to browse. On its own, run by a player who may browse, it opens the
+ * menu.
  */
 public final class ContentAdminCommand {
 
@@ -44,6 +48,17 @@ public final class ContentAdminCommand {
                 .then(Commands.literal("reload").requires(ContentAdminCommand::admin).executes(this::reload))
                 .then(Commands.literal("info").requires(ContentAdminCommand::admin).executes(this::info))
                 .then(Commands.literal("import").requires(ContentAdminCommand::admin).executes(this::importContent))
+                .then(Commands.literal("animate").requires(ContentAdminCommand::admin)
+                        .then(Commands.argument("animation", StringArgumentType.word())
+                                .suggests((context, builder) -> {
+                                    Player player = viewer(context.getSource());
+                                    if (player != null) {
+                                        plugin.furniture().target(player).map(plugin.furniture()::clips)
+                                                .orElse(List.of()).forEach(builder::suggest);
+                                    }
+                                    return builder.buildFuture();
+                                })
+                                .executes(this::animate)))
                 .then(Commands.literal("menu")
                         .requires(source -> source.getSender().hasPermission(ContentMenu.BROWSE_PERMISSION))
                         .executes(this::menu))
@@ -59,7 +74,8 @@ public final class ContentAdminCommand {
             return menu(context);
         }
         CommandSender sender = context.getSource().getSender();
-        sender.sendMessage(Component.text("/arkcontent reload | info | import | menu", NamedTextColor.GOLD));
+        sender.sendMessage(Component.text("/arkcontent reload | info | import | animate <animation> | menu",
+                NamedTextColor.GOLD));
         return Command.SINGLE_SUCCESS;
     }
 
@@ -70,6 +86,31 @@ public final class ContentAdminCommand {
             return 0;
         }
         plugin.menus().open(player);
+        return Command.SINGLE_SUCCESS;
+    }
+
+    /** Plays one of the animations of the furniture the player is looking at: a way to try a model out. */
+    private int animate(CommandContext<CommandSourceStack> context) {
+        CommandSender sender = context.getSource().getSender();
+        Player player = viewer(context.getSource());
+        if (player == null) {
+            sender.sendMessage(Component.text("Only a player can aim at furniture.", NamedTextColor.RED));
+            return 0;
+        }
+        String name = StringArgumentType.getString(context, "animation");
+        Optional<Block> target = plugin.furniture().target(player);
+        if (target.isEmpty()) {
+            sender.sendMessage(Component.text("Look at a piece of furniture first.", NamedTextColor.RED));
+            return 0;
+        }
+        if (!plugin.furniture().animate(target.get(), name)) {
+            List<String> clips = plugin.furniture().clips(target.get());
+            sender.sendMessage(Component.text(clips.isEmpty()
+                    ? "That furniture has no animated model."
+                    : "No animation '" + name + "'; it has: " + String.join(", ", clips), NamedTextColor.RED));
+            return 0;
+        }
+        sender.sendMessage(Component.text("Playing '" + name + "'.", NamedTextColor.GREEN));
         return Command.SINGLE_SUCCESS;
     }
 

@@ -204,6 +204,7 @@ public class BbModelReaderTest {
         assertNotNull(model.icon());
         JsonObject icon = JsonParser.parseString(model.icon()).getAsJsonObject();
         assertEquals(3, icon.getAsJsonArray("elements").size());
+        assertEquals("minecraft:block/block", icon.get("parent").getAsString(), "drawn like a block in an inventory");
         // Bottom centre of the block is Blockbench's origin.
         assertEquals("[1,0,1]", icon.getAsJsonArray("elements").get(0).getAsJsonObject().get("from").toString());
     }
@@ -283,7 +284,7 @@ public class BbModelReaderTest {
         assertEquals(0f, BbModelReader.legalAngle(5));
     }
 
-    static AnimatedModel read(String json, List<String> problems) {
+    public static AnimatedModel read(String json, List<String> problems) {
         return BbModelReader.read(json, Path.of("contents/demo/models/ruby_chest.bbmodel"), Path.of("contents/demo"),
                 ITEM, problems);
     }

@@ -1,0 +1,55 @@
+# ---------------------------------------------------------------------------
+#  Demo furniture standing on vanilla blocks: a chest and a bed
+# ---------------------------------------------------------------------------
+#     /customgive <player> demo:ruby_chest
+#     /customgive <player> demo:ruby_bed
+#
+#  Both are the real vanilla block underneath, mined and used like one, drawn
+#  over by a model that encloses it - so the model must be at least as big as
+#  the block it hides:
+#    chest  x/z 1 to 15 px, y 0 to 14 px (the vanilla chest, a little inset)
+#    bed    x 0 to 16 px, z -8 to 24 px (both halves), y 0 to 9 px
+# ---------------------------------------------------------------------------
+
+items:
+
+  # A chest whose model is a Blockbench file, with bones and animations: the
+  # lid is a bone of its own, hinged at its back edge. A right click opens the
+  # chest's storage - kept in the database, like any storage furniture - and
+  # in that same tick the lid swings open on every client nearby; when the
+  # last player closes it, it swings shut. The vanilla chest's own inventory
+  # is never used, hoppers cannot reach it, and it never joins a neighbouring
+  # chest into a double chest.
+  #
+  # Try the other animation on it with /arkcontent animate shake.
+  ruby_chest:
+    type: custom_furniture
+    display-name: "<gold>Ruby Chest"
+    lore:
+      - "<gray>Its lid knows when you are looking."
+    furniture:
+      support: CHEST
+      # models/furniture/ruby_chest.bbmodel, saved straight from Blockbench.
+      # Its item model, for the hand and inventories, is the whole model at
+      # rest, made from the same file.
+      animated-model: furniture/ruby_chest
+      animations:
+        open: open            # the animations' names in Blockbench
+        close: close
+      slots: 27
+      storage-title: "<dark_red>Ruby Chest"
+
+  # A bed: two real bed blocks, so sleeping, setting the spawn point and
+  # skipping the night all work as in vanilla - and so does blowing up in the
+  # Nether. One model covers both halves, drawn a hair larger than authored
+  # so it hides the vanilla bed under it; a sleeper lies along it, head on
+  # the pillow. The pillow is the model's north end.
+  ruby_bed:
+    type: custom_furniture
+    display-name: "<red>Ruby Bed"
+    resource:
+      model: furniture/ruby_bed
+    furniture:
+      support: BED
+      # The vanilla bed underneath, and the item: any of the 16 colours.
+      bed-color: red

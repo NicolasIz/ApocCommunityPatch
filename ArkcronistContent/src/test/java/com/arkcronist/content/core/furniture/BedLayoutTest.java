@@ -1,5 +1,7 @@
 package com.arkcronist.content.core.furniture;
 
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -62,6 +64,38 @@ class BedLayoutTest {
             assertEquals(facing.dx * 0.5, pillow[0] - bed.displayX(), 1e-9, facing.name());
             assertEquals(facing.dz * 0.5, pillow[2] - bed.displayZ(), 1e-9, facing.name());
             assertEquals(64 + 9 / 16.0, pillow[1], 1e-9);
+        }
+    }
+
+    /**
+     * The model, authored 16 by 32 pixels with its pillow to the north, lands exactly on the two
+     * blocks of the bed, pillow on the head, whichever way the bed points. A display is drawn turned
+     * by -yaw around Y, and an item display turns its model half a turn more, as the client does.
+     */
+    @Test
+    void theModelLiesExactlyOverBothHalves() {
+        for (BedLayout.Facing facing : BedLayout.Facing.values()) {
+            BedLayout bed = new BedLayout(20, 64, -5, facing);
+            Quaternionf drawn = new Quaternionf().rotationY((float) Math.toRadians(-bed.yaw()))
+                    .mul(new Quaternionf().rotationY((float) Math.PI));
+            double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE, minZ = Double.MAX_VALUE, maxZ = -Double.MAX_VALUE;
+            for (float x : new float[] {-0.5f, 0.5f}) {
+                for (float z : new float[] {-1f, 1f}) {
+                    Vector3f corner = drawn.transform(new Vector3f(x, 0, z));
+                    minX = Math.min(minX, bed.displayX() + corner.x);
+                    maxX = Math.max(maxX, bed.displayX() + corner.x);
+                    minZ = Math.min(minZ, bed.displayZ() + corner.z);
+                    maxZ = Math.max(maxZ, bed.displayZ() + corner.z);
+                }
+            }
+            assertEquals(Math.min(bed.footX(), bed.headX()), minX, 1e-6, facing.name());
+            assertEquals(Math.max(bed.footX(), bed.headX()) + 1, maxX, 1e-6, facing.name());
+            assertEquals(Math.min(bed.footZ(), bed.headZ()), minZ, 1e-6, facing.name());
+            assertEquals(Math.max(bed.footZ(), bed.headZ()) + 1, maxZ, 1e-6, facing.name());
+
+            Vector3f pillow = drawn.transform(new Vector3f(0, 0, -0.5f));
+            assertEquals(bed.headX() + 0.5, bed.displayX() + pillow.x, 1e-6, facing + ": the pillow is on the head");
+            assertEquals(bed.headZ() + 0.5, bed.displayZ() + pillow.z, 1e-6, facing + ": the pillow is on the head");
         }
     }
 

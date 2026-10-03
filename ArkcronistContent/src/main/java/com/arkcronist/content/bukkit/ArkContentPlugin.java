@@ -10,6 +10,7 @@ import com.arkcronist.content.bukkit.crop.CropService;
 import com.arkcronist.content.bukkit.crop.CropTicker;
 import com.arkcronist.content.bukkit.emoji.ChatEmojiListener;
 import com.arkcronist.content.bukkit.emoji.EmojiRegistry;
+import com.arkcronist.content.bukkit.furniture.AnimationPlayer;
 import com.arkcronist.content.bukkit.furniture.FurnitureService;
 import com.arkcronist.content.bukkit.furniture.SeatService;
 import com.arkcronist.content.bukkit.furniture.StorageService;
@@ -34,6 +35,7 @@ import com.arkcronist.content.core.storage.PlacedContentStore;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -86,6 +88,8 @@ public final class ArkContentPlugin extends JavaPlugin {
     private CropTicker cropTicker;
     private SeatService seats;
     private StorageService storage;
+    private FurnitureService furniture;
+    private AnimationPlayer animations;
     private Protection protection;
     private PackDelivery delivery;
     private HookManager hooks;
@@ -125,9 +129,21 @@ public final class ArkContentPlugin extends JavaPlugin {
         hooks.enable();
 
         CustomBlockService blockService = new CustomBlockService(getServer(), blocks, itemFactory, placed);
-        FurnitureService furniture = new FurnitureService(this, items, itemFactory, placed, hooks);
+        this.animations = new AnimationPlayer(this);
+        FurnitureService furniture = new FurnitureService(this, items, itemFactory, placed, hooks, animations);
+        this.furniture = furniture;
         this.seats = new SeatService(this);
-        this.storage = new StorageService(this, database);
+        this.storage = new StorageService(this, database, new StorageService.Lid() {
+            @Override
+            public void opened(Block support) {
+                furniture.storageOpened(support);
+            }
+
+            @Override
+            public void closed(Block support, boolean animate) {
+                furniture.storageClosed(support, animate);
+            }
+        });
         this.crops = new CropService(this, items, itemFactory, cropStore);
         this.cropTicker = new CropTicker(this, crops, settings.crops().tickSeconds());
         furniture.stopAt(block -> crops.at(block).isPresent());
@@ -240,6 +256,9 @@ public final class ArkContentPlugin extends JavaPlugin {
         if (storage != null) {
             storage.shutdown();
         }
+        if (animations != null) {
+            animations.stopAll();
+        }
         if (cropTicker != null) {
             cropTicker.stop();
         }
@@ -300,6 +319,11 @@ public final class ArkContentPlugin extends JavaPlugin {
     /** Storage furniture's inventories. */
     public StorageService storage() {
         return storage;
+    }
+
+    /** Placed furniture: its displays and animations. */
+    public FurnitureService furniture() {
+        return furniture;
     }
 
     /** Every loaded chat emoji. */

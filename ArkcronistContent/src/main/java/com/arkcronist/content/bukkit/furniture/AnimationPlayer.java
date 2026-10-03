@@ -2,6 +2,7 @@ package com.arkcronist.content.bukkit.furniture;
 
 import com.arkcronist.content.core.animation.AnimatedModel;
 import com.arkcronist.content.core.animation.Animator;
+import com.arkcronist.content.core.animation.Playback;
 import com.arkcronist.content.core.definition.Placement;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.plugin.Plugin;
@@ -37,20 +38,7 @@ public final class AnimationPlayer {
     private final Map<Object, Playing> playing = new HashMap<>();
     private BukkitTask task;
 
-    private static final class Playing {
-        final List<ItemDisplay> bones;
-        final Placement.Display settings;
-        final AnimatedModel.Clip clip;
-        final List<Animator.Frame> frames;
-        int tick;
-        int next;
-
-        Playing(List<ItemDisplay> bones, Placement.Display settings, AnimatedModel.Clip clip, List<Animator.Frame> frames) {
-            this.bones = bones;
-            this.settings = settings;
-            this.clip = clip;
-            this.frames = frames;
-        }
+    private record Playing(List<ItemDisplay> bones, Placement.Display settings, Playback playback) {
     }
 
     public AnimationPlayer(Plugin plugin) {
@@ -65,14 +53,13 @@ public final class AnimationPlayer {
      */
     public void play(Object key, List<ItemDisplay> bones, AnimatedModel model, AnimatedModel.Clip clip,
                      Placement.Display settings) {
-        List<Animator.Frame> frames = Animator.frames(model, clip);
-        if (frames.isEmpty()) {
+        Playing animation = new Playing(bones, settings, new Playback(model, clip));
+        // The frames at tick 0 go out now, in the same tick as whatever started the animation.
+        if (!advance(animation)) {
+            playing.remove(key);
             return;
         }
-        Playing animation = new Playing(bones, settings, clip, frames);
         playing.put(key, animation);
-        // The frames at tick 0 go out now, in the same tick as whatever started the animation.
-        advance(animation);
         if (task == null) {
             task = plugin.getServer().getScheduler().runTaskTimer(plugin, this::tick, 1, 1);
         }
@@ -98,7 +85,6 @@ public final class AnimationPlayer {
     private void tick() {
         for (Iterator<Playing> it = playing.values().iterator(); it.hasNext(); ) {
             Playing animation = it.next();
-            animation.tick++;
             if (!advance(animation)) {
                 it.remove();
             }
@@ -110,27 +96,18 @@ public final class AnimationPlayer {
     }
 
     /**
-     * Sends every frame due by the animation's current tick.
+     * Sends the frames due this tick - every bone's transformation, and how long to glide there.
      *
-     * @return false once it has nothing more to send
+     * @return false once it has nothing more to send, or its displays are gone - unloaded, broken
      */
     private boolean advance(Playing animation) {
         if (animation.bones.stream().allMatch(bone -> bone == null || !bone.isValid())) {
             return false;
         }
-        while (animation.next < animation.frames.size() && animation.frames.get(animation.next).tick() <= animation.tick) {
-            Animator.Frame frame = animation.frames.get(animation.next++);
+        for (Animator.Frame frame : animation.playback.step()) {
             apply(animation.bones, frame.pose(), animation.settings, frame.duration());
         }
-        if (animation.next < animation.frames.size()) {
-            return true;
-        }
-        if (animation.clip.loop() == AnimatedModel.Loop.LOOP && animation.tick >= animation.clip.length()) {
-            animation.tick = 0;
-            animation.next = 0;
-            return true;
-        }
-        return animation.clip.loop() == AnimatedModel.Loop.LOOP;
+        return !animation.playback.finished();
     }
 
     /** Every bone's transformation, gliding over {@code duration} ticks. */

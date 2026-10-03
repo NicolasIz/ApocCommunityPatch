@@ -466,12 +466,16 @@ public final class BbModelReader {
             }
         }
         int before = problems.size();
-        String model = model(all, shift, 1, offset, uvSizes, textures, "icon");
+        JsonObject cubes = JsonParser.parseString(model(all, shift, 1, offset, uvSizes, textures, "icon")).getAsJsonObject();
         // Problems with the cubes were already said for their bones.
         while (problems.size() > before) {
             problems.removeLast();
         }
-        return model;
+        // Held and in an inventory it is drawn like any block: turned, lit from the side, scaled down.
+        JsonObject icon = new JsonObject();
+        icon.addProperty("parent", "minecraft:block/block");
+        cubes.entrySet().forEach(entry -> icon.add(entry.getKey(), entry.getValue()));
+        return GSON.toJson(icon);
     }
 
     // ---------------------------------------------------------------- textures
