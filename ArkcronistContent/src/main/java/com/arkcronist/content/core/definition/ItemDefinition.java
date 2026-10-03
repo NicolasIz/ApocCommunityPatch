@@ -24,13 +24,26 @@ import java.util.List;
  * @param model       how it is drawn, or null to keep the material's own look
  * @param placement   what placing it does, or null for a plain item
  * @param source      the content file it came from, for messages
+ * @param price       what one costs in the content shop ({@code /arkcontent shop}, with Vault);
+ *                    0 when it is not for sale
  */
 public record ItemDefinition(String namespace, String id, String material, String displayName,
                              List<String> lore, ModelSource model, ItemBehaviour behaviour,
-                             Placement placement, Path source) {
+                             Placement placement, Path source, double price) {
 
     public ItemDefinition {
         lore = List.copyOf(lore);
+    }
+
+    /** An item that is not for sale. */
+    public ItemDefinition(String namespace, String id, String material, String displayName, List<String> lore,
+                          ModelSource model, ItemBehaviour behaviour, Placement placement, Path source) {
+        this(namespace, id, material, displayName, lore, model, behaviour, placement, source, 0);
+    }
+
+    /** The same item with a price: what one costs in the content shop, through Vault. 0 is not for sale. */
+    public ItemDefinition withPrice(double price) {
+        return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price);
     }
 
     /** {@code namespace:id}, the key the item is registered, given and recognised by. */

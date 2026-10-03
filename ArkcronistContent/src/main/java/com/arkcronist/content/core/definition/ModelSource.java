@@ -48,4 +48,11 @@ public sealed interface ModelSource {
             textures = Collections.unmodifiableMap(new TreeMap<>(textures));
         }
     }
+
+    /**
+     * A model already written out as JSON - one the loader built itself, such as the inventory
+     * icon of a Blockbench model. Its textures are the caller's to supply.
+     */
+    record Inline(Path sourceRoot, ResourceLocation location, String json) implements ModelSource {
+    }
 }

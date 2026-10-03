@@ -3,6 +3,9 @@ package com.arkcronist.content.core.pack;
 import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.definition.ItemBehaviour;
 import com.arkcronist.content.core.definition.Placement;
+import com.arkcronist.content.core.animation.AnimatedModel;
+import com.arkcronist.content.core.animation.BbModelReader;
+import com.arkcronist.content.core.animation.BbModelReaderTest;
 import com.arkcronist.content.core.definition.EmojiDefinition;
 import com.arkcronist.content.core.definition.ItemDefinition;
 import com.arkcronist.content.core.definition.ModelSource;
@@ -278,6 +281,38 @@ class PackCompilerTest {
                 json(pack.resolve("assets/demo/models/block/berry_stage_0.json")).getAsJsonObject("textures").get("cross").getAsString());
         assertTrue(Files.exists(pack.resolve("assets/demo/textures/crop/berry_1.png")));
         assertEquals(3, result.itemDefinitions());
+    }
+
+    @Test
+    void anAnimatedModelGetsAModelAndAnItemDefinitionPerBone() throws IOException {
+        Path demo = temp.resolve("contents/demo");
+        List<String> problems = new java.util.ArrayList<>();
+        AnimatedModel model = BbModelReader.read(BbModelReaderTest.chest(), demo.resolve("models/furniture/ruby_chest.bbmodel"),
+                demo, loc("demo:ruby_chest"), problems);
+        Placement.Furniture furniture = new Placement.Furniture(Placement.Support.CHEST, 0, false, Placement.Display.DEFAULT,
+                null, null, new Placement.Storage(27, null),
+                new Placement.Animated(model, "open", "close", Path.of("ruby_chest.bbmodel")), null);
+        ItemDefinition chest = new ItemDefinition("demo", "ruby_chest", "CHEST", null, List.of(),
+                new ModelSource.Inline(demo, loc("demo:ruby_chest/icon"), model.icon()), ItemBehaviour.DEFAULT, furniture,
+                Path.of("chests.yml"));
+        Path pack = temp.resolve("pack");
+
+        PackCompiler.Result result = new PackCompiler(SETTINGS).compile(pack, List.of(chest), Map.of());
+
+        assertEquals(List.of(), result.problems());
+        for (String bone : List.of("base", "lid", "latch")) {
+            assertEquals("demo:ruby_chest/bone_" + bone, json(pack.resolve("assets/demo/items/ruby_chest/bone_" + bone + ".json"))
+                    .getAsJsonObject("model").get("model").getAsString());
+            assertTrue(Files.exists(pack.resolve("assets/demo/models/ruby_chest/bone_" + bone + ".json")), bone);
+        }
+        assertEquals("demo:ruby_chest/icon",
+                json(pack.resolve("assets/demo/items/ruby_chest.json")).getAsJsonObject("model").get("model").getAsString());
+        assertTrue(Files.exists(pack.resolve("assets/demo/models/ruby_chest/icon.json")));
+        assertArrayEquals(java.util.Base64.getDecoder().decode(BbModelReaderTest.PNG),
+                Files.readAllBytes(pack.resolve("assets/demo/textures/ruby_chest/tex_0.png")));
+        assertEquals(4, result.itemDefinitions(), "the item and its three bones");
+        assertEquals(4, result.models(), "the icon and three bones");
+        assertEquals(1, result.textures());
     }
 
     @Test

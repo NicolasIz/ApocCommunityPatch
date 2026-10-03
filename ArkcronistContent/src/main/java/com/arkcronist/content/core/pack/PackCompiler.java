@@ -1,5 +1,6 @@
 package com.arkcronist.content.core.pack;
 
+import com.arkcronist.content.core.animation.AnimatedModel;
 import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.definition.EmojiDefinition;
 import com.arkcronist.content.core.definition.ItemDefinition;
@@ -188,6 +189,36 @@ public final class PackCompiler {
             if (item.placement() instanceof Placement.Crop crop) {
                 stages(item, crop, origin);
             }
+            if (item.placement() instanceof Placement.Furniture furniture && furniture.animated() != null) {
+                bones(item, furniture.animated().model(), origin);
+            }
+        }
+
+        /**
+         * A Blockbench model's bones: each bone's model at {@code <namespace>:<id>/bone_<name>}, with an
+         * item definition of the same name for its display, and the model's textures at
+         * {@code <namespace>:<id>/tex_<n>}.
+         */
+        private void bones(ItemDefinition item, AnimatedModel model, String origin) throws IOException {
+            for (AnimatedModel.Texture texture : model.textures()) {
+                if (texture.png().length > 0
+                        && place(texture.location().assetPath("textures", ".png"), texture.png(), origin)) {
+                    textures++;
+                }
+            }
+            for (AnimatedModel.Bone bone : model.bones()) {
+                if (bone.model() == null) {
+                    continue;
+                }
+                ResourceLocation key = AnimatedModel.boneItemModel(item.itemModel(), bone.name());
+                String boneOrigin = origin + " bone " + bone.name();
+                if (place(key.assetPath("models", ".json"), bone.model().getBytes(StandardCharsets.UTF_8), boneOrigin)) {
+                    models++;
+                }
+                if (place(key.assetPath("items", ".json"), itemDefinition(key), boneOrigin)) {
+                    itemDefinitions++;
+                }
+            }
         }
 
         /**
@@ -220,6 +251,12 @@ public final class PackCompiler {
                         if (texture.namespace().equals(namespace)) {
                             copyTexture(generated.sourceRoot(), texture, origin);
                         }
+                    }
+                }
+                case ModelSource.Inline inline -> {
+                    if (place(inline.location().assetPath("models", ".json"), inline.json().getBytes(StandardCharsets.UTF_8),
+                            origin)) {
+                        models++;
                     }
                 }
             }

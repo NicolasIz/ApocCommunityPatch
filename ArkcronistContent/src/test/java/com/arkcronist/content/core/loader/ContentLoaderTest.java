@@ -1,5 +1,7 @@
 package com.arkcronist.content.core.loader;
 
+import com.arkcronist.content.core.animation.AnimatedModel;
+import com.arkcronist.content.core.animation.BbModelReaderTest;
 import com.arkcronist.content.core.definition.ContentType;
 import com.arkcronist.content.core.definition.ItemDefinition;
 import com.arkcronist.content.core.definition.ModelSource;
@@ -16,6 +18,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -506,6 +509,134 @@ class ContentLoaderTest {
         assertTrue(report.problems().stream().anyMatch(p -> p.contains("demo:drawer: 'slots' must be whole rows of nine")));
         assertTrue(report.problems().stream().anyMatch(p -> p.contains("demo:shelf: 'slots' is only read with interactable: storage")));
         assertTrue(report.problems().stream().anyMatch(p -> p.contains("demo:shelf: 'storage-title' is only read")));
+    }
+
+    @Test
+    void anAnimatedChestIsStorageDrawnByItsBones() throws IOException {
+        write("demo/models/furniture/ruby_chest.bbmodel", BbModelReaderTest.chest());
+        write("demo/chests.yml", """
+                namespace: demo
+                items:
+                  ruby_chest:
+                    type: custom_furniture
+                    furniture:
+                      support: CHEST
+                      slots: 54
+                      animated-model: furniture/ruby_chest
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+
+        ItemDefinition chest = report.items().getFirst();
+        assertEquals("CHEST", chest.material());
+        Placement.Furniture furniture = (Placement.Furniture) chest.placement();
+        assertEquals(Placement.Support.CHEST, furniture.support());
+        assertEquals(new Placement.Storage(54, null), furniture.storage(), "storage is implied, its settings read");
+        assertEquals(List.of("base", "lid", "latch"), furniture.animated().model().bones().stream()
+                .map(AnimatedModel.Bone::name).toList());
+        assertEquals("open", furniture.animated().open());
+        assertEquals("close", furniture.animated().close());
+        // No resource: the item's icon is the whole Blockbench model at rest.
+        ModelSource.Inline icon = assertInstanceOf(ModelSource.Inline.class, chest.model());
+        assertEquals("demo:ruby_chest/icon", icon.location().toString());
+        assertTrue(report.problems().stream().noneMatch(p -> !p.contains("not supported") && !p.contains("bezier")
+                && !p.contains("Molang")), report.problems().toString());
+    }
+
+    @Test
+    void animationNamesAreChecked() throws IOException {
+        write("demo/models/furniture/ruby_chest.bbmodel", BbModelReaderTest.chest());
+        write("demo/chests.yml", """
+                namespace: demo
+                items:
+                  lidded:
+                    type: custom_furniture
+                    furniture:
+                      support: CHEST
+                      interactable: seat
+                      animated-model: furniture/ruby_chest.bbmodel
+                      animations: {open: swing, close: close}
+                  missing:
+                    type: custom_furniture
+                    furniture: {animated-model: furniture/nowhere}
+                  escaping:
+                    type: custom_furniture
+                    furniture: {animated-model: ../../etc/passwd}
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+
+        assertEquals(1, report.items().size(), "without a model or a resource, furniture is skipped");
+        assertEquals("swing", ((Placement.Furniture) report.items().getFirst().placement()).animated().open());
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("no animation 'swing'")), report.problems().toString());
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("always storage, not a seat")), report.problems().toString());
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("nowhere.bbmodel is not in")), report.problems().toString());
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("demo:escaping") && p.contains("not a valid path")),
+                report.problems().toString());
+    }
+
+    @Test
+    void aBedIsAVanillaBedOfItsColour() throws IOException {
+        write("demo/beds.yml", """
+                namespace: demo
+                items:
+                  ruby_bed:
+                    type: custom_furniture
+                    resource: {model: furniture/ruby_bed}
+                    furniture:
+                      support: BED
+                      bed-color: Red
+                      interactable: seat
+                      face-player: false
+                  plain_bed:
+                    type: custom_furniture
+                    resource: {model: furniture/ruby_bed}
+                    furniture: {support: bed, bed-color: chartreuse}
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+
+        ItemDefinition red = report.items().get(0);
+        assertEquals("RED_BED", red.material());
+        Placement.Furniture bed = (Placement.Furniture) red.placement();
+        assertEquals(Placement.Support.BED, bed.support());
+        assertNull(bed.seat(), "sleeping is the interaction");
+        assertNull(bed.storage());
+        assertEquals("WHITE_BED", report.items().get(1).material());
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("BED support sleeps")), report.problems().toString());
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("'face-player' is ignored")), report.problems().toString());
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("'bed-color' must be a dye colour")), report.problems().toString());
+    }
+
+    @Test
+    void skillExperienceAndPricesAreRead() throws IOException {
+        write("demo/extras.yml", """
+                namespace: demo
+                items:
+                  gem:
+                    material: EMERALD
+                    resource: {texture: item/gem}
+                    price: 250.5
+                  ore:
+                    type: custom_block
+                    resource: {texture: block/ore}
+                    block: {skill-xp: 7}
+                  seeds:
+                    type: custom_crop
+                    crop: {stages: [crop/a, crop/b], skill-xp: 3.5}
+                  freebie:
+                    material: STICK
+                    price: -4
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+
+        assertEquals(250.5, report.items().get(0).price());
+        assertEquals(7.0, ((Placement.Block) report.items().get(1).placement()).skillXp());
+        assertEquals(3.5, ((Placement.Crop) report.items().get(2).placement()).skillXp());
+        assertEquals(0.0, report.items().get(3).price(), "a bad price means not for sale");
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("'price' should be a positive number")),
+                report.problems().toString());
     }
 
     @Test

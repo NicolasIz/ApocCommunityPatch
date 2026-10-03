@@ -1,5 +1,7 @@
 package com.arkcronist.content.core.loader;
 
+import com.arkcronist.content.core.animation.AnimatedModel;
+import com.arkcronist.content.core.animation.BbModelReader;
 import com.arkcronist.content.core.definition.ContentType;
 import com.arkcronist.content.core.definition.EmojiDefinition;
 import com.arkcronist.content.core.definition.ItemBehaviour;
@@ -25,6 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -208,6 +211,16 @@ public final class ContentLoader {
         ItemBehaviour behaviour = behaviour(section(section, "behaviour", prefix, problems),
                 prefix, problems);
 
+        double price = price(section, prefix, problems);
+        ItemDefinition item = readTyped(namespace, id, type, section, displayName, lore, model, behaviour, sourceRoot,
+                file, prefix, problems);
+        return item == null || price == 0 ? item : item.withPrice(price);
+    }
+
+    private static ItemDefinition readTyped(String namespace, String id, ContentType type, Map<?, ?> section,
+                                            String displayName, List<String> lore, ModelSource model,
+                                            ItemBehaviour behaviour, Path sourceRoot, Path file, String prefix,
+                                            List<String> problems) {
         if (type == ContentType.ITEM) {
             String material = text(section, "material", prefix, problems);
             if (material == null || material.isBlank()) {
@@ -224,16 +237,24 @@ public final class ContentLoader {
 
         // Blocks and furniture: the material is what the placement needs, the look is mandatory, and
         // the item has to stay placeable.
-        if (model == null) {
-            problems.add(prefix + "a " + type.yamlName() + " needs resource.model, resource.texture"
-                    + " or resource.textures - without one it would look like its support block");
-            return null;
-        }
         Placement placement = type == ContentType.CUSTOM_BLOCK
                 ? block(section(section, "block", prefix, problems), prefix, problems)
-                : furniture(section(section, "furniture", prefix, problems), prefix, problems);
+                : furniture(namespace, id, section(section, "furniture", prefix, problems), sourceRoot, prefix, problems);
+        if (model == null && placement instanceof Placement.Furniture furniture && furniture.animated() != null) {
+            // The item in an inventory: the whole Blockbench model at rest, or its first bone.
+            model = icon(namespace, id, furniture.animated(), sourceRoot);
+        }
+        if (model == null) {
+            problems.add(prefix + "a " + type.yamlName() + " needs resource.model, resource.texture"
+                    + " or resource.textures" + (type == ContentType.CUSTOM_FURNITURE ? ", or furniture.animated-model" : "")
+                    + " - without one it would look like its support block");
+            return null;
+        }
         String material = placement instanceof Placement.Furniture furniture
-                ? furniture.support().name()
+                ? switch (furniture.support()) {
+                    case BED -> furniture.bed().material();
+                    default -> furniture.support().name();
+                }
                 : "NOTE_BLOCK";
         if (section.containsKey("material")) {
             problems.add(prefix + "'material' is ignored - a " + type.yamlName() + " is always "
@@ -331,10 +352,51 @@ public final class ContentLoader {
     }
 
     private static Placement.Block block(Map<?, ?> section, String prefix, List<String> problems) {
-        return new Placement.Block(section == null || flag(section, "drop-self", true, prefix, problems));
+        if (section == null) {
+            return new Placement.Block(true);
+        }
+        return new Placement.Block(flag(section, "drop-self", true, prefix, problems),
+                skillXp(section, prefix, problems));
     }
 
-    private static Placement.Furniture furniture(Map<?, ?> section, String prefix, List<String> problems) {
+    /** {@code price:} at the item's top level: what one costs in the content shop. */
+    private static double price(Map<?, ?> section, String prefix, List<String> problems) {
+        Object value = section.get("price");
+        if (value == null) {
+            return 0;
+        }
+        if (value instanceof Number number && number.doubleValue() > 0 && Double.isFinite(number.doubleValue())) {
+            return number.doubleValue();
+        }
+        problems.add(prefix + "'price' should be a positive number; the item is not for sale");
+        return 0;
+    }
+
+    /** {@code skill-xp:} skill experience given through whichever skill plugin is installed. */
+    private static double skillXp(Map<?, ?> section, String prefix, List<String> problems) {
+        Object value = section.get("skill-xp");
+        if (value == null) {
+            return 0;
+        }
+        if (value instanceof Number number && number.doubleValue() >= 0 && Double.isFinite(number.doubleValue())) {
+            return number.doubleValue();
+        }
+        problems.add(prefix + "'skill-xp' should be a number, 0 or more; using 0");
+        return 0;
+    }
+
+    /** The icon of a Blockbench-drawn piece of furniture: its merged model, or its first bone's. */
+    private static ModelSource icon(String namespace, String id, Placement.Animated animated, Path sourceRoot) {
+        String json = animated.model().icon();
+        if (json == null) {
+            json = animated.model().bones().stream().map(AnimatedModel.Bone::model).filter(Objects::nonNull)
+                    .findFirst().orElse(null);
+        }
+        return json == null ? null : new ModelSource.Inline(sourceRoot, new ResourceLocation(namespace, id + "/icon"), json);
+    }
+
+    private static Placement.Furniture furniture(String namespace, String id, Map<?, ?> section, Path sourceRoot,
+                                                 String prefix, List<String> problems) {
         if (section == null) {
             return new Placement.Furniture(Placement.Support.BARRIER, 0, true, Placement.Display.DEFAULT, null, null, null);
         }
@@ -345,7 +407,7 @@ public final class ContentLoader {
             try {
                 support = Placement.Support.valueOf(rawSupport.trim().toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException exception) {
-                problems.add(prefix + "'support' must be BARRIER or LIGHT, not '" + rawSupport.trim()
+                problems.add(prefix + "'support' must be BARRIER, LIGHT, CHEST or BED, not '" + rawSupport.trim()
                         + "'; using BARRIER");
             }
         }
@@ -361,22 +423,105 @@ public final class ContentLoader {
             light = 0;
         }
 
-        String interactable = interactable(section, prefix, problems);
+        String interactable = interactable(section, support, prefix, problems);
+        // A chest is for keeping things; a bed is for sleeping, which vanilla does.
+        if (support == Placement.Support.CHEST && !interactable.equals("storage")) {
+            problems.add(prefix + "a CHEST support is always storage, not a " + interactable);
+            interactable = "storage";
+        }
+        if (support == Placement.Support.BED && !interactable.isEmpty()) {
+            problems.add(prefix + "a BED support sleeps, as a vanilla bed does; 'interactable: " + interactable
+                    + "' is ignored");
+            interactable = "";
+        }
+        if ((support == Placement.Support.CHEST || support == Placement.Support.BED) && section.containsKey("face-player")) {
+            problems.add(prefix + "'face-player' is ignored: a " + support + " faces the way vanilla placed it");
+        }
+
+        Placement.Animated animated = animated(namespace, id, section, sourceRoot, prefix, problems);
+        String modelEngineId = modelEngineId(section, prefix, problems);
+        if (animated != null && modelEngineId != null) {
+            problems.add(prefix + "both 'animated-model' and 'modelengine-id' are set; the animated model is used");
+            modelEngineId = null;
+        }
         return new Placement.Furniture(support, light,
                 flag(section, "face-player", true, prefix, problems),
                 display(section(section, "display", prefix, problems), prefix, problems),
-                modelEngineId(section, prefix, problems),
+                modelEngineId,
                 interactable.equals("seat") ? seat(section, prefix, problems) : null,
-                interactable.equals("storage") ? storage(section, prefix, problems) : null);
+                interactable.equals("storage") ? storage(section, prefix, problems) : null,
+                animated,
+                support == Placement.Support.BED ? bed(section, prefix, problems) : null);
+    }
+
+    /** {@code bed-color:} the vanilla bed underneath, white unless said otherwise. */
+    private static Placement.Bed bed(Map<?, ?> section, String prefix, List<String> problems) {
+        String raw = text(section, "bed-color", prefix, problems);
+        if (raw == null) {
+            return Placement.Bed.DEFAULT;
+        }
+        String color = raw.trim().toLowerCase(Locale.ROOT);
+        if (!Placement.Bed.COLORS.contains(color)) {
+            problems.add(prefix + "'bed-color' must be a dye colour (" + String.join(", ", Placement.Bed.COLORS)
+                    + "); using white");
+            return Placement.Bed.DEFAULT;
+        }
+        return new Placement.Bed(color);
+    }
+
+    /**
+     * {@code animated-model:} a Blockbench project under {@code models/}, drawn bone by bone, and
+     * {@code animations:} which of its animations play as its inventory opens and closes.
+     */
+    private static Placement.Animated animated(String namespace, String id, Map<?, ?> section, Path sourceRoot,
+                                               String prefix, List<String> problems) {
+        Map<?, ?> names = section(section, "animations", prefix, problems);
+        String raw = text(section, "animated-model", prefix, problems);
+        if (raw == null || raw.isBlank()) {
+            if (names != null) {
+                problems.add(prefix + "'animations' is only read with an 'animated-model'");
+            }
+            return null;
+        }
+        String path = raw.trim().replaceFirst("\\.bbmodel$", "");
+        if (path.contains(":")) {
+            path = path.substring(path.indexOf(':') + 1);
+        }
+        if (!ResourceLocation.isValidPath(path)) {
+            problems.add(prefix + "'animated-model' '" + raw.trim() + "' is not a valid path (a-z 0-9 _ - . /)");
+            return null;
+        }
+        Path file = sourceRoot.resolve("models").resolve(path + ".bbmodel").normalize();
+        if (!file.startsWith(sourceRoot.normalize()) || !Files.isRegularFile(file)) {
+            problems.add(prefix + "'animated-model' " + path + ".bbmodel is not in " + sourceRoot.getFileName() + "/models/");
+            return null;
+        }
+        AnimatedModel model = BbModelReader.read(file, sourceRoot, new ResourceLocation(namespace, id), prefix, problems);
+        if (model == null) {
+            return null;
+        }
+        String open = names == null ? "open" : Objects.requireNonNullElse(text(names, "open", prefix, problems), "open");
+        String close = names == null ? "close" : Objects.requireNonNullElse(text(names, "close", prefix, problems), "close");
+        for (String animation : List.of(open, close)) {
+            if (!model.clips().containsKey(animation) && (names != null || !model.clips().isEmpty())) {
+                problems.add(prefix + path + ".bbmodel has no animation '" + animation + "' (it has: "
+                        + (model.clips().isEmpty() ? "none" : String.join(", ", model.clips().keySet())) + ")");
+            }
+        }
+        return new Placement.Animated(model, open, close, file);
     }
 
     /**
      * What a right click does: {@code seat}, {@code storage}, or {@code ""} for nothing. The settings
      * of the kind not chosen are reported if present, rather than silently ignored.
      */
-    private static String interactable(Map<?, ?> section, String prefix, List<String> problems) {
+    private static String interactable(Map<?, ?> section, Placement.Support support, String prefix,
+                                       List<String> problems) {
         String raw = text(section, "interactable", prefix, problems);
         String kind = raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
+        if (kind.isEmpty() && support == Placement.Support.CHEST) {
+            kind = "storage";
+        }
         if (!kind.isEmpty() && !kind.equals("seat") && !kind.equals("storage")) {
             problems.add(prefix + "'interactable' can only be 'seat' or 'storage', not '" + raw.trim() + "'");
             kind = "";
@@ -475,7 +620,8 @@ public final class ContentLoader {
         }
         ModelSource look = model != null ? model : stages.get(stages.size() - 1);
         Placement.Crop placement = new Placement.Crop(stages, stageSeconds, minLight,
-                soils.isEmpty() ? List.of("FARMLAND") : soils, flag(crop, "bone-meal", true, prefix, problems), drops);
+                soils.isEmpty() ? List.of("FARMLAND") : soils, flag(crop, "bone-meal", true, prefix, problems), drops,
+                skillXp(crop, prefix, problems));
         // Placeable, like blocks and furniture: planting places the crop's block, through a real
         // BlockPlaceEvent that the guard against placing custom items must let through.
         return new ItemDefinition(namespace, id, "PAPER", displayName, lore, look, new ItemBehaviour(false, true),

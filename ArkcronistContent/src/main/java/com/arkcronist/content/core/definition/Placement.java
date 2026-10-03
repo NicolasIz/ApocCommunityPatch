@@ -1,6 +1,10 @@
 package com.arkcronist.content.core.definition;
 
+import com.arkcronist.content.core.animation.AnimatedModel;
+
+import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * What placing an item puts into the world. An item without a placement stays an item.
@@ -17,8 +21,14 @@ public sealed interface Placement {
      * model. Which state is decided at build time and remembered, not written here.
      *
      * @param dropSelf breaking it outside creative drops the custom item, not a note block
+     * @param skillXp  skill experience for breaking it, given through AuraSkills (Mining), mcMMO
+     *                 (Mining) or SkillAPI, whichever is installed; 0 for none
      */
-    record Block(boolean dropSelf) implements Placement {
+    record Block(boolean dropSelf, double skillXp) implements Placement {
+
+        public Block(boolean dropSelf) {
+            this(dropSelf, 0);
+        }
 
         @Override
         public ContentType type() {
@@ -37,13 +47,47 @@ public sealed interface Placement {
      * @param seat          a right click sits on it; null when it is not a seat
      * @param storage       a right click opens its inventory; null when it has none. A piece of
      *                      furniture is a seat, a container, or neither - never both
+     * @param animated      drawn by a Blockbench model's bones, one display each, which can be
+     *                      animated; null for the single display of {@code resource}
+     * @param bed           the colour of the vanilla bed underneath a {@link Support#BED}; null for
+     *                      other supports
      */
     record Furniture(Support support, int light, boolean facePlayer, Display display, String modelEngineId,
-                     Seat seat, Storage storage) implements Placement {
+                     Seat seat, Storage storage, Animated animated, Bed bed) implements Placement {
+
+        public Furniture(Support support, int light, boolean facePlayer, Display display, String modelEngineId,
+                         Seat seat, Storage storage) {
+            this(support, light, facePlayer, display, modelEngineId, seat, storage, null, null);
+        }
 
         @Override
         public ContentType type() {
             return ContentType.CUSTOM_FURNITURE;
+        }
+    }
+
+    /**
+     * A Blockbench model drawing a piece of furniture, and which of its animations play when its
+     * inventory opens and closes.
+     *
+     * @param source the {@code .bbmodel} file, for messages
+     */
+    record Animated(AnimatedModel model, String open, String close, Path source) {
+    }
+
+    /**
+     * The vanilla bed under a {@link Support#BED}. Its colour only shows if the model fails to cover
+     * it - and on maps.
+     */
+    record Bed(String color) {
+
+        public static final List<String> COLORS = List.of("white", "orange", "magenta", "light_blue", "yellow", "lime",
+                "pink", "gray", "light_gray", "cyan", "purple", "blue", "brown", "green", "red", "black");
+        public static final Bed DEFAULT = new Bed("white");
+
+        /** The bed material, e.g. {@code RED_BED}. */
+        public String material() {
+            return color.toUpperCase(Locale.ROOT) + "_BED";
         }
     }
 
@@ -94,14 +138,21 @@ public sealed interface Placement {
      * @param soils        block materials it can be planted on, e.g. {@code FARMLAND}
      * @param boneMeal     whether bone meal advances it a stage
      * @param drops        what a fully grown crop drops; before that it drops its own item
+     * @param skillXp      skill experience for harvesting it grown, given through AuraSkills
+     *                     (Farming), mcMMO (Herbalism) or SkillAPI; 0 for none
      */
     record Crop(List<ModelSource> stages, int stageSeconds, int minLight, List<String> soils, boolean boneMeal,
-                List<Drop> drops) implements Placement {
+                List<Drop> drops, double skillXp) implements Placement {
 
         public Crop {
             stages = List.copyOf(stages);
             soils = List.copyOf(soils);
             drops = List.copyOf(drops);
+        }
+
+        public Crop(List<ModelSource> stages, int stageSeconds, int minLight, List<String> soils, boolean boneMeal,
+                    List<Drop> drops) {
+            this(stages, stageSeconds, minLight, soils, boneMeal, drops, 0);
         }
 
         @Override
@@ -138,7 +189,18 @@ public sealed interface Placement {
         /** Solid: players collide with it and can stand on it. */
         BARRIER,
         /** Walk-through, and can glow: a light block. */
-        LIGHT
+        LIGHT,
+        /**
+         * A vanilla chest: mined with an axe like one, with a chest's hitbox. Its own inventory is
+         * never used - a right click opens the furniture's storage instead - and hoppers cannot reach
+         * it. Implies {@code interactable: storage}.
+         */
+        CHEST,
+        /**
+         * A vanilla bed, two blocks long: sleeping, the spawn point and skipping the night are
+         * vanilla's own.
+         */
+        BED
     }
 
     /**
