@@ -17,6 +17,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,6 +42,10 @@ import java.util.Set;
  * listener recognises it, and it keeps which item sits in which slot, so a click is resolved by id
  * against the registry of that moment rather than by trusting the stack in the slot.</p>
  *
+ * <p>Opened as a {@link Shop shop}, it shows only the items with a {@code price}, the price under
+ * each, and a click buys instead of taking: one, or a stack on a shift-click - as many as fit, paid
+ * for before they are handed over.</p>
+ *
  * <p>Main thread only, like any inventory.</p>
  */
 public final class ContentMenu implements InventoryHolder {
@@ -60,6 +65,7 @@ public final class ContentMenu implements InventoryHolder {
             50, ContentType.CUSTOM_CROP);
 
     private static final Component TITLE = Component.text("Custom content");
+    private static final Component SHOP_TITLE = Component.text("Shop");
 
     /**
      * The clicks that take a copy. Not {@link ClickType#isLeftClick()}: that also counts a
@@ -73,6 +79,8 @@ public final class ContentMenu implements InventoryHolder {
 
     private final ItemRegistry registry;
     private final ItemFactory factory;
+    /** Null for the browser; the economy, for the shop. */
+    private final @Nullable Shop shop;
     private final Inventory inventory;
     /** The item id shown in each of the first 45 slots, or null for an empty one. */
     private final String[] shown = new String[PAGE_SIZE];
@@ -82,10 +90,11 @@ public final class ContentMenu implements InventoryHolder {
     /** How many pages the category had at the last render. */
     private int pages = 1;
 
-    ContentMenu(ItemRegistry registry, ItemFactory factory) {
+    ContentMenu(ItemRegistry registry, ItemFactory factory, @Nullable Shop shop) {
         this.registry = registry;
         this.factory = factory;
-        this.inventory = Bukkit.createInventory(this, SIZE, TITLE);
+        this.shop = shop;
+        this.inventory = Bukkit.createInventory(this, SIZE, shop == null ? TITLE : SHOP_TITLE);
     }
 
     @Override
@@ -131,7 +140,10 @@ public final class ContentMenu implements InventoryHolder {
         }
         List<String> help = new ArrayList<>();
         help.add(current.total() + " " + label(category).toLowerCase(Locale.ROOT) + ", " + PAGE_SIZE + " per page");
-        if (viewer.hasPermission(GIVE_PERMISSION)) {
+        if (shop != null) {
+            help.add("Click an item: buy one");
+            help.add("Shift-click: buy a stack");
+        } else if (viewer.hasPermission(GIVE_PERMISSION)) {
             help.add("Click an item: take one");
             help.add("Shift-click: take a stack");
         } else {
@@ -175,6 +187,10 @@ public final class ContentMenu implements InventoryHolder {
         if (id == null || !TAKING.contains(click)) {
             return;
         }
+        if (shop != null) {
+            buy(player, id, click);
+            return;
+        }
         if (!player.hasPermission(GIVE_PERMISSION)) {
             player.sendActionBar(Component.text("Taking items needs " + GIVE_PERMISSION, NamedTextColor.RED));
             return;
@@ -199,9 +215,52 @@ public final class ContentMenu implements InventoryHolder {
                 NamedTextColor.GREEN));
     }
 
+    /**
+     * Buys the clicked item: as many as asked for that fit in the player's inventory, charged before
+     * they are handed over, so nothing is ever paid for and lost, or handed over unpaid.
+     */
+    private void buy(Player player, String id, ClickType click) {
+        Optional<CustomItem> item = registry.get(id);
+        if (item.isEmpty() || item.get().definition().price() <= 0) {
+            player.sendActionBar(Component.text(id + " is no longer for sale", NamedTextColor.RED));
+            render(player);
+            return;
+        }
+        int wanted = click.isShiftClick() ? item.get().material().getMaxStackSize() : 1;
+        ItemStack stack = factory.create(item.get(), 1);
+        int amount = Math.min(wanted, room(player, stack));
+        if (amount == 0) {
+            player.sendActionBar(Component.text("Your inventory is full", NamedTextColor.RED));
+            return;
+        }
+        double cost = item.get().definition().price() * amount;
+        if (!shop.charge(player, cost)) {
+            return;
+        }
+        player.getInventory().addItem(factory.create(item.get(), amount));
+        player.playSound(player, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.5f, 1.2f);
+        player.sendActionBar(Component.text("Bought " + amount + " x " + id + " for " + shop.format(cost),
+                NamedTextColor.GREEN));
+    }
+
+    /** How many of {@code stack} the player's inventory can take: empty slots, and room on stacks of it. */
+    private static int room(Player player, ItemStack stack) {
+        int max = stack.getMaxStackSize();
+        int room = 0;
+        for (ItemStack slot : player.getInventory().getStorageContents()) {
+            if (slot == null || slot.isEmpty()) {
+                room += max;
+            } else if (slot.isSimilar(stack)) {
+                room += Math.max(0, max - slot.getAmount());
+            }
+        }
+        return room;
+    }
+
     private List<CustomItem> inCategory(ContentType type) {
         return registry.all().stream()
                 .filter(item -> item.definition().type() == type)
+                .filter(item -> shop == null || item.definition().price() > 0)
                 .sorted(Comparator.comparing(CustomItem::id))
                 .toList();
     }
@@ -215,6 +274,10 @@ public final class ContentMenu implements InventoryHolder {
                 lore.add(Component.empty());
             }
             lore.add(Component.text(item.id(), NamedTextColor.DARK_GRAY).decoration(TextDecoration.ITALIC, false));
+            if (shop != null) {
+                lore.add(Component.text("Price: " + shop.format(item.definition().price()), NamedTextColor.GOLD)
+                        .decoration(TextDecoration.ITALIC, false));
+            }
             meta.lore(lore);
         });
         return stack;

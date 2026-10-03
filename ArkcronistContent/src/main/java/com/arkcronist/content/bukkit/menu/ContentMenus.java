@@ -24,7 +24,16 @@ public final class ContentMenus {
     }
 
     public void open(Player player) {
-        ContentMenu menu = new ContentMenu(registry, factory);
+        open(player, null);
+    }
+
+    /** The browser as a shop: only what has a price, bought rather than taken. */
+    public void openShop(Player player, Shop shop) {
+        open(player, shop);
+    }
+
+    private void open(Player player, @Nullable Shop shop) {
+        ContentMenu menu = new ContentMenu(registry, factory, shop);
         menu.render(player);
         player.openInventory(menu.getInventory());
     }

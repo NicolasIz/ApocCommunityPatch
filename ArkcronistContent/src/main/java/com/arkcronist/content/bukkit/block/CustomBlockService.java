@@ -14,6 +14,7 @@ import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
 
 import java.util.Optional;
+import java.util.function.Predicate;
 
 /**
  * What the server does with custom blocks: recognise one, put one down, take one away.
@@ -28,6 +29,7 @@ public final class CustomBlockService {
     private final ItemFactory items;
     private final PlacedContentStore store;
     private final BlockData vanillaState;
+    private Predicate<Block> foreign = block -> false;
 
     public CustomBlockService(Server server, BlockRegistry blocks, ItemFactory items, PlacedContentStore store) {
         this.blocks = blocks;
@@ -48,7 +50,17 @@ public final class CustomBlockService {
         if (block.getType() != Material.NOTE_BLOCK || blocks.isEmpty()) {
             return Optional.empty();
         }
-        return blocks.byBlockData(block.getBlockData());
+        Optional<CustomBlock> custom = blocks.byBlockData(block.getBlockData());
+        // Asked only of a state that matches: another plugin's note block there is not ours.
+        return custom.isPresent() && foreign.test(block) ? Optional.empty() : custom;
+    }
+
+    /**
+     * Blocks another plugin placed and keeps records of - ExecutableBlocks' - which are never taken
+     * for custom blocks, whatever their state.
+     */
+    public void yieldTo(Predicate<Block> foreign) {
+        this.foreign = foreign;
     }
 
     /** The custom block an item places, if it is a custom block's item and that block got a state. */

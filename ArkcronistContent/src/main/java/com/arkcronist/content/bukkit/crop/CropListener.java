@@ -1,5 +1,7 @@
 package com.arkcronist.content.bukkit.crop;
 
+import com.arkcronist.content.bukkit.hooks.HookManager;
+import com.arkcronist.content.bukkit.hooks.SkillXpHook;
 import com.arkcronist.content.bukkit.item.CustomItem;
 import com.arkcronist.content.bukkit.item.ItemFactory;
 import com.arkcronist.content.bukkit.protection.Interaction;
@@ -67,15 +69,17 @@ public final class CropListener implements Listener {
     private final CropService crops;
     private final ItemFactory items;
     private final Protection protection;
+    private final HookManager hooks;
     private final Logger logger;
     /** The tick each player last used bone meal on a crop. */
     private final Map<UUID, Integer> lastBoneMeal = new HashMap<>();
 
-    public CropListener(Plugin plugin, CropService crops, ItemFactory items, Protection protection) {
+    public CropListener(Plugin plugin, CropService crops, ItemFactory items, Protection protection, HookManager hooks) {
         this.plugin = plugin;
         this.crops = crops;
         this.items = items;
         this.protection = protection;
+        this.hooks = hooks;
         this.logger = plugin.getLogger();
     }
 
@@ -174,7 +178,15 @@ public final class CropListener implements Listener {
         Block block = event.getBlock();
         Player player = event.getPlayer();
         boolean drop = player.getGameMode() != GameMode.CREATIVE;
-        crops.at(block).ifPresent(crop -> crops.remove(block, crop, drop));
+        crops.at(block).ifPresent(crop -> {
+            // Read before the crop goes: only a ripe one pays.
+            double xp = crops.definition(crop).filter(definition -> crop.stage() >= definition.lastStage())
+                    .map(Placement.Crop::skillXp).orElse(0.0);
+            crops.remove(block, crop, drop);
+            if (drop) {
+                hooks.skillXp(player, SkillXpHook.Source.CROP, crop.cropId(), xp);
+            }
+        });
         Block above = block.getRelative(BlockFace.UP);
         crops.above(block).filter(crop -> protection.allows(player, above, Interaction.BREAK))
                 .ifPresent(crop -> crops.remove(above, crop, drop));

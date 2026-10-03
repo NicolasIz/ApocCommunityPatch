@@ -2,6 +2,8 @@ package com.arkcronist.content.bukkit.listener;
 
 import com.arkcronist.content.bukkit.block.CustomBlock;
 import com.arkcronist.content.bukkit.block.CustomBlockService;
+import com.arkcronist.content.bukkit.hooks.HookManager;
+import com.arkcronist.content.bukkit.hooks.SkillXpHook;
 import com.arkcronist.content.bukkit.item.CustomItem;
 import com.arkcronist.content.bukkit.item.ItemFactory;
 import com.arkcronist.content.bukkit.protection.Protection;
@@ -11,6 +13,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -53,11 +56,13 @@ public final class CustomBlockListener implements Listener {
     private final CustomBlockService blocks;
     private final ItemFactory items;
     private final Protection protection;
+    private final HookManager hooks;
 
-    public CustomBlockListener(CustomBlockService blocks, ItemFactory items, Protection protection) {
+    public CustomBlockListener(CustomBlockService blocks, ItemFactory items, Protection protection, HookManager hooks) {
         this.blocks = blocks;
         this.items = items;
         this.protection = protection;
+        this.hooks = hooks;
     }
 
     /** A custom block item whose block got no state (all 799 taken) cannot be placed at all. */
@@ -132,8 +137,14 @@ public final class CustomBlockListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
-        blocks.identify(event.getBlock()).ifPresent(custom -> blocks.forget(event.getBlock(), custom,
-                event.getPlayer().getGameMode() != GameMode.CREATIVE));
+        Player player = event.getPlayer();
+        boolean survival = player.getGameMode() != GameMode.CREATIVE;
+        blocks.identify(event.getBlock()).ifPresent(custom -> {
+            blocks.forget(event.getBlock(), custom, survival);
+            if (survival) {
+                hooks.skillXp(player, SkillXpHook.Source.BLOCK, custom.id(), custom.placement().skillXp());
+            }
+        });
     }
 
     /** Note blocks are wood: fire would take custom blocks with no drop and no record removed. */

@@ -22,6 +22,9 @@ sourceSets {
     // MMOItems publishes its API only as snapshots, on its own repository, which come and go. The
     // signatures the hook needs are copied from MMOItems 6.10 here instead, the same way.
     mmoitemsApi
+    // ExecutableBlocks is a paid plugin with no published API; the part of SCore's API the hook uses
+    // is copied from SCore 5.25 here, the same way.
+    scoreApi
 }
 
 configurations {
@@ -32,6 +35,7 @@ configurations {
     testImplementation.extendsFrom paperApi
     irisApiCompileOnly.extendsFrom paperApi
     mmoitemsApiCompileOnly.extendsFrom paperApi
+    scoreApiCompileOnly.extendsFrom paperApi
 }
 
 // Paper's API comes from Paper's repository, or from libs/ when a local copy is there - for a
@@ -40,7 +44,27 @@ def localPaperApi = file('libs/paper-api.jar')
 def useLocalPaperApi = localPaperApi.isFile()
 
 repositories {
-    mavenCentral()
+    mavenCentral {
+        content {
+            excludeGroup 'com.promcteam'
+            excludeGroup 'studio.magemonkey'
+            // Only ever on jitpack, below.
+            excludeGroupByRegex 'com\\.github\\..*'
+        }
+    }
+    // ProSkillAPI's and Fabled's POMs name a parent that was never published, so only their jars are
+    // read - compileOnly, and transitive = false below, so the POMs have nothing to add.
+    maven {
+        name = 'centralJarsOnly'
+        url = 'https://repo.maven.apache.org/maven2/'
+        metadataSources {
+            artifact()
+        }
+        content {
+            includeGroup 'com.promcteam'
+            includeGroup 'studio.magemonkey'
+        }
+    }
     // MythicMobs, ModelEngine and MythicArmor's APIs, for the optional hooks.
     maven {
         name = 'lumine'
@@ -60,13 +84,33 @@ repositories {
             includeGroup 'com.sk89q.worldedit'
         }
     }
-    // ShopGUI+'s and GriefPrevention's APIs are built from their GitHub repositories.
+    // ShopGUI+'s, GriefPrevention's, Vault's, DecentHolograms' and EconomyShopGUI's APIs are built
+    // from their GitHub repositories.
     maven {
         name = 'jitpack'
         url = 'https://jitpack.io'
         content {
             includeGroup 'com.github.brcdev-minecraft'
             includeGroup 'com.github.GriefPrevention'
+            includeGroup 'com.github.MilkBowl'
+            includeGroup 'com.github.decentsoftware-eu.decentholograms'
+            includeGroup 'com.github.Gypopo'
+        }
+    }
+    // mcMMO.
+    maven {
+        name = 'neetgames'
+        url = 'https://nexus.neetgames.com/repository/maven-releases/'
+        content {
+            includeGroup 'com.gmail.nossr50.mcMMO'
+        }
+    }
+    // Citizens publishes snapshots only; its own documentation builds against them.
+    maven {
+        name = 'citizens'
+        url = 'https://maven.citizensnpcs.co/repo'
+        content {
+            includeGroup 'net.citizensnpcs'
         }
     }
     if (!useLocalPaperApi) {
@@ -124,6 +168,19 @@ dependencies {
     compileOnly('com.sk89q.worldedit:worldedit-core:7.3.9') { transitive = false }
     compileOnly('com.sk89q.worldedit:worldedit-bukkit:7.3.9') { transitive = false }
     compileOnly('com.github.GriefPrevention:GriefPrevention:16.18.5') { transitive = false }
+    // v1.3: skills, economy, NPCs, holograms, shops and ExecutableBlocks. Each is only touched by
+    // its own hook package, and only once that plugin's classes have been found at runtime.
+    compileOnly('dev.aurelium:auraskills-api-bukkit:2.4.0') { transitive = false }
+    compileOnly('dev.aurelium:auraskills-api:2.4.0') { transitive = false }
+    compileOnly('com.gmail.nossr50.mcMMO:mcMMO:2.3.002') { transitive = false }
+    compileOnly('com.promcteam:proskillapi:1.3.1-R1') { transitive = false }
+    compileOnly('studio.magemonkey:fabled:1.0.4-R0.56') { transitive = false }
+    compileOnly('com.github.MilkBowl:VaultAPI:1.7.1') { transitive = false }
+    compileOnly('net.citizensnpcs:citizens-main:2.0.44-SNAPSHOT') { transitive = false }
+    // Since 2.10 DecentHolograms is built in modules; its API is in the one named after it.
+    compileOnly('com.github.decentsoftware-eu.decentholograms:decentholograms:2.10.1') { transitive = false }
+    compileOnly('com.github.Gypopo:EconomyShopGUI-API:1.11.0') { transitive = false }
+    compileOnly sourceSets.scoreApi.output
 
     // The core package (loader, pack compiler, zip, hash, web server, storage) is tested without a
     // server, but against the same Gson and SnakeYAML the server provides.

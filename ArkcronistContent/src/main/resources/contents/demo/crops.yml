@@ -30,6 +30,9 @@ items:
       min-light: 9                   # like vanilla crops; 0 grows in the dark
       soil: [FARMLAND]
       bone-meal: true
+      # Experience for harvesting it fully grown: Farming in AuraSkills,
+      # Herbalism in mcMMO, class experience in SkillAPI and Fabled.
+      skill-xp: 8
       drops:                         # when fully grown
         - item: demo:ruby
           amount: 1-2

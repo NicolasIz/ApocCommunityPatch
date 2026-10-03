@@ -125,10 +125,16 @@ public final class ArkContentPlugin extends JavaPlugin {
         this.pipeline = new ContentPipeline(this, settings, items, blocks, emojis, delivery);
         this.protection = new Protection(getLogger());
 
+        // The items are live before any hook starts, and before other plugins read their configs.
+        int preloaded = pipeline.preload();
+        if (preloaded > 0) {
+            getLogger().info(preloaded + " custom item(s) read; the resource pack is built next, in the background.");
+        }
         // Hooks start before anything that uses them, and before the first rebuild reports to them.
         hooks.enable();
 
         CustomBlockService blockService = new CustomBlockService(getServer(), blocks, itemFactory, placed);
+        blockService.yieldTo(hooks.foreignBlocks());
         this.animations = new AnimationPlayer(this);
         FurnitureService furniture = new FurnitureService(this, items, itemFactory, placed, hooks, animations);
         this.furniture = furniture;
@@ -155,9 +161,9 @@ public final class ArkContentPlugin extends JavaPlugin {
         plugins.registerEvents(new ItemUseListener(itemFactory), this);
         plugins.registerEvents(new ItemCombatListener(itemFactory), this);
         plugins.registerEvents(new WorldInterceptionListener(itemFactory), this);
-        plugins.registerEvents(new CustomBlockListener(blockService, itemFactory, protection), this);
+        plugins.registerEvents(new CustomBlockListener(blockService, itemFactory, protection, hooks), this);
         plugins.registerEvents(new FurnitureListener(this, furniture, seats, storage, protection, itemFactory), this);
-        plugins.registerEvents(new CropListener(this, crops, itemFactory, protection), this);
+        plugins.registerEvents(new CropListener(this, crops, itemFactory, protection, hooks), this);
         plugins.registerEvents(new ChatEmojiListener(emojis), this);
         plugins.registerEvents(new PlacedContentListener(placed, blockService, furniture, getLogger()), this);
         plugins.registerEvents(new ContentMenuListener(this), this);
@@ -258,6 +264,9 @@ public final class ArkContentPlugin extends JavaPlugin {
         }
         if (animations != null) {
             animations.stopAll();
+        }
+        if (hooks != null) {
+            hooks.disable();
         }
         if (cropTicker != null) {
             cropTicker.stop();

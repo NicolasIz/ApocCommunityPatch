@@ -22,6 +22,9 @@ items:
     display-name: "<red>Ruby"
     lore:
       - "<gray>Cut from the deep caves."
+    # For sale in /arkcontent shop, for this much each - with Vault and an
+    # economy plugin installed. Items without a price are not sold.
+    price: 250
     resource:
       model: item/ruby
     behaviour:

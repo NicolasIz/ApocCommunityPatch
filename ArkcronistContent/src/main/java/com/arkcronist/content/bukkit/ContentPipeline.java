@@ -313,6 +313,27 @@ public final class ContentPipeline {
                 .thenApplyAsync(build -> publish(build, started), mainThread);
     }
 
+    /**
+     * The items, read straight from contents/ on the main thread and made live at once, ahead of the
+     * first rebuild: other plugins that read their own configuration as the server starts - shop
+     * plugins, AuraSkills' menus - find this plugin's items there from the first tick, not seconds
+     * later when the pack is built. Only the YAML is read here, which takes milliseconds; blocks,
+     * emojis and the pack wait for the rebuild, which also reports any problems this skips over.
+     *
+     * @return how many items were loaded; 0 if the contents could not be read, which the rebuild
+     *         will then report
+     */
+    public int preload() {
+        try {
+            Build build = loadItems();
+            registry.replace(build.items().values());
+            return build.items().size();
+        } catch (RuntimeException exception) {
+            logger.log(Level.FINE, "Could not preload the items; the rebuild will report why.", exception);
+            return 0;
+        }
+    }
+
     // ---------------------------------------------------------------- worker thread
 
     /** contents/*.yml into items, each checked against this server's materials. */

@@ -2,18 +2,24 @@ package com.arkcronist.content.bukkit.command;
 
 import com.arkcronist.content.bukkit.ArkContentPlugin;
 import com.arkcronist.content.bukkit.ContentPipeline;
+import com.arkcronist.content.bukkit.hooks.NpcBridge;
+import com.arkcronist.content.bukkit.item.CustomItem;
 import com.arkcronist.content.bukkit.menu.ContentMenu;
+import com.arkcronist.content.bukkit.menu.Shop;
+import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.importer.ImportReport;
 import com.arkcronist.content.core.pack.PackArtifact;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
@@ -27,7 +33,8 @@ import java.util.logging.Level;
 
 /**
  * {@code /arkcontent}: {@code reload}, {@code info}, {@code import} and {@code animate} for admins,
- * {@code menu} for anyone allowed to browse. On its own, run by a player who may browse, it opens the
+ * {@code menu} for anyone allowed to browse, {@code shop} for buyers when Vault is installed, and
+ * {@code npc} for admins when Citizens is. On its own, run by a player who may browse, it opens the
  * menu.
  */
 public final class ContentAdminCommand {
@@ -41,7 +48,7 @@ public final class ContentAdminCommand {
     private static final String ADMIN = "arkcontent.admin";
 
     public LiteralCommandNode<CommandSourceStack> build() {
-        return Commands.literal("arkcontent")
+        LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal("arkcontent")
                 .requires(source -> source.getSender().hasPermission(ADMIN)
                         || source.getSender().hasPermission(ContentMenu.BROWSE_PERMISSION))
                 .executes(this::menuOrHelp)
@@ -62,7 +69,87 @@ public final class ContentAdminCommand {
                 .then(Commands.literal("menu")
                         .requires(source -> source.getSender().hasPermission(ContentMenu.BROWSE_PERMISSION))
                         .executes(this::menu))
-                .build();
+                .then(Commands.literal("shop")
+                        .requires(source -> source.getSender().hasPermission(Shop.PERMISSION))
+                        .executes(this::shop));
+        NpcBridge npcs = plugin.hooks().npcs();
+        if (npcs != null) {
+            root.then(Commands.literal("npc").requires(ContentAdminCommand::admin)
+                    .then(Commands.literal("equip")
+                            .then(Commands.argument("slot", StringArgumentType.word())
+                                    .suggests((context, builder) -> {
+                                        npcs.slots().forEach(builder::suggest);
+                                        return builder.buildFuture();
+                                    })
+                                    .then(Commands.argument("item", StringArgumentType.greedyString())
+                                            .suggests((context, builder) -> {
+                                                String typed = builder.getRemainingLowerCase();
+                                                plugin.items().all().stream().map(CustomItem::id)
+                                                        .filter(id -> id.startsWith(typed)).sorted().forEach(builder::suggest);
+                                                return builder.buildFuture();
+                                            })
+                                            .executes(context -> npcEquip(context, npcs)))))
+                    .then(Commands.literal("sit").executes(context -> npcSit(context, npcs))));
+        }
+        return root.build();
+    }
+
+    private int shop(CommandContext<CommandSourceStack> context) {
+        CommandSender sender = context.getSource().getSender();
+        Player player = viewer(context.getSource());
+        Shop shop = plugin.hooks().shop();
+        if (player == null) {
+            sender.sendMessage(Component.text("Only a player can shop.", NamedTextColor.RED));
+            return 0;
+        }
+        if (shop == null) {
+            sender.sendMessage(Component.text("The shop needs Vault and an economy plugin.", NamedTextColor.RED));
+            return 0;
+        }
+        plugin.menus().openShop(player, shop);
+        return Command.SINGLE_SUCCESS;
+    }
+
+    /** {@code /arkcontent npc equip <slot> <item>}: the selected NPC gets a custom item. */
+    private int npcEquip(CommandContext<CommandSourceStack> context, NpcBridge npcs) {
+        CommandSender sender = context.getSource().getSender();
+        String id = StringArgumentType.getString(context, "item").trim();
+        Optional<CustomItem> item = plugin.items().find(id);
+        if (item.isEmpty()) {
+            sender.sendMessage(Component.text("No custom item '" + id + "'.", NamedTextColor.RED));
+            return 0;
+        }
+        String problem = npcs.equip(sender, StringArgumentType.getString(context, "slot"),
+                plugin.itemFactory().create(item.get(), 1));
+        sender.sendMessage(problem == null
+                ? Component.text("Equipped " + item.get().id() + ".", NamedTextColor.GREEN)
+                : Component.text(problem, NamedTextColor.RED));
+        return problem == null ? Command.SINGLE_SUCCESS : 0;
+    }
+
+    /** {@code /arkcontent npc sit}: the selected NPC sits on the furniture the player is looking at. */
+    private int npcSit(CommandContext<CommandSourceStack> context, NpcBridge npcs) {
+        CommandSender sender = context.getSource().getSender();
+        Player player = viewer(context.getSource());
+        if (player == null) {
+            sender.sendMessage(Component.text("Only a player can aim at furniture.", NamedTextColor.RED));
+            return 0;
+        }
+        Optional<Block> target = plugin.furniture().target(player);
+        Optional<Placement.Furniture> definition = target.flatMap(plugin.furniture()::definition);
+        if (definition.isEmpty()) {
+            sender.sendMessage(Component.text("Look at a piece of furniture first.", NamedTextColor.RED));
+            return 0;
+        }
+        Block block = target.get();
+        float height = definition.get().seat() != null ? definition.get().seat().height() : 0.5f;
+        Location seat = block.getLocation().add(0.5, height, 0.5);
+        seat.setYaw(plugin.furniture().facing(block).orElse(0f));
+        String problem = npcs.sit(sender, seat);
+        sender.sendMessage(problem == null
+                ? Component.text("Sitting.", NamedTextColor.GREEN)
+                : Component.text(problem, NamedTextColor.RED));
+        return problem == null ? Command.SINGLE_SUCCESS : 0;
     }
 
     private static boolean admin(CommandSourceStack source) {
@@ -74,8 +161,8 @@ public final class ContentAdminCommand {
             return menu(context);
         }
         CommandSender sender = context.getSource().getSender();
-        sender.sendMessage(Component.text("/arkcontent reload | info | import | animate <animation> | menu",
-                NamedTextColor.GOLD));
+        sender.sendMessage(Component.text("/arkcontent reload | info | import | animate <animation> | menu | shop"
+                + (plugin.hooks().npcs() != null ? " | npc" : ""), NamedTextColor.GOLD));
         return Command.SINGLE_SUCCESS;
     }
 
@@ -219,6 +306,10 @@ public final class ContentAdminCommand {
         List<String> hooks = plugin.hooks().active();
         sender.sendMessage(Component.text("Hooks: " + (hooks.isEmpty() ? "none" : String.join(", ", hooks)),
                 NamedTextColor.GRAY));
+        List<String> natively = plugin.hooks().natively();
+        if (!natively.isEmpty()) {
+            sender.sendMessage(Component.text("Works as is, no hook: " + String.join(", ", natively), NamedTextColor.GRAY));
+        }
         sender.sendMessage(Component.text("Web server: " + (plugin.httpRunning() ? "running" : "off")
                 + "; hosting: " + plugin.settings().hosting().name().toLowerCase(Locale.ROOT)
                 + "; players are sent: " + (url != null ? url : pack == null ? "nothing yet" : "nothing"),

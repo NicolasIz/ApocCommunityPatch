@@ -23,6 +23,9 @@ items:
     block:
       # Outside creative, breaking it drops this item rather than a note block.
       drop-self: true
+      # Experience for breaking it: Mining in AuraSkills and mcMMO, class
+      # experience in SkillAPI / ProSkillAPI / Fabled - whichever is installed.
+      skill-xp: 15
 
   # A 3D model - a Blockbench export - shown by an item display standing on an
   # invisible barrier. Its textures are found through the model file: the gem
