@@ -30,6 +30,9 @@ import java.util.Locale;
  */
 public final class CitizensHook implements NpcBridge {
 
+    /** Citizens' classes are there but it is not: it failed to enable, or was disabled. */
+    private static final String NOT_RUNNING = "Citizens is installed but not running - see the server log";
+
     @Override
     public List<String> slots() {
         return Arrays.stream(Equipment.EquipmentSlot.values()).map(slot -> slot.name().toLowerCase(Locale.ROOT)).toList();
@@ -37,6 +40,9 @@ public final class CitizensHook implements NpcBridge {
 
     @Override
     public @Nullable String equip(CommandSender sender, String slot, ItemStack item) {
+        if (!CitizensAPI.hasImplementation()) {
+            return NOT_RUNNING;
+        }
         NPC npc = selected(sender);
         if (npc == null) {
             return "Select an NPC first: /npc select";
@@ -53,6 +59,9 @@ public final class CitizensHook implements NpcBridge {
 
     @Override
     public @Nullable String sit(CommandSender sender, Location seat) {
+        if (!CitizensAPI.hasImplementation()) {
+            return NOT_RUNNING;
+        }
         NPC npc = selected(sender);
         if (npc == null) {
             return "Select an NPC first: /npc select";
@@ -62,6 +71,6 @@ public final class CitizensHook implements NpcBridge {
     }
 
     private static @Nullable NPC selected(CommandSender sender) {
-        return CitizensAPI.getDefaultNPCSelector().getSelected(sender);
+        return CitizensAPI.hasImplementation() ? CitizensAPI.getDefaultNPCSelector().getSelected(sender) : null;
     }
 }

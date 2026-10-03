@@ -13,7 +13,7 @@ import com.arkcronist.content.bukkit.hooks.mmoitems.MMOItemsHook;
 import com.arkcronist.content.bukkit.hooks.modelengine.ModelEngineHook;
 import com.arkcronist.content.bukkit.hooks.mythicarmor.MythicArmorHook;
 import com.arkcronist.content.bukkit.hooks.mythicmobs.MythicMobsHook;
-import com.arkcronist.content.bukkit.hooks.placeholderapi.ArkContentExpansion;
+import com.arkcronist.content.bukkit.hooks.placeholderapi.PlaceholderApiHook;
 import com.arkcronist.content.bukkit.hooks.shopgui.ShopGuiPlusHook;
 import com.arkcronist.content.bukkit.hooks.skillapi.FabledHook;
 import com.arkcronist.content.bukkit.hooks.skillapi.SkillAPIHook;
@@ -44,6 +44,11 @@ import java.util.logging.Logger;
  * creating it - a missing class, an API that changed shape - is logged and leaves the rest of the
  * plugin running without that hook.</p>
  *
+ * <p>For that to hold, this class never names a hook class that extends or implements another
+ * plugin's type - not even as what a lambda returns, which the JVM resolves before running it:
+ * such a class cannot be loaded without its parent. Each hook here is either a plain class of this
+ * plugin's, or a static method on one; {@code HookIsolationTest} checks it.</p>
+ *
  * <p>Presence is decided by the classes rather than by the plugin being enabled: MythicMobs and
  * MythicArmor are made to load after this plugin, so that it can listen to them from the start,
  * and are not enabled yet when this runs.</p>
@@ -61,8 +66,6 @@ public final class HookManager {
     /** Skills plugins, by hook name. */
     private final Map<String, SkillXpHook> skillHooks = new HashMap<>();
     private final List<AutoCloseable> closing = new ArrayList<>();
-    /** Plugins that work with this one's items as they are, with no hook needed. */
-    private final List<String> natively = new ArrayList<>();
     private ModelEngineBridge modelEngine;
     private Shop shop;
     private NpcBridge npcs;
@@ -103,14 +106,9 @@ public final class HookManager {
         }
 
         // Loads before this plugin; registered at once, so TAB and DeluxeMenus find it from the start.
-        create("PlaceholderAPI", "me.clip.placeholderapi.expansion.PlaceholderExpansion", () -> {
-            ArkContentExpansion expansion = new ArkContentExpansion(plugin.getPluginMeta().getVersion(),
-                    plugin.emojis(), plugin.items(), plugin.itemFactory());
-            if (!expansion.register()) {
-                throw new IllegalStateException("PlaceholderAPI refused the arkcontent expansion");
-            }
-            return expansion;
-        });
+        create("PlaceholderAPI", "me.clip.placeholderapi.expansion.PlaceholderExpansion",
+                () -> PlaceholderApiHook.register(plugin.getPluginMeta().getVersion(), plugin.emojis(), plugin.items(),
+                        plugin.itemFactory()));
 
         // Loads after this plugin: the hook listens for the moment ShopGUI+ asks for item providers.
         ShopGuiPlusHook shopGui = create("ShopGUI+", "net.brcdev.shopgui.event.ShopGUIPlusPostEnableEvent",
@@ -187,15 +185,6 @@ public final class HookManager {
                 }
             };
         }
-
-        // No API to hook into, and none needed: DailyShop sells the stacks it is given, whole.
-        for (String name : List.of("DailyShop", "EconomyShopGUI")) {
-            if (plugin.getServer().getPluginManager().getPlugin(name) != null) {
-                natively.add(name);
-                logger.info(name + " found: it sells custom items as the stacks it is given - add them from"
-                        + " your hand in its editor; no hook is needed.");
-            }
-        }
     }
 
     private void skill(String name, String probeClass, Supplier<SkillXpHook> factory) {
@@ -243,11 +232,6 @@ public final class HookManager {
     /** Blocks another plugin has placed and keeps records of, which are never this plugin's custom blocks. */
     public Predicate<Block> foreignBlocks() {
         return foreignBlocks;
-    }
-
-    /** Plugins that work with the items as they are, with no hook. */
-    public List<String> natively() {
-        return List.copyOf(natively);
     }
 
     /** On disable: hooks that leave things in the world - temporary holograms - clear them. */

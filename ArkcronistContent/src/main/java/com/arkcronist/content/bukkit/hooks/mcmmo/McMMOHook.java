@@ -8,9 +8,10 @@ import org.bukkit.entity.Player;
  * mcMMO experience for custom blocks and crops: Mining for breaking a custom block, Herbalism for
  * harvesting a ripe custom crop, as their {@code skill-xp} says.
  *
- * <p>The amount is raw experience - mcMMO's own skill and global multipliers are not applied on
- * top - and it is given for an unknown reason, the one mcMMO uses for experience other plugins
- * hand out, so it counts like any other gain: levels, level-up rewards and notifications.</p>
+ * <p>It counts like any other gain - levels, level-up rewards, notifications - and mcMMO scales it
+ * like any other too: its per-skill formula modifier, and the experience perks of players who have
+ * them ({@code mcmmo.perks.xp.*}, which operators have). A {@code skill-xp} of 15 earned an operator
+ * 66 Mining experience on a default mcMMO 2.3.</p>
  */
 public final class McMMOHook implements SkillXpHook {
 

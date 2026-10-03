@@ -32,9 +32,9 @@ import java.util.logging.Logger;
  * plugin's own tag. Registered when EconomyShopGUI asks for item providers, as it loads its shops -
  * by then the items are live, read before any plugin enabled after this one.</p>
  *
- * <p>The free EconomyShopGUI has no item providers. It can still sell these items as plain stacks,
- * added from a hand with its shop editor, which keeps the item's components - item model and tag
- * included.</p>
+ * <p>The free EconomyShopGUI has no item providers, and cannot sell these items: its
+ * {@code /editshop addhanditem} saves a held item's material, name and lore only, so what it sells
+ * is a plain stack, without the item model or this plugin's tag.</p>
  */
 public final class EconomyShopGuiHook implements Listener {
 

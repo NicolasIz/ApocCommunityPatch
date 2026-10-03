@@ -306,10 +306,6 @@ public final class ContentAdminCommand {
         List<String> hooks = plugin.hooks().active();
         sender.sendMessage(Component.text("Hooks: " + (hooks.isEmpty() ? "none" : String.join(", ", hooks)),
                 NamedTextColor.GRAY));
-        List<String> natively = plugin.hooks().natively();
-        if (!natively.isEmpty()) {
-            sender.sendMessage(Component.text("Works as is, no hook: " + String.join(", ", natively), NamedTextColor.GRAY));
-        }
         sender.sendMessage(Component.text("Web server: " + (plugin.httpRunning() ? "running" : "off")
                 + "; hosting: " + plugin.settings().hosting().name().toLowerCase(Locale.ROOT)
                 + "; players are sent: " + (url != null ? url : pack == null ? "nothing yet" : "nothing"),

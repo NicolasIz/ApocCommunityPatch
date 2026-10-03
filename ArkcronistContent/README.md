@@ -1,7 +1,8 @@
 # ArkcronistContent
 
 Motor de contenido personalizado para **Paper 1.21.8+**, Java 21: define ítems, bloques, muebles
-(también asientos y muebles con inventario), cultivos y emojis de chat en YAML y el plugin compila
+(también asientos, muebles con inventario, cofres con animaciones de Blockbench y camas de dos
+bloques), cultivos y emojis de chat en YAML y el plugin compila
 su propio resource pack, lo empaqueta en ZIP, calcula su SHA-1, lo sirve con un servidor HTTP
 integrado —o lo sube solo a un servicio de almacenamiento— y se lo envía a cada jugador. Los bloques
 y muebles colocados, los cultivos y lo guardado en los muebles se conservan en SQLite. El mismo
@@ -13,19 +14,24 @@ concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer
 /arkcontent info                           ítems y bloques cargados, colocados, hash del pack, URL
 /arkcontent import                         convierte los packs de ItemsAdder de import/ (sección 6)
 /arkcontent menu                           explorador de todo el contenido cargado (sección 7)
+/arkcontent animate <animación>            reproduce una animación del mueble que miras (sección 4)
+/arkcontent shop                           tienda: los ítems con `price`, pagados con Vault (sección 5)
+/arkcontent npc equip <hueco> <item> | sit NPC de Citizens con un ítem o sentado (sección 5)
 /emojis                                    los emojis de chat disponibles, dibujados (sección 4)
 ```
 
 | Permiso | Por defecto | Para |
 |---|---|---|
 | `arkcontent.give` | op | `/customgive`, y sacar ítems del explorador |
-| `arkcontent.admin` | op | `reload`, `info`, `import` |
+| `arkcontent.admin` | op | `reload`, `info`, `import`, `animate`, `npc` |
 | `arkcontent.menu` | op | abrir el explorador (solo mirar, si no tiene `arkcontent.give`) |
 | `arkcontent.emojis` | todos | `/emojis`. Usar un emoji no necesita permiso, salvo que el emoji declare el suyo |
+| `arkcontent.shop` | todos | `/arkcontent shop` (necesita Vault y un plugin de economía) |
 
 Con MythicMobs, ModelEngine, MythicArmor, MMOItems, PlaceholderAPI (y a través de él TAB y
-DeluxeMenus), ShopGUI+, Iris, WorldGuard o GriefPrevention instalados se integra con ellos
-(sección 5); sin ellos funciona igual.
+DeluxeMenus), ShopGUI+, Iris, WorldGuard, GriefPrevention, AuraSkills, mcMMO, SkillAPI/ProSkillAPI,
+Fabled, Vault, Citizens, DecentHolograms, EconomyShopGUI Premium o ExecutableBlocks instalados se
+integra con ellos (sección 5); sin ellos funciona igual —verificado arrancando sin ninguno—.
 
 El plugin se compila contra la API de Paper 1.21.8 y declara esa versión como mínima. El componente
 `item_model` y la carpeta `assets/<namespace>/items/`, en los que se apoya todo, existen desde 1.21.4,
@@ -85,6 +91,12 @@ ArkcronistContent/
         │   │   ├── ItemBehaviour          qué conserva del material base
         │   │   └── ResourceLocation       namespace:ruta validado (anti path traversal)
         │   ├── allocation/StableAllocator números estables por id (estados de note block, emojis)
+        │   ├── animation/
+        │   │   ├── BbModelReader          .bbmodel de Blockbench -> un modelo por hueso + animaciones
+        │   │   ├── AnimatedModel          huesos, clips, texturas e icono, ya en el marco del display
+        │   │   ├── Animator               poses (jerarquía, interpolación) y fotogramas para el cliente
+        │   │   └── Playback               qué fotogramas salen en cada tick; bucle, mantener, una vez
+        │   ├── furniture/BedLayout        las dos mitades de una cama, el display y dónde va la almohada
         │   ├── block/
         │   │   ├── NoteBlockState         los 800 estados de note block ↔ índice ↔ texto
         │   │   └── NoteBlockAllocator     asignación estable bloque → estado, persistida en JSON
@@ -136,8 +148,10 @@ ArkcronistContent/
             │   ├── BlockRegistry          el mapa global de bloques: por id y por estado
             │   ├── CustomBlock            ítem + estado + BlockData listo para aplicar
             │   └── CustomBlockService     reconocer, colocar, olvidar, resincronizar
-            ├── furniture/                 FurnitureService (soporte + ItemDisplay + vínculo en el
-            │                              chunk), SeatService (asientos), StorageService (inventarios)
+            ├── furniture/                 FurnitureService (soporte barrera/luz/cofre/cama + ItemDisplay
+            │                              o huesos + vínculo en el chunk), AnimationPlayer (una tarea
+            │                              por tick, interpolación en el cliente), SeatService
+            │                              (asientos), StorageService (inventarios y tapa)
             ├── protection/                Protection: pregunta a WorldGuard y GriefPrevention antes
             │                              de que el plugin cambie un bloque por su cuenta
             ├── crop/                      CropService, CropTicker (crecimiento asíncrono), CropListener
@@ -151,7 +165,14 @@ ArkcronistContent/
             │   ├── HookManager            detecta cada plugin y arranca su gancho aislado
             │   ├── mythicmobs/            tipo de drop arkcontent{item=...} + ItemSupplier
             │   ├── modelengine/           muebles dibujados con un blueprint de ModelEngine
-            │   └── mythicarmor/           fusiona el pack generado por MythicArmor
+            │   ├── mythicarmor/           fusiona el pack generado por MythicArmor
+            │   ├── auraskills/            ítems en el registro de AuraSkills + experiencia
+            │   ├── mcmmo/ · skillapi/     experiencia por bloques y cultivos (SkillXpHook)
+            │   ├── vault/                 la economía de /arkcontent shop (menu/Shop)
+            │   ├── citizens/              NPCs con ítems o sentados (NpcBridge)
+            │   ├── decentholograms/       holograma de inspección de cultivos
+            │   ├── economyshopgui/        proveedor de ítems de EconomyShopGUI Premium
+            │   └── executableblocks/      convivencia de bloques con ExecutableBlocks
             ├── command/                   CustomGiveCommand, ContentAdminCommand (Brigadier)
             ├── listener/                  uso, combate, mundo, bloques, muebles, almacenamiento,
             │                              entrega del pack
@@ -569,6 +590,125 @@ huecos— y que se cierra solo si el jugador se aleja más de 8 bloques.
   quedara guardado en una posición cuyo mueble desapareció sin romperse (WorldEdit, un rollback) se
   suelta allí cuando se coloca otro, en vez de heredarlo el nuevo.
 
+### Cofres animados (soporte `CHEST` y modelos de Blockbench)
+
+```yaml
+  ruby_chest:
+    type: custom_furniture
+    furniture:
+      support: CHEST
+      animated-model: furniture/ruby_chest    # models/furniture/ruby_chest.bbmodel, tal cual lo guarda Blockbench
+      animations:
+        open: open                            # nombres de las animaciones en Blockbench
+        close: close
+      slots: 27
+      storage-title: "<dark_red>Ruby Chest"
+```
+
+En el mundo hay un **cofre vanilla real** —se pica con hacha como uno, tiene su hitbox, salta con
+las explosiones— y encima el modelo de Blockbench, que lo envuelve. Un soporte `CHEST` siempre es
+almacenamiento (`interactable: storage` implícito) con la misma persistencia que la sección
+anterior; el inventario propio del cofre no se usa nunca:
+
+- **Clic derecho** abre el almacenamiento cuando un cofre vanilla se abriría: sin agacharse, o
+  agachado con las dos manos vacías. En **ese mismo tick** —antes de que conteste la base de datos—
+  arranca la animación `open` en todos los clientes cercanos y suena el cofre; cuando lo cierra el
+  último jugador, `close`.
+- El cofre **nunca se une** a otro en un cofre doble (ni al colocarlo ni si después se pone otro
+  cofre al lado, que se queda simple sin romper un cofre doble vanilla vecino). Las **tolvas**,
+  vagonetas tolva y soltadores no lo llenan ni lo vacían, y cualquier apertura de su inventario real
+  (otro plugin, un comando) se cancela.
+- **Romperlo** (con hacha, a mano, en creativo o por una explosión que las protecciones permitan)
+  suelta el ítem del mueble y lo guardado; nunca el cofre vanilla. Un wither u otro mob no puede
+  cambiarlo.
+- El modelo tiene que **envolver el cofre vanilla**: x/z de 1 a 15 px e y de 0 a 14 px. Si la tapa se
+  abre dejando ver el interior, el cuerpo debe llegar al menos a 14 px (el demo usa 14,25) para que
+  no asome la tapa del cofre de debajo.
+- `/arkcontent animate <nombre>` reproduce cualquier animación del mueble que se mira (el demo trae
+  `shake`), útil para probar un modelo.
+
+#### Cómo se reproduce un `.bbmodel`
+
+El lector convierte el archivo en lo que Minecraft puede dibujar, siguiendo las convenciones de
+BetterModel (Blockbench 5 y anteriores, formatos *Generic* y *Java Block*):
+
+- **Un hueso, un `ItemDisplay`.** Cada grupo con cubos se escribe en el pack como un modelo propio
+  (`assets/<ns>/models/<id>/bone_<hueso>.json`) con su definición de ítem; el display del hueso lleva
+  ese `item_model`. Un display raíz sin ítem ancla el mueble. Las texturas embebidas o con
+  `relative_path` dentro del pack se copian; el inventario muestra el modelo entero en reposo
+  (`<id>/icon`, con padre `block/block`).
+- **Animar no cuesta ticks.** Cada animación se convierte en fotogramas: en cada uno el servidor
+  envía a cada hueso su transformación destino y cuántos ticks tardar (`interpolation_duration`), y
+  el cliente interpola solo, a sus FPS. Un tramo lineal es **un solo paquete por hueso**; las curvas
+  `catmullrom` se muestrean cada 2 ticks; `step` se mantiene y salta en un tick. `loop: once` vuelve
+  al reposo al acabar (como Blockbench), `hold` se queda en el último fotograma (la tapa abierta) y
+  `loop` se repite exactamente cada `length` ticks. Una sola tarea por tick reproduce todo y se
+  detiene sola cuando no hay nada sonando.
+- **Jerarquía real**: la posición y rotación de un hijo se componen con las del padre (el pestillo
+  gira con la tapa); escala del padre incluida.
+- **Límites de Minecraft**: coordenadas de modelo en [-16, 32] (un hueso más grande se encoge y su
+  display lo vuelve a escalar), rotación de cubo en un solo eje y a ±22,5° o ±45° (otra se ajusta a
+  la más cercana y se avisa), hasta 48 huesos. Molang, bezier y valores vacíos se avisan al cargar y
+  se sustituyen (0, o 1 en escala; bezier se reproduce lineal).
+- **Tras un reinicio o un crash** los huesos vuelven al reposo al cargar el chunk, y al apagar el
+  servidor una tapa abierta se cierra antes de guardarse. Si el modelo cambia de huesos, los
+  displays del mueble ya colocado se regeneran al cargar su chunk.
+
+### Camas (soporte `BED`)
+
+```yaml
+  ruby_bed:
+    type: custom_furniture
+    resource:
+      model: furniture/ruby_bed       # 16 px de ancho, 32 de largo (z -8 a 24), almohada al norte
+    furniture:
+      support: BED
+      bed-color: red                  # la cama vanilla de debajo y el material del ítem
+```
+
+Son **dos bloques de cama vanilla reales** (pies y cabecera), así que dormir, fijar el punto de
+reaparición, saltar la noche, no poder dormir con monstruos cerca y explotar en el Nether son de
+vanilla. Encima, un solo display centrado entre las dos mitades y girado hacia donde apunta la cama;
+se dibuja un 1 % más grande que como se diseñó, apoyado en el suelo, para que un modelo del tamaño
+exacto de una cama tape la vanilla sin parpadeo (z-fighting). El cliente tumba al jugador con la
+cabeza en la cabecera, a lo largo de la cama: el cuerpo queda alineado con el modelo en X y Z
+(verificado: posición del jugador dormido = centro del bloque de cabecera).
+
+Romper cualquiera de las dos mitades (o una explosión) quita la cama entera, el display y los dos
+registros, y suelta **un** ítem del mueble, nunca la cama vanilla. Una cama que explota al usarla
+fuera del Overworld desaparece con su modelo y no suelta nada, como en vanilla. Los pistones no la
+mueven ni la rompen.
+
+### Tienda (`price`)
+
+```yaml
+  ruby:
+    price: 250        # cada uno; sin price no se vende
+```
+
+Con Vault y un plugin de economía (EssentialsX, CMI...), `/arkcontent shop` abre el explorador en
+modo tienda: solo los ítems con precio, el precio bajo cada uno, clic compra uno y mayúsculas+clic
+un stack. Se compran los que caben en el inventario y se cobran **antes** de entregarlos; sin saldo,
+no se entrega nada y se dice cuánto falta.
+
+### Experiencia de habilidades (`skill-xp`)
+
+```yaml
+  ruby_block:
+    type: custom_block
+    block:
+      skill-xp: 15      # Minería
+  ruby_seeds:
+    type: custom_crop
+    crop:
+      skill-xp: 8       # Agricultura, al cosechar maduro
+```
+
+Romper un bloque personalizado o cosechar un cultivo maduro, fuera de creativo, da esa experiencia
+a cada plugin de habilidades instalado: AuraSkills (Mining / Farming), mcMMO (Mining / Herbalism),
+SkillAPI·ProSkillAPI y Fabled (experiencia de clase, como rotura de bloque). Para esos plugins un
+note block o un bloque de luz no valen nada por sí solos; así se pagan.
+
 ## 5. Integraciones
 
 Todas opcionales. `paper-plugin.yml` declara cada plugin como dependencia con
@@ -588,6 +728,113 @@ gancho. `/arkcontent info` muestra cuáles están activos (`Hooks: MythicMobs, .
 | MMOItems (+ MythicLib) | antes de este | su stat se registra en `onLoad`, antes de que MMOItems lea sus ítems al habilitarse |
 | WorldGuard (+ WorldEdit) | antes de este | se le pregunta en cada interacción; su API está escrita con clases de WorldEdit |
 | GriefPrevention | antes de este | ídem |
+| AuraSkills | antes de este | sus menús se cargan en el primer tick: los ítems se registran antes |
+| mcMMO, SkillAPI, ProSkillAPI, Fabled | antes de este | solo se les llama al dar experiencia |
+| Vault | antes de este | la economía se busca en cada compra (EssentialsX y otros se registran tarde) |
+| Citizens, DecentHolograms | antes de este | solo se les llama por comando o interacción |
+| EconomyShopGUI Premium | después de este | pide los proveedores de ítems al cargar sus tiendas |
+| SCore, ExecutableBlocks | antes de este | la guardia de bloques se pregunta al identificar uno |
+
+**Aislamiento.** Ninguna clase que arranca los ganchos nombra un tipo que herede de otro plugin, ni
+siquiera como lo que devuelve una lambda (la JVM resuelve ese tipo antes de ejecutarla): una clase
+cuyo padre no existe no se puede ni cargar. `HookIsolationTest` lo comprueba en un classpath sin
+ninguno de esos plugins. Un gancho de habilidades que lance una excepción al dar experiencia se
+avisa una vez y se deja de usar; la rotura o cosecha sigue igual.
+
+**Los ítems están desde el primer tick.** Al habilitarse, el plugin lee el YAML de forma síncrona
+(milisegundos) y publica los ítems antes de arrancar los ganchos; el pack se sigue construyendo en
+segundo plano. Así AuraSkills, EconomyShopGUI o ShopGUI+ encuentran los ítems cuando leen su propia
+configuración al arrancar, no segundos después.
+
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (v1.3)
+
+| Integración | Estado |
+|---|---|
+| AuraSkills 2.4.0 | **Verificado.** 11 ítems registrados antes de que cargue sus menús; `key: demo:ruby_seeds` como icono de Farming en `/skills` y `key: demo:ruby` en Strength de `/stats` llegan al cliente con su `item_model`; romper `ruby_block` da `+15 Mining XP` y cosechar maduro `+8 Farming XP` |
+| mcMMO 2.3.002 | **Verificado.** Mining sube al romper el bloque y Herbalism al cosechar. mcMMO aplica su modificador por habilidad y los perks de XP (un op con 15 de `skill-xp` recibió 66) |
+| Vault 1.7.3 + EssentialsX 2.21.2 | **Verificado.** `/arkcontent shop` muestra solo ítems con precio; comprar un rubí deja el saldo de $1000 en $750; un stack sin saldo suficiente se rechaza sin cobrar |
+| DecentHolograms 2.10.1 | **Verificado.** Agachado + clic derecho con la mano vacía en un cultivo: el cliente recibe el holograma (nombre, etapa, estado), solo para ese jugador, que desaparece a los 5 s |
+| Citizens | **Solo compilado** contra `citizens-main 2.0.44-SNAPSHOT`: ese artefacto no trae los módulos NMS y se desactiva solo en 1.21.8; la distribución completa (CI de Citizens) no era accesible desde aquí |
+| SkillAPI / ProSkillAPI, Fabled | **Solo compilados** contra ProSkillAPI 1.3.1-R1 y Fabled 1.0.4-R0.56 reales; necesitan ProMCCore / CodexCore y clases configuradas para probarse |
+| EconomyShopGUI Premium | **Solo compilado** contra la API 1.11.0 real (Premium es de pago) |
+| ExecutableBlocks | **Solo compilado** (de pago; firmas de SCore 5.25 copiadas, como Iris y MMOItems) |
+| EconomyShopGUI gratuito 7.3.2 | **No compatible**, verificado: no tiene proveedores de ítems y `/editshop addhanditem` guarda solo material y lore, sin `item_model` ni la etiqueta del plugin |
+| DailyShop 3.8 | **No arranca en Paper 1.21.8**, verificado (`ArrayIndexOutOfBoundsException` en su propio inicio); no tiene API |
+
+### AuraSkills
+
+```yaml
+# AuraSkills/menus/skills.yml — el icono de Farming
+      farming:
+        group: second_row
+        order: 1
+        key: demo:ruby_seeds          # cualquier ítem, como namespace:id (o namespace/id)
+# AuraSkills/menus/stats.yml — una estadística
+      strength: {group: upper_left, order: 1, key: demo:ruby}
+```
+
+Cada ítem se registra en el registro de ítems de AuraSkills con su propio namespace e id, así que
+sirve en sus menús (`/skills`, `/stats`...), recompensas y tablas de loot con `key:`. Tras
+`/arkcontent reload` el registro se actualiza (altas y bajas); un menú que use un ítem nuevo lo
+muestra después de `/skills reload`. Experiencia: ver «Experiencia de habilidades».
+
+### mcMMO, SkillAPI / ProSkillAPI y Fabled
+
+Solo experiencia (`skill-xp`, sección 4): Mining y Herbalism en mcMMO; experiencia de clase con
+origen *rotura de bloque* en SkillAPI y Fabled, que la clase gana si su `exp-sources` lo incluye.
+
+### Vault
+
+`/arkcontent shop` (permiso `arkcontent.shop`), ver «Tienda» en la sección 4.
+
+### Citizens
+
+```
+/npc select
+/arkcontent npc equip hand demo:ruby_sword     # hand, off_hand, helmet, chestplate, leggings, boots, body...
+/arkcontent npc sit                            # mirando un mueble: se sienta a la altura de su asiento
+```
+
+El NPC recibe la misma stack que `/customgive`, con su modelo; Citizens la guarda con el NPC.
+`/npc equip` con el ítem en la mano también funciona; esto ahorra escribir y lo permite desde consola
+o scripts. Si Citizens está instalado pero no arrancó, el comando lo dice en vez de fallar.
+
+### DecentHolograms
+
+Agachado y con la mano vacía, clic derecho en un cultivo: un holograma visible solo para ti dice
+su nombre, la etapa con una barra y si está maduro, durante 5 s. Esos hologramas no se guardan en
+los archivos de DecentHolograms. En tus propios hologramas los emojis funcionan por PlaceholderAPI
+(`%arkcontent_emoji_<nombre>%`); una línea `#ICON` no puede mostrar el modelo de un ítem
+personalizado, porque DecentHolograms solo conserva material y CustomModelData, no `item_model`.
+
+### EconomyShopGUI Premium
+
+```yaml
+# EconomyShopGUI-Premium/shops/Gems.yml
+pages:
+  page1:
+    items:
+      '1':
+        material: "arkcontent:demo:ruby"
+        buy: 250
+        sell: 50
+```
+
+Proveedor externo de ítems registrado cuando EconomyShopGUI lo pide (`ItemProviderPreLoadEvent`):
+el comprador recibe la stack de `/customgive` y vender reconoce la etiqueta del plugin. La versión
+gratuita no tiene esta API (ver la tabla de arriba).
+
+### ExecutableBlocks
+
+Convivencia: un bloque colocado por ExecutableBlocks nunca se toma por un bloque personalizado de
+este plugin, aunque sea un note block cuyo estado coincida; y ExecutableBlocks no puede colocar un
+bloque (por ítem o por comando como `SETEXECUTABLEBLOCK`) donde ya hay un bloque, mueble o cultivo
+de este plugin.
+
+### DailyShop
+
+Sin gancho: no tiene API. La versión 3.8 no llega a arrancar en Paper 1.21.8 (ver tabla).
+
 
 ### MythicMobs
 
@@ -919,8 +1166,15 @@ con `join-classpath: true` para ver sus clases.
   pega desde `/emojis`), no la palabra clave.
 - Asientos: uno por mueble, con la altura fija de `seat-height`. Un mueble es asiento, contenedor o
   ninguno de los dos, no ambos.
-- Muebles con almacenamiento: las tolvas no los alimentan ni los vacían (su soporte es una barrera,
-  no un contenedor).
+- Muebles con almacenamiento: las tolvas no los alimentan ni los vacían (con soporte barrera no hay
+  contenedor; con soporte cofre se bloquean a propósito, porque el contenido vive en la base de
+  datos).
+- Cofres y camas: el modelo debe envolver el bloque vanilla (medidas en la sección 4). Clicar en la
+  parte de un modelo que sobresale del bloque con la mano vacía no llega al servidor (sin ítem en la
+  mano el cliente no envía clic al aire); con un ítem sí, y se sigue la línea de visión.
+- Un mueble animado no usa ModelEngine (si ambos están configurados gana el modelo animado). Las
+  animaciones se reproducen al abrir/cerrar o por comando; aún no hay animaciones en bucle al estar
+  colocado.
 - Subida automática: solo APIs que aceptan un formulario multipart (o PUT con él). Servicios que
   exigen firmar la petición (S3 con firma v4) o subir por partes no están cubiertos; para esos,
   `external-url` y subir el ZIP con su propia herramienta.
