@@ -41,6 +41,10 @@ class DemoContentTest {
         assertNotNull(chest.animated());
         assertTrue(chest.animated().model().clips().keySet().containsAll(java.util.List.of("open", "close", "shake")));
         assertNotNull(chest.animated().model().icon(), "its inventory icon is the model at rest");
+        // The lid rides on the body: shaking the chest shakes its lid with it.
+        var bones = chest.animated().model().bones();
+        int body = bones.stream().map(bone -> bone.name()).toList().indexOf("body");
+        assertEquals(body, bones.stream().filter(bone -> bone.name().equals("lid")).findFirst().orElseThrow().parent());
         assertEquals("CHEST", items.get("demo:ruby_chest").material());
 
         Placement.Furniture bed = (Placement.Furniture) items.get("demo:ruby_bed").placement();
