@@ -2,9 +2,12 @@ package com.arkcronist.content.bukkit.crop;
 
 import com.arkcronist.content.bukkit.item.CustomItem;
 import com.arkcronist.content.bukkit.item.ItemFactory;
+import com.arkcronist.content.bukkit.protection.Interaction;
+import com.arkcronist.content.bukkit.protection.Protection;
 import com.arkcronist.content.core.crop.PlantedCrop;
 import com.arkcronist.content.core.definition.Placement;
 import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
@@ -36,6 +39,7 @@ import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.List;
@@ -51,20 +55,27 @@ import java.util.logging.Logger;
  *
  * <p>Harvesting works like furniture: a punch at the crop is followed through the air to it and
  * turned into a real {@link BlockBreakEvent}, so protection plugins decide as for any block.</p>
+ *
+ * <p>Everything this listener does to a crop on its own account - planting it, bone meal, uprooting
+ * it after its soil was trampled, blown up or washed over - is first put to every installed
+ * protection plugin through {@link Protection}, and stops if any of them says no. Every handler
+ * reacting to a vanilla event also ignores one a protection plugin has already cancelled.</p>
  */
 public final class CropListener implements Listener {
 
     private final Plugin plugin;
     private final CropService crops;
     private final ItemFactory items;
+    private final Protection protection;
     private final Logger logger;
     /** The tick each player last used bone meal on a crop. */
     private final Map<UUID, Integer> lastBoneMeal = new HashMap<>();
 
-    public CropListener(Plugin plugin, CropService crops, ItemFactory items) {
+    public CropListener(Plugin plugin, CropService crops, ItemFactory items, Protection protection) {
         this.plugin = plugin;
         this.crops = crops;
         this.items = items;
+        this.protection = protection;
         this.logger = plugin.getLogger();
     }
 
@@ -95,7 +106,8 @@ public final class CropListener implements Listener {
         // Clicking soil with seeds is planting, whether or not it works: never tilling, never placing.
         event.setUseItemInHand(Event.Result.DENY);
         event.setUseInteractedBlock(Event.Result.DENY);
-        if (player.getGameMode() != GameMode.ADVENTURE && player.getGameMode() != GameMode.SPECTATOR) {
+        if (player.getGameMode() != GameMode.ADVENTURE && player.getGameMode() != GameMode.SPECTATOR
+                && protection.check(player, clicked.getRelative(BlockFace.UP), Interaction.PLACE)) {
             crops.plant(player, clicked, item.get(), crop, event.getHand());
         }
     }
@@ -117,7 +129,8 @@ public final class CropListener implements Listener {
         Block block = target.get();
         Optional<PlantedCrop> crop = crops.at(block);
         Optional<Placement.Crop> definition = crop.flatMap(crops::definition);
-        if (definition.isPresent() && crops.boneMeal(block, crop.get(), definition.get())
+        if (definition.isPresent() && protection.check(player, block, Interaction.BUILD)
+                && crops.boneMeal(block, crop.get(), definition.get())
                 && player.getGameMode() != GameMode.CREATIVE) {
             held.setAmount(held.getAmount() - 1);
             player.getInventory().setItem(event.getHand(), held.getAmount() > 0 ? held : null);
@@ -143,18 +156,28 @@ public final class CropListener implements Listener {
         }
         event.setCancelled(true);
         Block block = target.get();
+        if (!protection.check(event.getPlayer(), block, Interaction.BREAK)) {
+            return;
+        }
         BlockBreakEvent breakEvent = new BlockBreakEvent(block, event.getPlayer());
         breakEvent.setDropItems(false);
         breakEvent.callEvent();
     }
 
-    /** The crop's own block, broken through the punch above; or its soil, broken any way at all. */
+    /**
+     * The crop's own block, broken through the punch above; or its soil, broken any way at all. The
+     * crop on broken soil is a block of its own, which may lie in an area the soil does not: it is
+     * only uprooted if the player may break it too.
+     */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
-        boolean drop = event.getPlayer().getGameMode() != GameMode.CREATIVE;
+        Player player = event.getPlayer();
+        boolean drop = player.getGameMode() != GameMode.CREATIVE;
         crops.at(block).ifPresent(crop -> crops.remove(block, crop, drop));
-        crops.above(block).ifPresent(crop -> crops.remove(block.getRelative(BlockFace.UP), crop, drop));
+        Block above = block.getRelative(BlockFace.UP);
+        crops.above(block).filter(crop -> protection.allows(player, above, Interaction.BREAK))
+                .ifPresent(crop -> crops.remove(above, crop, drop));
     }
 
     // ---------------------------------------------------------------- the world
@@ -176,19 +199,31 @@ public final class CropListener implements Listener {
         }
     }
 
-    /** Trampled farmland: the crop on it is uprooted, as wheat is. */
+    /**
+     * Trampled farmland: the crop on it is uprooted, as wheat is - when the trampling got past every
+     * protection plugin, and the player may break the crop itself.
+     */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onTrample(PlayerInteractEvent event) {
-        if (event.getAction() == Action.PHYSICAL && event.getClickedBlock() != null
-                && event.getClickedBlock().getType() == Material.FARMLAND) {
-            uprootLater(event.getClickedBlock());
+        Block soil = event.getClickedBlock();
+        if (event.getAction() == Action.PHYSICAL && soil != null && soil.getType() == Material.FARMLAND
+                && protection.allows(event.getPlayer(), soil.getRelative(BlockFace.UP), Interaction.BREAK)) {
+            uprootLater(soil);
         }
     }
 
+    /** A mob trampling farmland: judged by where the mob is, as protection plugins judge mobs. */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityTrample(EntityChangeBlockEvent event) {
-        if (event.getBlock().getType() == Material.FARMLAND && event.getTo() != Material.FARMLAND) {
-            uprootLater(event.getBlock());
+        Block soil = event.getBlock();
+        if (soil.getType() != Material.FARMLAND || event.getTo() == Material.FARMLAND) {
+            return;
+        }
+        boolean allowed = event.getEntity() instanceof Player player
+                ? protection.allows(player, soil.getRelative(BlockFace.UP), Interaction.BREAK)
+                : protection.allowsChange(soil.getRelative(BlockFace.UP), event.getEntity().getLocation());
+        if (allowed) {
+            uprootLater(soil);
         }
     }
 
@@ -199,7 +234,8 @@ public final class CropListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onFlow(BlockFromToEvent event) {
         Block to = event.getToBlock();
-        crops.at(to).ifPresent(crop -> crops.remove(to, crop, true));
+        crops.at(to).filter(crop -> protection.allowsChange(to, event.getBlock().getLocation()))
+                .ifPresent(crop -> crops.remove(to, crop, true));
     }
 
     /**
@@ -214,6 +250,11 @@ public final class CropListener implements Listener {
             return;
         }
         Player player = event.getPlayer();
+        if (!protection.check(player, target, Interaction.BREAK)) {
+            // Left to vanilla, the bucket would waterlog the crop's light block.
+            event.setCancelled(true);
+            return;
+        }
         crops.remove(target, crop.get(), player.getGameMode() != GameMode.CREATIVE);
         if (event.getBucket() == Material.WATER_BUCKET) {
             event.setCancelled(true);
@@ -227,12 +268,12 @@ public final class CropListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityExplode(EntityExplodeEvent event) {
-        uprootAbove(event.blockList());
+        uprootAbove(event.blockList(), event.getLocation(), event.getEntity());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBlockExplode(BlockExplodeEvent event) {
-        uprootAbove(event.blockList());
+        uprootAbove(event.blockList(), event.getBlock().getLocation(), null);
     }
 
     /**
@@ -264,10 +305,16 @@ public final class CropListener implements Listener {
         return false;
     }
 
-    /** The light block itself resists explosions; the soil under it does not. */
-    private void uprootAbove(List<Block> destroyed) {
+    /**
+     * The light block itself resists explosions; the soil under it does not. By MONITOR the list
+     * holds only what protection plugins let the blast destroy - and the crop, a block of its own,
+     * is asked about separately.
+     */
+    private void uprootAbove(List<Block> destroyed, Location origin, @Nullable Entity source) {
         for (Block block : destroyed) {
-            crops.above(block).ifPresent(crop -> crops.remove(block.getRelative(BlockFace.UP), crop, true));
+            Block above = block.getRelative(BlockFace.UP);
+            crops.above(block).filter(crop -> protection.allowsExplosion(above, origin, source))
+                    .ifPresent(crop -> crops.remove(above, crop, true));
         }
     }
 

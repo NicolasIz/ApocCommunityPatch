@@ -336,7 +336,7 @@ public final class ContentLoader {
 
     private static Placement.Furniture furniture(Map<?, ?> section, String prefix, List<String> problems) {
         if (section == null) {
-            return new Placement.Furniture(Placement.Support.BARRIER, 0, true, Placement.Display.DEFAULT, null, null);
+            return new Placement.Furniture(Placement.Support.BARRIER, 0, true, Placement.Display.DEFAULT, null, null, null);
         }
 
         Placement.Support support = Placement.Support.BARRIER;
@@ -361,26 +361,55 @@ public final class ContentLoader {
             light = 0;
         }
 
+        String interactable = interactable(section, prefix, problems);
         return new Placement.Furniture(support, light,
                 flag(section, "face-player", true, prefix, problems),
                 display(section(section, "display", prefix, problems), prefix, problems),
                 modelEngineId(section, prefix, problems),
-                seat(section, prefix, problems));
+                interactable.equals("seat") ? seat(section, prefix, problems) : null,
+                interactable.equals("storage") ? storage(section, prefix, problems) : null);
+    }
+
+    /**
+     * What a right click does: {@code seat}, {@code storage}, or {@code ""} for nothing. The settings
+     * of the kind not chosen are reported if present, rather than silently ignored.
+     */
+    private static String interactable(Map<?, ?> section, String prefix, List<String> problems) {
+        String raw = text(section, "interactable", prefix, problems);
+        String kind = raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
+        if (!kind.isEmpty() && !kind.equals("seat") && !kind.equals("storage")) {
+            problems.add(prefix + "'interactable' can only be 'seat' or 'storage', not '" + raw.trim() + "'");
+            kind = "";
+        }
+        if (!kind.equals("seat") && section.containsKey("seat-height")) {
+            problems.add(prefix + "'seat-height' is only read with interactable: seat");
+        }
+        for (String key : List.of("slots", "storage-title")) {
+            if (!kind.equals("storage") && section.containsKey(key)) {
+                problems.add(prefix + "'" + key + "' is only read with interactable: storage");
+            }
+        }
+        return kind;
+    }
+
+    /** {@code interactable: storage}: how many {@code slots}, and the inventory's {@code storage-title}. */
+    private static Placement.Storage storage(Map<?, ?> section, String prefix, List<String> problems) {
+        int slots = Placement.Storage.DEFAULT_SLOTS;
+        Object raw = section.get("slots");
+        if (raw != null) {
+            if (raw instanceof Integer number && Placement.Storage.validSlots(number)) {
+                slots = number;
+            } else {
+                problems.add(prefix + "'slots' must be whole rows of nine - 9, 18, 27, 36, 45 or 54 - not '" + raw
+                        + "'; using " + Placement.Storage.DEFAULT_SLOTS);
+            }
+        }
+        String title = text(section, "storage-title", prefix, problems);
+        return new Placement.Storage(slots, title == null || title.isBlank() ? null : title);
     }
 
     /** {@code interactable: seat}, and where the seat is: {@code seat-height}, blocks above the floor. */
     private static Placement.Seat seat(Map<?, ?> section, String prefix, List<String> problems) {
-        String interactable = text(section, "interactable", prefix, problems);
-        boolean seat = interactable != null && interactable.trim().equalsIgnoreCase("seat");
-        if (interactable != null && !seat && !interactable.isBlank()) {
-            problems.add(prefix + "'interactable' can only be 'seat', not '" + interactable.trim() + "'");
-        }
-        if (!seat) {
-            if (section.containsKey("seat-height")) {
-                problems.add(prefix + "'seat-height' is only read with interactable: seat");
-            }
-            return null;
-        }
         Object height = section.get("seat-height");
         if (height == null) {
             return Placement.Seat.DEFAULT;

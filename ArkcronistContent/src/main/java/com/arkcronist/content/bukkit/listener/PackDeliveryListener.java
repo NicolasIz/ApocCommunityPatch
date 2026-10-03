@@ -49,8 +49,12 @@ public final class PackDeliveryListener implements Listener {
         switch (event.getStatus()) {
             case FAILED_DOWNLOAD, INVALID_URL -> logger.warning(player + " could not download the resource pack ("
                     + event.getStatus() + "). Check that " + delivery.currentUrl()
-                    + " opens from outside the server's network; http.public-address and the port"
-                    + " forwarding are the usual suspects.");
+                    + " opens from outside the server's network" + switch (settings.hosting()) {
+                        case BUILTIN -> "; http.public-address and the port forwarding are the usual suspects.";
+                        case EXTERNAL -> " and serves the zip from the last rebuild, byte for byte.";
+                        case UPLOAD -> "; the storage service may have expired or blocked the file. With"
+                                + " upload.verify on, /arkcontent reload checks the link and uploads again if it is gone.";
+                    });
             case FAILED_RELOAD -> logger.warning(player + " downloaded the resource pack but could not"
                     + " apply it. The client log names the file it rejected.");
             case DECLINED -> logger.info(player + " declined the resource pack.");

@@ -1,12 +1,15 @@
 package com.arkcronist.content.bukkit.hooks;
 
 import com.arkcronist.content.bukkit.ArkContentPlugin;
+import com.arkcronist.content.bukkit.hooks.griefprevention.GriefPreventionProtection;
 import com.arkcronist.content.bukkit.hooks.iris.IrisHook;
+import com.arkcronist.content.bukkit.hooks.mmoitems.MMOItemsHook;
 import com.arkcronist.content.bukkit.hooks.modelengine.ModelEngineHook;
 import com.arkcronist.content.bukkit.hooks.mythicarmor.MythicArmorHook;
 import com.arkcronist.content.bukkit.hooks.mythicmobs.MythicMobsHook;
 import com.arkcronist.content.bukkit.hooks.placeholderapi.ArkContentExpansion;
 import com.arkcronist.content.bukkit.hooks.shopgui.ShopGuiPlusHook;
+import com.arkcronist.content.bukkit.hooks.worldguard.WorldGuardProtection;
 import org.bukkit.event.Listener;
 import org.jetbrains.annotations.Nullable;
 
@@ -43,7 +46,18 @@ public final class HookManager {
         this.logger = plugin.getLogger();
     }
 
-    /** Detects and starts every hook. Main thread, from onEnable. */
+    /**
+     * The hooks that must be in place before other plugins enable: MMOItems reads its item configs
+     * as it enables, and the stat they use has to be registered by then. Main thread, from onLoad.
+     */
+    public void load() {
+        create("MMOItems", "net.Indyuce.mmoitems.stat.type.StringStat", () -> {
+            MMOItemsHook.register(plugin::items, logger);
+            return Boolean.TRUE;
+        });
+    }
+
+    /** Detects and starts every other hook. Main thread, from onEnable. */
     public void enable() {
         MythicMobsHook mythicMobs = create("MythicMobs", "io.lumine.mythic.bukkit.events.MythicDropLoadEvent",
                 () -> new MythicMobsHook(plugin.items(), plugin.itemFactory(), logger));
@@ -81,6 +95,18 @@ public final class HookManager {
         // Iris loads first - it generates worlds - so its data service is running by now.
         create("Iris", "com.volmit.iris.core.link.ExternalDataProvider",
                 () -> new IrisHook(plugin.getName(), plugin.blocks(), plugin.items(), plugin.itemFactory()));
+
+        // Protection plugins: asked before this plugin changes a block on its own.
+        create("WorldGuard", "com.sk89q.worldguard.protection.regions.RegionQuery", () -> {
+            WorldGuardProtection worldGuard = new WorldGuardProtection();
+            plugin.protection().add(worldGuard);
+            return worldGuard;
+        });
+        create("GriefPrevention", "me.ryanhamshire.GriefPrevention.Claim", () -> {
+            GriefPreventionProtection griefPrevention = new GriefPreventionProtection();
+            plugin.protection().add(griefPrevention);
+            return griefPrevention;
+        });
     }
 
     /** The ModelEngine bridge, or null without ModelEngine. */

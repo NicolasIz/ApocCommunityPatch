@@ -20,8 +20,11 @@ import com.arkcronist.content.core.pack.ExternalPack;
 import com.arkcronist.content.core.pack.PackArtifact;
 import com.arkcronist.content.core.pack.PackCompiler;
 import com.arkcronist.content.core.pack.PackZipper;
+import com.arkcronist.content.core.upload.PackUploader;
+import com.arkcronist.content.core.upload.UploadSettings;
 
 import org.bukkit.Material;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -54,8 +57,12 @@ import java.util.logging.Logger;
  * <pre>
  *   worker  : load contents/*.yml -> assign note block states and emoji characters
  *             -> compile pack/ -> zip resource_pack.zip -> SHA-1
+ *             -> find its link: the built-in server, http.external-url, or an upload (upload:)
  *   main    : swap item, block and emoji registries and live pack, resend to online players
  * </pre>
+ *
+ * <p>An upload's network waits do not hold the worker either: the request goes out through the
+ * HTTP client's own threads, and the stages after it are queued back onto the worker.</p>
  *
  * <p>The ItemsAdder import writes into contents/, so it runs on the same worker and in the same
  * queue: never while a rebuild is reading the files it writes.</p>
@@ -76,6 +83,8 @@ public final class ContentPipeline {
             "contents/demo/textures/block/ruby_block.png",
             "contents/demo/models/furniture/ruby_pedestal.json",
             "contents/demo/textures/furniture/pedestal_stone.png",
+            "contents/demo/models/furniture/ruby_crate.json",
+            "contents/demo/textures/furniture/ruby_crate.png",
             "contents/demo/crops.yml",
             "contents/demo/textures/item/ruby_seeds.png",
             "contents/demo/textures/crop/ruby_stage_0.png",
@@ -93,7 +102,18 @@ public final class ContentPipeline {
      * @param problems everything that was skipped or looked wrong, already logged
      */
     public record Report(int items, int blocks, int emojis, int files, String sha1Hex, int bytes, boolean changed,
-                         List<String> problems, long millis) {
+                         @Nullable String url, String hosting, List<String> problems, long millis) {
+    }
+
+    /**
+     * Where one build of the pack can be downloaded.
+     *
+     * @param url          what players are sent; null for nowhere
+     * @param note         how it got there, for the log
+     * @param keepPrevious the upload failed and nothing else serves this build: the live pack stays
+     *                     as it was, since its link still works
+     */
+    private record Hosted(@Nullable String url, String note, boolean keepPrevious) {
     }
 
     /** Emoji characters: Unicode's private use area, which no font draws until a pack says so. */
@@ -108,22 +128,26 @@ public final class ContentPipeline {
      */
     private record Build(Map<String, CustomItem> items, Map<String, NoteBlockState> noteBlocks,
                          List<EmojiDefinition> emojiDefinitions, Map<EmojiDefinition, Integer> emojis,
-                         List<String> problems, int files, PackArtifact artifact) {
+                         List<String> problems, int files, PackArtifact artifact, Hosted hosted) {
 
         Build withNoteBlocks(Map<String, NoteBlockState> noteBlocks) {
-            return new Build(items, noteBlocks, emojiDefinitions, emojis, problems, files, artifact);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, problems, files, artifact, hosted);
         }
 
         Build withEmojis(Map<EmojiDefinition, Integer> emojis) {
-            return new Build(items, noteBlocks, emojiDefinitions, emojis, problems, files, artifact);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, problems, files, artifact, hosted);
         }
 
         Build withFiles(int files) {
-            return new Build(items, noteBlocks, emojiDefinitions, emojis, problems, files, artifact);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, problems, files, artifact, hosted);
         }
 
         Build withArtifact(PackArtifact artifact) {
-            return new Build(items, noteBlocks, emojiDefinitions, emojis, problems, files, artifact);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, problems, files, artifact, hosted);
+        }
+
+        Build withHosted(Hosted hosted) {
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, problems, files, artifact, hosted);
         }
     }
 
@@ -145,6 +169,8 @@ public final class ContentPipeline {
 
     private final ExecutorService worker;
     private final Executor mainThread;
+    /** Null unless upload: is on. */
+    private final @Nullable PackUploader uploader;
 
     /** Other plugins' packs to merge into ours, by name. Set from the main thread, read by the worker. */
     private final Map<String, ExternalPack> externalPacks = new ConcurrentHashMap<>();
@@ -183,6 +209,10 @@ public final class ContentPipeline {
                 plugin.getServer().getScheduler().runTask(plugin, task);
             }
         };
+        UploadSettings upload = settings.upload();
+        this.uploader = upload == null ? null : new PackUploader(upload, PackUploader.defaultClient(upload),
+                data.resolve("data").resolve("upload.json"), worker,
+                plugin.getName() + "/" + plugin.getPluginMeta().getVersion());
     }
 
     /** The thread that does all of this plugin's disk work. */
@@ -275,6 +305,7 @@ public final class ContentPipeline {
                 .thenApplyAsync(this::compilePack, worker)
                 .thenComposeAsync(this::zipPack, worker)
                 .thenApplyAsync(this::hashPack, worker)
+                .thenComposeAsync(this::host, worker)
                 .thenApplyAsync(build -> publish(build, started), mainThread);
     }
 
@@ -295,7 +326,7 @@ public final class ContentPipeline {
                 }
             }
             checkCrops(items, problems);
-            return new Build(items, Map.of(), report.emojis(), Map.of(), problems, 0, null);
+            return new Build(items, Map.of(), report.emojis(), Map.of(), problems, 0, null, null);
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
@@ -410,6 +441,46 @@ public final class ContentPipeline {
         }
     }
 
+    /** Decides the link players are sent for this build - uploading the zip first, when upload: is on. */
+    private CompletableFuture<Build> host(Build build) {
+        String sha1 = build.artifact().sha1Hex();
+        return switch (settings.hosting()) {
+            case BUILTIN -> CompletableFuture.completedFuture(build.withHosted(settings.http().enabled()
+                    ? new Hosted(settings.http().packUrl(sha1), "served by the built-in web server", false)
+                    : new Hosted(null, "the built-in web server is off and no other hosting is set; host "
+                    + zipFile + " yourself", false)));
+            case EXTERNAL -> CompletableFuture.completedFuture(build.withHosted(new Hosted(
+                    settings.http().externalUrl(sha1), "hosted at http.external-url - upload " + zipFile
+                    + " there after each rebuild", false)));
+            case UPLOAD -> upload(build);
+        };
+    }
+
+    private CompletableFuture<Build> upload(Build build) {
+        PackArtifact pack = build.artifact();
+        long started = System.nanoTime();
+        // An unchanged pack keeps its link (data/upload.json): checked, not uploaded again.
+        return uploader.publish(pack.bytes(), pack.sha1Hex()).handleAsync((result, error) -> {
+            if (error == null) {
+                String how = result.reused() ? "already uploaded" : "uploaded in "
+                        + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started) + " ms"
+                        + (result.attempts() > 1 ? " (" + result.attempts() + " attempts)" : "");
+                return build.withHosted(new Hosted(result.url(), how + (result.verified() ? ", download checked" : ""),
+                        false));
+            }
+            Throwable cause = error instanceof CompletionException && error.getCause() != null ? error.getCause() : error;
+            String reason = "Upload failed: " + cause.getMessage();
+            if (plugin.httpRunning()) {
+                build.problems().add(reason + ". Players are sent the built-in web server's link instead.");
+                return build.withHosted(new Hosted(settings.http().packUrl(pack.sha1Hex()),
+                        "served by the built-in web server, the upload having failed", false));
+            }
+            build.problems().add(reason + ". Players keep the pack they have; the new items have no textures until"
+                    + " an upload succeeds (/arkcontent reload tries again).");
+            return build.withHosted(new Hosted(null, "not uploaded", true));
+        }, worker);
+    }
+
     private void extractExamplesOnFirstRun() throws IOException {
         if (Files.exists(contentsDir)) {
             return;
@@ -440,7 +511,10 @@ public final class ContentPipeline {
         if (plugin.menus() != null) {
             plugin.menus().refreshOpen();
         }
-        boolean changed = delivery.publish(build.artifact());
+        Hosted hosted = build.hosted();
+        // A failed upload leaves the live pack alone: its link still works, the new one would not.
+        boolean changed = !(hosted.keepPrevious() && delivery.live() != null)
+                && delivery.publish(build.artifact(), hosted.url());
         if (changed) {
             delivery.sendAll(plugin.getServer().getOnlinePlayers());
         }
@@ -448,7 +522,7 @@ public final class ContentPipeline {
         PackArtifact pack = build.artifact();
         Report report = new Report(build.items().size(), customBlocks.size(), build.emojis().size(), pack.entries(),
                 pack.sha1Hex(), pack.size(),
-                changed, List.copyOf(build.problems()),
+                changed, hosted.url(), hosted.note(), List.copyOf(build.problems()),
                 TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started));
         log(report);
         return report;
@@ -458,7 +532,6 @@ public final class ContentPipeline {
         for (String problem : report.problems()) {
             logger.warning(problem);
         }
-        String url = delivery.currentUrl();
         logger.info(report.items() + " custom item(s) (" + report.blocks() + " block(s)), " + report.emojis()
                 + " emoji(s), pack of "
                 + report.files() + " file(s), "
@@ -466,8 +539,7 @@ public final class ContentPipeline {
                 + (report.changed() ? "" : " (unchanged)")
                 + " - built in " + report.millis() + " ms"
                 + (report.problems().isEmpty() ? "" : ", " + report.problems().size() + " problem(s) above")
-                + (url != null ? ". Served at " + url : ". Built-in web server is off; host "
-                        + zipFile + " yourself."));
+                + ". Pack " + report.hosting() + (report.url() != null ? ": " + report.url() : "."));
     }
 
     /**

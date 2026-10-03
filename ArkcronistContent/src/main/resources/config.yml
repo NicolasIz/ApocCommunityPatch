@@ -37,6 +37,58 @@ http:
   public-address: ""
   # Downloads served at the same time. More players than this simply queue.
   threads: 4
+  # Host the pack yourself instead: a CDN, a web host, a bucket. Players are sent
+  # this link (with the pack's SHA-1, so their client still checks the download)
+  # and you upload output/resource_pack.zip there after every rebuild. {sha1} in
+  # the link becomes the pack's hash, for hosts that cache by URL. Empty: unused.
+  # With this set you can turn the built-in server off (enabled: false).
+  external-url: ""
+
+# ---------------------------------------------------------------------------
+#  Automatic upload to a web storage API
+# ---------------------------------------------------------------------------
+#  After every rebuild the zip is sent to 'url' as a multipart/form-data POST -
+#  the request an HTML upload form makes - and players are sent the download
+#  link found in the answer, with the new pack's SHA-1. An unchanged pack is
+#  not uploaded again (data/upload.json remembers the link). The upload runs
+#  off the main thread; until it is done players keep the pack they have.
+#  This overrides http.external-url. If an upload fails, players are sent the
+#  built-in server's link when it is running, or keep their previous pack.
+# ---------------------------------------------------------------------------
+upload:
+  enabled: false
+  # The service's upload endpoint.
+  url: "https://storage.example.com/api/upload"
+  # POST, or PUT for the services that want it.
+  method: POST
+  # The form field the zip goes in, and the file name sent with it.
+  file-field: "file"
+  file-name: "resource_pack.zip"
+  # More form fields, sent before the file: a folder, an expiry, a key...
+  fields: {}
+  #   folder: "minecraft"
+  # Request headers - usually the service's API key.
+  headers: {}
+  #   Authorization: "Bearer YOUR-TOKEN"
+  # Where the link is in the answer. A JSON answer: its path, as in data.url or
+  # files[0].url. Any other answer: a regular expression in url-pattern whose
+  # first group is the link. Neither set: the whole answer is the link.
+  response:
+    url-path: "data.url"
+    url-pattern: ""
+  # The link players are sent. {value} is what was found above, {sha1} the
+  # pack's hash; for a service that answers with a file id, write the link
+  # around it, e.g. "https://cdn.example.com/files/{value}".
+  download-url: "{value}"
+  # Per request, in seconds (5-600).
+  timeout-seconds: 60
+  # Tries again this many times after a network error, timeout or 5xx answer,
+  # pausing 2, 4, 8... seconds. A refusal (wrong key, file too large) is not retried.
+  retries: 2
+  # Download the link back and compare its SHA-1 before sending it to anyone.
+  # Catches services that recompress or truncate files, which players' clients
+  # would reject. Costs one download per changed pack.
+  verify: true
 
 delivery:
   # Send the pack to every player as they join.

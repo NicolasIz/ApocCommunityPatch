@@ -7,14 +7,18 @@ import org.jetbrains.annotations.Nullable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Holds the pack that is live right now and sends it to players.
+ * Holds the pack that is live right now, and the link players download it from, and sends both to
+ * players.
  *
  * <p>The web server reads {@link #current()} from its own threads and the main thread replaces it
- * after a rebuild, hence the atomic reference: a request sees one complete build or the next.</p>
+ * after a rebuild, hence the atomic reference: a request sees one complete build or the next. The
+ * pack and its link are swapped together, so a player is never sent one build's hash with
+ * another build's link - which the client would reject.</p>
  */
 public final class PackDelivery {
 
@@ -26,8 +30,17 @@ public final class PackDelivery {
     public static final UUID PACK_ID =
             UUID.nameUUIDFromBytes("arkcronist-content:resource-pack".getBytes(StandardCharsets.UTF_8));
 
+    /**
+     * A pack and where it can be downloaded.
+     *
+     * @param url null when there is nowhere: hosting is off, or an upload failed with nothing to
+     *            fall back on
+     */
+    public record Live(PackArtifact artifact, @Nullable String url) {
+    }
+
     private final EngineSettings settings;
-    private final AtomicReference<PackArtifact> current = new AtomicReference<>();
+    private final AtomicReference<Live> current = new AtomicReference<>();
 
     public PackDelivery(EngineSettings settings) {
         this.settings = settings;
@@ -35,24 +48,31 @@ public final class PackDelivery {
 
     /** The pack being served, or null before the first build has finished. Any thread. */
     public @Nullable PackArtifact current() {
+        Live live = current.get();
+        return live == null ? null : live.artifact();
+    }
+
+    /** The live pack and its link together, or null before the first build. Any thread. */
+    public @Nullable Live live() {
         return current.get();
     }
 
     /**
-     * Makes {@code artifact} the live pack.
+     * Makes {@code artifact}, downloadable at {@code url}, the live pack.
      *
-     * @return true when its content differs from the pack it replaces - that is, when players
-     *         need to be sent it again
+     * @return true when its content or its link differs from what it replaces - that is, when
+     *         players need to be sent it again
      */
-    public boolean publish(PackArtifact artifact) {
-        PackArtifact previous = current.getAndSet(artifact);
-        return previous == null || !previous.sha1Hex().equals(artifact.sha1Hex());
+    public boolean publish(PackArtifact artifact, @Nullable String url) {
+        Live previous = current.getAndSet(new Live(artifact, url));
+        return previous == null || !previous.artifact().sha1Hex().equals(artifact.sha1Hex())
+                || !Objects.equals(previous.url(), url);
     }
 
     /** The URL players are sent for the live pack, or null when there is nothing to send. */
     public @Nullable String currentUrl() {
-        PackArtifact pack = current.get();
-        return pack != null && settings.http().enabled() ? settings.http().packUrl(pack.sha1Hex()) : null;
+        Live live = current.get();
+        return live == null ? null : live.url();
     }
 
     /**
@@ -62,13 +82,12 @@ public final class PackDelivery {
      * mismatch, so sending an unchanged pack costs a player nothing but a packet.</p>
      */
     public void send(Player player) {
-        PackArtifact pack = current.get();
-        if (pack == null || !settings.http().enabled()) {
+        Live live = current.get();
+        if (live == null || live.url() == null) {
             return;
         }
         EngineSettings.Delivery delivery = settings.delivery();
-        player.setResourcePack(PACK_ID, settings.http().packUrl(pack.sha1Hex()), pack.sha1(),
-                delivery.prompt(), delivery.required());
+        player.setResourcePack(PACK_ID, live.url(), live.artifact().sha1(), delivery.prompt(), delivery.required());
     }
 
     /** Main thread. */

@@ -18,6 +18,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 
@@ -167,7 +168,8 @@ public final class ContentAdminCommand {
                 + plugin.blocks().size() + " (of " + (NoteBlockState.CAPACITY - 1) + " note block states)",
                 NamedTextColor.GOLD));
         sender.sendMessage(Component.text("Placed blocks and furniture in loaded worlds: " + plugin.placed().size()
-                + ", crops: " + plugin.crops().store().size() + "; chat emojis: " + plugin.emojis().size(),
+                + ", crops: " + plugin.crops().store().size() + ", storage open now: " + plugin.storage().open()
+                + "; chat emojis: " + plugin.emojis().size(),
                 NamedTextColor.GRAY));
         sender.sendMessage(Component.text(pack == null
                 ? "Pack: not built yet"
@@ -176,9 +178,10 @@ public final class ContentAdminCommand {
         List<String> hooks = plugin.hooks().active();
         sender.sendMessage(Component.text("Hooks: " + (hooks.isEmpty() ? "none" : String.join(", ", hooks)),
                 NamedTextColor.GRAY));
-        sender.sendMessage(Component.text(plugin.httpRunning()
-                ? "Web server: " + (url != null ? url : "running, waiting for the first build")
-                : "Web server: off", NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("Web server: " + (plugin.httpRunning() ? "running" : "off")
+                + "; hosting: " + plugin.settings().hosting().name().toLowerCase(Locale.ROOT)
+                + "; players are sent: " + (url != null ? url : pack == null ? "nothing yet" : "nothing"),
+                NamedTextColor.GRAY));
         return Command.SINGLE_SUCCESS;
     }
 

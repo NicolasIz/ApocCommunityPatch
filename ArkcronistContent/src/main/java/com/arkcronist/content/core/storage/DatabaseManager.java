@@ -14,6 +14,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -25,8 +26,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * The SQLite file that remembers where custom blocks and furniture stand, and how far each crop
- * has grown.
+ * The SQLite file that remembers where custom blocks and furniture stand, how far each crop has
+ * grown, and what storage furniture holds.
  *
  * <p>Every statement runs on one thread of its own, and every method returns at once with a
  * future. One thread is not a limitation here but the design: SQLite allows a single writer, one
@@ -44,12 +45,14 @@ public final class DatabaseManager {
 
     public static final String TABLE = "custom_blocks_world";
     public static final String CROP_TABLE = "custom_crops";
+    public static final String STORAGE_TABLE = "furniture_storage";
 
     /**
      * Bumped with each change to the schema, so a later version knows what it opened.
-     * 1: custom_blocks_world. 2: custom_crops added; a version 1 file gains the table on open.
+     * 1: custom_blocks_world. 2: custom_crops added. 3: furniture_storage added. An older file gains
+     * the tables it lacks on open; nothing existing is touched.
      */
-    static final int SCHEMA_VERSION = 2;
+    static final int SCHEMA_VERSION = 3;
 
     private static final String CREATE_TABLE = """
             CREATE TABLE IF NOT EXISTS custom_blocks_world (
@@ -73,6 +76,28 @@ public final class DatabaseManager {
                 progress   INTEGER NOT NULL DEFAULT 0 CHECK (progress >= 0),
                 PRIMARY KEY (world_uuid, x, y, z)
             ) WITHOUT ROWID""";
+
+    // A rowid table, unlike the two above: its rows carry a blob of a few kilobytes, and SQLite's
+    // WITHOUT ROWID layout is meant for small rows only.
+    private static final String CREATE_STORAGE_TABLE = """
+            CREATE TABLE IF NOT EXISTS furniture_storage (
+                world_uuid   TEXT    NOT NULL,
+                x            INTEGER NOT NULL,
+                y            INTEGER NOT NULL,
+                z            INTEGER NOT NULL,
+                furniture_id TEXT    NOT NULL,
+                slots        INTEGER NOT NULL CHECK (slots > 0),
+                contents     BLOB    NOT NULL,
+                updated_at   INTEGER NOT NULL,
+                PRIMARY KEY (world_uuid, x, y, z)
+            )""";
+
+    private static final String UPSERT_STORAGE = "INSERT OR REPLACE INTO " + STORAGE_TABLE
+            + " (world_uuid, x, y, z, furniture_id, slots, contents, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    private static final String SELECT_STORAGE = "SELECT furniture_id, slots, contents FROM " + STORAGE_TABLE
+            + " WHERE world_uuid = ? AND x = ? AND y = ? AND z = ?";
+    private static final String DELETE_STORAGE = "DELETE FROM " + STORAGE_TABLE
+            + " WHERE world_uuid = ? AND x = ? AND y = ? AND z = ?";
 
     private static final String UPSERT_CROP = "INSERT OR REPLACE INTO " + CROP_TABLE
             + " (world_uuid, x, y, z, crop_id, stage, progress) VALUES (?, ?, ?, ?, ?, ?, ?)";
@@ -236,6 +261,104 @@ public final class DatabaseManager {
         }, false);
     }
 
+    // ---------------------------------------------------------------- storage furniture
+
+    /**
+     * Records what a storage furniture holds, replacing what was recorded there. Writes queue in
+     * order on the database thread, so the last save asked for is the one that stays.
+     */
+    public CompletableFuture<Void> saveInventory(StoredInventory inventory) {
+        return submit(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(UPSERT_STORAGE)) {
+                statement.setString(1, inventory.world().toString());
+                statement.setInt(2, inventory.x());
+                statement.setInt(3, inventory.y());
+                statement.setInt(4, inventory.z());
+                statement.setString(5, inventory.furnitureId());
+                statement.setInt(6, inventory.slots());
+                statement.setBytes(7, inventory.contents());
+                statement.setLong(8, System.currentTimeMillis());
+                statement.executeUpdate();
+            }
+            return null;
+        }, false);
+    }
+
+    /** What the storage furniture at a position holds, if anything was ever saved there. */
+    public CompletableFuture<Optional<StoredInventory>> loadInventory(UUID world, int x, int y, int z) {
+        return submit(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(SELECT_STORAGE)) {
+                statement.setString(1, world.toString());
+                statement.setInt(2, x);
+                statement.setInt(3, y);
+                statement.setInt(4, z);
+                try (ResultSet result = statement.executeQuery()) {
+                    if (!result.next()) {
+                        return Optional.empty();
+                    }
+                    return Optional.of(new StoredInventory(world, x, y, z, result.getString(1), result.getInt(2),
+                            result.getBytes(3)));
+                }
+            }
+        }, false);
+    }
+
+    /**
+     * Reads and deletes what a storage furniture holds, in one transaction: for a furniture being
+     * broken, whose contents are dropped. Read and delete as two calls, a save queued between them
+     * would be lost, or the same contents dropped twice.
+     */
+    public CompletableFuture<Optional<StoredInventory>> takeInventory(UUID world, int x, int y, int z) {
+        return submit(connection -> {
+            boolean autoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+            try {
+                Optional<StoredInventory> found = Optional.empty();
+                try (PreparedStatement select = connection.prepareStatement(SELECT_STORAGE)) {
+                    select.setString(1, world.toString());
+                    select.setInt(2, x);
+                    select.setInt(3, y);
+                    select.setInt(4, z);
+                    try (ResultSet result = select.executeQuery()) {
+                        if (result.next()) {
+                            found = Optional.of(new StoredInventory(world, x, y, z, result.getString(1),
+                                    result.getInt(2), result.getBytes(3)));
+                        }
+                    }
+                }
+                if (found.isPresent()) {
+                    try (PreparedStatement delete = connection.prepareStatement(DELETE_STORAGE)) {
+                        delete.setString(1, world.toString());
+                        delete.setInt(2, x);
+                        delete.setInt(3, y);
+                        delete.setInt(4, z);
+                        delete.executeUpdate();
+                    }
+                }
+                connection.commit();
+                return found;
+            } catch (SQLException exception) {
+                connection.rollback();
+                throw exception;
+            } finally {
+                connection.setAutoCommit(autoCommit);
+            }
+        }, false);
+    }
+
+    /** @return whether there was an inventory to delete */
+    public CompletableFuture<Boolean> deleteInventory(UUID world, int x, int y, int z) {
+        return submit(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(DELETE_STORAGE)) {
+                statement.setString(1, world.toString());
+                statement.setInt(2, x);
+                statement.setInt(3, y);
+                statement.setInt(4, z);
+                return statement.executeUpdate() > 0;
+            }
+        }, false);
+    }
+
     /**
      * Lets every queued statement finish, then closes the file. Blocks for at most ten seconds;
      * called once, from the plugin's shutdown.
@@ -299,6 +422,7 @@ public final class DatabaseManager {
             statement.execute("PRAGMA synchronous=NORMAL");
             statement.execute(CREATE_TABLE);
             statement.execute(CREATE_CROP_TABLE);
+            statement.execute(CREATE_STORAGE_TABLE);
             int version;
             try (ResultSet result = statement.executeQuery("PRAGMA user_version")) {
                 version = result.next() ? result.getInt(1) : 0;

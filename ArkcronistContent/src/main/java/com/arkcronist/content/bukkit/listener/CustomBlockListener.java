@@ -4,10 +4,13 @@ import com.arkcronist.content.bukkit.block.CustomBlock;
 import com.arkcronist.content.bukkit.block.CustomBlockService;
 import com.arkcronist.content.bukkit.item.CustomItem;
 import com.arkcronist.content.bukkit.item.ItemFactory;
+import com.arkcronist.content.bukkit.protection.Protection;
 import com.arkcronist.content.core.definition.Placement;
 import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.entity.Entity;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -21,6 +24,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.NotePlayEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
 import java.util.List;
@@ -39,15 +43,21 @@ import java.util.Optional;
  * <p>Changes that are final - setting the state, recording the block, dropping the item - happen at
  * MONITOR, once no other plugin can still cancel the event; the decisions that must precede them
  * (no vanilla drop) happen at HIGH.</p>
+ *
+ * <p>Placing and breaking go through vanilla's own events, which protection plugins already judge.
+ * The one change this listener makes itself - breaking custom blocks an explosion reached - is put
+ * to them again, block by block, through {@link Protection}.</p>
  */
 public final class CustomBlockListener implements Listener {
 
     private final CustomBlockService blocks;
     private final ItemFactory items;
+    private final Protection protection;
 
-    public CustomBlockListener(CustomBlockService blocks, ItemFactory items) {
+    public CustomBlockListener(CustomBlockService blocks, ItemFactory items, Protection protection) {
         this.blocks = blocks;
         this.items = items;
+        this.protection = protection;
     }
 
     /** A custom block item whose block got no state (all 799 taken) cannot be placed at all. */
@@ -138,19 +148,20 @@ public final class CustomBlockListener implements Listener {
     // changed, leaving other plugins every chance to cancel the explosion first.
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onEntityExplode(EntityExplodeEvent event) {
-        explode(event.blockList());
+        explode(event.blockList(), event.getLocation(), event.getEntity());
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockExplode(BlockExplodeEvent event) {
-        explode(event.blockList());
+        explode(event.blockList(), event.getBlock().getLocation(), null);
     }
 
     /**
      * An explosion would drop a plain note block. Custom blocks are taken out of its list and broken
-     * here instead, dropping their own item and leaving the record.
+     * here instead, dropping their own item and leaving the record - each only if every protection
+     * plugin lets this explosion destroy it; otherwise it is taken out of the list and left standing.
      */
-    private void explode(List<Block> destroyed) {
+    private void explode(List<Block> destroyed, Location origin, @Nullable Entity source) {
         if (!blocks.active()) {
             return;
         }
@@ -159,8 +170,10 @@ public final class CustomBlockListener implements Listener {
             Optional<CustomBlock> custom = blocks.identify(block);
             if (custom.isPresent()) {
                 it.remove();
-                blocks.forget(block, custom.get(), true);
-                block.setType(Material.AIR, false);
+                if (protection.allowsExplosion(block, origin, source)) {
+                    blocks.forget(block, custom.get(), true);
+                    block.setType(Material.AIR, false);
+                }
             }
         }
     }

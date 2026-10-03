@@ -2,19 +2,48 @@ package com.arkcronist.content.bukkit;
 
 import com.arkcronist.content.core.http.PackHttpServer;
 import com.arkcronist.content.core.pack.PackSettings;
+import com.arkcronist.content.core.upload.UploadSettings;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.MemoryConfiguration;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.jetbrains.annotations.Nullable;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.time.Duration;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /**
  * config.yml, read once and then immutable, so any thread may hold on to it.
  */
-public record EngineSettings(boolean extractExamples, Pack pack, Http http, Delivery delivery, Crops crops) {
+public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nullable UploadSettings upload,
+                             Delivery delivery, Crops crops) {
+
+    /** Where players download the pack from. */
+    public enum Hosting {
+        /** The plugin's own web server, {@code http:}. */
+        BUILTIN,
+        /** A link the admin hosts the zip at themselves: {@code http.external-url}. */
+        EXTERNAL,
+        /** A web storage API the zip is uploaded to after every rebuild: {@code upload:}. */
+        UPLOAD
+    }
+
+    /** Upload wins over a fixed external link, which wins over the built-in server. */
+    public Hosting hosting() {
+        if (upload != null) {
+            return Hosting.UPLOAD;
+        }
+        return http.externalUrl().isEmpty() ? Hosting.BUILTIN : Hosting.EXTERNAL;
+    }
 
     /** pack.mcmeta. {@code description} is MiniMessage. */
     public record Pack(String description, int format, int minFormat, int maxFormat) {
@@ -31,8 +60,17 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, Deli
      *
      * @param publicAddress the host players' clients download from - which is not the same thing
      *                      as the address the server listens on, behind NAT or a proxy
+     * @param externalUrl   where the admin hosts output/resource_pack.zip themselves - a CDN, a web
+     *                      host, Dropbox - sent to players instead of the built-in server's address;
+     *                      empty when not used. {@code {sha1}} in it becomes the pack's hash
      */
-    public record Http(boolean enabled, String bindAddress, int port, String publicAddress, int threads) {
+    public record Http(boolean enabled, String bindAddress, int port, String publicAddress, int threads,
+                       String externalUrl) {
+
+        /** The external link for this build of the pack. */
+        public String externalUrl(String sha1Hex) {
+            return externalUrl.replace("{sha1}", sha1Hex);
+        }
 
         /**
          * The URL a player is sent for this build of the pack.
@@ -68,10 +106,12 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, Deli
     }
 
     static EngineSettings read(FileConfiguration config, String serverIp, Logger logger) {
+        UploadSettings upload = readUpload(section(config, "upload"), logger);
         return new EngineSettings(
                 config.getBoolean("extract-examples", true),
                 readPack(section(config, "pack"), logger),
-                readHttp(section(config, "http"), serverIp, logger),
+                readHttp(section(config, "http"), serverIp, upload != null, logger),
+                upload,
                 readDelivery(section(config, "delivery")),
                 new Crops(Math.max(1, Math.min(60, section(config, "crops").getInt("tick-seconds", 5)))));
     }
@@ -94,11 +134,18 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, Deli
         return new Pack(description, format, min, max);
     }
 
-    private static Http readHttp(ConfigurationSection section, String serverIp, Logger logger) {
+    /** @param uploading whether upload: is on, in which case the built-in server is only a fallback */
+    private static Http readHttp(ConfigurationSection section, String serverIp, boolean uploading, Logger logger) {
         int port = section.getInt("port", 8163);
         if (port < 1 || port > 65535) {
             logger.warning("http.port " + port + " is not a valid port - using 8163.");
             port = 8163;
+        }
+
+        String externalUrl = section.getString("external-url", "").trim();
+        if (!externalUrl.isEmpty() && !isHttpUrl(externalUrl.replace("{sha1}", "0"))) {
+            logger.warning("http.external-url '" + externalUrl + "' is not an http(s) link - ignoring it.");
+            externalUrl = "";
         }
 
         String publicAddress = section.getString("public-address", "").trim();
@@ -108,7 +155,7 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, Deli
         boolean enabled = section.getBoolean("enabled", true);
         if (publicAddress.isEmpty()) {
             publicAddress = "127.0.0.1";
-            if (enabled) {
+            if (enabled && externalUrl.isEmpty() && !uploading) {
                 logger.warning("http.public-address is not set and server.properties has no server-ip:"
                         + " the pack URL points at 127.0.0.1, which only a client on this same machine"
                         + " can reach. Set http.public-address to your server's public IP or domain.");
@@ -119,7 +166,77 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, Deli
                 section.getString("bind-address", "0.0.0.0").trim(),
                 port,
                 publicAddress,
-                Math.max(1, section.getInt("threads", 4)));
+                Math.max(1, section.getInt("threads", 4)),
+                externalUrl);
+    }
+
+    /**
+     * The {@code upload} section, or null when it is off - or when it is on but cannot work, which
+     * is logged, so a typo leaves the built-in server serving rather than nobody.
+     */
+    private static @Nullable UploadSettings readUpload(ConfigurationSection section, Logger logger) {
+        if (!section.getBoolean("enabled", false)) {
+            return null;
+        }
+        String url = section.getString("url", "").trim();
+        if (!isHttpUrl(url)) {
+            logger.warning("upload.enabled is true but upload.url '" + url + "' is not an http(s) link - not uploading.");
+            return null;
+        }
+        String method = section.getString("method", "POST").trim().toUpperCase(Locale.ROOT);
+        if (!method.equals("POST") && !method.equals("PUT")) {
+            logger.warning("upload.method must be POST or PUT, not '" + method + "' - using POST.");
+            method = "POST";
+        }
+        ConfigurationSection response = section(section, "response");
+        String rawPattern = response.getString("url-pattern", "").trim();
+        Pattern pattern = null;
+        if (!rawPattern.isEmpty()) {
+            try {
+                pattern = Pattern.compile(rawPattern);
+            } catch (PatternSyntaxException exception) {
+                logger.warning("upload.response.url-pattern is not a valid regular expression ("
+                        + exception.getDescription() + ") - not uploading.");
+                return null;
+            }
+        }
+        String path = response.getString("url-path", "").trim();
+        return new UploadSettings(URI.create(url), method,
+                section.getString("file-field", "file").trim(),
+                section.getString("file-name", "resource_pack.zip").trim(),
+                strings(section, "fields"),
+                strings(section, "headers"),
+                path.isEmpty() ? null : path,
+                pattern,
+                section.getString("download-url", "{value}").trim(),
+                Duration.ofSeconds(Math.max(5, Math.min(600, section.getInt("timeout-seconds", 60)))),
+                Math.max(0, Math.min(10, section.getInt("retries", 2))),
+                section.getBoolean("verify", true));
+    }
+
+    /** A section of plain key: value pairs, in the order written. */
+    private static Map<String, String> strings(ConfigurationSection parent, String path) {
+        Map<String, String> values = new LinkedHashMap<>();
+        ConfigurationSection section = parent.getConfigurationSection(path);
+        if (section != null) {
+            for (String key : section.getKeys(false)) {
+                Object value = section.get(key);
+                if (value != null && !(value instanceof ConfigurationSection)) {
+                    values.put(key, String.valueOf(value));
+                }
+            }
+        }
+        return values;
+    }
+
+    private static boolean isHttpUrl(String text) {
+        try {
+            URI uri = new URI(text);
+            String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
+            return (scheme.equals("http") || scheme.equals("https")) && uri.getHost() != null;
+        } catch (URISyntaxException exception) {
+            return false;
+        }
     }
 
     private static Delivery readDelivery(ConfigurationSection section) {
@@ -131,7 +248,7 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, Deli
     }
 
     /** A missing section reads as all defaults rather than as a null to check at every use. */
-    private static ConfigurationSection section(FileConfiguration config, String path) {
+    private static ConfigurationSection section(ConfigurationSection config, String path) {
         ConfigurationSection section = config.getConfigurationSection(path);
         return section != null ? section : new MemoryConfiguration();
     }

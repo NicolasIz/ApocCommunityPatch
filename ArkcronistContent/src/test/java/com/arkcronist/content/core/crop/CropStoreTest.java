@@ -91,7 +91,7 @@ class CropStoreTest {
         assertEquals(0, store.size());
     }
 
-    /** A database from version 1.0 has no crops table: opening it adds one and moves it to schema 2. */
+    /** A database from version 1.0 has no crops table: opening it adds one and moves it to the current schema. */
     @Test
     void aVersionOneDatabaseGainsTheCropsTable() throws Exception {
         Path file = temp.resolve("content.db");
@@ -114,7 +114,7 @@ class CropStoreTest {
              Statement statement = connection.createStatement();
              ResultSet version = statement.executeQuery("PRAGMA user_version")) {
             version.next();
-            assertEquals(2, version.getInt(1));
+            assertEquals(3, version.getInt(1));
         }
         CropStore reopened = open();
         reopened.loadWorld(WORLD).get(10, TimeUnit.SECONDS);

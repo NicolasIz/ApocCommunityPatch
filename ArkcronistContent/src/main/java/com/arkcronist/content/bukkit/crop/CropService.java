@@ -143,9 +143,12 @@ public final class CropService {
      */
     public boolean plant(Player player, Block soil, CustomItem item, Placement.Crop crop, EquipmentSlot hand) {
         Block block = soil.getRelative(BlockFace.UP);
-        if (!isSoil(crop, soil.getType()) || !block.getType().isAir() || claims(block)) {
+        if (!isSoil(crop, soil.getType()) || !block.getType().isAir()) {
             return false;
         }
+        // A living crop is always a light block. A record here, over air, is one whose block went
+        // without an event - a world edit, a rollback - and would otherwise block this spot forever.
+        forgetStale(block);
         BlockState replaced = block.getState();
         ItemStack held = player.getInventory().getItem(hand);
         block.setType(Material.LIGHT, false);
@@ -243,6 +246,19 @@ public final class CropService {
      * Takes a crop out of the world: display, link, record, the light block - and, when asked, drops
      * what it gives: its harvest when fully grown, otherwise its own item back.
      */
+    /** Takes out whatever is still recorded for a crop at {@code block}: its record, link and display. */
+    private void forgetStale(Block block) {
+        if (!claims(block)) {
+            return;
+        }
+        Entity display = display(block);
+        if (display != null) {
+            display.remove();
+        }
+        unlink(block);
+        store.remove(block.getWorld().getUID(), block.getX(), block.getY(), block.getZ());
+    }
+
     public void remove(Block block, PlantedCrop crop, boolean drop) {
         Entity display = display(block);
         if (display != null) {

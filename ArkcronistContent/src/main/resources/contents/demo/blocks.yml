@@ -7,6 +7,7 @@
 #
 #     /customgive <player> demo:ruby_block
 #     /customgive <player> demo:ruby_pedestal
+#     /customgive <player> demo:ruby_crate
 # ---------------------------------------------------------------------------
 
 items:
@@ -72,3 +73,17 @@ items:
       display:
         scale: [0.9, 0.6, 0.9]
         translation: [0, -0.2, 0]
+
+  # Something to keep things in: a right click opens its inventory - one per
+  # crate, shared like a chest's, and kept in the database through restarts.
+  # Breaking it drops what it holds. Sneak to place a block against it instead.
+  ruby_crate:
+    type: custom_furniture
+    display-name: "<gold>Ruby Crate"
+    resource:
+      model: furniture/ruby_crate
+    furniture:
+      support: BARRIER
+      interactable: storage
+      slots: 27               # whole rows of nine: 9, 18, 27, 36, 45 or 54
+      storage-title: "<dark_red>Ruby Crate"

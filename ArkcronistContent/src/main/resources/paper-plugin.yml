@@ -43,6 +43,30 @@ dependencies:
       load: BEFORE
       required: false
       join-classpath: true
+    # Loads first: its item stat has to be registered while plugins are still loading, before
+    # MMOItems reads its item configs. MythicLib is the library MMOItems' API is written against.
+    MMOItems:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    MythicLib:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    # Protection plugins, asked before this plugin changes a block on its own. WorldGuard's API is
+    # written in WorldEdit's classes, so WorldEdit (or FastAsyncWorldEdit) is joined too.
+    WorldGuard:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    WorldEdit:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    GriefPrevention:
+      load: BEFORE
+      required: false
+      join-classpath: true
 
 # Commands are not declared here: a Paper plugin registers them through Brigadier at runtime
 # (see ArkContentPlugin#onEnable). Permissions still are.

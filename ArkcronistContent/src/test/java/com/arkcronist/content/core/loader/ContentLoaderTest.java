@@ -233,11 +233,11 @@ class ContentLoaderTest {
         assertEquals("LIGHT", lamp.material());
         assertEquals(new Placement.Furniture(Placement.Support.LIGHT, 12, false, new Placement.Display("FIXED",
                 new Placement.Vec3(0, 0.25f, -0.5f), new Placement.Vec3(0.5f, 0.5f, 0.5f),
-                new Placement.Vec3(0, 90, 0)), null, null), lamp.placement());
+                new Placement.Vec3(0, 90, 0)), null, null, null), lamp.placement());
 
         ItemDefinition chair = report.items().get(1);
         assertEquals("BARRIER", chair.material());
-        assertEquals(new Placement.Furniture(Placement.Support.BARRIER, 0, true, Placement.Display.DEFAULT, null, null),
+        assertEquals(new Placement.Furniture(Placement.Support.BARRIER, 0, true, Placement.Display.DEFAULT, null, null, null),
                 chair.placement());
     }
 
@@ -463,6 +463,70 @@ class ContentLoaderTest {
         assertEquals(Placement.Seat.DEFAULT, ((Placement.Furniture) report.items().get(1).placement()).seat());
         assertNull(((Placement.Furniture) report.items().get(2).placement()).seat());
         assertEquals(2, report.problems().size(), report.problems().toString());
+    }
+
+    @Test
+    void furnitureCanHoldAnInventory() throws IOException {
+        write("demo/storage.yml", """
+                namespace: demo
+                items:
+                  cabinet:
+                    type: custom_furniture
+                    resource: {model: furniture/cabinet}
+                    furniture:
+                      interactable: storage
+                      slots: 54
+                      storage-title: "<gold>Cabinet"
+                  crate:
+                    type: custom_furniture
+                    resource: {model: furniture/crate}
+                    furniture: {interactable: Storage}
+                  drawer:
+                    type: custom_furniture
+                    resource: {model: furniture/drawer}
+                    furniture: {interactable: storage, slots: 20}
+                  shelf:
+                    type: custom_furniture
+                    resource: {model: furniture/shelf}
+                    furniture: {interactable: seat, slots: 9, storage-title: Shelf}
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+
+        Placement.Furniture cabinet = (Placement.Furniture) report.items().get(0).placement();
+        assertEquals(new Placement.Storage(54, "<gold>Cabinet"), cabinet.storage());
+        assertNull(cabinet.seat(), "a container is not also a seat");
+        assertEquals(new Placement.Storage(27, null), ((Placement.Furniture) report.items().get(1).placement()).storage());
+        assertEquals(new Placement.Storage(27, null), ((Placement.Furniture) report.items().get(2).placement()).storage());
+        Placement.Furniture shelf = (Placement.Furniture) report.items().get(3).placement();
+        assertNull(shelf.storage());
+        assertEquals(Placement.Seat.DEFAULT, shelf.seat());
+
+        assertEquals(3, report.problems().size(), report.problems().toString());
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("demo:drawer: 'slots' must be whole rows of nine")));
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("demo:shelf: 'slots' is only read with interactable: storage")));
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("demo:shelf: 'storage-title' is only read")));
+    }
+
+    @Test
+    void storageSizesAreWholeRows() {
+        for (int slots : new int[]{9, 18, 27, 36, 45, 54}) {
+            assertTrue(Placement.Storage.validSlots(slots), String.valueOf(slots));
+        }
+        for (int slots : new int[]{0, 8, 10, 26, 63, -9}) {
+            assertFalse(Placement.Storage.validSlots(slots), String.valueOf(slots));
+        }
+    }
+
+    @Test
+    void shrinkingAStorageNeverHidesWhatItHolds() {
+        Placement.Storage crate = new Placement.Storage(27, null);
+        assertEquals(27, crate.sizeFor(0));
+        assertEquals(27, crate.sizeFor(27));
+        assertEquals(36, crate.sizeFor(28), "an item saved in slot 28, from when it had more rows");
+        assertEquals(54, crate.sizeFor(54));
+        assertEquals(9, new Placement.Storage(9, null).sizeFor(1));
+        assertEquals(18, new Placement.Storage(9, null).sizeFor(10));
     }
 
     @Test

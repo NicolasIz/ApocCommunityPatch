@@ -34,10 +34,12 @@ public sealed interface Placement {
      * @param facePlayer    turn to face whoever placed it, snapped to the nearest quarter turn
      * @param modelEngineId a ModelEngine blueprint to draw it with instead, when ModelEngine is
      *                      installed; null to always use the item display
-     * @param seat          what a right click does: sit on it, or null for nothing
+     * @param seat          a right click sits on it; null when it is not a seat
+     * @param storage       a right click opens its inventory; null when it has none. A piece of
+     *                      furniture is a seat, a container, or neither - never both
      */
     record Furniture(Support support, int light, boolean facePlayer, Display display, String modelEngineId,
-                     Seat seat) implements Placement {
+                     Seat seat, Storage storage) implements Placement {
 
         @Override
         public ContentType type() {
@@ -54,6 +56,32 @@ public sealed interface Placement {
     record Seat(float height) {
 
         public static final Seat DEFAULT = new Seat(0.5f);
+    }
+
+    /**
+     * A piece of furniture with an inventory: a cabinet, a crate, a wardrobe. Its contents are kept
+     * in the database, by the position it stands at.
+     *
+     * @param slots a chest's worth of rows: 9, 18, 27, 36, 45 or 54
+     * @param title MiniMessage shown at the top of the inventory; null to use the item's name
+     */
+    record Storage(int slots, String title) {
+
+        public static final int DEFAULT_SLOTS = 27;
+
+        /** Whether an inventory can have this many slots: whole rows of nine, one to six of them. */
+        public static boolean validSlots(int slots) {
+            return slots >= 9 && slots <= 54 && slots % 9 == 0;
+        }
+
+        /**
+         * The size to open an inventory at whose saved contents reach slot {@code used} (counting from
+         * one; 0 when empty): the configured size, or more while items sit in rows the configuration
+         * has since taken away - so shrinking {@code slots} never hides anything.
+         */
+        public int sizeFor(int used) {
+            return Math.min(54, Math.max(slots, (used + 8) / 9 * 9));
+        }
     }
 
     /**

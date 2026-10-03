@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'com.arkcronist'
-version = '1.1.0'
+version = '1.2.0'
 description = 'Custom items from YAML, drawn by a resource pack the plugin compiles, zips, hashes and serves itself.'
 
 java {
@@ -19,6 +19,9 @@ sourceSets {
     // (the release for 1.21.x), so the hook can be compiled; they are never packaged - at runtime
     // the classes are Iris's own.
     irisApi
+    // MMOItems publishes its API only as snapshots, on its own repository, which come and go. The
+    // signatures the hook needs are copied from MMOItems 6.10 here instead, the same way.
+    mmoitemsApi
 }
 
 configurations {
@@ -28,6 +31,7 @@ configurations {
     compileOnly.extendsFrom paperApi
     testImplementation.extendsFrom paperApi
     irisApiCompileOnly.extendsFrom paperApi
+    mmoitemsApiCompileOnly.extendsFrom paperApi
 }
 
 // Paper's API comes from Paper's repository, or from libs/ when a local copy is there - for a
@@ -47,11 +51,23 @@ repositories {
         name = 'extendedclip'
         url = 'https://repo.extendedclip.com/releases/'
     }
-    // ShopGUI+'s API is built from its GitHub repository.
+    // WorldGuard and the WorldEdit classes its API is written in.
+    maven {
+        name = 'enginehub'
+        url = 'https://maven.enginehub.org/repo/'
+        content {
+            includeGroup 'com.sk89q.worldguard'
+            includeGroup 'com.sk89q.worldedit'
+        }
+    }
+    // ShopGUI+'s and GriefPrevention's APIs are built from their GitHub repositories.
     maven {
         name = 'jitpack'
         url = 'https://jitpack.io'
-        content { includeGroup 'com.github.brcdev-minecraft' }
+        content {
+            includeGroup 'com.github.brcdev-minecraft'
+            includeGroup 'com.github.GriefPrevention'
+        }
     }
     if (!useLocalPaperApi) {
         maven {
@@ -101,6 +117,13 @@ dependencies {
     compileOnly('me.clip:placeholderapi:2.11.6') { transitive = false }
     compileOnly('com.github.brcdev-minecraft:shopgui-api:3.2.0') { transitive = false }
     compileOnly sourceSets.irisApi.output
+    compileOnly sourceSets.mmoitemsApi.output
+    // 7.0.14 is the WorldGuard release for 1.21.8, on WorldEdit 7.3.
+    compileOnly('com.sk89q.worldguard:worldguard-core:7.0.14') { transitive = false }
+    compileOnly('com.sk89q.worldguard:worldguard-bukkit:7.0.14') { transitive = false }
+    compileOnly('com.sk89q.worldedit:worldedit-core:7.3.9') { transitive = false }
+    compileOnly('com.sk89q.worldedit:worldedit-bukkit:7.3.9') { transitive = false }
+    compileOnly('com.github.GriefPrevention:GriefPrevention:16.18.5') { transitive = false }
 
     // The core package (loader, pack compiler, zip, hash, web server, storage) is tested without a
     // server, but against the same Gson and SnakeYAML the server provides.

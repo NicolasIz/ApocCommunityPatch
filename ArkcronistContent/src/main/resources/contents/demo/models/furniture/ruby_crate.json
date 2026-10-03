@@ -1,0 +1,16 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "side": "demo:furniture/ruby_crate",
+    "particle": "#side"
+  },
+  "elements": [
+    {
+      "from": [1, 0, 1], "to": [15, 14, 15],
+      "faces": {
+        "north": {"texture": "#side"}, "south": {"texture": "#side"}, "east": {"texture": "#side"},
+        "west": {"texture": "#side"}, "up": {"texture": "#side"}, "down": {"texture": "#side"}
+      }
+    }
+  ]
+}

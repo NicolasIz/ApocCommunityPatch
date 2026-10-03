@@ -1,9 +1,11 @@
 # ArkcronistContent
 
-Motor de contenido personalizado para **Paper 1.21.8+**, Java 21: define ítems, bloques, muebles,
-cultivos y emojis de chat en YAML y el plugin compila su propio resource pack, lo empaqueta en ZIP, calcula su SHA-1, lo sirve con
-un servidor HTTP integrado y se lo envía a cada jugador. Los bloques y muebles colocados se guardan en
-SQLite. El mismo concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer.
+Motor de contenido personalizado para **Paper 1.21.8+**, Java 21: define ítems, bloques, muebles
+(también asientos y muebles con inventario), cultivos y emojis de chat en YAML y el plugin compila
+su propio resource pack, lo empaqueta en ZIP, calcula su SHA-1, lo sirve con un servidor HTTP
+integrado —o lo sube solo a un servicio de almacenamiento— y se lo envía a cada jugador. Los bloques
+y muebles colocados, los cultivos y lo guardado en los muebles se conservan en SQLite. El mismo
+concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer.
 
 ```
 /customgive <jugador> <item> [cantidad]    entrega un ítem (acepta @a, @p...; autocompleta ids)
@@ -21,8 +23,9 @@ SQLite. El mismo concepto que ItemsAdder u Oraxen, reducido a una base limpia so
 | `arkcontent.menu` | op | abrir el explorador (solo mirar, si no tiene `arkcontent.give`) |
 | `arkcontent.emojis` | todos | `/emojis`. Usar un emoji no necesita permiso, salvo que el emoji declare el suyo |
 
-Con MythicMobs, ModelEngine, MythicArmor, PlaceholderAPI (y a través de él TAB y DeluxeMenus),
-ShopGUI+ o Iris instalados se integra con ellos (sección 5); sin ellos funciona igual.
+Con MythicMobs, ModelEngine, MythicArmor, MMOItems, PlaceholderAPI (y a través de él TAB y
+DeluxeMenus), ShopGUI+, Iris, WorldGuard o GriefPrevention instalados se integra con ellos
+(sección 5); sin ellos funciona igual.
 
 El plugin se compila contra la API de Paper 1.21.8 y declara esa versión como mínima. El componente
 `item_model` y la carpeta `assets/<namespace>/items/`, en los que se apoya todo, existen desde 1.21.4,
@@ -33,7 +36,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-1.1.0.jar
+./gradlew build          # -> build/libs/ArkcronistContent-1.2.0.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -42,9 +45,16 @@ pero solo se ha verificado contra 1.21.8.
 deja `paper-api.jar` y `brigadier.jar` (1.3.10) en `libs/` y el build los usa en su lugar; ver
 `libs/README.md`.
 
-Las APIs de MythicMobs (`Mythic-Dist` 5.13.0), ModelEngine (R4.2.0) y MythicArmor
-(`mythicarmor-api` 5.13.4) vienen de `mvn.lumine.io`, también `compileOnly`: solo hacen falta para
-compilar los ganchos, no van dentro del JAR.
+Las APIs de los plugins integrados son todas `compileOnly`: solo hacen falta para compilar los
+ganchos y ninguna va dentro del JAR.
+
+| API | Versión | De dónde |
+|---|---|---|
+| MythicMobs (`Mythic-Dist`), ModelEngine, MythicArmor | 5.13.0, R4.2.0, 5.13.4 | `mvn.lumine.io` |
+| PlaceholderAPI | 2.11.6 | `repo.extendedclip.com` |
+| ShopGUI+ (`shopgui-api`), GriefPrevention | 3.2.0, 16.18.5 | JitPack |
+| WorldGuard (`worldguard-core`/`-bukkit`) y WorldEdit (`worldedit-core`/`-bukkit`) | 7.0.14, 7.3.9 | `maven.enginehub.org` |
+| Iris, MMOItems | 3.9.2, 6.10 | copias exactas de sus firmas en `src/irisApi` y `src/mmoitemsApi` (sección 5) |
 
 El wrapper fija Gradle 9.8.0. `paper-api` se declara `compileOnly`: el servidor ya trae Adventure,
 MiniMessage, Brigadier, Gson, SnakeYAML y JOML, y el driver JDBC de SQLite viene con el propio
@@ -82,8 +92,15 @@ ArkcronistContent/
         │   │   ├── PlantedCrop            un cultivo plantado: posición, etapa, progreso
         │   │   ├── CropGrowth             la aritmética del crecimiento, sin mundo
         │   │   └── CropStore              memoria + SQLite de los cultivos
+        │   ├── upload/
+        │   │   ├── PackUploader           subida multipart con reintentos y verificación SHA-1
+        │   │   ├── MultipartBody          cuerpo multipart/form-data (RFC 7578), sin copiar el ZIP
+        │   │   ├── ResponseUrl            el enlace en la respuesta: ruta JSON, regex o texto plano
+        │   │   ├── UploadSettings         la sección upload de config.yml
+        │   │   └── UploadRecord           data/upload.json: no volver a subir el mismo pack
         │   ├── storage/
         │   │   ├── DatabaseManager        SQLite (JDBC) en su propio hilo, API con CompletableFuture
+        │   │   ├── StoredInventory        el contenido guardado de un mueble con inventario
         │   │   ├── PlacedContentIndex     caché en memoria: ConcurrentHashMap por mundo y posición
         │   │   ├── PlacedContentStore     fachada: memoria al instante + escritura asíncrona
         │   │   ├── PlacedContent          una fila de custom_blocks_world
@@ -120,14 +137,17 @@ ArkcronistContent/
             │   ├── CustomBlock            ítem + estado + BlockData listo para aplicar
             │   └── CustomBlockService     reconocer, colocar, olvidar, resincronizar
             ├── furniture/                 FurnitureService (soporte + ItemDisplay + vínculo en el
-            │                              chunk), SeatService (asientos)
+            │                              chunk), SeatService (asientos), StorageService (inventarios)
+            ├── protection/                Protection: pregunta a WorldGuard y GriefPrevention antes
+            │                              de que el plugin cambie un bloque por su cuenta
             ├── crop/                      CropService, CropTicker (crecimiento asíncrono), CropListener
             ├── emoji/                     EmojiRegistry, ChatEmojiListener (AsyncChatEvent)
             ├── pack/PackDelivery          pack vivo + envío con setResourcePack
             ├── menu/                      ContentMenu (inventario paginado), ContentMenus,
             │                              ContentMenuListener (bloquea todo movimiento)
             ├── hooks/                     integraciones opcionales, una por paquete (también
-            │                              placeholderapi/, shopgui/, iris/):
+            │                              placeholderapi/, shopgui/, iris/, mmoitems/, worldguard/,
+            │                              griefprevention/):
             │   ├── HookManager            detecta cada plugin y arranca su gancho aislado
             │   ├── mythicmobs/            tipo de drop arkcontent{item=...} + ItemSupplier
             │   ├── modelengine/           muebles dibujados con un blueprint de ModelEngine
@@ -150,11 +170,11 @@ contents/demo/
 ├── blocks.yml                         bloques y muebles
 ├── models/
 │   ├── item/ruby.json
-│   └── furniture/ruby_pedestal.json   modelo 3D (export de Blockbench)
+│   └── furniture/ruby_pedestal.json   modelo 3D (export de Blockbench), ruby_crate.json
 └── textures/
     ├── item/ruby.png, ruby_sword.png
     ├── block/ruby_block.png
-    └── furniture/pedestal_stone.png
+    └── furniture/pedestal_stone.png, ruby_crate.png
 ```
 
 ```yaml
@@ -338,6 +358,9 @@ configurado antes de entrar al mundo; lo que sale del hilo principal es la escri
   la fila aunque la caché aún no tuviera el mundo cargado; y un bloque roto *mientras* su mundo se
   carga no "resucita" cuando llegan las filas.
 - **Apagado.** Es la única espera: `onDisable` deja terminar las escrituras encoladas (máx. 10 s).
+- **Esquema.** `PRAGMA user_version` lleva la versión: 1 (`custom_blocks_world`), 2 (+ `custom_crops`)
+  y 3 (+ `furniture_storage`, ver *Muebles con almacenamiento*). Un archivo de una versión anterior
+  gana al abrirse las tablas que le faltan; no se toca nada de lo que ya hay.
 
 El driver es el `org.xerial` SQLite que Paper/Spigot traen en el servidor; si faltara, se avisa en
 consola y bloques y muebles siguen funcionando (reconocidos por su estado y su vínculo), solo que
@@ -361,7 +384,58 @@ Para que funcione desde fuera:
    misma máquina.
 
 Con `http.enabled: false` el pack se sigue compilando en `output/resource_pack.zip` para alojarlo en
-otro sitio, y el plugin no envía nada.
+otro sitio, y el plugin no envía nada salvo que se use una de las dos opciones siguientes.
+
+### Alojar el pack fuera: `external-url` y subida automática
+
+El servidor integrado es la opción por defecto, pero no la única. `/arkcontent info` muestra cuál se
+usa (`hosting: builtin | external | upload`) y el enlace que reciben los jugadores.
+
+**`http.external-url`** — el pack lo alojas tú (un CDN, un hosting web, un bucket) y subes
+`output/resource_pack.zip` allí después de cada recompilación. Los jugadores reciben ese enlace con
+el SHA-1 del pack, así que su cliente sigue comprobando la descarga. `{sha1}` en el enlace se
+sustituye por el hash, para servicios que cachean por URL.
+
+**`upload`** — después de cada recompilación el plugin sube el ZIP él mismo a una API web de
+almacenamiento y manda a los jugadores el enlace que devuelve, con el SHA-1 nuevo:
+
+```yaml
+upload:
+  enabled: true
+  url: "https://storage.example.com/api/upload"   # el endpoint de subida del servicio
+  method: POST                                    # o PUT
+  file-field: "file"                              # el campo del formulario con el ZIP
+  file-name: "resource_pack.zip"
+  fields: { folder: "minecraft" }                 # más campos del formulario
+  headers: { Authorization: "Bearer TU-TOKEN" }   # normalmente la clave del servicio
+  response:
+    url-path: "data.url"        # respuesta JSON: dónde está el enlace (data.url, files[0].url...)
+    url-pattern: ""             # otra respuesta: regex cuyo primer grupo es el enlace
+  download-url: "{value}"       # el enlace final; {value} = lo encontrado, {sha1} = el hash
+  timeout-seconds: 60
+  retries: 2                    # tras error de red, timeout o 5xx; pausas de 2, 4, 8... s
+  verify: true                  # descargar lo subido y comparar el SHA-1 antes de enviarlo
+```
+
+- **Fuera del hilo principal.** La subida es la última etapa de la recompilación en
+  `ArkContent-Worker`, y la espera de red ni siquiera ocupa ese hilo: la petición va por el
+  `HttpClient` asíncrono de Java y las etapas siguientes vuelven a encolarse en el worker. Solo el
+  cambio final —pack, enlace y hash nuevos, y el reenvío a los jugadores conectados— pasa por el
+  hilo del servidor.
+- **`multipart/form-data`** con `Content-Length` (no chunked, que muchos scripts de subida
+  rechazan), el formulario que enviaría un `<input type="file">`. El ZIP no se copia para armar
+  la petición.
+- **Verificación.** Con `verify: true` se descarga el enlace devuelto y se compara su SHA-1 con el
+  del pack: un servicio que recomprime o renombra archivos daría a los jugadores un pack que su
+  cliente rechaza, y eso se detecta antes de enviárselo a nadie.
+- **Sin subidas repetidas.** `data/upload.json` recuerda el último pack subido (hash, enlace y
+  servicio). Un reinicio o un `reload` sin cambios en el pack reutiliza el enlace —comprobándolo
+  primero con `verify`, y subiéndolo otra vez si el servicio lo borró— en lugar de llenar el
+  servicio de copias.
+- **Si la subida falla** (servicio caído, credenciales malas), se avisa en consola con el motivo y
+  los jugadores reciben el enlace del servidor integrado si está encendido; si no, conservan el
+  pack que ya tenían. Un rechazo (401, 413...) no se reintenta; un error de red o un 5xx sí.
+- `upload` tiene prioridad sobre `external-url`, que la tiene sobre el servidor integrado.
 
 ### Cultivos (`custom_crop`)
 
@@ -459,6 +533,42 @@ levanta: el asiento desaparece y el jugador queda de pie sobre el mueble, no den
 Si ya hay alguien sentado se avisa. El asiento nunca se guarda con el chunk; romper el mueble,
 desconectarse o apagar el plugin también lo retiran.
 
+### Muebles con almacenamiento
+
+```yaml
+  ruby_crate:
+    type: custom_furniture
+    resource:
+      model: furniture/ruby_crate
+    furniture:
+      support: BARRIER
+      interactable: storage
+      slots: 27                       # filas enteras: 9, 18, 27, 36, 45 o 54
+      storage-title: "<dark_red>Ruby Crate"   # MiniMessage; sin él, el nombre del ítem
+```
+
+Clic derecho sobre el mueble abre su inventario (agachado, el clic queda para vanilla, para poner un
+bloque contra él). Como un cofre: un inventario por mueble, compartido —dos jugadores ven los mismos
+huecos— y que se cierra solo si el jugador se aleja más de 8 bloques.
+
+- **Persistencia asíncrona.** Tabla `furniture_storage` (esquema 3): mundo, x, y, z, id del mueble,
+  tamaño y el contenido serializado por Paper, que guarda la versión de datos para que un Minecraft
+  posterior actualice los ítems al leerlos. Toda lectura y escritura va por el hilo `ArkContent-DB`
+  con `CompletableFuture`; el hilo del servidor nunca espera a SQLite. Lo que sí ocurre en el hilo
+  principal es convertir los ítems en bytes y de vuelta (unos microsegundos por inventario): los
+  ítems son objetos del servidor, así que se toma una instantánea en el momento del cierre y lo que
+  viaja al hilo de la base de datos son bytes.
+- **Cuándo se guarda.** Cada vez que alguien lo cierra; cada 30 s mientras siga abierto y haya
+  cambiado (un crash pierde como mucho eso); al descargar su mundo y al apagar el plugin. Las
+  escrituras se encolan en orden, así que gana la última.
+- **Nada se pierde ni se duplica.** Romper el mueble suelta lo que contiene: el inventario abierto
+  si alguien lo tiene abierto, si no lo guardado, leído y borrado en una sola transacción para que
+  no pueda soltarse dos veces. Un contenido que no se pudiera leer no se sustituye nunca por un
+  inventario vacío: el mueble no se abre y la fila queda intacta. Si se reduce `slots` en la
+  configuración, el inventario conserva las filas que aún tienen algo hasta que se vacían. Lo que
+  quedara guardado en una posición cuyo mueble desapareció sin romperse (WorldEdit, un rollback) se
+  suelta allí cuando se coloca otro, en vez de heredarlo el nuevo.
+
 ## 5. Integraciones
 
 Todas opcionales. `paper-plugin.yml` declara cada plugin como dependencia con
@@ -475,6 +585,9 @@ gancho. `/arkcontent info` muestra cuáles están activos (`Hooks: MythicMobs, .
 | PlaceholderAPI | antes de este | la expansión se registra al habilitarse este plugin |
 | ShopGUI+ | después de este | pide los proveedores de ítems al habilitarse (`ShopGUIPlusPostEnableEvent`) |
 | Iris | antes de este | genera mundos; su servicio de datos tiene que estar en marcha |
+| MMOItems (+ MythicLib) | antes de este | su stat se registra en `onLoad`, antes de que MMOItems lea sus ítems al habilitarse |
+| WorldGuard (+ WorldEdit) | antes de este | se le pregunta en cada interacción; su API está escrita con clases de WorldEdit |
+| GriefPrevention | antes de este | ídem |
 
 ### MythicMobs
 
@@ -623,6 +736,66 @@ referencia, que el código compilado solo usa firmas que existen tal cual en Iri
 podido ejecutar con Iris real aquí. Los chunks que Iris genera antes de que este plugin arranque
 (el área de spawn de un mundo nuevo) no tienen aún el proveedor: pregenera después de arrancar.
 
+### MMOItems
+
+Registra un stat propio en MMOItems, `ARKCONTENT_ITEM` (`arkcontent-item` en sus YAML): el motor
+pasa a ser el proveedor visual de los ítems RPG. Un ítem de MMOItems con ese stat se dibuja con el
+modelo y las texturas del ítem de este plugin, del pack que este plugin genera y envía, y conserva
+todo lo demás de MMOItems (daño, habilidades, gemas, tiers):
+
+```yaml
+CUTLASS:
+  base:
+    material: IRON_SWORD
+    name: '&cRuby Cutlass'
+    arkcontent-item: demo:ruby_sword
+```
+
+- Solo pone el componente `item_model`; se guarda en el NBT del ítem como cualquier stat, así que
+  sobrevive a las actualizaciones de ítems de MMOItems y se puede editar en su GUI (`/mi edit`), que
+  rechaza con un mensaje un id que no sea un ítem cargado.
+- Se registra en `onLoad` de este plugin: MMOItems carga antes y lee las configuraciones de sus ítems
+  al habilitarse, así que el stat ya existe entonces.
+- MMOItems solo publica su API como snapshots en su propio repositorio. Igual que con Iris, el gancho
+  se compila contra una copia exacta de las firmas que usa (MMOItems 6.10, `src/mmoitemsApi`, nunca
+  dentro del JAR), y se comprobó compilándolo también contra el jar real `MMOItems-API`
+  6.10.1-SNAPSHOT: el bytecode resultante hace exactamente las mismas referencias. MMOItems es de
+  pago y no se ha podido ejecutar aquí.
+
+### WorldGuard y GriefPrevention
+
+La mayoría de lo que un jugador hace a este contenido llega a los plugins de protección como un
+evento real (`BlockBreakEvent`, `BlockPlaceEvent`) que pueden cancelar igual que con cualquier
+bloque. Pero hay acciones que el plugin hace por su cuenta y que no pasan por ningún evento de
+bloque. Esas se consultan antes con WorldGuard y GriefPrevention, y se detienen si cualquiera dice que no:
+
+| Acción | WorldGuard (flags que se prueban, como WorldGuard hace con lo vanilla) | GriefPrevention |
+|---|---|---|
+| Plantar un cultivo | `build` + `block-place` | confianza de construcción (`/trust`) |
+| Cosechar o arrancar un cultivo, romper un mueble, vaciar un cubo sobre un cultivo | `build` + `block-break` | `/trust` |
+| Harina de hueso en un cultivo; pisotear la tierra de un cultivo | `build` | `/trust` |
+| Sentarse en un mueble | `ride` + `interact` (lo mismo que comprueba WorldGuard al montar) | `/accesstrust` |
+| Abrir un mueble con almacenamiento | `interact` + `chest-access` | `/containertrust` |
+| Una explosión que alcanza un bloque personalizado o la tierra bajo un cultivo | `build` + `block-break` desde el origen de la explosión, y su flag (`tnt`, `creeper-explosion`...) | el claim admite explosiones (`/claimexplosions`) |
+| Un mob que pisotea, agua que fluye | `build` + `block-break` desde donde viene | mismo claim o mismo dueño |
+
+- Todos los listeners de cultivos y note blocks que reaccionan a un evento vanilla (explosiones,
+  pistones, pisotones, cubos, agua) corren tarde (`HIGHEST`/`MONITOR`) e ignoran lo ya cancelado,
+  así que primero deciden los plugins de protección; y, además, cada bloque que el plugin cambiaría
+  por su cuenta se consulta de nuevo. Ejemplo verificado: un TNT fuera de una región rompe la tierra
+  bajo un cultivo que está dentro; vanilla se llevaría el cultivo, aquí se queda.
+- Los pistones nunca mueven bloques personalizados, muebles ni cultivos, protegidos o no: se
+  cancelan siempre.
+- Al jugador se le dice `This area is protected.` en la barra de acción. Quien tiene el bypass de
+  WorldGuard o `/ignoreclaims` de GriefPrevention pasa, como en todo lo demás.
+- Si la comprobación de un plugin de protección lanza un error (una versión con otra API), cuenta
+  como **no**: una comprobación rota no puede convertirse en una puerta abierta. Se avisa una vez
+  en consola.
+- Compilado contra WorldGuard 7.0.14 (WorldEdit 7.3.9) y GriefPrevention 16.18.5, y verificado en
+  un servidor Paper 1.21.8 real con dos bots: una región sin flags y otra con `chest-access` y
+  `ride` permitidos; un claim sin confianza, con `/containertrust` y con `/trust`; y explosiones
+  con y sin `/claimexplosions`.
+
 ## 6. Importar desde ItemsAdder
 
 ```
@@ -732,7 +905,8 @@ con `join-classpath: true` para ver sus clases.
 ## 9. Límites conocidos
 
 - Cambiar nombre o lore en el YAML no actualiza las stacks ya entregadas (el modelo sí).
-- `/arkcontent reload` no relee `config.yml`: puerto y dirección del servidor HTTP piden reinicio.
+- `/arkcontent reload` no relee `config.yml`: puerto y dirección del servidor HTTP, y la sección
+  `upload`, piden reinicio.
 - Un ítem hecho de un material con uso propio (arco, comida, perla) conserva ese uso salvo que
   `cancel-vanilla-use` esté activo, y sigue valiendo como ingrediente en recetas vanilla.
 - Bloques personalizados: rompen con la dureza y herramienta de un note block (madera, hacha);
@@ -743,13 +917,18 @@ con `join-classpath: true` para ver sus clases.
   uno; para granjas enormes, eso son muchas entidades de display (baratas, pero entidades).
 - Emojis: se reemplazan en el chat; en carteles y libros funcionan si se escribe el carácter (o se
   pega desde `/emojis`), no la palabra clave.
-- Asientos: uno por mueble, con la altura fija de `seat-height`.
+- Asientos: uno por mueble, con la altura fija de `seat-height`. Un mueble es asiento, contenedor o
+  ninguno de los dos, no ambos.
+- Muebles con almacenamiento: las tolvas no los alimentan ni los vacían (su soporte es una barrera,
+  no un contenedor).
+- Subida automática: solo APIs que aceptan un formulario multipart (o PUT con él). Servicios que
+  exigen firmar la petición (S3 con firma v4) o subir por partes no están cubiertos; para esos,
+  `external-url` y subir el ZIP con su propia herramienta.
 - Importar desde ItemsAdder convierte configuración y recursos, no mundos: los bloques y muebles
   que ItemsAdder ya colocó siguen siendo suyos. Recetas, loot, eventos y demás se listan como no
   importados.
-- Muebles de un solo bloque de hitbox; sin interacción de clic derecho todavía (el gancho está en
-  `FurnitureListener#onUse`). Sujetar un ítem de mueble muestra las partículas de barrier/light
-  que el cliente dibuja al sostener esos materiales.
+- Muebles de un solo bloque de hitbox. Sujetar un ítem de mueble muestra las partículas de
+  barrier/light que el cliente dibuja al sostener esos materiales.
 - La caché guarda en memoria todo lo colocado en los mundos cargados (~100 bytes por entrada).
 - MythicMobs: los ítems se referencian como `arkcontent{item=ns:id}`, no como `ns:id` (ver
   sección 5).

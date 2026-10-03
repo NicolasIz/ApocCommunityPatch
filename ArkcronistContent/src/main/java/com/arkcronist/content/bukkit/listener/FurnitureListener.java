@@ -2,9 +2,14 @@ package com.arkcronist.content.bukkit.listener;
 
 import com.arkcronist.content.bukkit.furniture.FurnitureService;
 import com.arkcronist.content.bukkit.furniture.SeatService;
+import com.arkcronist.content.bukkit.furniture.StorageService;
 import com.arkcronist.content.bukkit.item.CustomItem;
 import com.arkcronist.content.bukkit.item.ItemFactory;
+import com.arkcronist.content.bukkit.protection.Interaction;
+import com.arkcronist.content.bukkit.protection.Protection;
 import com.arkcronist.content.core.definition.Placement;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -19,9 +24,13 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDismountEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.world.EntitiesLoadEvent;
+import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.plugin.Plugin;
 
@@ -30,7 +39,11 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Placing, breaking and tidying furniture.
+ * Placing, breaking, using and tidying furniture.
+ *
+ * <p>A right click sits on a seat or opens a storage furniture's inventory, once every installed
+ * protection plugin agrees - see {@link Protection}; a click on an invisible block reaches none of
+ * them on its own.</p>
  *
  * <p>Breaking has two ways in. In creative a barrier breaks like any block and fires a
  * {@link BlockBreakEvent}; in survival neither support can be mined - a barrier is unbreakable and a
@@ -43,12 +56,17 @@ public final class FurnitureListener implements Listener {
     private final Plugin plugin;
     private final FurnitureService furniture;
     private final SeatService seats;
+    private final StorageService storage;
+    private final Protection protection;
     private final ItemFactory items;
 
-    public FurnitureListener(Plugin plugin, FurnitureService furniture, SeatService seats, ItemFactory items) {
+    public FurnitureListener(Plugin plugin, FurnitureService furniture, SeatService seats, StorageService storage,
+                             Protection protection, ItemFactory items) {
         this.plugin = plugin;
         this.furniture = furniture;
         this.seats = seats;
+        this.storage = storage;
+        this.protection = protection;
         this.items = items;
     }
 
@@ -70,12 +88,16 @@ public final class FurnitureListener implements Listener {
         Block block = event.getBlockPlaced();
         if (block.getType() == FurnitureService.material(spec.support())) {
             furniture.place(block, event.getPlayer(), item.get(), spec);
+            if (spec.storage() != null) {
+                storage.placed(block);
+            }
         }
     }
 
     /**
-     * A right click on a seat sits on it. Any other furniture does not react as its support block
-     * would: holding a light item, a click on a light block steps its light level.
+     * A right click on a seat sits on it, and on storage furniture opens it; sneaking, the click is
+     * left to vanilla, to place a block against the furniture. Any other furniture does not react as
+     * its support block would: holding a light item, a click on a light block steps its light level.
      *
      * <p>A light-block support cannot be clicked at all, so a click that lands on the floor behind
      * it, or in the air, is followed along the line of sight to find it - the same way a punch is.</p>
@@ -90,14 +112,23 @@ public final class FurnitureListener implements Listener {
         Block clicked = event.getClickedBlock();
         boolean clickedFurniture = clicked != null && furniture.identify(clicked).isPresent();
         Optional<Block> support = clickedFurniture ? Optional.of(clicked) : furniture.target(event.getPlayer());
-        Optional<Placement.Furniture> definition = support.flatMap(furniture::definition);
-        if (definition.isPresent() && definition.get().seat() != null && !event.getPlayer().isSneaking()) {
-            // Both hands' clicks are taken, so the off hand does not place a block against the chair.
+        Optional<CustomItem> item = support.flatMap(furniture::item);
+        Placement.Furniture definition = item.map(CustomItem::placement).filter(Placement.Furniture.class::isInstance)
+                .map(Placement.Furniture.class::cast).orElse(null);
+        boolean interactive = definition != null && (definition.seat() != null || definition.storage() != null);
+        if (interactive && !event.getPlayer().isSneaking()) {
+            // Both hands' clicks are taken, so the off hand does not place a block against the furniture.
             event.setCancelled(true);
-            if (event.getHand() == EquipmentSlot.HAND) {
-                Player player = event.getPlayer();
+            Player player = event.getPlayer();
+            if (event.getHand() != EquipmentSlot.HAND) {
+                return;
+            }
+            if (definition.seat() != null && protection.check(player, support.get(), Interaction.SIT)) {
                 float yaw = furniture.facing(support.get()).orElse(player.getLocation().getYaw());
-                seats.sit(player, support.get(), definition.get().seat(), yaw);
+                seats.sit(player, support.get(), definition.seat(), yaw);
+            } else if (definition.storage() != null && protection.check(player, support.get(), Interaction.CONTAINER)) {
+                storage.open(player, support.get(), item.get().id(), definition.storage(),
+                        title(item.get(), definition.storage()));
             }
             return;
         }
@@ -105,6 +136,38 @@ public final class FurnitureListener implements Listener {
             event.setUseInteractedBlock(Event.Result.DENY);
         }
     }
+
+    private static Component title(CustomItem item, Placement.Storage spec) {
+        if (spec.title() != null) {
+            return MiniMessage.miniMessage().deserialize(spec.title());
+        }
+        return item.displayName() != null ? item.displayName() : Component.translatable("container.chest");
+    }
+
+    // ---------------------------------------------------------------- storage inventories
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onStorageClick(InventoryClickEvent event) {
+        storage.changed(event.getView().getTopInventory());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onStorageDrag(InventoryDragEvent event) {
+        storage.changed(event.getView().getTopInventory());
+    }
+
+    /** Fires on logout and death too, so every way of leaving a storage inventory saves it. */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onStorageClose(InventoryCloseEvent event) {
+        storage.closed(event.getPlayer(), event.getInventory());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onWorldUnload(WorldUnloadEvent event) {
+        storage.worldUnloaded(event.getWorld());
+    }
+
+    // ---------------------------------------------------------------- seats
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onDismount(EntityDismountEvent event) {
@@ -144,6 +207,9 @@ public final class FurnitureListener implements Listener {
         event.setCancelled(true);
 
         Block block = target.get();
+        if (!protection.check(event.getPlayer(), block, Interaction.BREAK)) {
+            return;
+        }
         BlockBreakEvent breakEvent = new BlockBreakEvent(block, event.getPlayer());
         breakEvent.setDropItems(false);
         if (breakEvent.callEvent()) {
@@ -158,6 +224,7 @@ public final class FurnitureListener implements Listener {
         Player player = event.getPlayer();
         furniture.identify(block).ifPresent(id -> {
             seats.release(block);
+            storage.broken(block);
             furniture.remove(block, id, player.getGameMode() != GameMode.CREATIVE);
         });
     }

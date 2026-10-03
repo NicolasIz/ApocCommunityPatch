@@ -183,8 +183,13 @@ public final class FurnitureService {
 
     /** The definition of the furniture standing on this block, if it is still defined as furniture. */
     public Optional<Placement.Furniture> definition(Block block) {
-        return identify(block).flatMap(registry::get).map(CustomItem::placement)
+        return item(block).map(CustomItem::placement)
                 .filter(Placement.Furniture.class::isInstance).map(Placement.Furniture.class::cast);
+    }
+
+    /** The custom item of the furniture standing on this block, if it is still defined. */
+    public Optional<CustomItem> item(Block block) {
+        return identify(block).flatMap(registry::get);
     }
 
     /** The direction the furniture on this block faces: its display's yaw. */
