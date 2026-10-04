@@ -421,6 +421,53 @@ class PackCompilerTest {
         assertFalse(Files.exists(assets.resolve("equipment")), "no asset: the client would draw it over the model");
     }
 
+    @Test
+    void texturesOutsideBlockAndItemAreNamedOnTheBlocksAtlas() throws IOException {
+        Path demo = temp.resolve("contents/demo");
+        write(demo, "models/furniture/pedestal.json", """
+                { "textures": { "stone": "demo:furniture/pedestal_stone", "gem": "demo:item/ruby",
+                                "lid": "minecraft:entity/chest/normal", "particle": "#stone" },
+                  "elements": [] }
+                """);
+        write(demo, "textures/furniture/pedestal_stone.png", png("stone"));
+        write(demo, "textures/item/ruby.png", png("ruby"));
+        write(demo, "textures/crop/stage_0.png", png("stage"));
+        write(demo, "textures/block/ore.png", png("ore"));
+        Path armor = temp.resolve("MythicArmor");
+        write(armor, "assets/minecraft/atlases/blocks.json", """
+                { "sources": [ { "type": "directory", "source": "armor_trims", "prefix": "armor_trims/" } ] }
+                """);
+
+        Path pack = temp.resolve("pack");
+        PackCompiler.Result result = new PackCompiler(SETTINGS).compile(pack, List.of(
+                item("pedestal", provided(demo, "demo:furniture/pedestal")),
+                item("seedling", flat(demo, "seedling", "demo:crop/stage_0", "minecraft:item/generated")),
+                item("ore", cube(demo, "ore"))), Map.of(), Map.of(), List.of(new ExternalPack("MythicArmor", armor)));
+
+        assertEquals(List.of(), result.problems());
+        JsonArray sources = json(pack.resolve("assets/minecraft/atlases/blocks.json")).getAsJsonArray("sources");
+        List<String> listed = new java.util.ArrayList<>();
+        for (var source : sources) {
+            JsonObject entry = source.getAsJsonObject();
+            listed.add(entry.get("type").getAsString() + " " + (entry.has("resource")
+                    ? entry.get("resource").getAsString() : entry.get("source").getAsString()));
+        }
+        assertEquals(List.of("directory armor_trims", "minecraft:single demo:crop/stage_0",
+                        "minecraft:single demo:furniture/pedestal_stone", "minecraft:single minecraft:entity/chest/normal"),
+                listed,
+                "the merged pack's sources first; block/ and item/ are on the atlas already");
+    }
+
+    @Test
+    void noAtlasFileWhenEveryTextureIsInBlockOrItem() throws IOException {
+        Path demo = temp.resolve("contents/demo");
+        write(demo, "textures/item/ruby.png", png("ruby"));
+        Path pack = temp.resolve("pack");
+        new PackCompiler(SETTINGS).compile(pack, List.of(
+                item("ruby", flat(demo, "ruby", "demo:item/ruby", "minecraft:item/generated"))), Map.of());
+        assertFalse(Files.exists(pack.resolve("assets/minecraft/atlases")));
+    }
+
     // ---------------------------------------------------------------- fixtures
 
     /** What the loader makes of {@code texture:} on a custom block. */

@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -75,7 +76,10 @@ import java.util.stream.Stream;
  */
 public final class ContentPipeline {
 
-    /** The demo pack as the first versions shipped it. */
+    /**
+     * The demo pack's first files, and those a later version only used from a file that was already
+     * there (the 1.2 crate, in blocks.yml): copied on a first start only.
+     */
     private static final List<String> FIRST_EXAMPLES = List.of(
             "contents/demo/items.yml",
             "contents/demo/models/item/ruby.json",
@@ -86,26 +90,28 @@ public final class ContentPipeline {
             "contents/demo/models/furniture/ruby_pedestal.json",
             "contents/demo/textures/furniture/pedestal_stone.png",
             "contents/demo/models/furniture/ruby_crate.json",
-            "contents/demo/textures/furniture/ruby_crate.png",
-            "contents/demo/furniture.yml",
-            "contents/demo/models/furniture/ruby_chest.bbmodel",
-            "contents/demo/models/furniture/ruby_bed.json",
-            "contents/demo/textures/furniture/ruby_bed.png",
-            "contents/demo/crops.yml",
-            "contents/demo/textures/item/ruby_seeds.png",
-            "contents/demo/textures/crop/ruby_stage_0.png",
-            "contents/demo/textures/crop/ruby_stage_1.png",
-            "contents/demo/textures/crop/ruby_stage_2.png",
-            "contents/demo/textures/crop/ruby_stage_3.png",
-            "contents/demo/emojis.yml",
-            "contents/demo/textures/emoji/ruby.png",
-            "contents/demo/textures/emoji/heart.png");
+            "contents/demo/textures/furniture/ruby_crate.png");
 
     /**
      * The examples each later version added. A server that already has a contents/ folder gets
      * these on upgrade (see {@link ExampleUpdates}); a new one gets them with the rest.
      */
     private static final Map<String, List<String>> ADDED_EXAMPLES = Map.of(
+            "1.1.0", List.of(
+                    "contents/demo/crops.yml",
+                    "contents/demo/textures/item/ruby_seeds.png",
+                    "contents/demo/textures/crop/ruby_stage_0.png",
+                    "contents/demo/textures/crop/ruby_stage_1.png",
+                    "contents/demo/textures/crop/ruby_stage_2.png",
+                    "contents/demo/textures/crop/ruby_stage_3.png",
+                    "contents/demo/emojis.yml",
+                    "contents/demo/textures/emoji/ruby.png",
+                    "contents/demo/textures/emoji/heart.png"),
+            "1.3.0", List.of(
+                    "contents/demo/furniture.yml",
+                    "contents/demo/models/furniture/ruby_chest.bbmodel",
+                    "contents/demo/models/furniture/ruby_bed.json",
+                    "contents/demo/textures/furniture/ruby_bed.png"),
             "1.4.0", List.of(
                     "contents/demo/armor.yml",
                     "contents/demo/textures/entity/equipment/humanoid/ruby_armor.png",
@@ -192,8 +198,10 @@ public final class ContentPipeline {
     private final Path zipFile;
     private final Path noteBlockStateFile;
     private final Path emojiCharacterFile;
-    /** The plugin version that last offered the demo examples to contents/. */
-    private final Path examplesVersionFile;
+    /** The example sets offered to contents/ so far, one per line. */
+    private final Path examplesOfferedFile;
+    /** What 1.4.0 wrote instead: the one set it knew, 1.4.0. */
+    private final Path legacyExamplesFile;
 
     private final ExecutorService worker;
     private final Executor mainThread;
@@ -224,7 +232,8 @@ public final class ContentPipeline {
         this.zipFile = data.resolve("output").resolve("resource_pack.zip");
         this.noteBlockStateFile = data.resolve("data").resolve("note_block_states.json");
         this.emojiCharacterFile = data.resolve("data").resolve("emoji_characters.json");
-        this.examplesVersionFile = data.resolve("data").resolve("examples_version.txt");
+        this.examplesOfferedFile = data.resolve("data").resolve("examples_offered.txt");
+        this.legacyExamplesFile = data.resolve("data").resolve("examples_version.txt");
 
         this.worker = Executors.newSingleThreadExecutor(runnable -> {
             Thread thread = new Thread(runnable, "ArkContent-Worker");
@@ -532,11 +541,10 @@ public final class ContentPipeline {
     }
 
     /**
-     * The whole demo pack on the first start; on an upgrade, the examples added since the version
-     * that last offered them - never over a file that is there, never into a deleted pack folder.
+     * The whole demo pack on the first start; on an upgrade, the example sets not offered yet (see
+     * {@link ExampleUpdates}) - never over a file that is there, never into a deleted pack folder.
      */
     private void extractExamples() throws IOException {
-        String version = plugin.getPluginMeta().getVersion();
         if (!Files.exists(contentsDir)) {
             if (settings.extractExamples()) {
                 for (String example : EXAMPLES) {
@@ -545,26 +553,32 @@ public final class ContentPipeline {
             }
             Files.createDirectories(contentsDir);
         } else {
-            String last = Files.isRegularFile(examplesVersionFile)
-                    ? Files.readString(examplesVersionFile).trim()
-                    : ExampleUpdates.BEFORE_REMEMBERED;
-            if (ExampleUpdates.compare(version, last) <= 0) {
+            List<String> lines = new ArrayList<>();
+            for (Path file : List.of(examplesOfferedFile, legacyExamplesFile)) {
+                if (Files.isRegularFile(file)) {
+                    lines.addAll(Files.readAllLines(file));
+                }
+            }
+            Set<String> offered = ExampleUpdates.parse(lines);
+            if (offered.containsAll(ADDED_EXAMPLES.keySet())) {
                 return;
             }
             if (settings.extractExamples()) {
-                List<String> copy = ExampleUpdates.toCopy(ADDED_EXAMPLES, last, plugin.getDataFolder().toPath());
+                List<String> copy = ExampleUpdates.toCopy(ADDED_EXAMPLES, offered, plugin.getDataFolder().toPath());
                 for (String example : copy) {
                     plugin.saveResource(example, false);
                 }
                 if (!copy.isEmpty()) {
-                    logger.info("Added " + copy.size() + " example file(s) new since " + last + " to contents/: "
+                    logger.info("Added " + copy.size() + " example file(s) from newer versions to contents/: "
                             + String.join(", ", copy.stream().filter(path -> path.endsWith(".yml")).toList())
-                            + " and what they use. Nothing already there was touched.");
+                            + " and what they use. Nothing already there was touched; delete what you do not"
+                            + " want, it will not come back.");
                 }
             }
         }
-        Files.createDirectories(examplesVersionFile.getParent());
-        Files.writeString(examplesVersionFile, version + "\n");
+        Files.createDirectories(examplesOfferedFile.getParent());
+        Files.write(examplesOfferedFile, ADDED_EXAMPLES.keySet().stream().sorted().toList());
+        Files.deleteIfExists(legacyExamplesFile);
     }
 
     // ---------------------------------------------------------------- main thread

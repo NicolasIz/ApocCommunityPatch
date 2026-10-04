@@ -8,52 +8,49 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ExampleUpdatesTest {
 
-    private static final Map<String, List<String>> ADDED = Map.of(
-            "1.4.0", List.of("contents/demo/armor.yml", "contents/demo/textures/item/ruby_helmet.png"),
-            "1.10.0", List.of("contents/demo/wands.yml"),
-            "1.5.0", List.of("contents/demo/pets.yml"));
+    private static final Map<String, List<String>> SETS = Map.of(
+            "1.1.0", List.of("contents/demo/crops.yml", "contents/demo/textures/crop/stage_0.png"),
+            "1.3.0", List.of("contents/demo/furniture.yml", "contents/demo/models/furniture/ruby_bed.json"),
+            "1.4.0", List.of("contents/demo/armor.yml", "contents/demo/textures/item/ruby_helmet.png"));
 
     @TempDir
     Path plugin;
 
     @Test
-    void anUpgradeBringsTheExamplesOfEveryVersionSinceOldestFirst() throws IOException {
-        Files.createDirectories(plugin.resolve("contents/demo"));
+    void aFolderFromBeforeSetsWereRememberedGetsTheSetsItNeverHad() throws IOException {
+        write("contents/demo/items.yml");
+        write("contents/demo/crops.yml");   // 1.1 was installed here; its stage texture, deleted since
 
-        assertEquals(List.of("contents/demo/armor.yml", "contents/demo/textures/item/ruby_helmet.png",
-                        "contents/demo/pets.yml", "contents/demo/wands.yml"),
-                ExampleUpdates.toCopy(ADDED, ExampleUpdates.BEFORE_REMEMBERED, plugin));
-        assertEquals(List.of("contents/demo/pets.yml", "contents/demo/wands.yml"),
-                ExampleUpdates.toCopy(ADDED, "1.4.0", plugin), "1.4.0's were offered already");
-        assertEquals(List.of(), ExampleUpdates.toCopy(ADDED, "1.10.0", plugin));
+        assertEquals(List.of("contents/demo/furniture.yml", "contents/demo/models/furniture/ruby_bed.json",
+                        "contents/demo/armor.yml", "contents/demo/textures/item/ruby_helmet.png"),
+                ExampleUpdates.toCopy(SETS, Set.of(), plugin));
     }
 
     @Test
-    void nothingIsOverwrittenAndADeletedPackStaysDeleted() throws IOException {
-        Files.createDirectories(plugin.resolve("contents/demo"));
-        Files.writeString(plugin.resolve("contents/demo/armor.yml"), "the owner's own armour");
-
-        assertEquals(List.of("contents/demo/textures/item/ruby_helmet.png"),
-                ExampleUpdates.toCopy(Map.of("1.4.0", ADDED.get("1.4.0")), "1.3.0", plugin));
-
-        Files.delete(plugin.resolve("contents/demo/armor.yml"));
-        Files.delete(plugin.resolve("contents/demo"));
-        Files.createDirectories(plugin.resolve("contents/gems"));
-        assertEquals(List.of(), ExampleUpdates.toCopy(ADDED, "1.3.0", plugin), "no demo folder, no demo");
+    void anOfferedSetIsNotOfferedAgain() throws IOException {
+        write("contents/demo/items.yml");
+        // What 1.4.0 remembered: the one set it knew. The chest and bed it never offered still come.
+        assertEquals(List.of("contents/demo/crops.yml", "contents/demo/textures/crop/stage_0.png",
+                        "contents/demo/furniture.yml", "contents/demo/models/furniture/ruby_bed.json"),
+                ExampleUpdates.toCopy(SETS, ExampleUpdates.parse(List.of("1.4.0", "")), plugin));
+        assertEquals(List.of(), ExampleUpdates.toCopy(SETS, Set.of("1.1.0", "1.3.0", "1.4.0"), plugin));
     }
 
     @Test
-    void versionsCompareNumberByNumber() {
-        assertTrue(ExampleUpdates.compare("1.10.0", "1.9.2") > 0);
-        assertTrue(ExampleUpdates.compare("1.4.0", "1.3.0") > 0);
-        assertEquals(0, ExampleUpdates.compare("1.4", "1.4.0"));
-        assertEquals(0, ExampleUpdates.compare("1.4.0-SNAPSHOT", "1.4.0"));
-        assertTrue(ExampleUpdates.compare("1.3.0", " 1.4.0\n") < 0);
+    void aDeletedPackStaysDeleted() throws IOException {
+        write("contents/gems/items.yml");
+        assertEquals(List.of(), ExampleUpdates.toCopy(SETS, Set.of(), plugin), "no demo folder, no demo");
+    }
+
+    private void write(String relative) throws IOException {
+        Path file = plugin.resolve(relative);
+        Files.createDirectories(file.getParent());
+        Files.writeString(file, "owner's");
     }
 }

@@ -356,6 +356,17 @@ LIGHT— se convierte en un `BlockBreakEvent` real. Los plugins de protección d
 cualquier bloque, y la retirada (display, vínculo, fila, ítem) ocurre en un solo sitio. En creativo
 el barrier se rompe normal y pasa por el mismo sitio. Modo aventura y espectador no rompen muebles.
 
+**Texturas fuera de `block/` e `item/`.** El cliente dibuja los modelos de bloques e ítems —también
+los de los displays— con las texturas del atlas `blocks`, y por sí solo solo mete en él las de las
+carpetas `textures/block/` y `textures/item/` (comprobado en el cliente 1.21.8). Una textura en
+`textures/furniture/`, `textures/crop/` o la de un modelo de Blockbench sale con los cuadros magenta
+y negro de «textura no encontrada» si el pack no la nombra. El compilador escribe
+`assets/minecraft/atlases/blocks.json` con una fuente `minecraft:single` por cada textura que usa un
+modelo fuera de esas dos carpetas; el cliente suma esas fuentes a las suyas. Si un pack fusionado
+(MythicArmor) trae su propio `blocks.json`, se conservan sus fuentes y se añaden las nuestras.
+Hasta la 1.4.0 este archivo no existía: el pedestal, la lámpara, el taburete, la caja, la cama, el
+cofre y los cultivos de la demo se veían magenta en un cliente real.
+
 **Las entidades no se pueden crear fuera del hilo principal** (Paper rechaza un *entity add*
 asíncrono), así que el display se crea en el hilo principal en el mismo tick que su bloque, ya
 configurado antes de entrar al mundo; lo que sale del hilo principal es la escritura en disco.
@@ -783,13 +794,16 @@ which is not in demo`); `model` fuera de la cabeza (se ignora); `model` y `asset
 cabeza (gana el asset, que es lo que el cliente dibujaría); `model` sin `resource`; o un modelo que
 no está en `models/`.
 
-**Actualizar desde 1.3.** El pack de ejemplo se copia entero solo cuando `contents/` no existe;
-para que la armadura llegue también a un servidor que ya lo tenía, cada versión lista los ejemplos
-que añade y el plugin recuerda (`data/examples_version.txt`) la última que los ofreció. Al cambiar
-el jar 1.3 por el 1.4.0 y reiniciar, copia en `contents/demo/` `armor.yml` y sus 8 archivos —y lo
-dice en consola—, sin tocar nada que ya exista, sin recrear `contents/demo/` si se borró y sin
-volver a poner un archivo que el dueño borró después. Verificado en el servidor de prueba: se añaden
-los 9 archivos y salen 15 ítems; borrando `armor.yml` y recargando quedan 11 y no vuelve.
+**Actualizar desde una versión anterior.** El pack de ejemplo se copia entero solo cuando
+`contents/` no existe. Para que lo nuevo llegue también a un servidor que ya lo tenía, cada versión
+agrupa los ejemplos que añadió (1.1: cultivos y emojis; 1.3: `furniture.yml` con el cofre y la cama;
+1.4: la armadura) y el plugin recuerda en `data/examples_offered.txt` qué grupos ofreció. Al
+reiniciar con un jar nuevo copia en `contents/demo/` los grupos que falten y lo dice en consola. Nunca
+sobrescribe nada; no recrea `contents/demo/` si se borró; un grupo del que ya hay algún archivo se
+deja como está (vino con una versión anterior y lo que falta lo borró el dueño); y lo que se borre
+después no vuelve. Verificado en el servidor de prueba: un `contents/demo` sin `furniture.yml` y con
+la marca que dejó 1.4.0 recibe el cofre y la cama (4 archivos) y no toca los cultivos, que ya
+estaban; sin la armadura, recibe sus 9 archivos; borrar `armor.yml` y recargar deja 11 ítems.
 
 El reparto del set de la demo, medido sobre los píxeles visibles: 74 % acero ennegrecido y 26 %
 rubí (casco 66/34, pechera 79/21, grebas 73/27, botas 79/21).

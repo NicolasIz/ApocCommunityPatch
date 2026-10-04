@@ -10,9 +10,9 @@
 # ---------------------------------------------------------------------------
 
 # Write the demo content pack into contents/ when that folder does not exist yet.
-# On an upgrade, also add the examples the new version brings (1.4.0: the Blood
-# Ruby Knight armour, armor.yml) to contents/demo/ - never over a file that is
-# there, never into contents/demo/ if it was deleted, and never twice.
+# On an upgrade, also add to contents/demo/ the examples later versions brought
+# (1.1 crops and emojis, 1.3 chest and bed, 1.4 armour) - never over a file that
+# is there, never into contents/demo/ if it was deleted, and never twice.
 extract-examples: true
 
 pack:

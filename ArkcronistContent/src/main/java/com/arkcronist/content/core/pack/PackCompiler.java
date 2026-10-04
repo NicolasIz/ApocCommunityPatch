@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.TreeMap;
 import java.util.stream.Stream;
 
@@ -136,6 +137,7 @@ public final class PackCompiler {
         for (ExternalPack pack : externalPacks.stream().sorted(Comparator.comparing(ExternalPack::name)).toList()) {
             run.merge(pack);
         }
+        run.atlas();
         return new Result(run.itemDefinitions, run.models, run.textures, run.customBlockStates,
                 run.glyphs, run.externalFiles, run.problems);
     }
@@ -150,6 +152,8 @@ public final class PackCompiler {
         /** Source files already followed, so shared parents and cycles are read once. */
         private final Set<String> followed = new HashSet<>();
         private final Set<String> namespaces = new HashSet<>();
+        /** Textures models draw with that the blocks atlas does not take in by itself. */
+        private final Set<String> atlasSprites = new TreeSet<>();
 
         private int itemDefinitions;
         private int models;
@@ -213,6 +217,7 @@ public final class PackCompiler {
          */
         private void bones(ItemDefinition item, AnimatedModel model, String origin) throws IOException {
             for (AnimatedModel.Texture texture : model.textures()) {
+                drawnByModel(texture.location());
                 if (texture.png().length > 0
                         && place(texture.location().assetPath("textures", ".png"), texture.png(), origin)) {
                     textures++;
@@ -260,12 +265,14 @@ public final class PackCompiler {
                 case ModelSource.Generated generated -> {
                     generateModel(generated, origin);
                     for (ResourceLocation texture : generated.textures().values()) {
+                        drawnByModel(texture);
                         if (texture.namespace().equals(namespace)) {
                             copyTexture(generated.sourceRoot(), texture, origin);
                         }
                     }
                 }
                 case ModelSource.Inline inline -> {
+                    inlineTextures(inline, origin);
                     if (place(inline.location().assetPath("models", ".json"), inline.json().getBytes(StandardCharsets.UTF_8),
                             origin)) {
                         models++;
@@ -491,10 +498,88 @@ public final class PackCompiler {
             if (json.get("textures") instanceof JsonObject textureMap) {
                 for (Map.Entry<String, JsonElement> entry : textureMap.entrySet()) {
                     ResourceLocation texture = reference(entry.getValue(), model, origin);
+                    if (texture != null) {
+                        drawnByModel(texture);
+                    }
                     if (texture != null && texture.namespace().equals(model.namespace())) {
                         copyTexture(sourceRoot, texture, origin);
                     }
                 }
+            }
+        }
+
+        /**
+         * Notes a texture a model draws with. The client stitches every texture in a {@code block/}
+         * or {@code item/} folder - of any namespace - onto the blocks atlas, the sheet block and
+         * item models are drawn from; one anywhere else ({@code furniture/}, {@code crop/}, a
+         * Blockbench model's own) is not on it unless the pack names it, and the model is drawn
+         * with the magenta and black "missing texture" squares.
+         */
+        private void drawnByModel(ResourceLocation texture) {
+            String path = texture.path();
+            if (!path.startsWith("block/") && !path.startsWith("item/")) {
+                atlasSprites.add(texture.toString());
+            }
+        }
+
+        private void inlineTextures(ModelSource.Inline inline, String origin) {
+            try {
+                if (JsonParser.parseString(inline.json()) instanceof JsonObject json
+                        && json.get("textures") instanceof JsonObject textureMap) {
+                    for (Map.Entry<String, JsonElement> entry : textureMap.entrySet()) {
+                        ResourceLocation texture = reference(entry.getValue(), inline.location(), origin);
+                        if (texture != null) {
+                            drawnByModel(texture);
+                        }
+                    }
+                }
+            } catch (JsonParseException exception) {
+                // Placed as it is; the client reports a broken model in its own log.
+            }
+        }
+
+        /**
+         * {@code assets/minecraft/atlases/blocks.json}: a {@code single} source for each texture a
+         * model draws with outside {@code block/} and {@code item/}. The client adds the sources of
+         * every pack's atlas file to vanilla's, so this one lists only those. A merged pack's own
+         * atlas file keeps its sources, with these after them.
+         */
+        void atlas() throws IOException {
+            if (atlasSprites.isEmpty()) {
+                return;
+            }
+            String relative = "assets/minecraft/atlases/blocks.json";
+            Path target = packDir.resolve(relative);
+            JsonObject atlas = new JsonObject();
+            JsonArray sources = new JsonArray();
+            boolean merged = placed.containsKey(relative);
+            if (merged) {
+                try {
+                    if (JsonParser.parseString(Files.readString(target)) instanceof JsonObject existing) {
+                        atlas = existing;
+                        if (existing.get("sources") instanceof JsonArray theirs) {
+                            sources = theirs;
+                        }
+                    }
+                } catch (JsonParseException exception) {
+                    problems.add(placed.get(relative) + ": " + relative + " is not valid JSON - replaced by this"
+                            + " plugin's atlas sources");
+                }
+            }
+            for (String sprite : atlasSprites) {
+                JsonObject single = new JsonObject();
+                single.addProperty("type", "minecraft:single");
+                single.addProperty("resource", sprite);
+                if (!sources.contains(single)) {
+                    sources.add(single);
+                }
+            }
+            atlas.add("sources", sources);
+            if (merged) {
+                Files.write(target, json(atlas));
+            } else {
+                Files.createDirectories(target.getParent());
+                place(relative, json(atlas), "atlas");
             }
         }
 

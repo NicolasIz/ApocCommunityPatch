@@ -66,6 +66,14 @@ class DemoContentTest {
             assertTrue(Files.isRegularFile(pack.resolve("assets/demo/models/ruby_chest/bone_" + bone + ".json")), bone);
         }
         assertTrue(Files.isRegularFile(pack.resolve("assets/demo/models/furniture/ruby_bed.json")));
+
+        // What the client drew magenta and black: furniture, crop and Blockbench textures are not
+        // in block/ or item/, so they are on the atlas only by name.
+        String atlas = Files.readString(pack.resolve("assets/minecraft/atlases/blocks.json"));
+        for (String sprite : java.util.List.of("demo:furniture/pedestal_stone", "demo:furniture/ruby_crate",
+                "demo:furniture/ruby_bed", "demo:ruby_chest/tex_0", "demo:crop/ruby_stage_0", "demo:crop/ruby_stage_3")) {
+            assertTrue(atlas.contains("\"" + sprite + "\""), sprite + " in " + atlas);
+        }
     }
 
     @Test
