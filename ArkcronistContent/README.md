@@ -2,7 +2,7 @@
 
 Motor de contenido personalizado para **Paper 1.21.8+**, Java 21: define ítems, bloques, muebles
 (también asientos, muebles con inventario, cofres con animaciones de Blockbench y camas de dos
-bloques), armaduras (con cascos 3D), cultivos y emojis de chat en YAML y el plugin compila
+bloques), armaduras (con cascos 3D), cultivos, emojis de chat y logros en YAML y el plugin compila
 su propio resource pack, lo empaqueta en ZIP, calcula su SHA-1, lo sirve con un servidor HTTP
 integrado —o lo sube solo a un servicio de almacenamiento— y se lo envía a cada jugador. Los bloques
 y muebles colocados, los cultivos y lo guardado en los muebles se conservan en SQLite. El mismo
@@ -30,8 +30,9 @@ concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer
 
 Con MythicMobs, ModelEngine, MythicArmor, MMOItems, PlaceholderAPI (y a través de él TAB y
 DeluxeMenus), ShopGUI+, Iris, WorldGuard, GriefPrevention, AuraSkills, mcMMO, SkillAPI/ProSkillAPI,
-Fabled, Vault, Citizens, DecentHolograms, EconomyShopGUI Premium o ExecutableBlocks instalados se
-integra con ellos (sección 5); sin ellos funciona igual —verificado arrancando sin ninguno—.
+Fabled, Vault, Citizens, DecentHolograms, EconomyShopGUI Premium, ExecutableBlocks, Jobs Reborn,
+ExcellentJobs, HMCCosmetics o zAuctionHouse instalados se integra con ellos (sección 5); sin ellos
+funciona igual —verificado arrancando sin ninguno—.
 
 El plugin se compila contra la API de Paper 1.21.8 y declara esa versión como mínima. El componente
 `item_model` y la carpeta `assets/<namespace>/items/`, en los que se apoya todo, existen desde 1.21.4,
@@ -85,6 +86,8 @@ ArkcronistContent/
         ├── core/                          ── sin Bukkit ──
         │   ├── definition/
         │   │   ├── ItemDefinition         una entrada tal como la describe el YAML
+        │   │   ├── AdvancementDefinition  un logro: título, icono, padre, qué lo completa, anuncio
+        │   │   ├── JobReward              dinero y experiencia de trabajo por romper o cosechar
         │   │   ├── Equipment              cómo se lleva puesto: hueco, asset de equipo, modelo en la cabeza
         │   │   ├── ContentType            item · custom_block · custom_furniture
         │   │   ├── Placement              qué pone en el mundo: Block o Furniture (+ Display)
@@ -98,6 +101,9 @@ ArkcronistContent/
         │   │   ├── Animator               poses (jerarquía, interpolación) y fotogramas para el cliente
         │   │   └── Playback               qué fotogramas salen en cada tick; bucle, mantener, una vez
         │   ├── furniture/BedLayout        las dos mitades de una cama, el display y dónde va la almohada
+        │   ├── advancement/
+        │   │   ├── AdvancementCompiler    logros del YAML -> el JSON de logro de vanilla, padres antes
+        │   │   └── WornSet                si lo que lleva puesto un jugador es el set entero
         │   ├── block/
         │   │   ├── NoteBlockState         los 800 estados de note block ↔ índice ↔ texto
         │   │   └── NoteBlockAllocator     asignación estable bloque → estado, persistida en JSON
@@ -131,7 +137,9 @@ ArkcronistContent/
         │   │   ├── PackCompiler           assets/<ns>/{items,models,textures}, pack.mcmeta y el
         │   │   │                          blockstate de minecraft:note_block
         │   │   ├── PackSettings           contenido de pack.mcmeta
-        │   │   ├── ExternalPack           assets de otro plugin que se fusionan en el nuestro
+        │   │   ├── ExternalPack           assets de otro plugin (carpeta o ZIP) que se fusionan en el nuestro
+        │   │   ├── JsonMerge              une los archivos que comparten los packs (atlas, fuentes,
+        │   │   │                          sonidos, idiomas, custom_model_data) y nombra las colisiones
         │   │   ├── PackZipper             ZIP determinista, escritura atómica, versión asíncrona
         │   │   ├── Sha1                   hash del ZIP (bytes y hex)
         │   │   └── PackArtifact           bytes + hash del pack publicado
@@ -156,6 +164,8 @@ ArkcronistContent/
             ├── protection/                Protection: pregunta a WorldGuard y GriefPrevention antes
             │                              de que el plugin cambie un bloque por su cuenta
             ├── crop/                      CropService, CropTicker (crecimiento asíncrono), CropListener
+            ├── advancement/               AdvancementService (registro, set puesto, anuncio, sonido y
+            │                              partículas), AdvancementListener
             ├── emoji/                     EmojiRegistry, ChatEmojiListener (AsyncChatEvent)
             ├── pack/PackDelivery          pack vivo + envío con setResourcePack
             ├── menu/                      ContentMenu (inventario paginado), ContentMenus,
@@ -173,7 +183,10 @@ ArkcronistContent/
             │   ├── citizens/              NPCs con ítems o sentados (NpcBridge)
             │   ├── decentholograms/       holograma de inspección de cultivos
             │   ├── economyshopgui/        proveedor de ítems de EconomyShopGUI Premium
-            │   └── executableblocks/      convivencia de bloques con ExecutableBlocks
+            │   ├── executableblocks/      convivencia de bloques con ExecutableBlocks
+            │   ├── jobs/                  dinero y XP de Jobs Reborn y ExcellentJobs (JobsHook)
+            │   ├── hmccosmetics/          los ítems como cosméticos, a través de HibiscusCommons
+            │   └── zauctionhouse/         subastas que conservan el aspecto de los ítems
             ├── command/                   CustomGiveCommand, ContentAdminCommand (Brigadier)
             ├── listener/                  uso, combate, mundo, bloques, muebles, almacenamiento,
             │                              entrega del pack
@@ -394,8 +407,9 @@ configurado antes de entrar al mundo; lo que sale del hilo principal es la escri
   la fila aunque la caché aún no tuviera el mundo cargado; y un bloque roto *mientras* su mundo se
   carga no "resucita" cuando llegan las filas.
 - **Apagado.** Es la única espera: `onDisable` deja terminar las escrituras encoladas (máx. 10 s).
-- **Esquema.** `PRAGMA user_version` lleva la versión: 1 (`custom_blocks_world`), 2 (+ `custom_crops`)
-  y 3 (+ `furniture_storage`, ver *Muebles con almacenamiento*). Un archivo de una versión anterior
+- **Esquema.** `PRAGMA user_version` lleva la versión: 1 (`custom_blocks_world`), 2 (+ `custom_crops`),
+  3 (+ `furniture_storage`, ver *Muebles con almacenamiento*) y 4 (+ `advancement_unlocks`, ver
+  *Logros*). Un archivo de una versión anterior
   gana al abrirse las tablas que le faltan; no se toca nada de lo que ya hay.
 
 El driver es el `org.xerial` SQLite que Paper/Spigot traen en el servidor; si faltara, se avisa en
@@ -694,6 +708,14 @@ registros, y suelta **un** ítem del mueble, nunca la cama vanilla. Una cama que
 fuera del Overworld desaparece con su modelo y no suelta nada, como en vanilla. Los pistones no la
 mueven ni la rompen.
 
+**Los modelos de la demo (1.5).** El cofre tiene 37 cubos: cantoneras de oro en L en cada arista,
+dos bandas de oro alrededor del cuerpo, patas, una cerradura con su rubí, asas de hierro a los lados
+y una tapa abombada en tres escalones con flejes de oro y un rubí tallado encima (un cubo girado
+45°). Conserva los mismos huesos y animaciones (`open`, `close`, `shake`), así que la tapa entera
+—cúpula, flejes y rubí— se abre de una pieza. La cama tiene 24: colchón, manta que cae por un
+lado, sábana doblada, dos almohadas, un cabecero con dos postes rematados en rubí y un panel
+tallado con cresta en arco, y un piecero más bajo. Ambos siguen dentro de las medidas de arriba.
+
 ### Tienda (`price`)
 
 ```yaml
@@ -797,13 +819,23 @@ no está en `models/`.
 **Actualizar desde una versión anterior.** El pack de ejemplo se copia entero solo cuando
 `contents/` no existe. Para que lo nuevo llegue también a un servidor que ya lo tenía, cada versión
 agrupa los ejemplos que añadió (1.1: cultivos y emojis; 1.3: `furniture.yml` con el cofre y la cama;
-1.4: la armadura) y el plugin recuerda en `data/examples_offered.txt` qué grupos ofreció. Al
+1.4: la armadura; 1.5: `advancements.yml` y el fondo de su pestaña) y el plugin recuerda en
+`data/examples_offered.txt` qué grupos ofreció. Al
 reiniciar con un jar nuevo copia en `contents/demo/` los grupos que falten y lo dice en consola. Nunca
 sobrescribe nada; no recrea `contents/demo/` si se borró; un grupo del que ya hay algún archivo se
 deja como está (vino con una versión anterior y lo que falta lo borró el dueño); y lo que se borre
 después no vuelve. Verificado en el servidor de prueba: un `contents/demo` sin `furniture.yml` y con
 la marca que dejó 1.4.0 recibe el cofre y la cama (4 archivos) y no toca los cultivos, que ya
 estaban; sin la armadura, recibe sus 9 archivos; borrar `armor.yml` y recargar deja 11 ítems.
+
+**Ejemplos que cambian de una versión a otra (1.5).** Un ejemplo que ya existe tampoco se
+sobrescribe… salvo que siga siendo, byte a byte, uno de los que publicó una versión anterior: eso
+significa que nadie lo editó. `examples-history.txt` (dentro del jar) guarda el SHA-1 de cada versión
+publicada de cada ejemplo, y al arrancar se reemplaza el que coincide con alguno. Así el cofre y la
+cama detallados, y los `jobs:` de `blocks.yml` y `crops.yml`, llegan a un servidor que tenía los de
+1.3 sin tocar; un archivo con un solo cambio del dueño ya no coincide y no se toca. Verificado:
+arrancar 1.5.0 sobre un `contents/demo` de 1.4.1 añade `advancements.yml` y su textura y actualiza los
+5 ejemplos sin editar (el pack pasa a otro SHA-1).
 
 El reparto del set de la demo, medido sobre los píxeles visibles: 74 % acero ennegrecido y 26 %
 rubí (casco 66/34, pechera 79/21, grebas 73/27, botas 79/21).
@@ -825,6 +857,131 @@ clic derecho y las grebas y las botas colocándolas en su hueco del inventario. 
 Lo que no se puede comprobar aquí es el dibujo en un cliente de Minecraft real (no hay ninguno en
 este entorno): las rutas, el formato de los archivos y los componentes son los que lee el cliente
 1.21.4+, y la lámina de presentación reproduce ese dibujo a partir de los mismos archivos.
+
+### Logros (`advancements`)
+
+```yaml
+# contents/demo/advancements.yml
+advancements:
+  arkcronist:                       # sin padre: abre una pestaña propia
+    title: "<gradient:#ff5a6e:#b3122e><b>Arkcronist</b></gradient>"
+    description: "<gray>Rubíes, muebles y la armadura del Caballero del Rubí de Sangre"
+    icon: ruby
+    background: gui/advancements/ruby          # textures/gui/advancements/ruby.png de este pack
+
+  first_ruby:
+    parent: arkcronist
+    title: "Rojo como la sangre"
+    description: "<gray>Consigue un rubí"
+    icon: ruby
+    trigger:
+      obtain: ruby
+
+  ruby_knight:
+    parent: first_ruby
+    title: "<gradient:#ff5a6e:#b3122e><b>¡Cúbrete de Rubí!</b></gradient>"
+    description: "<gray>Viste a la vez las cuatro piezas del Caballero del Rubí de Sangre"
+    icon: ruby_chestplate
+    frame: challenge
+    trigger:
+      wear: [ruby_helmet, ruby_chestplate, ruby_leggings, ruby_boots]
+    announce: "<gradient:#ff5a6e:#b3122e:#5e0716><b><player></b> se ha cubierto de rubí</gradient> <dark_gray>·</dark_gray> <advancement>"
+    reward:
+      experience: 100
+```
+
+| Clave | Por defecto | |
+|---|---|---|
+| `title`, `description` | — | MiniMessage (degradados, colores, `<b>`…) |
+| `icon` | — | un ítem: de este plugin (`ruby`, `demo:ruby`) o vanilla (`minecraft:diamond`) |
+| `frame` | `task` | `task`, `goal` o `challenge` |
+| `parent` | ninguno | el logro de encima; sin él, abre una pestaña. Puede colgar de una pestaña vanilla (`minecraft:story/root`) |
+| `background` | piedra vanilla | fondo de la pestaña (solo en la raíz): una textura de este pack o una vanilla (`minecraft:block/blackstone`) |
+| `trigger` | `join` en una raíz, `manual` en el resto | `join`, `manual`, `{obtain: <ítem>}` o `{wear: [<ítems>]}` |
+| `announce` | la línea vanilla | MiniMessage para todo el servidor la primera vez que un jugador lo completa: `<player>`, `<advancement>` |
+| `celebrate` | sí (no en `join`) | sonido de desafío alrededor del jugador y ráfaga de partículas carmesí |
+| `toast`, `hidden` | sí, no | el aviso de la esquina; esconderlo del árbol hasta completarlo |
+| `reward.experience` | 0 | puntos de experiencia |
+
+**Por qué no van en `assets/<ns>/advancements/`.** Un logro no es un recurso: el cliente no lee
+logros de un resource pack. Son **datos del servidor**, como las recetas: el servidor tiene el árbol
+y el progreso de cada jugador, y se los envía al cliente. Un `advancements/` dentro del ZIP no lo
+leería nadie. Por eso el plugin los **registra en el servidor** —con `loadAdvancement` de Paper, al
+arrancar, tras `/arkcontent reload` y tras un `/minecraft:reload`— y el progreso lo guarda el propio
+servidor en `world/advancements/<uuid>.json`, como el de los vanilla (`/advancement grant|revoke`
+funcionan). Al pack solo va lo que se ve: el icono, que es el `item_model` del ítem, y el fondo de la
+pestaña cuando es una textura propia, que el cliente lee tal cual de `textures/<id>.png`.
+
+El JSON que se registra es el del formato de 1.21.8 (el mismo que `data/minecraft/advancement/` del
+jar del servidor). Cada disparador es uno que el servidor ya conoce:
+
+| `trigger` | Criterio vanilla | Quién lo concede |
+|---|---|---|
+| `join` | `minecraft:tick` | el servidor, en el primer tick: todos tienen la pestaña |
+| `obtain` | `minecraft:inventory_changed` con `items` = el material y `components` = `{minecraft:item_model: …}` | el servidor, al entrar el ítem en el inventario: un material vanilla sin ese modelo no cuenta |
+| `wear` | `minecraft:impossible` | el plugin (vanilla no tiene un disparador «llevar un set») |
+| `manual` | `minecraft:impossible` | `/advancement grant` u otro plugin |
+
+Antes de registrar nada se comprueba lo que solo se puede comprobar con todo leído: que cada padre
+existe y que ninguna cadena de padres forma un bucle (se registran los padres antes que los hijos);
+que el icono y los ítems de `obtain`/`wear` son ítems reales; que cada pieza de `wear` tiene sección
+`equipment` y que no hay dos para el mismo hueco. Lo que falla se dice en consola y no se registra.
+
+**El set puesto.** `PlayerArmorChangeEvent` de Paper salta *después* de que cambie un hueco de
+armadura, se haya puesto como se haya puesto: clic derecho, arrastrar en el inventario, mayúsculas+clic,
+dispensador, `/item replace` o al reaparecer. Por eso no hace falta escuchar también
+`InventoryClickEvent`: ese evento salta *antes* del cambio (habría que esperar un tick) y no ve los
+dispensadores ni los comandos. Al entrar, un tick después, se comprueba lo que ya lleva puesto.
+Que una pieza «cuenta» no se decide por su aspecto: tiene que ser el ítem del plugin (su etiqueta de
+id), del material de su definición (`NETHERITE_*`, es decir, con la armadura, dureza y resistencia
+al empuje de la netherita), en su hueco y con el asset de equipo de su definición. Unas botas de
+netherita hechas con `/give … [item_model="demo:ruby_boots", equippable={…asset_id:"demo:ruby_armor"}]`
+se ven igual, pero no cuentan.
+
+**Al completarlo** (`PlayerAdvancementDoneEvent`, sea cual sea el disparador):
+
+- **Anuncio.** El texto de `announce`, con MiniMessage y `<advancement>` como lo pinta vanilla
+  (título entre corchetes, descripción al pasar el ratón), a todo el servidor y solo **la primera vez**
+  que ese jugador lo consigue: la tabla `advancement_unlocks` (`player_uuid`, `advancement`,
+  `unlocked_at`) de SQLite lo recuerda. Revocarlo y volver a ganarlo vuelve a celebrarse, pero no a
+  anunciarse. Con `announce`, el `announce_to_chat` vanilla va apagado para no decirlo dos veces.
+- **Sonido.** `ui.toast.challenge_complete` en la posición del jugador para todos los que estén a
+  48 bloques (el propio jugador ya lo oye de su aviso cuando el logro es `challenge` con `toast`).
+- **Partículas.** Una espiral carmesí que sube alrededor del jugador y una ráfaga final
+  (`DUST` y `DUST_COLOR_TRANSITION`, de #FF566A a #5E0716), 14 fotogramas. Se toman en el hilo
+  principal la posición y la lista de jugadores; los paquetes se envían desde una tarea asíncrona
+  del planificador, sin tocar el mundo.
+- **Experiencia.** `reward.experience` la da el propio servidor (es `rewards.experience` vanilla).
+
+Los eventos de Bukkit se reciben siempre en el hilo principal (no existe un listener «asíncrono» de
+`PlayerArmorChangeEvent`); lo que hace el listener ahí es barato —comparar cuatro stacks— y lo
+costoso, la base de datos y las partículas, va fuera de él.
+
+**Recargar.** `loadAdvancement` añade, pero no puede cambiar ni quitar un logro. Si tras
+`/arkcontent reload` uno cambió o desapareció, el plugin hace la recarga de datos del servidor
+(`/minecraft:reload`, que también recarga datapacks y recetas) y vuelve a registrar los suyos; si
+solo hay nuevos, solo los añade. Antes de registrar se guarda a los jugadores conectados, porque
+registrar relee su progreso del disco. Paper escribe además una copia de cada logro en
+`world/datapacks/bukkit/data/<ns>/advancements/`, una carpeta que desde 1.21 el juego ya no lee: esas
+copias no sobreviven a su YAML.
+
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (v1.5, logros)
+
+Dos bots: el que se viste y uno que mira.
+
+| Comprobación | Resultado |
+|---|---|
+| Entrar | `demo:arkcronist` concedido (la pestaña aparece), sin línea en el chat |
+| `/customgive … demo:ruby` | `demo:first_ruby`, por `inventory_changed` sobre el `item_model` |
+| Tres piezas puestas | `ruby_knight` **no** concedido |
+| Tres piezas + las botas falsas de `/give` | **no** concedido |
+| Las cuatro piezas | concedido; el anuncio en degradado llega a los dos bots, una vez |
+| Partículas | 122 paquetes al que se viste y 122 al que mira |
+| Sonido | el que mira recibe `ui.toast.challenge_complete` en la posición del otro |
+| Experiencia | +100 puntos |
+| Revocar y volver a ponerse el set | se concede y se celebra (122 partículas), sin segundo anuncio |
+| `/arkcontent reload` sin cambios, con un título cambiado, y `/minecraft:reload` | el progreso se conserva en los tres; tras cambiar el título el servidor ya usa el nuevo (la consola anuncia «Rojo como la sangre (v2)») |
+| SQLite | `PRAGMA user_version` = 4; una fila por jugador y logro en `advancement_unlocks` |
 
 ## 5. Integraciones
 
@@ -851,6 +1008,10 @@ gancho. `/arkcontent info` muestra cuáles están activos (`Hooks: MythicMobs, .
 | Citizens, DecentHolograms | antes de este | solo se les llama por comando o interacción |
 | EconomyShopGUI Premium | después de este | pide los proveedores de ítems al cargar sus tiendas |
 | SCore, ExecutableBlocks | antes de este | la guardia de bloques se pregunta al identificar uno |
+| Jobs Reborn, ExcellentJobs (+ nightcore) | antes de este | se les paga al romper o cosechar; la API de ExcellentJobs se busca en los servicios de Bukkit |
+| HibiscusCommons | antes de este | el gancho de ítems se registra en esa librería… |
+| HMCCosmetics | después de este | …antes de que HMCCosmetics lea sus cosméticos |
+| zAuctionHouse v4 | antes de este | sus eventos de venta y retirada se escuchan desde el arranque |
 
 **Aislamiento.** Ninguna clase que arranca los ganchos nombra un tipo que herede de otro plugin, ni
 siquiera como lo que devuelve una lambda (la JVM resuelve ese tipo antes de ejecutarla): una clase
@@ -1160,6 +1321,127 @@ bloque. Esas se consultan antes con WorldGuard y GriefPrevention, y se detienen 
   `ride` permitidos; un claim sin confianza, con `/containertrust` y con `/trust`; y explosiones
   con y sin `/claimexplosions`.
 
+### Jobs Reborn y ExcellentJobs
+
+Para un plugin de trabajos, un bloque de este plugin es un note block y un cultivo es un
+`ItemDisplay`: su propia configuración no paga por ellos. La sección `jobs:` de un bloque o de un
+cultivo dice cuánto se paga, por trabajo:
+
+```yaml
+# contents/demo/blocks.yml
+  ruby_block:
+    type: custom_block
+    block:
+      jobs:
+        Miner: {money: 2.5, xp: 4}      # el id del trabajo en el plugin de trabajos
+
+# contents/demo/crops.yml
+  ruby_seeds:
+    type: custom_crop
+    crop:
+      jobs:
+        Farmer: {money: 1.5, xp: 3}     # al cosechar maduro
+```
+
+Se paga solo a quien tiene ese trabajo y no está en creativo; `money` y `xp` pueden ir solos. El
+nombre del trabajo se busca tal cual y, si no, en minúsculas (ExcellentJobs usa ids como `miner`).
+
+- **Jobs Reborn.** El pago pasa por `Jobs.perform`, la misma llamada que hace Jobs para una acción
+  suya, como un bloque roto: saltan sus eventos previos al pago (los boosts y otros plugins pueden
+  cambiar las cantidades), se aplican sus límites diarios, el dinero va por su economía con búfer y
+  la experiencia puede subir de nivel al jugador, con sus mensajes y comandos de nivel.
+- **ExcellentJobs 2.** Su API (`JobsAPIProvider`, registrada en los servicios de Bukkit) da la
+  experiencia con `LevelingManager#addXP`, que sube de nivel como sus objetivos. No tiene una llamada
+  pública para pagar dinero fuera de un objetivo, así que el dinero se ingresa con **Vault**, la misma
+  economía con la que paga ExcellentJobs; sin Vault se avisa una vez en consola y solo se da la XP.
+
+### HMCCosmetics
+
+HMCCosmetics no genera un pack: dibuja cada cosmético (sombreros, mochilas, globos…) con un ítem de
+un plugin que sí lo tiene —ItemsAdder, Oraxen, Nexo— a través de su librería **HibiscusCommons**. El
+gancho registra este plugin en HibiscusCommons con el id `arkcontent`:
+
+```yaml
+# plugins/HMCCosmetics/cosmetics/hats.yml
+ruby_crown:
+  slot: HELMET
+  item:
+    material: arkcontent:demo:ruby_helmet
+```
+
+El cosmético es entonces la misma stack que da `/customgive`, con su `item_model`, y su modelo ya
+está en nuestro pack: el sombrero o la mochila no necesitan un segundo pack y no hay ids que puedan
+chocar. Es la forma recomendada de hacer cosméticos con modelos de este plugin.
+
+### Fusionar otros packs (`pack.merge`): CosmeticsCore y otros
+
+Para un plugin que trae su propio resource pack (CosmeticsCore, un pack de sombreros descargado…),
+`config.yml` acepta una lista de carpetas o ZIPs, relativos a la carpeta del servidor:
+
+```yaml
+pack:
+  merge:
+    - plugins/CosmeticsCore/resourcepack
+    - packs/hats.zip
+```
+
+Al construir el ZIP en memoria se toman sus `assets/` (el `pack.mcmeta` es el nuestro; un ZIP puede
+tenerlos en la raíz o una carpeta más abajo, y una entrada que intente salir de la carpeta, como
+`../`, se ignora). Si una ruta existe en los dos packs:
+
+- un **modelo o una textura** es un choque real: se queda el nuestro y se avisa;
+- los archivos que son **listas a las que cada pack añade lo suyo** se **unen** (`JsonMerge`) en vez
+  de quedarse con uno, que es como desaparecen los sombreros o emojis de otro plugin al fusionar:
+  `atlases/*.json` (sus `sources`), `font/*.json` (sus `providers`, los nuestros primero),
+  `sounds.json` y `lang/*.json` (sus claves), el `models/item/*.json` de un ítem vanilla al estilo
+  anterior a 1.21.4 (sus `overrides` de `custom_model_data`, unidos y ordenados por número, como
+  los necesita el cliente) y su `items/*.json` de 1.21.4+ cuando ambos hacen `range_dispatch` sobre
+  `custom_model_data` (sus entradas, por umbral).
+- Si los dos packs dan **el mismo número** de `custom_model_data` (o el mismo sonido) a cosas
+  distintas, eso es una **colisión de IDs**: se queda el nuestro y la consola nombra el archivo, el
+  número y los dos modelos, para renumerar uno.
+
+Como los ítems de este plugin usan `item_model` y no `custom_model_data`, no ocupan ningún número:
+los packs de cosméticos basados en `custom_model_data` no chocan con ellos, solo entre sí. Es el
+mismo mecanismo que usa el gancho de MythicArmor.
+
+### zAuctionHouse
+
+zAuctionHouse v4 guarda cada ítem entero: en 1.20.5+ como sus datos completos, componentes y
+etiquetas incluidos. Así que un rubí puesto en subasta es el rubí que se compra, y se dibuja con su
+`item_model` también en los menús de la subasta. El gancho es la red de seguridad para cuando algo
+por el camino reconstruye la stack y deja solo la etiqueta de id del plugin: al poner un ítem en
+venta (`AuctionPreSellEvent`) y al salir de la casa de subastas —comprado, retirado o recogido tras
+caducar (`RemoveEvent`)— se le devuelve el aspecto desde su definición (`item_model` y `equippable`;
+nombre, lore y lo demás no se tocan).
+
+### PhoenixCrates
+
+**No integrado.** Su SDK de complementos (que se descarga del repositorio de Phoenix Plugins) no
+estaba disponible (HTTP 503) al desarrollar esta versión, y sin él no se puede compilar ni probar un
+gancho. Mientras tanto, dos formas que funcionan sin gancho:
+
+- **Recompensa desde la mano.** Crear la recompensa con el ítem del plugin en la mano: los
+  componentes `item_model` y `equippable` van dentro de la stack y sobreviven a las serializaciones
+  de Bukkit, YAML y bytes de Paper (verificado, ver la tabla de abajo). Con PhoenixCrates en sí no se
+  ha podido probar.
+- **Recompensa por comando.** `customgive {player} demo:ruby 1` como comando de la recompensa:
+  entrega el ítem del plugin exactamente como `/customgive`. Para el icono de la animación, el ítem
+  de la mano.
+
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (v1.5, integraciones)
+
+| Integración | Estado |
+|---|---|
+| Jobs Reborn 5.2.6.3 (+ CMILib) | **Verificado.** Un bot con el trabajo Miner rompe `ruby_block`: saldo de $100 a $102,50 y 4,00 de XP de Miner |
+| ExcellentJobs 2.0.2 (+ nightcore) | **Verificado.** Un bot empleado como `miner` rompe `ruby_block`: saldo de $100 a $102,50 (por Vault) y XP de 0 a 4,0. Con los contratos de ExcellentJobs activos (`Contract.Required: true`, lo que trae por defecto) el jugador tiene que firmar uno para estar empleado; la prueba se hizo con `Required: false` |
+| HibiscusCommons 0.9.3 | **Verificado.** `Hooks.getItem("arkcontent:demo:ruby_helmet")` devuelve el casco del plugin con su `item_model` y `equippable`, y `getStringItem` de esa stack devuelve `arkcontent:demo:ruby_helmet` |
+| HMCCosmetics | **Solo compilado** contra la API real; el plugin completo no se distribuye por Maven y no se ha podido arrancar aquí (lo que usa de nosotros es lo verificado en HibiscusCommons) |
+| `pack.merge` (CosmeticsCore y otros) | **Probado con tests** (`JsonMergeTest`, `PackCompilerTest`: carpetas, ZIPs, ZIPs con carpeta raíz, `../`, colisiones de `custom_model_data`); no con el pack real de CosmeticsCore, que es de pago |
+| zAuctionHouse 4 | **Solo compilado** contra `zauctionhousev4-api` 4.0.1.3. Verificado en el servidor lo que necesita: una pieza de la armadura conserva `item_model`, `equippable` e id por los tres caminos de serialización —stream de objetos de Bukkit, YAML y bytes de Paper—, y la stack recuperada es igual a la original |
+| PhoenixCrates | **No integrado** (ver arriba) |
+| Pago por cosechar un cultivo | Usa el mismo código que el del bloque; no se ha probado en vivo |
+
 ## 6. Importar desde ItemsAdder
 
 ```
@@ -1311,5 +1593,14 @@ con `join-classpath: true` para ver sus clases.
 - Armaduras: el modelo 3D solo se dibuja en la cabeza; pechera, grebas y botas son capas planas
   (como las vanilla). Un casco con modelo no tiene capa de armadura, así que tampoco muestra
   adornos (armor trims). El dibujo en un cliente real no se ha podido verificar aquí (sección 4).
+- Logros: los disparadores son entrar, tener un ítem, llevar un set y manual; el resto (matar,
+  minar, viajar…) se puede conceder desde otro plugin o un comando con `/advancement grant`.
+  Cambiar o quitar un logro con `/arkcontent reload` hace una recarga de datos del servidor
+  (`/minecraft:reload`): un tirón breve que también recarga datapacks y recetas. Si se borra
+  `data/world_content.db`, el siguiente que consiga un logro con `announce` se volverá a anunciar.
+- ExcellentJobs: el pago va directo (XP con su API, dinero por Vault), así que no pasa por sus
+  contratos: no mira el horario laboral, no suma puntos de contrato ni aplica sus bonus por nivel.
+- PhoenixCrates no está integrado; HMCCosmetics y zAuctionHouse están compilados contra sus APIs
+  reales, pero los plugins completos no se han podido arrancar aquí (sección 5).
 - El pack se envía en `PlayerJoinEvent`. En 1.21.7+ Paper permite enviarlo durante la fase de
   configuración, antes de entrar al mundo; es el siguiente paso natural.

@@ -60,8 +60,9 @@ public final class HmcCosmeticsHook extends Hook {
         return item.map(found -> factory.create(found, 1)).orElse(null);
     }
 
+    /** The item's id; HibiscusCommons puts this hook's {@code arkcontent:} in front itself. */
     @Override
     public @Nullable String getItemString(ItemStack stack) {
-        return factory.identify(stack).map(item -> ID + ":" + item.id()).orElse(null);
+        return factory.identify(stack).map(CustomItem::id).orElse(null);
     }
 }

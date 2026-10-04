@@ -585,17 +585,17 @@ public final class ContentPipeline {
                 }
             }
             Files.createDirectories(contentsDir);
-        } else {
-            List<String> lines = new ArrayList<>();
-            for (Path file : List.of(examplesOfferedFile, legacyExamplesFile)) {
-                if (Files.isRegularFile(file)) {
-                    lines.addAll(Files.readAllLines(file));
-                }
+            rememberOffered();
+            return;
+        }
+        List<String> lines = new ArrayList<>();
+        for (Path file : List.of(examplesOfferedFile, legacyExamplesFile)) {
+            if (Files.isRegularFile(file)) {
+                lines.addAll(Files.readAllLines(file));
             }
-            Set<String> offered = ExampleUpdates.parse(lines);
-            if (offered.containsAll(ADDED_EXAMPLES.keySet())) {
-                return;
-            }
+        }
+        Set<String> offered = ExampleUpdates.parse(lines);
+        if (!offered.containsAll(ADDED_EXAMPLES.keySet())) {
             if (settings.extractExamples()) {
                 List<String> copy = ExampleUpdates.toCopy(ADDED_EXAMPLES, offered, plugin.getDataFolder().toPath());
                 for (String example : copy) {
@@ -608,11 +608,15 @@ public final class ContentPipeline {
                             + " want, it will not come back.");
                 }
             }
+            rememberOffered();
         }
+        updateUntouchedExamples();
+    }
+
+    private void rememberOffered() throws IOException {
         Files.createDirectories(examplesOfferedFile.getParent());
         Files.write(examplesOfferedFile, ADDED_EXAMPLES.keySet().stream().sorted().toList());
         Files.deleteIfExists(legacyExamplesFile);
-        updateUntouchedExamples();
     }
 
     /**
