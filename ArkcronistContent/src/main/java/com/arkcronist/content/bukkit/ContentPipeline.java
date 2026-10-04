@@ -6,6 +6,7 @@ import com.arkcronist.content.bukkit.emoji.EmojiRegistry;
 import com.arkcronist.content.bukkit.item.CustomItem;
 import com.arkcronist.content.bukkit.item.ItemRegistry;
 import com.arkcronist.content.bukkit.pack.PackDelivery;
+import com.arkcronist.content.core.advancement.AdvancementCompiler;
 import com.arkcronist.content.core.allocation.StableAllocator;
 import com.arkcronist.content.core.block.NoteBlockAllocator;
 import com.arkcronist.content.core.block.NoteBlockState;
@@ -24,6 +25,9 @@ import com.arkcronist.content.core.pack.PackZipper;
 import com.arkcronist.content.core.upload.PackUploader;
 import com.arkcronist.content.core.upload.UploadSettings;
 
+import com.google.gson.JsonElement;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import org.bukkit.Material;
 import org.jetbrains.annotations.Nullable;
 
@@ -121,7 +125,10 @@ public final class ContentPipeline {
                     "contents/demo/textures/item/ruby_leggings.png",
                     "contents/demo/textures/item/ruby_boots.png",
                     "contents/demo/models/item/ruby_helmet_worn.json",
-                    "contents/demo/textures/item/ruby_helmet_worn.png"));
+                    "contents/demo/textures/item/ruby_helmet_worn.png"),
+            "1.5.0", List.of(
+                    "contents/demo/advancements.yml",
+                    "contents/demo/textures/gui/advancements/ruby.png"));
 
     /** Copied into contents/ the first time the plugin starts. */
     private static final List<String> EXAMPLES = Stream.concat(FIRST_EXAMPLES.stream(),
@@ -133,7 +140,8 @@ public final class ContentPipeline {
      * @param changed  whether the pack's content moved, and players were sent it again
      * @param problems everything that was skipped or looked wrong, already logged
      */
-    public record Report(int items, int blocks, int emojis, int files, String sha1Hex, int bytes, boolean changed,
+    public record Report(int items, int blocks, int emojis, int advancements, int files, String sha1Hex, int bytes,
+                         boolean changed,
                          @Nullable String url, String hosting, List<String> problems, long millis) {
     }
 
@@ -160,26 +168,27 @@ public final class ContentPipeline {
      */
     private record Build(Map<String, CustomItem> items, Map<String, NoteBlockState> noteBlocks,
                          List<EmojiDefinition> emojiDefinitions, Map<EmojiDefinition, Integer> emojis,
+                         List<AdvancementCompiler.Compiled> advancements,
                          List<String> problems, int files, PackArtifact artifact, Hosted hosted) {
 
         Build withNoteBlocks(Map<String, NoteBlockState> noteBlocks) {
-            return new Build(items, noteBlocks, emojiDefinitions, emojis, problems, files, artifact, hosted);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, problems, files, artifact, hosted);
         }
 
         Build withEmojis(Map<EmojiDefinition, Integer> emojis) {
-            return new Build(items, noteBlocks, emojiDefinitions, emojis, problems, files, artifact, hosted);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, problems, files, artifact, hosted);
         }
 
         Build withFiles(int files) {
-            return new Build(items, noteBlocks, emojiDefinitions, emojis, problems, files, artifact, hosted);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, problems, files, artifact, hosted);
         }
 
         Build withArtifact(PackArtifact artifact) {
-            return new Build(items, noteBlocks, emojiDefinitions, emojis, problems, files, artifact, hosted);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, problems, files, artifact, hosted);
         }
 
         Build withHosted(Hosted hosted) {
-            return new Build(items, noteBlocks, emojiDefinitions, emojis, problems, files, artifact, hosted);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, problems, files, artifact, hosted);
         }
     }
 
@@ -385,10 +394,21 @@ public final class ContentPipeline {
                 }
             }
             checkCrops(items, problems);
-            return new Build(items, Map.of(), report.emojis(), Map.of(), problems, 0, null, null);
+            Map<String, ItemDefinition> definitions = new LinkedHashMap<>();
+            items.values().forEach(item -> definitions.put(item.id(), item.definition()));
+            AdvancementCompiler.Result advancements = AdvancementCompiler.compile(report.advancements(), definitions,
+                    ContentPipeline::textComponent);
+            problems.addAll(advancements.problems());
+            return new Build(items, Map.of(), report.emojis(), Map.of(), advancements.advancements(), problems, 0,
+                    null, null);
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
+    }
+
+    /** MiniMessage to the JSON text component an advancement's title and description are written in. */
+    private static JsonElement textComponent(String miniMessage) {
+        return GsonComponentSerializer.gson().serializeToTree(MiniMessage.miniMessage().deserialize(miniMessage));
     }
 
     /**
@@ -480,6 +500,7 @@ public final class ContentPipeline {
                     .map(CustomItem::definition)
                     .toList();
             PackCompiler.Result result = compiler.compile(packDir, definitions, build.noteBlocks(), build.emojis(),
+                    build.advancements().stream().map(AdvancementCompiler.Compiled::definition).toList(),
                     List.copyOf(externalPacks.values()));
             build.problems().addAll(result.problems());
             return build;
@@ -593,6 +614,7 @@ public final class ContentPipeline {
         }
         blocks.replace(customBlocks);
         emojis.replace(build.emojis());
+        int advancements = plugin.advancements() == null ? 0 : plugin.advancements().publish(build.advancements());
         if (plugin.hooks() != null) {
             plugin.hooks().contentReloaded();
         }
@@ -608,7 +630,8 @@ public final class ContentPipeline {
         }
 
         PackArtifact pack = build.artifact();
-        Report report = new Report(build.items().size(), customBlocks.size(), build.emojis().size(), pack.entries(),
+        Report report = new Report(build.items().size(), customBlocks.size(), build.emojis().size(), advancements,
+                pack.entries(),
                 pack.sha1Hex(), pack.size(),
                 changed, hosted.url(), hosted.note(), List.copyOf(build.problems()),
                 TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started));
@@ -621,7 +644,7 @@ public final class ContentPipeline {
             logger.warning(problem);
         }
         logger.info(report.items() + " custom item(s) (" + report.blocks() + " block(s)), " + report.emojis()
-                + " emoji(s), pack of "
+                + " emoji(s), " + report.advancements() + " advancement(s), pack of "
                 + report.files() + " file(s), "
                 + (report.bytes() / 1024) + " KiB, sha1 " + report.sha1Hex()
                 + (report.changed() ? "" : " (unchanged)")

@@ -6,6 +6,7 @@ import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.animation.AnimatedModel;
 import com.arkcronist.content.core.animation.BbModelReader;
 import com.arkcronist.content.core.animation.BbModelReaderTest;
+import com.arkcronist.content.core.definition.AdvancementDefinition;
 import com.arkcronist.content.core.definition.EmojiDefinition;
 import com.arkcronist.content.core.definition.Equipment;
 import com.arkcronist.content.core.definition.ItemDefinition;
@@ -466,6 +467,28 @@ class PackCompilerTest {
         new PackCompiler(SETTINGS).compile(pack, List.of(
                 item("ruby", flat(demo, "ruby", "demo:item/ruby", "minecraft:item/generated"))), Map.of());
         assertFalse(Files.exists(pack.resolve("assets/minecraft/atlases")));
+    }
+
+    @Test
+    void anAdvancementTabBackgroundOfOursIsCopiedAndVanillasIsNot() throws IOException {
+        Path demo = temp.resolve("contents/demo");
+        write(demo, "textures/gui/advancements/ruby.png", png("tab"));
+        Path pack = temp.resolve("pack");
+        PackCompiler.Result result = new PackCompiler(SETTINGS).compile(pack, List.of(), Map.of(), Map.of(), List.of(
+                tab("ours", loc("demo:gui/advancements/ruby"), demo),
+                tab("theirs", loc("minecraft:block/blackstone"), demo),
+                tab("plain", null, demo)), List.of());
+
+        assertEquals(List.of(), result.problems());
+        assertArrayEquals(png("tab"), Files.readAllBytes(pack.resolve("assets/demo/textures/gui/advancements/ruby.png")));
+        assertFalse(Files.exists(pack.resolve("assets/minecraft/textures")), "the client has its own");
+        assertFalse(Files.exists(pack.resolve("assets/minecraft/atlases")), "read straight from the file, not an atlas");
+    }
+
+    private static AdvancementDefinition tab(String id, ResourceLocation background, Path root) {
+        return new AdvancementDefinition("demo", id, id, "", loc("minecraft:paper"), AdvancementDefinition.Frame.TASK,
+                null, background, false, false, null, false, 0, new AdvancementDefinition.Trigger.Join(), root,
+                root.resolve("advancements.yml"));
     }
 
     // ---------------------------------------------------------------- fixtures

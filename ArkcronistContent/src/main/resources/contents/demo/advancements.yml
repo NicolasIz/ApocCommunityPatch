@@ -1,0 +1,57 @@
+# ---------------------------------------------------------------------------
+#  Advancements
+# ---------------------------------------------------------------------------
+#  Advancements are server data, not resource pack files: the plugin registers
+#  them on the server when it starts (and again after /arkcontent reload or
+#  /minecraft:reload), and the server keeps each player's progress in
+#  world/advancements/, as it does for vanilla's. The pack only carries what
+#  they show: the items' models for the icons, and a tab background that is
+#  one of this folder's textures.
+#
+#    title / description   MiniMessage
+#    icon                  an item: one of ours (ruby) or vanilla (minecraft:diamond)
+#    frame                 task, goal or challenge
+#    parent                the advancement above it; without one it opens a tab
+#    background            a tab's background texture (root only), e.g.
+#                          gui/advancements/ruby -> textures/gui/advancements/ruby.png
+#                          or a vanilla one: minecraft:block/blackstone
+#    trigger               join            granted on joining (a tab's root)
+#                          manual          only /advancement grant
+#                          {obtain: ruby}  having the item in the inventory
+#                          {wear: [...]}   wearing every one of these at once
+#    announce              MiniMessage sent to everyone the first time a player
+#                          completes it: <player>, <advancement>. Left out,
+#                          vanilla's own chat line is used.
+#    celebrate             the challenge sound around the player and a burst of
+#                          crimson particles over them (default: on, except join)
+#    toast / hidden        the corner toast; staying out of the tree until done
+#    reward.experience     experience points
+# ---------------------------------------------------------------------------
+
+advancements:
+
+  arkcronist:
+    title: "<gradient:#ff5a6e:#b3122e><b>Arkcronist</b></gradient>"
+    description: "<gray>Rubíes, muebles y la armadura del Caballero del Rubí de Sangre"
+    icon: ruby
+    background: gui/advancements/ruby
+
+  first_ruby:
+    parent: arkcronist
+    title: "Rojo como la sangre"
+    description: "<gray>Consigue un rubí"
+    icon: ruby
+    trigger:
+      obtain: ruby
+
+  ruby_knight:
+    parent: first_ruby
+    title: "<gradient:#ff5a6e:#b3122e><b>¡Cúbrete de Rubí!</b></gradient>"
+    description: "<gray>Viste a la vez las cuatro piezas del Caballero del Rubí de Sangre"
+    icon: ruby_chestplate
+    frame: challenge
+    trigger:
+      wear: [ruby_helmet, ruby_chestplate, ruby_leggings, ruby_boots]
+    announce: "<gradient:#ff5a6e:#b3122e:#5e0716><b><player></b> se ha cubierto de rubí</gradient> <dark_gray>·</dark_gray> <advancement>"
+    reward:
+      experience: 100

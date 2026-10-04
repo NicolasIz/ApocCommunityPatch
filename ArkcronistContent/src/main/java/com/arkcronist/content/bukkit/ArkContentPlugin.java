@@ -1,5 +1,7 @@
 package com.arkcronist.content.bukkit;
 
+import com.arkcronist.content.bukkit.advancement.AdvancementListener;
+import com.arkcronist.content.bukkit.advancement.AdvancementService;
 import com.arkcronist.content.bukkit.block.BlockRegistry;
 import com.arkcronist.content.bukkit.block.CustomBlockService;
 import com.arkcronist.content.bukkit.command.ContentAdminCommand;
@@ -94,6 +96,7 @@ public final class ArkContentPlugin extends JavaPlugin {
     private PackDelivery delivery;
     private HookManager hooks;
     private ContentMenus menus;
+    private AdvancementService advancements;
     /** Set by the worker once the port is bound; read from the main thread. */
     private volatile PackHttpServer http;
     private ContentPipeline pipeline;
@@ -155,6 +158,7 @@ public final class ArkContentPlugin extends JavaPlugin {
         furniture.stopAt(block -> crops.at(block).isPresent());
         crops.stopAt(block -> furniture.identify(block).isPresent());
         this.menus = new ContentMenus(getServer(), items, itemFactory);
+        this.advancements = new AdvancementService(this, items, itemFactory, database);
 
         PluginManager plugins = getServer().getPluginManager();
         plugins.registerEvents(new PackDeliveryListener(delivery, settings, getLogger()), this);
@@ -167,6 +171,7 @@ public final class ArkContentPlugin extends JavaPlugin {
         plugins.registerEvents(new ChatEmojiListener(emojis), this);
         plugins.registerEvents(new PlacedContentListener(placed, blockService, furniture, getLogger()), this);
         plugins.registerEvents(new ContentMenuListener(this), this);
+        plugins.registerEvents(new AdvancementListener(this, advancements), this);
 
         openStorage();
 
@@ -346,6 +351,11 @@ public final class ArkContentPlugin extends JavaPlugin {
     }
 
     /** Opens and refreshes the content browser. */
+    /** The plugin's advancements on the server; null before enable. */
+    public AdvancementService advancements() {
+        return advancements;
+    }
+
     public ContentMenus menus() {
         return menus;
     }

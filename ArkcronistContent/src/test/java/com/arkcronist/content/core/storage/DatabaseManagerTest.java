@@ -121,6 +121,36 @@ class DatabaseManagerTest {
         assertInstanceOf(SQLException.class, closed.getCause());
     }
 
+    @Test
+    void anAdvancementIsUnlockedOnceAndAnOlderFileGainsTheTable() throws Exception {
+        // A file as 1.4 left it: schema 3, no unlock table.
+        Path file = temp.resolve("content.db");
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+             Statement statement = connection.createStatement()) {
+            statement.execute("CREATE TABLE custom_blocks_world (world_uuid TEXT NOT NULL, x INTEGER NOT NULL,"
+                    + " y INTEGER NOT NULL, z INTEGER NOT NULL, block_id TEXT NOT NULL, type TEXT NOT NULL,"
+                    + " PRIMARY KEY (world_uuid, x, y, z)) WITHOUT ROWID");
+            statement.execute("PRAGMA user_version=3");
+        }
+        database = open();
+        UUID player = UUID.fromString("f3d28cb0-7225-3cb1-baeb-2dadd2be89ae");
+
+        assertTrue(get(database.recordUnlock(player, "demo:ruby_knight", 1_000L)), "the first time");
+        assertFalse(get(database.recordUnlock(player, "demo:ruby_knight", 9_000L)), "revoked and earned again");
+        assertTrue(get(database.recordUnlock(player, "demo:first_ruby", 500L)));
+        assertEquals(java.util.Map.of("demo:first_ruby", 500L, "demo:ruby_knight", 1_000L), get(database.unlocks(player)),
+                "the first moment is the one kept");
+        assertEquals(List.of("demo:first_ruby", "demo:ruby_knight"), List.copyOf(get(database.unlocks(player)).keySet()),
+                "oldest first");
+        database.close();
+        database = null;
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+             Statement statement = connection.createStatement();
+             ResultSet version = statement.executeQuery("PRAGMA user_version")) {
+            assertEquals(4, version.getInt(1));
+        }
+    }
+
     private DatabaseManager open() throws Exception {
         DatabaseManager opened = new DatabaseManager(temp.resolve("content.db"), Logger.getLogger("test"));
         opened.open().get(10, TimeUnit.SECONDS);

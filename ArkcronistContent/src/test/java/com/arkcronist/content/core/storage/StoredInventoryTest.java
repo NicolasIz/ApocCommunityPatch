@@ -143,7 +143,6 @@ class StoredInventoryTest {
              ResultSet version = statement.executeQuery("PRAGMA user_version")) {
             version.next();
             assertEquals(DatabaseManager.SCHEMA_VERSION, version.getInt(1));
-            assertEquals(3, version.getInt(1));
         }
     }
 

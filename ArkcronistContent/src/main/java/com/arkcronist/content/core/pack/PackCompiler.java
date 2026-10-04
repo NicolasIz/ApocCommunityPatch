@@ -2,6 +2,7 @@ package com.arkcronist.content.core.pack;
 
 import com.arkcronist.content.core.animation.AnimatedModel;
 import com.arkcronist.content.core.block.NoteBlockState;
+import com.arkcronist.content.core.definition.AdvancementDefinition;
 import com.arkcronist.content.core.definition.EmojiDefinition;
 import com.arkcronist.content.core.definition.Equipment;
 import com.arkcronist.content.core.definition.ItemDefinition;
@@ -121,6 +122,24 @@ public final class PackCompiler {
                           Map<String, NoteBlockState> noteBlockStates,
                           Map<EmojiDefinition, Integer> glyphs,
                           List<ExternalPack> externalPacks) throws IOException {
+        return compile(packDir, items, noteBlockStates, glyphs, List.of(), externalPacks);
+    }
+
+    /**
+     * Deletes {@code packDir} and writes the pack for {@code items} into it.
+     *
+     * @param noteBlockStates the state each custom block is drawn through, by full id; empty leaves
+     *                        the vanilla note block untouched
+     * @param glyphs          the character each emoji is drawn as; empty writes no font
+     * @param advancements    their tab backgrounds, when they are this plugin's textures; the
+     *                        advancements themselves are server data, registered by the plugin
+     * @param externalPacks   other plugins' packs to merge in, after this plugin's own files
+     */
+    public Result compile(Path packDir, Collection<ItemDefinition> items,
+                          Map<String, NoteBlockState> noteBlockStates,
+                          Map<EmojiDefinition, Integer> glyphs,
+                          Collection<AdvancementDefinition> advancements,
+                          List<ExternalPack> externalPacks) throws IOException {
         Run run = new Run(packDir);
         run.reset();
         run.writeText("pack.mcmeta", GSON.toJson(settings.mcmeta()) + "\n");
@@ -134,6 +153,7 @@ public final class PackCompiler {
         }
         run.noteBlockStates(ordered, noteBlockStates);
         run.font(glyphs);
+        run.advancementBackgrounds(advancements);
         for (ExternalPack pack : externalPacks.stream().sorted(Comparator.comparing(ExternalPack::name)).toList()) {
             run.merge(pack);
         }
@@ -340,6 +360,20 @@ public final class PackCompiler {
             JsonObject definition = new JsonObject();
             definition.add("model", target);
             return json(definition);
+        }
+
+        /**
+         * A tab background the client reads straight from {@code textures/<id>.png} - not from an
+         * atlas - when it is one of this plugin's textures; vanilla's are the client's own.
+         */
+        void advancementBackgrounds(Collection<AdvancementDefinition> advancements) throws IOException {
+            for (AdvancementDefinition advancement : advancements) {
+                ResourceLocation background = advancement.background();
+                if (background != null && background.namespace().equals(advancement.namespace())) {
+                    scaffold(advancement.namespace());
+                    copyTexture(advancement.sourceRoot(), background, "advancement " + advancement.fullId());
+                }
+            }
         }
 
         /**

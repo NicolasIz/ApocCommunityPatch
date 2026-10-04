@@ -114,7 +114,7 @@ class CropStoreTest {
              Statement statement = connection.createStatement();
              ResultSet version = statement.executeQuery("PRAGMA user_version")) {
             version.next();
-            assertEquals(3, version.getInt(1));
+            assertEquals(com.arkcronist.content.core.storage.DatabaseManager.SCHEMA_VERSION, version.getInt(1));
         }
         CropStore reopened = open();
         reopened.loadWorld(WORLD).get(10, TimeUnit.SECONDS);

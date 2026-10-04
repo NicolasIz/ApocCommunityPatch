@@ -13,7 +13,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -46,13 +48,15 @@ public final class DatabaseManager {
     public static final String TABLE = "custom_blocks_world";
     public static final String CROP_TABLE = "custom_crops";
     public static final String STORAGE_TABLE = "furniture_storage";
+    public static final String UNLOCK_TABLE = "advancement_unlocks";
 
     /**
      * Bumped with each change to the schema, so a later version knows what it opened.
-     * 1: custom_blocks_world. 2: custom_crops added. 3: furniture_storage added. An older file gains
-     * the tables it lacks on open; nothing existing is touched.
+     * 1: custom_blocks_world. 2: custom_crops added. 3: furniture_storage added. 4:
+     * advancement_unlocks added. An older file gains the tables it lacks on open; nothing existing is
+     * touched.
      */
-    static final int SCHEMA_VERSION = 3;
+    public static final int SCHEMA_VERSION = 4;
 
     private static final String CREATE_TABLE = """
             CREATE TABLE IF NOT EXISTS custom_blocks_world (
@@ -91,6 +95,25 @@ public final class DatabaseManager {
                 updated_at   INTEGER NOT NULL,
                 PRIMARY KEY (world_uuid, x, y, z)
             )""";
+
+    /**
+     * The first time each player completed each of the plugin's advancements. The server keeps the
+     * progress itself; this keeps the moment, which survives an advancement being revoked and earned
+     * again - so its announcement goes out once per player, ever - and a world's advancement files
+     * being reset.
+     */
+    private static final String CREATE_UNLOCK_TABLE = """
+            CREATE TABLE IF NOT EXISTS advancement_unlocks (
+                player_uuid TEXT    NOT NULL,
+                advancement TEXT    NOT NULL,
+                unlocked_at INTEGER NOT NULL,
+                PRIMARY KEY (player_uuid, advancement)
+            ) WITHOUT ROWID""";
+
+    private static final String INSERT_UNLOCK = "INSERT OR IGNORE INTO " + UNLOCK_TABLE
+            + " (player_uuid, advancement, unlocked_at) VALUES (?, ?, ?)";
+    private static final String SELECT_UNLOCKS = "SELECT advancement, unlocked_at FROM " + UNLOCK_TABLE
+            + " WHERE player_uuid = ? ORDER BY unlocked_at";
 
     private static final String UPSERT_STORAGE = "INSERT OR REPLACE INTO " + STORAGE_TABLE
             + " (world_uuid, x, y, z, furniture_id, slots, contents, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
@@ -360,6 +383,38 @@ public final class DatabaseManager {
     }
 
     /**
+     * Notes that a player completed an advancement.
+     *
+     * @return whether it was the first time: an earlier completion keeps its row and its moment
+     */
+    public CompletableFuture<Boolean> recordUnlock(UUID player, String advancement, long unlockedAtMillis) {
+        return submit(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(INSERT_UNLOCK)) {
+                statement.setString(1, player.toString());
+                statement.setString(2, advancement);
+                statement.setLong(3, unlockedAtMillis);
+                return statement.executeUpdate() > 0;
+            }
+        }, false);
+    }
+
+    /** When a player first completed each of the plugin's advancements, oldest first. */
+    public CompletableFuture<Map<String, Long>> unlocks(UUID player) {
+        return submit(connection -> {
+            Map<String, Long> unlocks = new LinkedHashMap<>();
+            try (PreparedStatement statement = connection.prepareStatement(SELECT_UNLOCKS)) {
+                statement.setString(1, player.toString());
+                try (ResultSet rows = statement.executeQuery()) {
+                    while (rows.next()) {
+                        unlocks.put(rows.getString(1), rows.getLong(2));
+                    }
+                }
+            }
+            return unlocks;
+        }, false);
+    }
+
+    /**
      * Lets every queued statement finish, then closes the file. Blocks for at most ten seconds;
      * called once, from the plugin's shutdown.
      */
@@ -423,6 +478,7 @@ public final class DatabaseManager {
             statement.execute(CREATE_TABLE);
             statement.execute(CREATE_CROP_TABLE);
             statement.execute(CREATE_STORAGE_TABLE);
+            statement.execute(CREATE_UNLOCK_TABLE);
             int version;
             try (ResultSet result = statement.executeQuery("PRAGMA user_version")) {
                 version = result.next() ? result.getInt(1) : 0;

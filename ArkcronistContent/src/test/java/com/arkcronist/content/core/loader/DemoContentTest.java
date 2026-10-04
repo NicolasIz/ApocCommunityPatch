@@ -132,6 +132,24 @@ class DemoContentTest {
         assertTrue(top > 16, "horns rise above the shell: " + top);
     }
 
+    @Test
+    void theDemoAdvancementsCompileIntoOneTab() throws IOException {
+        LoadReport report = new ContentLoader().load(SHIPPED);
+        assertEquals(java.util.List.of(), report.problems());
+        Map<String, ItemDefinition> items = report.items().stream()
+                .collect(Collectors.toMap(ItemDefinition::fullId, Function.identity()));
+        var result = com.arkcronist.content.core.advancement.AdvancementCompiler.compile(report.advancements(), items,
+                JsonPrimitive::new);
+        assertEquals(java.util.List.of(), result.problems());
+        assertEquals(java.util.List.of("demo:arkcronist", "demo:first_ruby", "demo:ruby_knight"),
+                result.advancements().stream().map(advancement -> advancement.key().toString()).toList());
+        JsonObject knight = JsonParser.parseString(result.advancements().get(2).json()).getAsJsonObject();
+        assertEquals("challenge", knight.getAsJsonObject("display").get("frame").getAsString());
+        var wear = (com.arkcronist.content.core.definition.AdvancementDefinition.Trigger.Wear)
+                result.advancements().get(2).definition().trigger();
+        assertEquals(4, wear.items().size(), "the whole Blood Ruby set");
+    }
+
     private static JsonObject json(Path file) throws IOException {
         return JsonParser.parseString(Files.readString(file)).getAsJsonObject();
     }

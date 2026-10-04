@@ -2,6 +2,7 @@ package com.arkcronist.content.core.loader;
 
 import com.arkcronist.content.core.animation.AnimatedModel;
 import com.arkcronist.content.core.animation.BbModelReaderTest;
+import com.arkcronist.content.core.definition.AdvancementDefinition;
 import com.arkcronist.content.core.definition.ContentType;
 import com.arkcronist.content.core.definition.Equipment;
 import com.arkcronist.content.core.definition.ItemDefinition;
@@ -810,6 +811,123 @@ class ContentLoaderTest {
         assertNull(items.get("missing").equipment().worn());
         assertProblem(problems, "rock", "'equipment' is only read on items worn as armour (type: item)");
         assertNull(items.get("rock").equipment());
+    }
+
+    @Test
+    void readsAdvancements() throws IOException {
+        write("demo/advancements.yml", """
+                advancements:
+                  arkcronist:
+                    title: "<red>Arkcronist"
+                    icon: ruby
+                    background: gui/advancements/ruby
+                  ruby_knight:
+                    parent: arkcronist
+                    title: "Cover yourself in ruby"
+                    description: "<gray>All four pieces"
+                    icon: ruby_chestplate
+                    frame: Challenge
+                    hidden: true
+                    trigger:
+                      wear: [ruby_helmet, demo:ruby_chestplate]
+                    announce: "<player> did it"
+                    reward: {experience: 100}
+                  diamonds:
+                    parent: minecraft:story/root
+                    title: Shiny
+                    icon: minecraft:diamond
+                    trigger: {obtain: minecraft:diamond}
+                  secret:
+                    parent: arkcronist
+                    title: Secret
+                    icon: ruby
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+
+        assertEquals(List.of(), report.problems());
+        Map<String, AdvancementDefinition> byId = new java.util.HashMap<>();
+        report.advancements().forEach(advancement -> byId.put(advancement.fullId(), advancement));
+
+        AdvancementDefinition root = byId.get("demo:arkcronist");
+        assertNull(root.parent());
+        assertEquals(new ResourceLocation("demo", "gui/advancements/ruby"), root.background());
+        assertInstanceOf(AdvancementDefinition.Trigger.Join.class, root.trigger(), "a tab's root: granted on joining");
+        assertFalse(root.toast(), "nobody wants a toast for joining");
+        assertFalse(root.celebrate());
+        assertEquals(contents.resolve("demo"), root.sourceRoot());
+
+        AdvancementDefinition knight = byId.get("demo:ruby_knight");
+        assertEquals(new ResourceLocation("demo", "arkcronist"), knight.parent());
+        assertEquals(AdvancementDefinition.Frame.CHALLENGE, knight.frame());
+        assertEquals(List.of(new ResourceLocation("demo", "ruby_helmet"), new ResourceLocation("demo", "ruby_chestplate")),
+                ((AdvancementDefinition.Trigger.Wear) knight.trigger()).items());
+        assertTrue(knight.hidden());
+        assertTrue(knight.toast());
+        assertTrue(knight.celebrate());
+        assertEquals("<player> did it", knight.announce());
+        assertEquals(100, knight.experience());
+        assertEquals("<gray>All four pieces", knight.description());
+
+        AdvancementDefinition diamonds = byId.get("demo:diamonds");
+        assertEquals(new ResourceLocation("minecraft", "story/root"), diamonds.parent(), "hung under a vanilla tab");
+        assertEquals(new ResourceLocation("minecraft", "diamond"),
+                ((AdvancementDefinition.Trigger.Obtain) diamonds.trigger()).item());
+
+        assertInstanceOf(AdvancementDefinition.Trigger.Manual.class, byId.get("demo:secret").trigger(),
+                "a child with no trigger: /advancement grant only");
+    }
+
+    @Test
+    void advancementMistakesAreReported() throws IOException {
+        write("demo/advancements.yml", """
+                advancements:
+                  untitled:
+                    icon: ruby
+                  framed:
+                    title: Framed
+                    icon: ruby
+                    frame: golden
+                  backdrop:
+                    parent: framed
+                    title: Backdrop
+                    icon: ruby
+                    background: minecraft:block/stone
+                  bad_trigger:
+                    title: Bad
+                    icon: ruby
+                    trigger: {jump: 3}
+                  twice:
+                    title: Twice
+                    icon: ruby
+                    trigger: {wear: [ruby_helmet, ruby_helmet]}
+                  stingy:
+                    title: Stingy
+                    icon: ruby
+                    reward: {experience: -5}
+                  "Bad Id":
+                    title: Bad id
+                    icon: ruby
+                """);
+        write("demo/more.yml", """
+                advancements:
+                  framed: {title: Again, icon: ruby}
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+        String problems = String.join("\n", report.problems());
+        List<String> ids = report.advancements().stream().map(AdvancementDefinition::id).toList();
+
+        assertTrue(problems.contains("advancement untitled: needs 'title' and 'icon'"), problems);
+        assertTrue(problems.contains("advancement framed: 'frame' must be task, goal or challenge; using task"), problems);
+        assertTrue(problems.contains("advancement backdrop: 'background' is drawn for the root of a tab only"), problems);
+        assertTrue(problems.contains("advancement bad_trigger: 'trigger' must be join, manual"), problems);
+        assertTrue(problems.contains("advancement twice: 'trigger.wear' names demo:ruby_helmet twice"), problems);
+        assertTrue(problems.contains("advancement stingy: 'reward.experience' should be 0 or more"), problems);
+        assertTrue(problems.contains("advancement Bad Id: invalid id"), problems);
+        assertTrue(problems.contains("more.yml > advancement framed: already defined in demo/advancements.yml"), problems);
+        assertEquals(List.of("framed", "backdrop", "stingy"), ids);
+        assertNull(report.advancements().get(1).background());
     }
 
     private static void assertProblem(List<String> problems, String id, String text) {

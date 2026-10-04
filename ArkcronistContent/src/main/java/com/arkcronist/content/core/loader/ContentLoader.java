@@ -2,6 +2,7 @@ package com.arkcronist.content.core.loader;
 
 import com.arkcronist.content.core.animation.AnimatedModel;
 import com.arkcronist.content.core.animation.BbModelReader;
+import com.arkcronist.content.core.definition.AdvancementDefinition;
 import com.arkcronist.content.core.definition.ContentType;
 import com.arkcronist.content.core.definition.EmojiDefinition;
 import com.arkcronist.content.core.definition.Equipment;
@@ -94,15 +95,18 @@ public final class ContentLoader {
 
         Map<String, ItemDefinition> items = new LinkedHashMap<>();
         Map<String, EmojiDefinition> emojis = new LinkedHashMap<>();
+        Map<String, AdvancementDefinition> advancements = new LinkedHashMap<>();
         List<String> problems = new ArrayList<>();
         for (Path file : files) {
-            readFile(contentsDir, file, items, emojis, problems);
+            readFile(contentsDir, file, items, emojis, advancements, problems);
         }
-        return new LoadReport(new ArrayList<>(items.values()), new ArrayList<>(emojis.values()), problems);
+        return new LoadReport(new ArrayList<>(items.values()), new ArrayList<>(emojis.values()),
+                new ArrayList<>(advancements.values()), problems);
     }
 
     private void readFile(Path contentsDir, Path file, Map<String, ItemDefinition> items,
-                          Map<String, EmojiDefinition> emojis, List<String> problems) {
+                          Map<String, EmojiDefinition> emojis, Map<String, AdvancementDefinition> advancements,
+                          List<String> problems) {
         String where = unix(contentsDir.relativize(file));
 
         Object document;
@@ -133,6 +137,8 @@ public final class ContentLoader {
         }
 
         readEmojis(root.get("emojis"), namespace, sourceRoot, file, where, contentsDir, emojis, problems);
+        readAdvancements(root.get("advancements"), namespace, sourceRoot, file, where, contentsDir, advancements,
+                problems);
 
         // A file without items is not an error: it may hold only emojis, or another kind of
         // content this version does not read yet.
@@ -823,6 +829,148 @@ public final class ContentLoader {
                         + " - this one is ignored");
             }
         }
+    }
+
+    /**
+     * {@code advancements:} - id to section. What can be checked here is: frames, triggers and the
+     * shape of each entry. Whether a parent, an icon or a worn item exists is only known once every
+     * file is read, so {@link com.arkcronist.content.core.advancement.AdvancementCompiler} checks that.
+     */
+    private static void readAdvancements(Object node, String namespace, Path sourceRoot, Path file, String where,
+                                         Path contentsDir, Map<String, AdvancementDefinition> advancements,
+                                         List<String> problems) {
+        if (node == null) {
+            return;
+        }
+        if (!(node instanceof Map<?, ?> section)) {
+            problems.add(where + ": 'advancements' should be a section of advancement ids");
+            return;
+        }
+        for (Map.Entry<?, ?> entry : section.entrySet()) {
+            String id = String.valueOf(entry.getKey());
+            String prefix = where + " > advancement " + id + ": ";
+            if (!ResourceLocation.isValidPath(id)) {
+                problems.add(prefix + "invalid id (allowed: a-z 0-9 _ . - and / between segments)");
+                continue;
+            }
+            if (!(entry.getValue() instanceof Map<?, ?> advancement)) {
+                problems.add(prefix + "should be a section with at least 'title' and 'icon'");
+                continue;
+            }
+            AdvancementDefinition definition = advancement(namespace, id, advancement, sourceRoot, file, prefix,
+                    problems);
+            if (definition == null) {
+                continue;
+            }
+            AdvancementDefinition earlier = advancements.putIfAbsent(definition.fullId(), definition);
+            if (earlier != null) {
+                problems.add(prefix + "already defined in " + unix(contentsDir.relativize(earlier.source()))
+                        + " - this one is ignored");
+            }
+        }
+    }
+
+    private static AdvancementDefinition advancement(String namespace, String id, Map<?, ?> section, Path sourceRoot,
+                                                     Path file, String prefix, List<String> problems) {
+        String title = text(section, "title", prefix, problems);
+        ResourceLocation icon = location(section, "icon", namespace, prefix, problems);
+        if (title == null || title.isBlank() || icon == null) {
+            problems.add(prefix + "needs 'title' and 'icon' (an item id, e.g. ruby or minecraft:diamond)");
+            return null;
+        }
+        String description = text(section, "description", prefix, problems);
+
+        AdvancementDefinition.Frame frame = AdvancementDefinition.Frame.TASK;
+        String rawFrame = text(section, "frame", prefix, problems);
+        if (rawFrame != null) {
+            AdvancementDefinition.Frame parsed = AdvancementDefinition.Frame.parse(rawFrame);
+            if (parsed == null) {
+                problems.add(prefix + "'frame' must be task, goal or challenge; using task");
+            } else {
+                frame = parsed;
+            }
+        }
+
+        ResourceLocation parent = location(section, "parent", namespace, prefix, problems);
+        ResourceLocation background = location(section, "background", namespace, prefix, problems);
+        if (parent != null && background != null) {
+            problems.add(prefix + "'background' is drawn for the root of a tab only; ignored under a parent");
+            background = null;
+        }
+
+        AdvancementDefinition.Trigger trigger = trigger(section.get("trigger"), namespace, parent == null, prefix,
+                problems);
+        if (trigger == null) {
+            return null;
+        }
+        boolean joins = trigger instanceof AdvancementDefinition.Trigger.Join;
+
+        String announce = text(section, "announce", prefix, problems);
+        int experience = 0;
+        Map<?, ?> reward = section(section, "reward", prefix, problems);
+        if (reward != null) {
+            experience = integer(reward, "experience", 0, prefix, problems);
+            if (experience < 0) {
+                problems.add(prefix + "'reward.experience' should be 0 or more; using 0");
+                experience = 0;
+            }
+        }
+        return new AdvancementDefinition(namespace, id, title, description == null ? "" : description, icon, frame,
+                parent, background,
+                flag(section, "toast", !joins, prefix, problems),
+                flag(section, "hidden", false, prefix, problems),
+                announce == null || announce.isBlank() ? null : announce,
+                flag(section, "celebrate", !joins, prefix, problems),
+                experience, trigger, sourceRoot, file);
+    }
+
+    /**
+     * {@code trigger:} - {@code join}, {@code manual}, {@code {wear: [items]}} or
+     * {@code {obtain: item}}. Left out: a root is granted on joining (so everyone has its tab), a
+     * child only by {@code /advancement grant}.
+     */
+    private static AdvancementDefinition.Trigger trigger(Object node, String namespace, boolean root, String prefix,
+                                                         List<String> problems) {
+        if (node == null) {
+            return root ? new AdvancementDefinition.Trigger.Join() : new AdvancementDefinition.Trigger.Manual();
+        }
+        if (node instanceof String word) {
+            switch (word.trim().toLowerCase(Locale.ROOT)) {
+                case "join" -> {
+                    return new AdvancementDefinition.Trigger.Join();
+                }
+                case "manual" -> {
+                    return new AdvancementDefinition.Trigger.Manual();
+                }
+                default -> {
+                    problems.add(prefix + "'trigger' must be join, manual, {wear: [items]} or {obtain: item}");
+                    return null;
+                }
+            }
+        }
+        if (node instanceof Map<?, ?> section && section.size() == 1) {
+            if (section.get("wear") instanceof List<?> list && !list.isEmpty()) {
+                List<ResourceLocation> items = new ArrayList<>();
+                for (Object item : list) {
+                    ResourceLocation location = location(item, "trigger.wear", namespace, prefix, problems);
+                    if (location == null) {
+                        return null;
+                    }
+                    if (items.contains(location)) {
+                        problems.add(prefix + "'trigger.wear' names " + location + " twice");
+                        return null;
+                    }
+                    items.add(location);
+                }
+                return new AdvancementDefinition.Trigger.Wear(items);
+            }
+            if (section.containsKey("obtain")) {
+                ResourceLocation item = location(section, "obtain", namespace, prefix, problems);
+                return item == null ? null : new AdvancementDefinition.Trigger.Obtain(item);
+            }
+        }
+        problems.add(prefix + "'trigger' must be join, manual, {wear: [items]} or {obtain: item}");
+        return null;
     }
 
     /**
