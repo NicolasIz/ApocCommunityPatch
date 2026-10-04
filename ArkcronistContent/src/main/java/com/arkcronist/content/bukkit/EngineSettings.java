@@ -17,6 +17,7 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.List;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -45,8 +46,21 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
         return http.externalUrl().isEmpty() ? Hosting.BUILTIN : Hosting.EXTERNAL;
     }
 
-    /** pack.mcmeta. {@code description} is MiniMessage. */
-    public record Pack(String description, int format, int minFormat, int maxFormat) {
+    /**
+     * pack.mcmeta, and the other packs merged in. {@code description} is MiniMessage.
+     *
+     * @param merge other plugins' packs to merge into this one: folders holding {@code assets/}, or
+     *              zips, relative to the server folder
+     */
+    public record Pack(String description, int format, int minFormat, int maxFormat, List<String> merge) {
+
+        public Pack {
+            merge = List.copyOf(merge);
+        }
+
+        public Pack(String description, int format, int minFormat, int maxFormat) {
+            this(description, format, minFormat, maxFormat, List.of());
+        }
 
         public PackSettings toPackSettings() {
             Component text = MiniMessage.miniMessage().deserialize(description);
@@ -125,13 +139,17 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
             logger.warning("pack.format " + format + " must lie between pack.min-format " + min
                     + " and pack.max-format " + max + " - using 46, 46 and 99.");
             return new Pack(description, PackSettings.FIRST_ITEM_MODEL_FORMAT,
-                    PackSettings.FIRST_ITEM_MODEL_FORMAT, 99);
+                    PackSettings.FIRST_ITEM_MODEL_FORMAT, 99, merges(section));
         }
         if (min < PackSettings.FIRST_ITEM_MODEL_FORMAT) {
             logger.warning("pack.min-format " + min + " is below 46 (1.21.4). Older clients cannot"
                     + " show these items whatever the pack claims.");
         }
-        return new Pack(description, format, min, max);
+        return new Pack(description, format, min, max, merges(section));
+    }
+
+    private static List<String> merges(ConfigurationSection section) {
+        return section.getStringList("merge").stream().map(String::trim).filter(path -> !path.isEmpty()).toList();
     }
 
     /** @param uploading whether upload: is on, in which case the built-in server is only a fallback */

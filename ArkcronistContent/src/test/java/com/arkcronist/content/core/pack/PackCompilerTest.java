@@ -491,6 +491,52 @@ class PackCompilerTest {
                 root.resolve("advancements.yml"));
     }
 
+    @Test
+    void aZippedPackIsMergedAndSharedFilesAreCombined() throws IOException {
+        Path demo = temp.resolve("contents/demo");
+        write(demo, "models/furniture/pedestal.json", "{ \"textures\": { \"stone\": \"demo:furniture/stone\" } }");
+        write(demo, "textures/furniture/stone.png", png("stone"));
+        // CosmeticsCore-style: a zip with its pack one folder down, sharing the blocks atlas and a
+        // vanilla item's custom_model_data list with a second pack.
+        Path zip = temp.resolve("cosmetics.zip");
+        try (java.util.zip.ZipOutputStream out = new java.util.zip.ZipOutputStream(Files.newOutputStream(zip))) {
+            entry(out, "CosmeticsPack/pack.mcmeta", "{}");
+            entry(out, "CosmeticsPack/assets/minecraft/atlases/blocks.json",
+                    "{\"sources\":[{\"type\":\"directory\",\"source\":\"cosmetics\",\"prefix\":\"cosmetics/\"}]}");
+            entry(out, "CosmeticsPack/assets/minecraft/items/paper.json", dispatch(1, "cosmetics:hat"));
+            entry(out, "CosmeticsPack/assets/cosmetics/models/hat.json", "{}");
+            entry(out, "../escape/assets/minecraft/evil.json", "{}");
+        }
+        Path folder = temp.resolve("hats");
+        write(folder, "assets/minecraft/items/paper.json", dispatch(2, "hats:crown"));
+
+        Path pack = temp.resolve("pack");
+        PackCompiler.Result result = new PackCompiler(SETTINGS).compile(pack,
+                List.of(item("pedestal", provided(demo, "demo:furniture/pedestal"))), Map.of(), Map.of(),
+                List.of(new ExternalPack("cosmetics.zip", zip), new ExternalPack("hats", folder)));
+
+        assertEquals(List.of(), result.problems());
+        assertTrue(Files.isRegularFile(pack.resolve("assets/cosmetics/models/hat.json")), "a folder down in the zip");
+        assertFalse(Files.exists(pack.resolve("escape")));
+        assertFalse(Files.exists(pack.resolve("assets/minecraft/evil.json")));
+        String atlas = Files.readString(pack.resolve("assets/minecraft/atlases/blocks.json"));
+        assertTrue(atlas.contains("cosmetics/") && atlas.contains("demo:furniture/stone"), atlas);
+        String paper = Files.readString(pack.resolve("assets/minecraft/items/paper.json"));
+        assertTrue(paper.contains("cosmetics:hat") && paper.contains("hats:crown"), "both packs' entries: " + paper);
+    }
+
+    private static String dispatch(int threshold, String model) {
+        return "{\"model\":{\"type\":\"minecraft:range_dispatch\",\"property\":\"minecraft:custom_model_data\","
+                + "\"entries\":[{\"threshold\":" + threshold + ",\"model\":{\"type\":\"minecraft:model\",\"model\":\""
+                + model + "\"}}]}}";
+    }
+
+    private static void entry(java.util.zip.ZipOutputStream out, String name, String text) throws IOException {
+        out.putNextEntry(new java.util.zip.ZipEntry(name));
+        out.write(text.getBytes(StandardCharsets.UTF_8));
+        out.closeEntry();
+    }
+
     // ---------------------------------------------------------------- fixtures
 
     /** What the loader makes of {@code texture:} on a custom block. */

@@ -233,6 +233,18 @@ public final class ContentPipeline {
         this.delivery = delivery;
         this.logger = plugin.getLogger();
         this.compiler = new PackCompiler(settings.pack().toPackSettings());
+        // Packs named in config.yml: CosmeticsCore's, a model pack bought separately, any other.
+        Path server = plugin.getDataFolder().toPath().toAbsolutePath().getParent().getParent();
+        for (String merge : settings.pack().merge()) {
+            Path root = server.resolve(merge).normalize();
+            ExternalPack pack = new ExternalPack(root.getFileName().toString(), root);
+            if (Files.exists(root)) {
+                externalPacks.put("config:" + merge, pack);
+                logger.info("Merging the resource pack at " + merge + " into ours.");
+            } else {
+                logger.warning("pack.merge: " + merge + " does not exist (looked at " + root + ") - not merged.");
+            }
+        }
 
         Path data = plugin.getDataFolder().toPath();
         this.contentsDir = data.resolve("contents");
@@ -600,6 +612,34 @@ public final class ContentPipeline {
         Files.createDirectories(examplesOfferedFile.getParent());
         Files.write(examplesOfferedFile, ADDED_EXAMPLES.keySet().stream().sorted().toList());
         Files.deleteIfExists(legacyExamplesFile);
+        updateUntouchedExamples();
+    }
+
+    /**
+     * An example still byte for byte as an earlier version shipped it was never edited: it is
+     * replaced by this version's (the 1.5 chest and bed, the demo blocks with their job rewards).
+     * One the owner changed is theirs and stays.
+     */
+    private void updateUntouchedExamples() throws IOException {
+        if (!settings.extractExamples()) {
+            return;
+        }
+        List<String> lines;
+        try (java.io.InputStream history = plugin.getResource("examples-history.txt")) {
+            if (history == null) {
+                return;
+            }
+            lines = new String(history.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).lines().toList();
+        }
+        List<String> outdated = ExampleUpdates.outdated(ExampleUpdates.parseHistory(lines),
+                plugin.getDataFolder().toPath());
+        for (String example : outdated) {
+            plugin.saveResource(example, true);
+        }
+        if (!outdated.isEmpty()) {
+            logger.info("Updated " + outdated.size() + " example file(s) you had not changed to this version's: "
+                    + String.join(", ", outdated) + ".");
+        }
     }
 
     // ---------------------------------------------------------------- main thread

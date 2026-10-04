@@ -62,6 +62,12 @@ public final class VaultShop implements Shop {
     }
 
     @Override
+    public boolean deposit(Player player, double amount) {
+        Economy economy = economy();
+        return economy != null && economy.isEnabled() && economy.depositPlayer(player, amount).transactionSuccess();
+    }
+
+    @Override
     public String format(double amount) {
         Economy economy = economy();
         return economy == null ? String.format("%.2f", amount) : economy.format(amount);

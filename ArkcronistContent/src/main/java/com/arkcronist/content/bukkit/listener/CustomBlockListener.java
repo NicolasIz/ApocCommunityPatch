@@ -143,6 +143,7 @@ public final class CustomBlockListener implements Listener {
             blocks.forget(event.getBlock(), custom, survival);
             if (survival) {
                 hooks.skillXp(player, SkillXpHook.Source.BLOCK, custom.id(), custom.placement().skillXp());
+                hooks.jobRewards(player, event.getBlock(), custom.id(), custom.placement().jobs());
             }
         });
     }

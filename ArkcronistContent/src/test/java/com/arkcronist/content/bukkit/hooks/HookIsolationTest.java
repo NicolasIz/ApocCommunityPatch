@@ -24,14 +24,17 @@ class HookIsolationTest {
         for (String foreign : List.of("me.clip.placeholderapi.expansion.PlaceholderExpansion",
                 "dev.aurelium.auraskills.api.AuraSkillsBukkit", "com.gmail.nossr50.api.ExperienceAPI",
                 "net.milkbowl.vault.economy.Economy", "net.citizensnpcs.api.CitizensAPI",
-                "eu.decentsoftware.holograms.api.DHAPI", "io.lumine.mythic.bukkit.MythicBukkit")) {
+                "eu.decentsoftware.holograms.api.DHAPI", "io.lumine.mythic.bukkit.MythicBukkit",
+                "com.gamingmesh.jobs.Jobs", "su.nightexpress.excellentjobs.JobsAPIProvider",
+                "me.lojosho.hibiscuscommons.hooks.Hook", "fr.maxlego08.zauctionhouse.api.AuctionPlugin")) {
             assertThrows(ClassNotFoundException.class, () -> Class.forName(foreign), foreign);
         }
     }
 
     @Test
     void whatStartsTheHooksLoadsWithoutThem() {
-        for (Class<?> type : List.of(HookManager.class, ArkContentPlugin.class, ContentAdminCommand.class)) {
+        for (Class<?> type : List.of(HookManager.class, ArkContentPlugin.class, ContentAdminCommand.class,
+                com.arkcronist.content.bukkit.advancement.AdvancementService.class)) {
             assertDoesNotThrow(type::getDeclaredMethods, type.getName());
             assertDoesNotThrow(type::getDeclaredFields, type.getName());
         }

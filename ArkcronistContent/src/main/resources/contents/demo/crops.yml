@@ -33,6 +33,10 @@ items:
       # Experience for harvesting it fully grown: Farming in AuraSkills,
       # Herbalism in mcMMO, class experience in SkillAPI and Fabled.
       skill-xp: 8
+      # Money and job experience for harvesting it fully grown, through Jobs
+      # Reborn or ExcellentJobs, to a player who has the job.
+      jobs:
+        Farmer: {money: 1.5, xp: 3}
       drops:                         # when fully grown
         - item: demo:ruby
           amount: 1-2

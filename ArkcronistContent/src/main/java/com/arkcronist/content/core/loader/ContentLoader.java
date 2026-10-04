@@ -8,6 +8,7 @@ import com.arkcronist.content.core.definition.EmojiDefinition;
 import com.arkcronist.content.core.definition.Equipment;
 import com.arkcronist.content.core.definition.ItemBehaviour;
 import com.arkcronist.content.core.definition.ItemDefinition;
+import com.arkcronist.content.core.definition.JobReward;
 import com.arkcronist.content.core.definition.ModelSource;
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.definition.ResourceLocation;
@@ -432,7 +433,7 @@ public final class ContentLoader {
             return new Placement.Block(true);
         }
         return new Placement.Block(flag(section, "drop-self", true, prefix, problems),
-                skillXp(section, prefix, problems));
+                skillXp(section, prefix, problems), jobs(section, prefix, problems));
     }
 
     /** {@code price:} at the item's top level: what one costs in the content shop. */
@@ -459,6 +460,47 @@ public final class ContentLoader {
         }
         problems.add(prefix + "'skill-xp' should be a number, 0 or more; using 0");
         return 0;
+    }
+
+    /**
+     * {@code jobs:} - job id to {@code {money, xp}}, paid through Jobs Reborn or ExcellentJobs to a
+     * player who has that job. A job with a bad amount is left out; the others still pay.
+     */
+    private static Map<String, JobReward> jobs(Map<?, ?> section, String prefix, List<String> problems) {
+        Map<?, ?> jobs = section(section, "jobs", prefix, problems);
+        if (jobs == null) {
+            return Map.of();
+        }
+        Map<String, JobReward> rewards = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : jobs.entrySet()) {
+            String job = String.valueOf(entry.getKey()).trim();
+            if (!(entry.getValue() instanceof Map<?, ?> reward)) {
+                problems.add(prefix + "'jobs." + job + "' should be a section like {money: 2.5, xp: 4}");
+                continue;
+            }
+            double money = amount(reward, "money");
+            double xp = amount(reward, "xp");
+            if (money < 0 || xp < 0) {
+                problems.add(prefix + "'jobs." + job + "': 'money' and 'xp' should be numbers, 0 or more - not paid");
+                continue;
+            }
+            if (money == 0 && xp == 0) {
+                problems.add(prefix + "'jobs." + job + "' pays neither 'money' nor 'xp'");
+                continue;
+            }
+            rewards.put(job, new JobReward(money, xp));
+        }
+        return rewards;
+    }
+
+    /** A reward amount: 0 when absent, -1 when it is not a number of 0 or more. */
+    private static double amount(Map<?, ?> section, String key) {
+        Object value = section.get(key);
+        if (value == null) {
+            return 0;
+        }
+        return value instanceof Number number && number.doubleValue() >= 0 && Double.isFinite(number.doubleValue())
+                ? number.doubleValue() : -1;
     }
 
     /** The icon of a Blockbench-drawn piece of furniture: its merged model, or its first bone's. */
@@ -702,7 +744,7 @@ public final class ContentLoader {
         ModelSource look = model != null ? model : stages.get(stages.size() - 1);
         Placement.Crop placement = new Placement.Crop(stages, stageSeconds, minLight,
                 soils.isEmpty() ? List.of("FARMLAND") : soils, flag(crop, "bone-meal", true, prefix, problems), drops,
-                skillXp(crop, prefix, problems));
+                skillXp(crop, prefix, problems), jobs(crop, prefix, problems));
         // Placeable, like blocks and furniture: planting places the crop's block, through a real
         // BlockPlaceEvent that the guard against placing custom items must let through.
         return new ItemDefinition(namespace, id, "PAPER", displayName, lore, look, new ItemBehaviour(false, true),

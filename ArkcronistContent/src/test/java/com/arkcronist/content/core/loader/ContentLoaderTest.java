@@ -6,6 +6,7 @@ import com.arkcronist.content.core.definition.AdvancementDefinition;
 import com.arkcronist.content.core.definition.ContentType;
 import com.arkcronist.content.core.definition.Equipment;
 import com.arkcronist.content.core.definition.ItemDefinition;
+import com.arkcronist.content.core.definition.JobReward;
 import com.arkcronist.content.core.definition.ModelSource;
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.definition.ResourceLocation;
@@ -928,6 +929,39 @@ class ContentLoaderTest {
         assertTrue(problems.contains("more.yml > advancement framed: already defined in demo/advancements.yml"), problems);
         assertEquals(List.of("framed", "backdrop", "stingy"), ids);
         assertNull(report.advancements().get(1).background());
+    }
+
+    @Test
+    void readsJobRewardsOnBlocksAndCrops() throws IOException {
+        write("demo/items.yml", """
+                items:
+                  ore:
+                    type: custom_block
+                    resource: {texture: block/ore}
+                    block:
+                      jobs:
+                        Miner: {money: 2.5, xp: 4}
+                        Builder: {xp: 1}
+                        Greedy: {money: -3}
+                        Idle: {}
+                        Broken: 7
+                  seeds:
+                    type: custom_crop
+                    crop:
+                      stages: [crop/a, crop/b]
+                      jobs:
+                        Farmer: {money: 1.5, xp: 3}
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+
+        assertEquals(Map.of("Miner", new JobReward(2.5, 4), "Builder", new JobReward(0, 1)),
+                ((Placement.Block) report.items().get(0).placement()).jobs());
+        assertEquals(Map.of("Farmer", new JobReward(1.5, 3)), ((Placement.Crop) report.items().get(1).placement()).jobs());
+        String problems = String.join("\n", report.problems());
+        assertTrue(problems.contains("'jobs.Greedy': 'money' and 'xp' should be numbers, 0 or more - not paid"), problems);
+        assertTrue(problems.contains("'jobs.Idle' pays neither 'money' nor 'xp'"), problems);
+        assertTrue(problems.contains("'jobs.Broken' should be a section like {money: 2.5, xp: 4}"), problems);
     }
 
     private static void assertProblem(List<String> problems, String id, String text) {

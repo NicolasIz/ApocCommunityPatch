@@ -4,6 +4,7 @@ import com.arkcronist.content.core.animation.AnimatedModel;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 
 /**
@@ -23,8 +24,17 @@ public sealed interface Placement {
      * @param dropSelf breaking it outside creative drops the custom item, not a note block
      * @param skillXp  skill experience for breaking it, given through AuraSkills (Mining), mcMMO
      *                 (Mining) or SkillAPI, whichever is installed; 0 for none
+     * @param jobs     what each job pays for breaking it, by job id; empty for nothing
      */
-    record Block(boolean dropSelf, double skillXp) implements Placement {
+    record Block(boolean dropSelf, double skillXp, Map<String, JobReward> jobs) implements Placement {
+
+        public Block {
+            jobs = Map.copyOf(jobs);
+        }
+
+        public Block(boolean dropSelf, double skillXp) {
+            this(dropSelf, skillXp, Map.of());
+        }
 
         public Block(boolean dropSelf) {
             this(dropSelf, 0);
@@ -140,14 +150,21 @@ public sealed interface Placement {
      * @param drops        what a fully grown crop drops; before that it drops its own item
      * @param skillXp      skill experience for harvesting it grown, given through AuraSkills
      *                     (Farming), mcMMO (Herbalism) or SkillAPI; 0 for none
+     * @param jobs         what each job pays for harvesting it grown, by job id; empty for nothing
      */
     record Crop(List<ModelSource> stages, int stageSeconds, int minLight, List<String> soils, boolean boneMeal,
-                List<Drop> drops, double skillXp) implements Placement {
+                List<Drop> drops, double skillXp, Map<String, JobReward> jobs) implements Placement {
 
         public Crop {
             stages = List.copyOf(stages);
             soils = List.copyOf(soils);
             drops = List.copyOf(drops);
+            jobs = Map.copyOf(jobs);
+        }
+
+        public Crop(List<ModelSource> stages, int stageSeconds, int minLight, List<String> soils, boolean boneMeal,
+                    List<Drop> drops, double skillXp) {
+            this(stages, stageSeconds, minLight, soils, boneMeal, drops, skillXp, Map.of());
         }
 
         public Crop(List<ModelSource> stages, int stageSeconds, int minLight, List<String> soils, boolean boneMeal,

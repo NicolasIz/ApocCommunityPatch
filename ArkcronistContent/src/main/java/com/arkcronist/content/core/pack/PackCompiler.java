@@ -464,27 +464,85 @@ public final class PackCompiler {
         }
 
         /**
-         * Copies another plugin's {@code assets/} in. Runs after this plugin's own files, so a path
-         * both supply keeps this plugin's version, and {@link #place} reports the clash.
+         * Copies another plugin's {@code assets/} in, from its folder or its zip. Runs after this
+         * plugin's own files, so a path both supply keeps this plugin's version and the clash is
+         * reported - except for the shared lists {@link JsonMerge} combines, where the other pack's
+         * entries are added to ours and only true ID collisions are reported.
          */
         void merge(ExternalPack pack) throws IOException {
-            Path assets = pack.root().resolve("assets");
-            if (!Files.isDirectory(assets)) {
-                problems.add(pack.name() + " pack: no assets folder in " + pack.root() + " - nothing merged");
+            String origin = pack.name() + " pack";
+            Map<String, byte[]> files = Files.isRegularFile(pack.root()) ? zipped(pack, origin) : folder(pack, origin);
+            if (files == null) {
                 return;
             }
-            // Links are not followed: the pack is served publicly, and a link could point anywhere.
-            List<Path> files;
-            try (Stream<Path> walk = Files.walk(assets)) {
-                files = walk.filter(file -> Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)).sorted().toList();
-            }
-            for (Path file : files) {
-                Path relative = pack.root().relativize(file);
-                String name = relative.toString().replace(relative.getFileSystem().getSeparator(), "/");
-                if (place(name, Files.readAllBytes(file), pack.name() + " pack")) {
+            for (Map.Entry<String, byte[]> file : files.entrySet()) {
+                String name = file.getKey();
+                byte[] theirs = file.getValue();
+                String owner = placed.get(name);
+                if (owner != null && JsonMerge.mergeable(name)) {
+                    Path target = packDir.resolve(name);
+                    JsonMerge.Result merged = JsonMerge.merge(name, Files.readAllBytes(target), theirs);
+                    if (merged.merged() != null) {
+                        Files.write(target, merged.merged());
+                        merged.collisions().forEach(collision -> problems.add(origin + ": " + collision));
+                        externalFiles++;
+                        continue;
+                    }
+                }
+                if (place(name, theirs, origin)) {
                     externalFiles++;
                 }
             }
+        }
+
+        private Map<String, byte[]> folder(ExternalPack pack, String origin) throws IOException {
+            Path assets = pack.root().resolve("assets");
+            if (!Files.isDirectory(assets)) {
+                problems.add(origin + ": no assets folder in " + pack.root() + " - nothing merged");
+                return null;
+            }
+            // Links are not followed: the pack is served publicly, and a link could point anywhere.
+            List<Path> paths;
+            try (Stream<Path> walk = Files.walk(assets)) {
+                paths = walk.filter(file -> Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)).sorted().toList();
+            }
+            Map<String, byte[]> files = new TreeMap<>();
+            for (Path file : paths) {
+                Path relative = pack.root().relativize(file);
+                files.put(relative.toString().replace(relative.getFileSystem().getSeparator(), "/"),
+                        Files.readAllBytes(file));
+            }
+            return files;
+        }
+
+        /** A pack shipped as a zip: its {@code assets/} entries, any folder they sit under stripped. */
+        private Map<String, byte[]> zipped(ExternalPack pack, String origin) throws IOException {
+            Map<String, byte[]> files = new TreeMap<>();
+            try (java.util.zip.ZipFile zip = new java.util.zip.ZipFile(pack.root().toFile())) {
+                for (java.util.zip.ZipEntry entry : java.util.Collections.list(zip.entries())) {
+                    String name = entry.getName().replace('\\', '/');
+                    int at = name.startsWith("assets/") ? 0 : name.indexOf("/assets/") + 1;
+                    if (entry.isDirectory() || at < 0 || (at > 0 && name.substring(0, at - 1).contains("/"))) {
+                        continue;
+                    }
+                    String relative = name.substring(at);
+                    // A crafted zip could name ../ to write outside the pack.
+                    if (relative.contains("..") || relative.startsWith("/") || !relative.startsWith("assets/")) {
+                        continue;
+                    }
+                    try (java.io.InputStream in = zip.getInputStream(entry)) {
+                        files.put(relative, in.readAllBytes());
+                    }
+                }
+            } catch (java.util.zip.ZipException exception) {
+                problems.add(origin + ": " + pack.root() + " is not a readable zip - nothing merged");
+                return null;
+            }
+            if (files.isEmpty()) {
+                problems.add(origin + ": no assets/ in " + pack.root() + " - nothing merged");
+                return null;
+            }
+            return files;
         }
 
         /** The vanilla layout for a namespace, created even while it is still empty. */

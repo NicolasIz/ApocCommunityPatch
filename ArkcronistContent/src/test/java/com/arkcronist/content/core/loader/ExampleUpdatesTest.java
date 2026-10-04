@@ -48,6 +48,22 @@ class ExampleUpdatesTest {
         assertEquals(List.of(), ExampleUpdates.toCopy(SETS, Set.of(), plugin), "no demo folder, no demo");
     }
 
+    @Test
+    void anExampleIsUpdatedOnlyWhileItIsAsShipped() throws IOException {
+        write("contents/demo/blocks.yml");                       // "owner's": not a shipped version
+        Path chest = plugin.resolve("contents/demo/models/furniture/ruby_chest.bbmodel");
+        Files.createDirectories(chest.getParent());
+        Files.writeString(chest, "the 1.3 chest");
+        Map<String, Set<String>> history = ExampleUpdates.parseHistory(List.of(
+                "# comment", "",
+                "contents/demo/models/furniture/ruby_chest.bbmodel "
+                        + ExampleUpdates.sha1("the 1.3 chest".getBytes(java.nio.charset.StandardCharsets.UTF_8)).toUpperCase(),
+                "contents/demo/blocks.yml 0000000000000000000000000000000000000000",
+                "contents/demo/gone.yml 1111111111111111111111111111111111111111"));
+
+        assertEquals(List.of("contents/demo/models/furniture/ruby_chest.bbmodel"), ExampleUpdates.outdated(history, plugin));
+    }
+
     private void write(String relative) throws IOException {
         Path file = plugin.resolve(relative);
         Files.createDirectories(file.getParent());

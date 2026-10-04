@@ -19,6 +19,34 @@ dependencies:
       load: AFTER
       required: false
       join-classpath: true
+    # HMCCosmetics takes items from other plugins through HibiscusCommons: the hook is registered
+    # with the library (loaded first) before HMCCosmetics (loaded after) reads its cosmetics.
+    HibiscusCommons:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    HMCCosmetics:
+      load: AFTER
+      required: false
+      join-classpath: true
+    # Jobs plugins: money and job experience for custom blocks and crops.
+    Jobs:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    ExcellentJobs:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    nightcore:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    # Auctions: listed and bought items keep their look.
+    zAuctionHouseV4:
+      load: BEFORE
+      required: false
+      join-classpath: true
     ModelEngine:
       load: BEFORE
       required: false

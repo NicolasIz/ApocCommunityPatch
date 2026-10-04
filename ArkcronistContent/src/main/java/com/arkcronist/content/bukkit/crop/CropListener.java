@@ -180,11 +180,12 @@ public final class CropListener implements Listener {
         boolean drop = player.getGameMode() != GameMode.CREATIVE;
         crops.at(block).ifPresent(crop -> {
             // Read before the crop goes: only a ripe one pays.
-            double xp = crops.definition(crop).filter(definition -> crop.stage() >= definition.lastStage())
-                    .map(Placement.Crop::skillXp).orElse(0.0);
+            Optional<Placement.Crop> ripe = crops.definition(crop)
+                    .filter(definition -> crop.stage() >= definition.lastStage());
             crops.remove(block, crop, drop);
-            if (drop) {
-                hooks.skillXp(player, SkillXpHook.Source.CROP, crop.cropId(), xp);
+            if (drop && ripe.isPresent()) {
+                hooks.skillXp(player, SkillXpHook.Source.CROP, crop.cropId(), ripe.get().skillXp());
+                hooks.jobRewards(player, block, crop.cropId(), ripe.get().jobs());
             }
         });
         Block above = block.getRelative(BlockFace.UP);

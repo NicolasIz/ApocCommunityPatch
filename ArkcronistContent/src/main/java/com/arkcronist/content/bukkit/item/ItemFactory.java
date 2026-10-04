@@ -84,6 +84,39 @@ public final class ItemFactory {
     }
 
     /**
+     * Puts back what makes a stack look like its item, when something took it off: another plugin
+     * that rebuilt the stack from its material, name, lore and tags - an auction house, a crate,
+     * a mail plugin - keeps the plugin's id tag but can lose the {@code item_model} and the
+     * {@code equippable}. Only the look is restored; name, lore, enchantments and amount stay as
+     * they are.
+     *
+     * @return whether anything was put back
+     */
+    public boolean repair(@Nullable ItemStack stack) {
+        Optional<CustomItem> found = identify(stack);
+        if (found.isEmpty()) {
+            return false;
+        }
+        CustomItem item = found.get();
+        boolean changed = false;
+        if (item.hasModel() && !item.itemModel().equals(stack.getData(DataComponentTypes.ITEM_MODEL))) {
+            stack.setData(DataComponentTypes.ITEM_MODEL, item.itemModel());
+            changed = true;
+        }
+        Equipment equipment = item.definition().equipment();
+        if (equipment != null) {
+            Equippable wanted = equippable(stack, equipment);
+            Equippable current = stack.getData(DataComponentTypes.EQUIPPABLE);
+            if (current == null || current.slot() != wanted.slot()
+                    || !java.util.Objects.equals(current.assetId(), wanted.assetId())) {
+                stack.setData(DataComponentTypes.EQUIPPABLE, wanted);
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
+    /**
      * The custom item a stack is, if it is one that is loaded right now.
      *
      * <p>Reads the tag through the stack's read-only view, without copying its meta, so it is cheap

@@ -26,6 +26,10 @@ items:
       # Experience for breaking it: Mining in AuraSkills and mcMMO, class
       # experience in SkillAPI / ProSkillAPI / Fabled - whichever is installed.
       skill-xp: 15
+      # Money and job experience for breaking it, through Jobs Reborn or
+      # ExcellentJobs, to a player who has the job (its id in the jobs plugin).
+      jobs:
+        Miner: {money: 2.5, xp: 4}
 
   # A 3D model - a Blockbench export - shown by an item display standing on an
   # invisible barrier. Its textures are found through the model file: the gem

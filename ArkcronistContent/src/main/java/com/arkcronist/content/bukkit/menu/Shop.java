@@ -18,6 +18,13 @@ public interface Shop {
      */
     boolean charge(Player player, double amount);
 
+    /**
+     * Gives {@code amount} to the player: a job's pay.
+     *
+     * @return false if there is no economy, or it refused
+     */
+    boolean deposit(Player player, double amount);
+
     /** An amount as the economy writes it: {@code $1,250.00}, {@code 1250 coins}. */
     String format(double amount);
 }

@@ -95,6 +95,32 @@ repositories {
             includeGroup 'com.github.MilkBowl'
             includeGroup 'com.github.decentsoftware-eu.decentholograms'
             includeGroup 'com.github.Gypopo'
+            includeGroup 'com.github.Zrips'
+        }
+    }
+    // ExcellentJobs and nightcore, the library its API classes extend.
+    maven {
+        name = 'nightexpress'
+        url = 'https://repo.nightexpressdev.com/releases/'
+        content {
+            includeGroup 'su.nightexpress.excellentjobs'
+            includeGroup 'su.nightexpress.nightcore'
+        }
+    }
+    // HibiscusCommons, the library through which HMCCosmetics takes items from other plugins.
+    maven {
+        name = 'hibiscusmc'
+        url = 'https://repo.hibiscusmc.com/releases/'
+        content {
+            includeGroup 'me.lojosho'
+        }
+    }
+    // zAuctionHouse's API.
+    maven {
+        name = 'groupez'
+        url = 'https://repo.groupez.dev/releases/'
+        content {
+            includeGroup 'fr.maxlego08.zauctionhouse'
         }
     }
     // mcMMO.
@@ -180,6 +206,12 @@ dependencies {
     // Since 2.10 DecentHolograms is built in modules; its API is in the one named after it.
     compileOnly('com.github.decentsoftware-eu.decentholograms:decentholograms:2.10.1') { transitive = false }
     compileOnly('com.github.Gypopo:EconomyShopGUI-API:1.11.0') { transitive = false }
+    // 1.5: jobs and auctions.
+    compileOnly('com.github.Zrips:Jobs:v5.2.6.3') { transitive = false }
+    compileOnly('su.nightexpress.excellentjobs:ExcellentJobs:2.0.2') { transitive = false }
+    compileOnly('su.nightexpress.nightcore:main:2.16.3') { transitive = false }
+    compileOnly('fr.maxlego08.zauctionhouse:zauctionhousev4-api:4.0.1.3') { transitive = false }
+    compileOnly('me.lojosho:HibiscusCommons:0.9.3') { transitive = false }
     compileOnly sourceSets.scoreApi.output
 
     // The core package (loader, pack compiler, zip, hash, web server, storage) is tested without a

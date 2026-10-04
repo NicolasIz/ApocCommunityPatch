@@ -53,6 +53,11 @@ class DemoContentTest {
         assertEquals(body, bones.stream().filter(bone -> bone.name().equals("lid")).findFirst().orElseThrow().parent());
         assertEquals("CHEST", items.get("demo:ruby_chest").material());
 
+        assertEquals(Map.of("Miner", new com.arkcronist.content.core.definition.JobReward(2.5, 4)),
+                ((Placement.Block) items.get("demo:ruby_block").placement()).jobs());
+        assertEquals(Map.of("Farmer", new com.arkcronist.content.core.definition.JobReward(1.5, 3)),
+                ((Placement.Crop) items.get("demo:ruby_seeds").placement()).jobs());
+
         Placement.Furniture bed = (Placement.Furniture) items.get("demo:ruby_bed").placement();
         assertEquals(Placement.Support.BED, bed.support());
         assertEquals("RED_BED", items.get("demo:ruby_bed").material());
@@ -148,6 +153,18 @@ class DemoContentTest {
         var wear = (com.arkcronist.content.core.definition.AdvancementDefinition.Trigger.Wear)
                 result.advancements().get(2).definition().trigger();
         assertEquals(4, wear.items().size(), "the whole Blood Ruby set");
+    }
+
+    @Test
+    void theHistoryOfShippedExamplesNeverListsTheCurrentVersion() throws IOException {
+        var history = ExampleUpdates.parseHistory(Files.readAllLines(Path.of("src/main/resources/examples-history.txt")));
+        assertTrue(history.containsKey("contents/demo/models/furniture/ruby_chest.bbmodel"), "the 1.3 chest is in it");
+        for (var entry : history.entrySet()) {
+            Path shipped = Path.of("src/main/resources").resolve(entry.getKey());
+            assertTrue(Files.isRegularFile(shipped), entry.getKey() + " is still shipped");
+            assertTrue(!entry.getValue().contains(ExampleUpdates.sha1(Files.readAllBytes(shipped))),
+                    entry.getKey() + ": the current version would be rewritten on every start");
+        }
     }
 
     private static JsonObject json(Path file) throws IOException {

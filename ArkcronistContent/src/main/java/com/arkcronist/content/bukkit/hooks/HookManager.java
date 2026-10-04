@@ -7,7 +7,10 @@ import com.arkcronist.content.bukkit.hooks.decentholograms.DecentHologramsHook;
 import com.arkcronist.content.bukkit.hooks.economyshopgui.EconomyShopGuiHook;
 import com.arkcronist.content.bukkit.hooks.executableblocks.ExecutableBlocksHook;
 import com.arkcronist.content.bukkit.hooks.griefprevention.GriefPreventionProtection;
+import com.arkcronist.content.bukkit.hooks.hmccosmetics.HmcCosmeticsHook;
 import com.arkcronist.content.bukkit.hooks.iris.IrisHook;
+import com.arkcronist.content.bukkit.hooks.jobs.ExcellentJobsHook;
+import com.arkcronist.content.bukkit.hooks.jobs.JobsRebornHook;
 import com.arkcronist.content.bukkit.hooks.mcmmo.McMMOHook;
 import com.arkcronist.content.bukkit.hooks.mmoitems.MMOItemsHook;
 import com.arkcronist.content.bukkit.hooks.modelengine.ModelEngineHook;
@@ -19,7 +22,9 @@ import com.arkcronist.content.bukkit.hooks.skillapi.FabledHook;
 import com.arkcronist.content.bukkit.hooks.skillapi.SkillAPIHook;
 import com.arkcronist.content.bukkit.hooks.vault.VaultShop;
 import com.arkcronist.content.bukkit.hooks.worldguard.WorldGuardProtection;
+import com.arkcronist.content.bukkit.hooks.zauctionhouse.ZAuctionHouseHook;
 import com.arkcronist.content.bukkit.menu.Shop;
+import com.arkcronist.content.core.definition.JobReward;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
@@ -65,6 +70,8 @@ public final class HookManager {
     private final List<ContentHook> contentHooks = new ArrayList<>();
     /** Skills plugins, by hook name. */
     private final Map<String, SkillXpHook> skillHooks = new HashMap<>();
+    /** Jobs plugins, by hook name. */
+    private final Map<String, JobsHook> jobHooks = new HashMap<>();
     private final List<AutoCloseable> closing = new ArrayList<>();
     private ModelEngineBridge modelEngine;
     private Shop shop;
@@ -149,6 +156,25 @@ public final class HookManager {
         // Economy: /arkcontent shop sells the items that have a price.
         shop = create("Vault", "net.milkbowl.vault.economy.Economy", () -> new VaultShop(plugin.getServer()));
 
+        // HMCCosmetics, through its library: cosmetics made from this plugin's items.
+        // The factory returns a Boolean, never the hook: naming a class that extends HibiscusCommons'
+        // Hook - even as a lambda's return type - would fail this class without HibiscusCommons.
+        create("HMCCosmetics (HibiscusCommons)", "me.lojosho.hibiscuscommons.hooks.Hook",
+                () -> HmcCosmeticsHook.register(plugin.items(), plugin.itemFactory()));
+
+        // Auctions: listed and bought items keep their look.
+        ZAuctionHouseHook auctions = create("zAuctionHouse", "fr.maxlego08.zauctionhouse.api.AuctionPlugin",
+                () -> new ZAuctionHouseHook(plugin.itemFactory()));
+        if (auctions != null) {
+            listen(auctions);
+        }
+
+        // Jobs plugins: money and job experience for custom blocks and crops.
+        job("Jobs Reborn", "com.gamingmesh.jobs.Jobs", () -> new JobsRebornHook(logger));
+        job("ExcellentJobs", "su.nightexpress.excellentjobs.JobsAPIProvider",
+                () -> new ExcellentJobsHook(plugin.getServer(), (player, amount) -> shop != null
+                        && shop.deposit(player, amount), logger));
+
         npcs = create("Citizens", "net.citizensnpcs.api.CitizensAPI", CitizensHook::new);
 
         DecentHologramsHook holograms = create("DecentHolograms", "eu.decentsoftware.holograms.api.DHAPI",
@@ -191,6 +217,32 @@ public final class HookManager {
         SkillXpHook hook = create(name, probeClass, factory);
         if (hook != null) {
             skillHooks.put(name, hook);
+        }
+    }
+
+    private void job(String name, String probeClass, Supplier<JobsHook> factory) {
+        JobsHook hook = create(name, probeClass, factory);
+        if (hook != null) {
+            jobHooks.put(name, hook);
+        }
+    }
+
+    /**
+     * Pays every jobs plugin for a custom block broken or a ripe crop harvested. Main thread. A hook
+     * that throws is logged and dropped; the others still pay.
+     */
+    public void jobRewards(Player player, Block block, String contentId, Map<String, JobReward> rewards) {
+        if (rewards.isEmpty() || jobHooks.isEmpty()) {
+            return;
+        }
+        for (Map.Entry<String, JobsHook> entry : List.copyOf(jobHooks.entrySet())) {
+            try {
+                entry.getValue().reward(player, block, contentId, rewards);
+            } catch (RuntimeException | LinkageError error) {
+                jobHooks.remove(entry.getKey());
+                logger.log(Level.WARNING, entry.getKey() + " failed to pay " + player.getName() + " for " + contentId
+                        + "; nothing more is paid through it until a restart.", error);
+            }
         }
     }
 

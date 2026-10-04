@@ -60,6 +60,49 @@ public final class ExampleUpdates {
         return Set.copyOf(lines.stream().map(String::trim).filter(line -> !line.isEmpty()).toList());
     }
 
+    /**
+     * Earlier versions of the shipped examples, from {@code examples-history.txt}: one
+     * {@code <path> <sha1>} per line, {@code #} for comments.
+     */
+    public static Map<String, Set<String>> parseHistory(Collection<String> lines) {
+        Map<String, Set<String>> history = new java.util.HashMap<>();
+        for (String line : lines) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                continue;
+            }
+            String[] parts = trimmed.split("\\s+");
+            if (parts.length == 2) {
+                history.computeIfAbsent(parts[0], path -> new java.util.HashSet<>()).add(parts[1].toLowerCase(java.util.Locale.ROOT));
+            }
+        }
+        return history;
+    }
+
+    /**
+     * The examples still exactly as an earlier version shipped them - never edited by the owner -
+     * which the current version replaces. A file that differs from every shipped version is the
+     * owner's work and is never listed.
+     */
+    public static List<String> outdated(Map<String, Set<String>> history, Path dataFolder) throws java.io.IOException {
+        List<String> outdated = new ArrayList<>();
+        for (Map.Entry<String, Set<String>> entry : new java.util.TreeMap<>(history).entrySet()) {
+            Path file = dataFolder.resolve(entry.getKey());
+            if (Files.isRegularFile(file) && entry.getValue().contains(sha1(Files.readAllBytes(file)))) {
+                outdated.add(entry.getKey());
+            }
+        }
+        return outdated;
+    }
+
+    static String sha1(byte[] bytes) {
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-1").digest(bytes));
+        } catch (java.security.NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException(impossible);
+        }
+    }
+
     /** {@code contents/<pack>} for an example at {@code contents/<pack>/...}. */
     private static Path packFolder(Path dataFolder, String example) {
         String[] parts = example.split("/");

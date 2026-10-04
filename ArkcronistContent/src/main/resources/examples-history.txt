@@ -1,0 +1,15 @@
+# Every earlier version of the example files this plugin has shipped, by SHA-1. On start, an
+# example still byte for byte one of these was never edited by the server's owner, and is brought
+# up to date; anything else is theirs and is left alone. Each release adds the versions it replaces.
+contents/demo/blocks.yml 83c787c815df4b068d0d6be646effd204619e0ac
+contents/demo/blocks.yml 9b7900ff2248dcd50164a872ee0fe9abfdb9bf14
+contents/demo/blocks.yml 65de4cb3731fc71de9f711c019ede48c0029d9a9
+contents/demo/blocks.yml bf13900b2782b1d1192c2c9035e4b2b32b2cfc59
+contents/demo/blocks.yml 1508157224dc3723a365b91c00271b93b2b278d8
+contents/demo/crops.yml ddf514b88928eb92364491a50aa8aedf3e6a0401
+contents/demo/crops.yml cc7c0208e5e6b00fccb5e12d4c0c7c2047f72b32
+contents/demo/items.yml 50e2dd7e83a3be0f8a33d3e71f59c889c7e95b10
+contents/demo/models/furniture/ruby_bed.json a3f8ed8e13bd7f185f72369df55eaece28c0cd4a
+contents/demo/models/furniture/ruby_chest.bbmodel 9e42399de1101ef5fda6e199014ab508d2c527d0
+contents/demo/models/furniture/ruby_chest.bbmodel 4dedb93e3a0a4c17fea7eeadb7d998d8e373fc04
+contents/demo/textures/furniture/ruby_bed.png e86bd5e65d07b0fc72c283d176a0661dccb5fdb7
