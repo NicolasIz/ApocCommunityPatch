@@ -15,6 +15,7 @@ import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.importer.ImportReport;
 import com.arkcronist.content.core.importer.ItemsAdderImporter;
 import com.arkcronist.content.core.loader.ContentLoader;
+import com.arkcronist.content.core.loader.ExampleUpdates;
 import com.arkcronist.content.core.loader.LoadReport;
 import com.arkcronist.content.core.pack.ExternalPack;
 import com.arkcronist.content.core.pack.PackArtifact;
@@ -44,6 +45,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 /**
  * Rebuilds everything from the contents folder: items, pack folder, zip, hash - then puts the
@@ -73,8 +75,8 @@ import java.util.logging.Logger;
  */
 public final class ContentPipeline {
 
-    /** Copied into contents/ the first time the plugin starts. */
-    private static final List<String> EXAMPLES = List.of(
+    /** The demo pack as the first versions shipped it. */
+    private static final List<String> FIRST_EXAMPLES = List.of(
             "contents/demo/items.yml",
             "contents/demo/models/item/ruby.json",
             "contents/demo/textures/item/ruby.png",
@@ -89,15 +91,6 @@ public final class ContentPipeline {
             "contents/demo/models/furniture/ruby_chest.bbmodel",
             "contents/demo/models/furniture/ruby_bed.json",
             "contents/demo/textures/furniture/ruby_bed.png",
-            "contents/demo/armor.yml",
-            "contents/demo/textures/entity/equipment/humanoid/ruby_armor.png",
-            "contents/demo/textures/entity/equipment/humanoid_leggings/ruby_armor.png",
-            "contents/demo/textures/item/ruby_helmet.png",
-            "contents/demo/textures/item/ruby_chestplate.png",
-            "contents/demo/textures/item/ruby_leggings.png",
-            "contents/demo/textures/item/ruby_boots.png",
-            "contents/demo/models/item/ruby_helmet_worn.json",
-            "contents/demo/textures/item/ruby_helmet_worn.png",
             "contents/demo/crops.yml",
             "contents/demo/textures/item/ruby_seeds.png",
             "contents/demo/textures/crop/ruby_stage_0.png",
@@ -107,6 +100,26 @@ public final class ContentPipeline {
             "contents/demo/emojis.yml",
             "contents/demo/textures/emoji/ruby.png",
             "contents/demo/textures/emoji/heart.png");
+
+    /**
+     * The examples each later version added. A server that already has a contents/ folder gets
+     * these on upgrade (see {@link ExampleUpdates}); a new one gets them with the rest.
+     */
+    private static final Map<String, List<String>> ADDED_EXAMPLES = Map.of(
+            "1.4.0", List.of(
+                    "contents/demo/armor.yml",
+                    "contents/demo/textures/entity/equipment/humanoid/ruby_armor.png",
+                    "contents/demo/textures/entity/equipment/humanoid_leggings/ruby_armor.png",
+                    "contents/demo/textures/item/ruby_helmet.png",
+                    "contents/demo/textures/item/ruby_chestplate.png",
+                    "contents/demo/textures/item/ruby_leggings.png",
+                    "contents/demo/textures/item/ruby_boots.png",
+                    "contents/demo/models/item/ruby_helmet_worn.json",
+                    "contents/demo/textures/item/ruby_helmet_worn.png"));
+
+    /** Copied into contents/ the first time the plugin starts. */
+    private static final List<String> EXAMPLES = Stream.concat(FIRST_EXAMPLES.stream(),
+            ADDED_EXAMPLES.values().stream().flatMap(List::stream)).toList();
 
     /**
      * What one rebuild did.
@@ -179,6 +192,8 @@ public final class ContentPipeline {
     private final Path zipFile;
     private final Path noteBlockStateFile;
     private final Path emojiCharacterFile;
+    /** The plugin version that last offered the demo examples to contents/. */
+    private final Path examplesVersionFile;
 
     private final ExecutorService worker;
     private final Executor mainThread;
@@ -209,6 +224,7 @@ public final class ContentPipeline {
         this.zipFile = data.resolve("output").resolve("resource_pack.zip");
         this.noteBlockStateFile = data.resolve("data").resolve("note_block_states.json");
         this.emojiCharacterFile = data.resolve("data").resolve("emoji_characters.json");
+        this.examplesVersionFile = data.resolve("data").resolve("examples_version.txt");
 
         this.worker = Executors.newSingleThreadExecutor(runnable -> {
             Thread thread = new Thread(runnable, "ArkContent-Worker");
@@ -348,7 +364,7 @@ public final class ContentPipeline {
     /** contents/*.yml into items, each checked against this server's materials. */
     private Build loadItems() {
         try {
-            extractExamplesOnFirstRun();
+            extractExamples();
             LoadReport report = new ContentLoader().load(contentsDir);
 
             List<String> problems = new ArrayList<>(report.problems());
@@ -515,16 +531,40 @@ public final class ContentPipeline {
         }, worker);
     }
 
-    private void extractExamplesOnFirstRun() throws IOException {
-        if (Files.exists(contentsDir)) {
-            return;
-        }
-        if (settings.extractExamples()) {
-            for (String example : EXAMPLES) {
-                plugin.saveResource(example, false);
+    /**
+     * The whole demo pack on the first start; on an upgrade, the examples added since the version
+     * that last offered them - never over a file that is there, never into a deleted pack folder.
+     */
+    private void extractExamples() throws IOException {
+        String version = plugin.getPluginMeta().getVersion();
+        if (!Files.exists(contentsDir)) {
+            if (settings.extractExamples()) {
+                for (String example : EXAMPLES) {
+                    plugin.saveResource(example, false);
+                }
+            }
+            Files.createDirectories(contentsDir);
+        } else {
+            String last = Files.isRegularFile(examplesVersionFile)
+                    ? Files.readString(examplesVersionFile).trim()
+                    : ExampleUpdates.BEFORE_REMEMBERED;
+            if (ExampleUpdates.compare(version, last) <= 0) {
+                return;
+            }
+            if (settings.extractExamples()) {
+                List<String> copy = ExampleUpdates.toCopy(ADDED_EXAMPLES, last, plugin.getDataFolder().toPath());
+                for (String example : copy) {
+                    plugin.saveResource(example, false);
+                }
+                if (!copy.isEmpty()) {
+                    logger.info("Added " + copy.size() + " example file(s) new since " + last + " to contents/: "
+                            + String.join(", ", copy.stream().filter(path -> path.endsWith(".yml")).toList())
+                            + " and what they use. Nothing already there was touched.");
+                }
             }
         }
-        Files.createDirectories(contentsDir);
+        Files.createDirectories(examplesVersionFile.getParent());
+        Files.writeString(examplesVersionFile, version + "\n");
     }
 
     // ---------------------------------------------------------------- main thread

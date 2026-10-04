@@ -80,7 +80,7 @@ ArkcronistContent/
     ├── resources/
     │   ├── paper-plugin.yml
     │   ├── config.yml
-    │   └── contents/demo/…               pack de ejemplo, se copia en el primer arranque
+    │   └── contents/demo/…               pack de ejemplo: entero en el primer arranque, lo nuevo al actualizar
     └── java/com/arkcronist/content/
         ├── core/                          ── sin Bukkit ──
         │   ├── definition/
@@ -782,6 +782,14 @@ está (sería invisible: `worn on LEGS, demo:ruby_armor is drawn from textures/e
 which is not in demo`); `model` fuera de la cabeza (se ignora); `model` y `asset` juntos en la
 cabeza (gana el asset, que es lo que el cliente dibujaría); `model` sin `resource`; o un modelo que
 no está en `models/`.
+
+**Actualizar desde 1.3.** El pack de ejemplo se copia entero solo cuando `contents/` no existe;
+para que la armadura llegue también a un servidor que ya lo tenía, cada versión lista los ejemplos
+que añade y el plugin recuerda (`data/examples_version.txt`) la última que los ofreció. Al cambiar
+el jar 1.3 por el 1.4.0 y reiniciar, copia en `contents/demo/` `armor.yml` y sus 8 archivos —y lo
+dice en consola—, sin tocar nada que ya exista, sin recrear `contents/demo/` si se borró y sin
+volver a poner un archivo que el dueño borró después. Verificado en el servidor de prueba: se añaden
+los 9 archivos y salen 15 ítems; borrando `armor.yml` y recargando quedan 11 y no vuelve.
 
 El reparto del set de la demo, medido sobre los píxeles visibles: 74 % acero ennegrecido y 26 %
 rubí (casco 66/34, pechera 79/21, grebas 73/27, botas 79/21).
