@@ -29,8 +29,10 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.TreeSet;
 import java.util.TreeMap;
 import java.util.stream.Stream;
@@ -140,6 +142,27 @@ public final class PackCompiler {
                           Map<EmojiDefinition, Integer> glyphs,
                           Collection<AdvancementDefinition> advancements,
                           List<ExternalPack> externalPacks) throws IOException {
+        return compile(packDir, items, noteBlockStates, glyphs, advancements, Map.of(), externalPacks);
+    }
+
+    /**
+     * Deletes {@code packDir} and writes the pack for {@code items} into it.
+     *
+     * @param noteBlockStates the state each custom block is drawn through, by full id; empty leaves
+     *                        the vanilla note block untouched
+     * @param glyphs          the character each emoji is drawn as; empty writes no font
+     * @param advancements    their tab backgrounds, when they are this plugin's textures; the
+     *                        advancements themselves are server data, registered by the plugin
+     * @param modelData       the {@code custom_model_data} number each item is also drawn by on its
+     *                        plain material, by full id ({@link ModelDataDispatch}); empty writes none
+     * @param externalPacks   other plugins' packs to merge in, after this plugin's own files
+     */
+    public Result compile(Path packDir, Collection<ItemDefinition> items,
+                          Map<String, NoteBlockState> noteBlockStates,
+                          Map<EmojiDefinition, Integer> glyphs,
+                          Collection<AdvancementDefinition> advancements,
+                          Map<String, Integer> modelData,
+                          List<ExternalPack> externalPacks) throws IOException {
         Run run = new Run(packDir);
         run.reset();
         run.writeText("pack.mcmeta", GSON.toJson(settings.mcmeta()) + "\n");
@@ -152,6 +175,7 @@ public final class PackCompiler {
             run.item(item);
         }
         run.noteBlockStates(ordered, noteBlockStates);
+        run.modelData(ordered, modelData);
         run.font(glyphs);
         run.advancementBackgrounds(advancements);
         for (ExternalPack pack : externalPacks.stream().sorted(Comparator.comparing(ExternalPack::name)).toList()) {
@@ -351,6 +375,32 @@ public final class PackCompiler {
             JsonObject definition = new JsonObject();
             definition.add("model", select);
             return json(definition);
+        }
+
+        /**
+         * {@code assets/minecraft/items/<material>.json} for each plain material an item is made of:
+         * the item's own look for its number, vanilla's for any other ({@link ModelDataDispatch}).
+         */
+        void modelData(List<ItemDefinition> items, Map<String, Integer> numbers) throws IOException {
+            Map<String, SortedMap<Integer, JsonObject>> byMaterial = new TreeMap<>();
+            for (ItemDefinition item : items) {
+                Integer number = numbers.get(item.fullId());
+                if (number == null || !ModelDataDispatch.dispatchable(item.material())) {
+                    continue;
+                }
+                Path definition = packDir.resolve(item.itemModel().assetPath("items", ".json"));
+                if (!Files.isRegularFile(definition)) {
+                    continue;
+                }
+                JsonObject model = JsonParser.parseString(Files.readString(definition)).getAsJsonObject()
+                        .getAsJsonObject("model");
+                byMaterial.computeIfAbsent(item.material().toLowerCase(Locale.ROOT), material -> new TreeMap<>())
+                        .put(number, model);
+            }
+            for (Map.Entry<String, SortedMap<Integer, JsonObject>> material : byMaterial.entrySet()) {
+                place("assets/minecraft/items/" + material.getKey() + ".json",
+                        json(ModelDataDispatch.definition(material.getKey(), material.getValue())), "custom_model_data");
+            }
         }
 
         private static byte[] itemDefinition(ResourceLocation model) {

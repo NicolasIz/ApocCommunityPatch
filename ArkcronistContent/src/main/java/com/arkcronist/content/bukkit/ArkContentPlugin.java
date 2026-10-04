@@ -97,6 +97,7 @@ public final class ArkContentPlugin extends JavaPlugin {
     private HookManager hooks;
     private ContentMenus menus;
     private AdvancementService advancements;
+    private CustomBlockService blockService;
     /** Set by the worker once the port is bound; read from the main thread. */
     private volatile PackHttpServer http;
     private ContentPipeline pipeline;
@@ -137,6 +138,7 @@ public final class ArkContentPlugin extends JavaPlugin {
         hooks.enable();
 
         CustomBlockService blockService = new CustomBlockService(getServer(), blocks, itemFactory, placed);
+        this.blockService = blockService;
         blockService.yieldTo(hooks.foreignBlocks());
         this.animations = new AnimationPlayer(this);
         FurnitureService furniture = new FurnitureService(this, items, itemFactory, placed, hooks, animations);
@@ -312,6 +314,11 @@ public final class ArkContentPlugin extends JavaPlugin {
     }
 
     /** Where custom blocks and furniture stand, answered from memory. */
+    /** Custom blocks in the world; null until the plugin has enabled. */
+    public CustomBlockService customBlocks() {
+        return blockService;
+    }
+
     public PlacedContentStore placed() {
         return placed;
     }

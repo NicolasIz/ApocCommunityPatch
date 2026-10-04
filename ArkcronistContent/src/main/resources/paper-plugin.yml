@@ -34,8 +34,10 @@ dependencies:
       load: BEFORE
       required: false
       join-classpath: true
+    # Loads after this plugin, like the other NightExpress plugins below: their item rewards are
+    # read as they enable, through nightcore's item adapters, and this plugin's has to be there.
     ExcellentJobs:
-      load: BEFORE
+      load: AFTER
       required: false
       join-classpath: true
     nightcore:
@@ -44,6 +46,102 @@ dependencies:
       join-classpath: true
     # Auctions: listed and bought items keep their look.
     zAuctionHouseV4:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    # 1.6: other plugins' shared item registries. Each library loads first, so the registry is there
+    # to add to; the plugins built on it load after, so they find this plugin's items when they read
+    # their configs.
+    eco:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    EcoItems:
+      load: AFTER
+      required: false
+      join-classpath: false
+    EcoArmor:
+      load: AFTER
+      required: false
+      join-classpath: false
+    EcoEnchants:
+      load: AFTER
+      required: false
+      join-classpath: false
+    EcoMobs:
+      load: AFTER
+      required: false
+      join-classpath: false
+    EcoBosses:
+      load: AFTER
+      required: false
+      join-classpath: false
+    Reforges:
+      load: AFTER
+      required: false
+      join-classpath: false
+    StatTrackers:
+      load: AFTER
+      required: false
+      join-classpath: false
+    Talismans:
+      load: AFTER
+      required: false
+      join-classpath: false
+    EcoSkills:
+      load: AFTER
+      required: false
+      join-classpath: false
+    EcoShop:
+      load: AFTER
+      required: false
+      join-classpath: false
+    EcoJobs:
+      load: AFTER
+      required: false
+      join-classpath: false
+    EcoPets:
+      load: AFTER
+      required: false
+      join-classpath: false
+    EcoCrates:
+      load: AFTER
+      required: false
+      join-classpath: false
+    Actions:
+      load: AFTER
+      required: false
+      join-classpath: false
+    ExcellentCrates:
+      load: AFTER
+      required: false
+      join-classpath: false
+    ExcellentShop:
+      load: AFTER
+      required: false
+      join-classpath: false
+    ExcellentEnchants:
+      load: AFTER
+      required: false
+      join-classpath: false
+    Mimic:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    ItemBridge:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    # Menus, quests and logins: their own hooks are added to as this plugin enables.
+    DeluxeMenus:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    BetonQuest:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    AuthMe:
       load: BEFORE
       required: false
       join-classpath: true

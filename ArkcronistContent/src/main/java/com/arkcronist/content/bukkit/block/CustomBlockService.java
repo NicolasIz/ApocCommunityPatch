@@ -95,6 +95,11 @@ public final class CustomBlockService {
         }
     }
 
+    /** Drops the record of a custom block at {@code block}, whatever stands there now. */
+    public void forgetAt(Block block) {
+        store.remove(block.getWorld().getUID(), block.getX(), block.getY(), block.getZ());
+    }
+
     /**
      * Sends a note block's real state to the players near it.
      *

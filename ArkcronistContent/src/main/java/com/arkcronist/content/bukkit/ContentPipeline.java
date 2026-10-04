@@ -19,6 +19,7 @@ import com.arkcronist.content.core.loader.ContentLoader;
 import com.arkcronist.content.core.loader.ExampleUpdates;
 import com.arkcronist.content.core.loader.LoadReport;
 import com.arkcronist.content.core.pack.ExternalPack;
+import com.arkcronist.content.core.pack.ModelDataDispatch;
 import com.arkcronist.content.core.pack.PackArtifact;
 import com.arkcronist.content.core.pack.PackCompiler;
 import com.arkcronist.content.core.pack.PackZipper;
@@ -168,27 +169,37 @@ public final class ContentPipeline {
      */
     private record Build(Map<String, CustomItem> items, Map<String, NoteBlockState> noteBlocks,
                          List<EmojiDefinition> emojiDefinitions, Map<EmojiDefinition, Integer> emojis,
-                         List<AdvancementCompiler.Compiled> advancements,
+                         List<AdvancementCompiler.Compiled> advancements, Map<String, Integer> modelData,
                          List<String> problems, int files, PackArtifact artifact, Hosted hosted) {
 
         Build withNoteBlocks(Map<String, NoteBlockState> noteBlocks) {
-            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, problems, files, artifact, hosted);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, problems, files,
+                    artifact, hosted);
         }
 
         Build withEmojis(Map<EmojiDefinition, Integer> emojis) {
-            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, problems, files, artifact, hosted);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, problems, files,
+                    artifact, hosted);
         }
 
         Build withFiles(int files) {
-            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, problems, files, artifact, hosted);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, problems, files,
+                    artifact, hosted);
         }
 
         Build withArtifact(PackArtifact artifact) {
-            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, problems, files, artifact, hosted);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, problems, files,
+                    artifact, hosted);
+        }
+
+        Build withModelData(Map<String, Integer> modelData) {
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, problems, files,
+                    artifact, hosted);
         }
 
         Build withHosted(Hosted hosted) {
-            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, problems, files, artifact, hosted);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, problems, files,
+                    artifact, hosted);
         }
     }
 
@@ -207,6 +218,7 @@ public final class ContentPipeline {
     private final Path zipFile;
     private final Path noteBlockStateFile;
     private final Path emojiCharacterFile;
+    private final Path modelDataFile;
     /** The example sets offered to contents/ so far, one per line. */
     private final Path examplesOfferedFile;
     /** What 1.4.0 wrote instead: the one set it knew, 1.4.0. */
@@ -253,6 +265,7 @@ public final class ContentPipeline {
         this.zipFile = data.resolve("output").resolve("resource_pack.zip");
         this.noteBlockStateFile = data.resolve("data").resolve("note_block_states.json");
         this.emojiCharacterFile = data.resolve("data").resolve("emoji_characters.json");
+        this.modelDataFile = data.resolve("data").resolve("custom_model_data.json");
         this.examplesOfferedFile = data.resolve("data").resolve("examples_offered.txt");
         this.legacyExamplesFile = data.resolve("data").resolve("examples_version.txt");
 
@@ -361,6 +374,7 @@ public final class ContentPipeline {
         return CompletableFuture.supplyAsync(this::loadItems, worker)
                 .thenApplyAsync(this::assignNoteBlockStates, worker)
                 .thenApplyAsync(this::assignEmojiCharacters, worker)
+                .thenApplyAsync(this::assignModelData, worker)
                 .thenApplyAsync(this::compilePack, worker)
                 .thenComposeAsync(this::zipPack, worker)
                 .thenApplyAsync(this::hashPack, worker)
@@ -411,8 +425,8 @@ public final class ContentPipeline {
             AdvancementCompiler.Result advancements = AdvancementCompiler.compile(report.advancements(), definitions,
                     ContentPipeline::textComponent);
             problems.addAll(advancements.problems());
-            return new Build(items, Map.of(), report.emojis(), Map.of(), advancements.advancements(), problems, 0,
-                    null, null);
+            return new Build(items, Map.of(), report.emojis(), Map.of(), advancements.advancements(), Map.of(),
+                    problems, 0, null, null);
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
@@ -505,6 +519,38 @@ public final class ContentPipeline {
         }
     }
 
+    /**
+     * A {@code custom_model_data} number for every item drawn from a plain vanilla material: the one
+     * it had before, or the lowest free one from pack.custom-model-data.first. Kept in
+     * data/custom_model_data.json, because a number is what other plugins' configs are written with.
+     */
+    private Build assignModelData(Build build) {
+        EngineSettings.ModelData config = settings.pack().modelData();
+        if (!config.enabled()) {
+            return build;
+        }
+        try {
+            List<String> ids = build.items().values().stream()
+                    .filter(item -> item.hasModel() && ModelDataDispatch.dispatchable(item.definition().material()))
+                    .map(CustomItem::id)
+                    .toList();
+            Map<String, Integer> previous = StableAllocator.read(modelDataFile);
+            if (ids.isEmpty() && previous.isEmpty()) {
+                return build;
+            }
+            StableAllocator numbers = new StableAllocator(config.first(), config.first() + 999_999,
+                    "custom_model_data number", "delete its line from " + modelDataFile.getFileName());
+            StableAllocator.Allocation allocation = numbers.allocate(previous, ids);
+            if (allocation.changed()) {
+                StableAllocator.write(modelDataFile, allocation.assignments());
+            }
+            build.problems().addAll(allocation.problems());
+            return build.withModelData(allocation.active());
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
+        }
+    }
+
     /** The vanilla folder layout under pack/. Only items that survived loading get assets. */
     private Build compilePack(Build build) {
         try {
@@ -513,7 +559,7 @@ public final class ContentPipeline {
                     .toList();
             PackCompiler.Result result = compiler.compile(packDir, definitions, build.noteBlocks(), build.emojis(),
                     build.advancements().stream().map(AdvancementCompiler.Compiled::definition).toList(),
-                    List.copyOf(externalPacks.values()));
+                    build.modelData(), List.copyOf(externalPacks.values()));
             build.problems().addAll(result.problems());
             return build;
         } catch (IOException exception) {
@@ -649,6 +695,7 @@ public final class ContentPipeline {
     // ---------------------------------------------------------------- main thread
 
     private Report publish(Build build, long started) {
+        plugin.itemFactory().modelData(build.modelData());
         registry.replace(build.items().values());
         List<CustomBlock> customBlocks = new ArrayList<>();
         for (Map.Entry<String, NoteBlockState> entry : build.noteBlocks().entrySet()) {

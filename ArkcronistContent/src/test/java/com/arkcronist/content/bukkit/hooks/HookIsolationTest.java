@@ -26,7 +26,13 @@ class HookIsolationTest {
                 "net.milkbowl.vault.economy.Economy", "net.citizensnpcs.api.CitizensAPI",
                 "eu.decentsoftware.holograms.api.DHAPI", "io.lumine.mythic.bukkit.MythicBukkit",
                 "com.gamingmesh.jobs.Jobs", "su.nightexpress.excellentjobs.JobsAPIProvider",
-                "me.lojosho.hibiscuscommons.hooks.Hook", "fr.maxlego08.zauctionhouse.api.AuctionPlugin")) {
+                "me.lojosho.hibiscuscommons.hooks.Hook", "fr.maxlego08.zauctionhouse.api.AuctionPlugin",
+                "com.willfp.eco.core.items.provider.ItemProvider",
+                "su.nightexpress.nightcore.integration.item.adapter.IdentifiableItemAdapter",
+                "ru.endlesscode.mimic.items.BukkitItemsRegistry", "com.jojodmo.itembridge.ItemBridgeListener",
+                "com.extendedclip.deluxemenus.hooks.ItemHook",
+                "org.betonquest.betonquest.api.integration.IntegrationService", "fr.xephi.authme.api.v3.AuthMeApi",
+                "com.sk89q.worldedit.internal.registry.InputParser")) {
             assertThrows(ClassNotFoundException.class, () -> Class.forName(foreign), foreign);
         }
     }
@@ -34,7 +40,7 @@ class HookIsolationTest {
     @Test
     void whatStartsTheHooksLoadsWithoutThem() {
         for (Class<?> type : List.of(HookManager.class, ArkContentPlugin.class, ContentAdminCommand.class,
-                com.arkcronist.content.bukkit.advancement.AdvancementService.class)) {
+                com.arkcronist.content.bukkit.advancement.AdvancementService.class, ContentAccess.class)) {
             assertDoesNotThrow(type::getDeclaredMethods, type.getName());
             assertDoesNotThrow(type::getDeclaredFields, type.getName());
         }

@@ -34,6 +34,15 @@ pack:
   #     - plugins/CosmeticsCore/resourcepack
   #     - packs/hats.zip
   merge: []
+  # Each item made from a plain vanilla material (PAPER, STICK, a sword...) is also drawn
+  # by a custom_model_data number, the way ItemsAdder's items are: for plugins that only
+  # take a material and a number - ClueScrolls, Holographic Displays, menus' model_data,
+  # rewards. The number never changes (data/custom_model_data.json); see an item's with
+  # /arkcontent cmd <item> or %arkcontent_cmd_<namespace:id>%. Materials with special
+  # vanilla definitions - bows, banners, trimmed armour, clocks - are left out.
+  custom-model-data:
+    enabled: true
+    first: 10000
 
 http:
   # The built-in web server that hands the pack to players. With it off, the pack
@@ -110,6 +119,10 @@ delivery:
   required: true
   # Shown on the download prompt. MiniMessage. Empty keeps the client's own text.
   prompt: "<yellow>This server uses custom items.</yellow> <gray>Accept the resource pack to see them."
+  # With AuthMe, send the pack once the player has logged in rather than on joining,
+  # so the download screen does not cover the login prompt. Without AuthMe this
+  # does nothing.
+  after-login: true
 
 crops:
   # How often, in seconds, the growth scheduler adds time to every crop in a loaded

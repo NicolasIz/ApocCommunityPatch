@@ -52,7 +52,12 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
      * @param merge other plugins' packs to merge into this one: folders holding {@code assets/}, or
      *              zips, relative to the server folder
      */
-    public record Pack(String description, int format, int minFormat, int maxFormat, List<String> merge) {
+    public record Pack(String description, int format, int minFormat, int maxFormat, List<String> merge,
+                       ModelData modelData) {
+
+        public Pack(String description, int format, int minFormat, int maxFormat, List<String> merge) {
+            this(description, format, minFormat, maxFormat, merge, ModelData.DEFAULT);
+        }
 
         public Pack {
             merge = List.copyOf(merge);
@@ -103,11 +108,28 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
     }
 
     /**
+     * Every item made from a plain vanilla material also drawn by a {@code custom_model_data}
+     * number, for plugins that take only a material and a number (see ModelDataDispatch).
+     *
+     * @param first the lowest number handed out
+     */
+    public record ModelData(boolean enabled, int first) {
+
+        public static final ModelData DEFAULT = new ModelData(true, 10000);
+    }
+
+    /**
      * How and when players are sent the pack.
      *
-     * @param prompt shown on the download screen; null leaves the client's own wording
+     * @param prompt     shown on the download screen; null leaves the client's own wording
+     * @param afterLogin with a login plugin (AuthMe), send it once the player has logged in rather
+     *                   than on joining
      */
-    public record Delivery(boolean sendOnJoin, boolean required, Component prompt) {
+    public record Delivery(boolean sendOnJoin, boolean required, Component prompt, boolean afterLogin) {
+
+        public Delivery(boolean sendOnJoin, boolean required, Component prompt) {
+            this(sendOnJoin, required, prompt, true);
+        }
     }
 
     /**
@@ -139,13 +161,19 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
             logger.warning("pack.format " + format + " must lie between pack.min-format " + min
                     + " and pack.max-format " + max + " - using 46, 46 and 99.");
             return new Pack(description, PackSettings.FIRST_ITEM_MODEL_FORMAT,
-                    PackSettings.FIRST_ITEM_MODEL_FORMAT, 99, merges(section));
+                    PackSettings.FIRST_ITEM_MODEL_FORMAT, 99, merges(section), modelData(section));
         }
         if (min < PackSettings.FIRST_ITEM_MODEL_FORMAT) {
             logger.warning("pack.min-format " + min + " is below 46 (1.21.4). Older clients cannot"
                     + " show these items whatever the pack claims.");
         }
-        return new Pack(description, format, min, max, merges(section));
+        return new Pack(description, format, min, max, merges(section), modelData(section));
+    }
+
+    private static ModelData modelData(ConfigurationSection pack) {
+        ConfigurationSection section = section(pack, "custom-model-data");
+        return new ModelData(section.getBoolean("enabled", ModelData.DEFAULT.enabled()),
+                Math.max(1, section.getInt("first", ModelData.DEFAULT.first())));
     }
 
     private static List<String> merges(ConfigurationSection section) {
@@ -262,7 +290,8 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
         return new Delivery(
                 section.getBoolean("send-on-join", true),
                 section.getBoolean("required", true),
-                prompt.isBlank() ? null : MiniMessage.miniMessage().deserialize(prompt));
+                prompt.isBlank() ? null : MiniMessage.miniMessage().deserialize(prompt),
+                section.getBoolean("after-login", true));
     }
 
     /** A missing section reads as all defaults rather than as a null to check at every use. */

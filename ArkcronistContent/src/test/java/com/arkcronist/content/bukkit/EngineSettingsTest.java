@@ -53,6 +53,26 @@ class EngineSettingsTest {
     }
 
     @Test
+    void numbersAndLoginsHaveTheirDefaults() throws Exception {
+        EngineSettings settings = read("");
+        assertTrue(settings.pack().modelData().enabled());
+        assertEquals(10000, settings.pack().modelData().first());
+        assertTrue(settings.delivery().afterLogin());
+
+        EngineSettings changed = read("""
+                pack:
+                  custom-model-data:
+                    enabled: false
+                    first: 500
+                delivery:
+                  after-login: false
+                """);
+        assertFalse(changed.pack().modelData().enabled());
+        assertEquals(500, changed.pack().modelData().first());
+        assertFalse(changed.delivery().afterLogin());
+    }
+
+    @Test
     void anExternalLinkReplacesTheBuiltInServer() throws Exception {
         EngineSettings settings = read("""
                 http:

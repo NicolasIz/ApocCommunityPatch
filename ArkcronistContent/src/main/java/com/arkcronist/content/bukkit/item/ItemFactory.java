@@ -3,6 +3,7 @@ package com.arkcronist.content.bukkit.item;
 import com.arkcronist.content.core.definition.Equipment;
 import com.arkcronist.content.core.definition.ResourceLocation;
 import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.CustomModelData;
 import io.papermc.paper.datacomponent.item.Equippable;
 import net.kyori.adventure.key.Key;
 import org.bukkit.NamespacedKey;
@@ -12,6 +13,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -34,6 +36,8 @@ public final class ItemFactory {
 
     private final NamespacedKey idKey;
     private final ItemRegistry registry;
+
+    private volatile Map<String, Integer> modelData = Map.of();
 
     public ItemFactory(Plugin plugin, ItemRegistry registry) {
         this.idKey = new NamespacedKey(plugin, "item");
@@ -65,7 +69,24 @@ public final class ItemFactory {
         if (equipment != null) {
             stack.setData(DataComponentTypes.EQUIPPABLE, equippable(stack, equipment));
         }
+        Integer number = modelData.get(item.id());
+        if (number != null) {
+            // Not what draws it - item_model does - but what a plugin that knows items by material
+            // and number reads, and draws it if it copies only those (pack.custom-model-data).
+            stack.setData(DataComponentTypes.CUSTOM_MODEL_DATA,
+                    CustomModelData.customModelData().addFloat(number).build());
+        }
         return stack;
+    }
+
+    /** The custom_model_data number each item is also drawn by, by id. Set by each rebuild. */
+    public void modelData(Map<String, Integer> numbers) {
+        this.modelData = Map.copyOf(numbers);
+    }
+
+    /** The custom_model_data number the item is also drawn by, if it has one. */
+    public Optional<Integer> modelData(CustomItem item) {
+        return Optional.ofNullable(modelData.get(item.id()));
     }
 
     /**

@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'com.arkcronist'
-version = '1.5.0'
+version = '1.6.0'
 description = 'Custom items from YAML, drawn by a resource pack the plugin compiles, zips, hashes and serves itself.'
 
 java {
@@ -25,6 +25,8 @@ sourceSets {
     // ExecutableBlocks is a paid plugin with no published API; the part of SCore's API the hook uses
     // is copied from SCore 5.25 here, the same way.
     scoreApi
+    // DeluxeMenus publishes no API artifact; its item hook interface is copied from 1.14.1.
+    deluxemenusApi
 }
 
 configurations {
@@ -36,6 +38,7 @@ configurations {
     irisApiCompileOnly.extendsFrom paperApi
     mmoitemsApiCompileOnly.extendsFrom paperApi
     scoreApiCompileOnly.extendsFrom paperApi
+    deluxemenusApiCompileOnly.extendsFrom paperApi
 }
 
 // Paper's API comes from Paper's repository, or from libs/ when a local copy is there - for a
@@ -96,6 +99,7 @@ repositories {
             includeGroup 'com.github.decentsoftware-eu.decentholograms'
             includeGroup 'com.github.Gypopo'
             includeGroup 'com.github.Zrips'
+            includeGroup 'com.github.jojodmo'
         }
     }
     // ExcellentJobs and nightcore, the library its API classes extend.
@@ -105,6 +109,32 @@ repositories {
         content {
             includeGroup 'su.nightexpress.excellentjobs'
             includeGroup 'su.nightexpress.nightcore'
+        }
+    }
+    // 1.6: eco (Auxilor's plugins), AuthMe, BetonQuest and the shared item registries.
+    maven {
+        name = 'auxilor'
+        url = 'https://repo.auxilor.io/repository/maven-public/'
+        content {
+            includeGroup 'com.willfp'
+        }
+    }
+    maven {
+        name = 'codemc'
+        url = 'https://repo.codemc.io/repository/maven-public/'
+        content {
+            includeGroup 'fr.xephi'
+        }
+    }
+    // Its POM's parent chain names a POM the repository does not have; only the jar is read.
+    maven {
+        name = 'betonquest'
+        url = 'https://repo.betonquest.org/betonquest/'
+        metadataSources {
+            artifact()
+        }
+        content {
+            includeGroup 'org.betonquest'
         }
     }
     // HibiscusCommons, the library through which HMCCosmetics takes items from other plugins.
@@ -213,6 +243,16 @@ dependencies {
     compileOnly('fr.maxlego08.zauctionhouse:zauctionhousev4-api:4.0.1.3') { transitive = false }
     compileOnly('me.lojosho:HibiscusCommons:0.9.3') { transitive = false }
     compileOnly sourceSets.scoreApi.output
+    // 1.6: the registries other plugins share items and blocks through, and logins.
+    compileOnly('com.willfp:eco:2026.40') { transitive = false }
+    compileOnly('su.nightexpress.nightcore:bridge:2.16.3') { transitive = false }
+    compileOnly('ru.endlesscode.mimic:mimic-bukkit-api:0.8.0') { transitive = false }
+    compileOnly('ru.endlesscode.mimic:mimic-api:0.8.0') { transitive = false }
+    compileOnly('com.github.jojodmo:ItemBridge:2acbb8ffe8') { transitive = false }
+    // The plain jar is empty; the classes are in the 'shaded' one, the plugin as released.
+    compileOnly('org.betonquest:betonquest:3.2.0:shaded') { transitive = false }
+    compileOnly('fr.xephi:authme:5.7.0') { transitive = false }
+    compileOnly sourceSets.deluxemenusApi.output
 
     // The core package (loader, pack compiler, zip, hash, web server, storage) is tested without a
     // server, but against the same Gson and SnakeYAML the server provides.

@@ -16,6 +16,7 @@ import org.jetbrains.annotations.Nullable;
  *
  * <pre>
  * %arkcontent_emoji_ruby%    the ruby emoji's character: drawn as its image by anyone with the pack
+ * %arkcontent_cmd_demo:ruby%  the ruby's custom_model_data number (pack.custom-model-data)
  * %arkcontent_held%          id of the custom item in the player's main hand, or nothing
  * %arkcontent_items%         how many custom items are loaded
  * </pre>
@@ -63,6 +64,11 @@ public final class ArkContentExpansion extends PlaceholderExpansion {
         if (params.startsWith("emoji_")) {
             // Permissions are not checked: a menu or tab list is the server speaking, not the player.
             return emojis.get(params.substring("emoji_".length())).map(EmojiRegistry.Emoji::glyph).orElse(null);
+        }
+        if (params.startsWith("cmd_")) {
+            // An item's custom_model_data number, for menus that take a material and a number.
+            return items.find(params.substring("cmd_".length())).flatMap(factory::modelData)
+                    .map(String::valueOf).orElse("");
         }
         return switch (params) {
             case "held" -> player instanceof Player online

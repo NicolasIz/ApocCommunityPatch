@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
+import java.util.function.Predicate;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -41,6 +42,8 @@ public final class PackDelivery {
 
     private final EngineSettings settings;
     private final AtomicReference<Live> current = new AtomicReference<>();
+
+    private volatile Predicate<Player> waiting = player -> false;
 
     public PackDelivery(EngineSettings settings) {
         this.settings = settings;
@@ -90,10 +93,25 @@ public final class PackDelivery {
         player.setResourcePack(PACK_ID, live.url(), live.artifact().sha1(), delivery.prompt(), delivery.required());
     }
 
-    /** Main thread. */
+    /**
+     * Players not to send the pack to yet - those a login plugin still holds at its login prompt.
+     * They get it when they log in.
+     */
+    public void holdWhile(Predicate<Player> waiting) {
+        this.waiting = waiting;
+    }
+
+    /** Whether the player is still at a login prompt, and gets the pack later. */
+    public boolean held(Player player) {
+        return waiting.test(player);
+    }
+
+    /** Main thread. Players still at a login prompt are left for the login to send it. */
     public void sendAll(Collection<? extends Player> players) {
         for (Player player : players) {
-            send(player);
+            if (!held(player)) {
+                send(player);
+            }
         }
     }
 }

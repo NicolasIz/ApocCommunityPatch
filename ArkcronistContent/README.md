@@ -12,6 +12,7 @@ concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer
 /customgive <jugador> <item> [cantidad]    entrega un ítem (acepta @a, @p...; autocompleta ids)
 /arkcontent reload                         recompila ítems y pack sin reiniciar
 /arkcontent info                           ítems y bloques cargados, colocados, hash del pack, URL
+/arkcontent cmd <item>                     material y número custom_model_data del ítem (sección 4)
 /arkcontent import                         convierte los packs de ItemsAdder de import/ (sección 6)
 /arkcontent menu                           explorador de todo el contenido cargado (sección 7)
 /arkcontent animate <animación>            reproduce una animación del mueble que miras (sección 4)
@@ -31,8 +32,10 @@ concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer
 Con MythicMobs, ModelEngine, MythicArmor, MMOItems, PlaceholderAPI (y a través de él TAB y
 DeluxeMenus), ShopGUI+, Iris, WorldGuard, GriefPrevention, AuraSkills, mcMMO, SkillAPI/ProSkillAPI,
 Fabled, Vault, Citizens, DecentHolograms, EconomyShopGUI Premium, ExecutableBlocks, Jobs Reborn,
-ExcellentJobs, HMCCosmetics o zAuctionHouse instalados se integra con ellos (sección 5); sin ellos
-funciona igual —verificado arrancando sin ninguno—.
+ExcellentJobs, HMCCosmetics, zAuctionHouse, eco (EcoItems, EcoArmor, EcoEnchants, Reforges…), nightcore
+(ExcellentCrates, ExcellentShop…), Mimic, ItemBridge, WorldEdit, BetonQuest o AuthMe instalados se
+integra con ellos (sección 5); sin ellos funciona igual —verificado arrancando sin ninguno—. La
+sección 10 compara, plugin por plugin, con la lista de compatibilidad de ItemsAdder.
 
 El plugin se compila contra la API de Paper 1.21.8 y declara esa versión como mínima. El componente
 `item_model` y la carpeta `assets/<namespace>/items/`, en los que se apoya todo, existen desde 1.21.4,
@@ -81,6 +84,7 @@ ArkcronistContent/
     ├── resources/
     │   ├── paper-plugin.yml
     │   ├── config.yml
+    │   ├── vanilla-item-models.txt   el modelo de cada ítem vanilla de un solo modelo (1.21.8)
     │   └── contents/demo/…               pack de ejemplo: entero en el primer arranque, lo nuevo al actualizar
     └── java/com/arkcronist/content/
         ├── core/                          ── sin Bukkit ──
@@ -140,6 +144,8 @@ ArkcronistContent/
         │   │   ├── ExternalPack           assets de otro plugin (carpeta o ZIP) que se fusionan en el nuestro
         │   │   ├── JsonMerge              une los archivos que comparten los packs (atlas, fuentes,
         │   │   │                          sonidos, idiomas, custom_model_data) y nombra las colisiones
+        │   │   ├── ModelDataDispatch      un material vanilla que dibuja cada ítem por su número
+        │   │   │                          custom_model_data y el modelo vanilla para cualquier otro
         │   │   ├── PackZipper             ZIP determinista, escritura atómica, versión asíncrona
         │   │   ├── Sha1                   hash del ZIP (bytes y hex)
         │   │   └── PackArtifact           bytes + hash del pack publicado
@@ -186,7 +192,14 @@ ArkcronistContent/
             │   ├── executableblocks/      convivencia de bloques con ExecutableBlocks
             │   ├── jobs/                  dinero y XP de Jobs Reborn y ExcellentJobs (JobsHook)
             │   ├── hmccosmetics/          los ítems como cosméticos, a través de HibiscusCommons
-            │   └── zauctionhouse/         subastas que conservan el aspecto de los ítems
+            │   ├── zauctionhouse/         subastas que conservan el aspecto de los ítems
+            │   ├── ContentAccess          lo que piden los ganchos de 1.6: id ↔ ítem, bloques
+            │   ├── eco/ · nightcore/      los ítems en las búsquedas de eco y de nightcore
+            │   ├── mimic/ · itembridge/   registros de ítems compartidos (Mimic, ItemBridge)
+            │   ├── worldedit/             bloques en //set, patrones y máscaras
+            │   ├── deluxemenus/           material: arkcontent-<id> en sus menús
+            │   ├── betonquest/            tipo de ítem, condición y acción de bloque
+            │   └── authme/                el pack tras iniciar sesión
             ├── command/                   CustomGiveCommand, ContentAdminCommand (Brigadier)
             ├── listener/                  uso, combate, mundo, bloques, muebles, almacenamiento,
             │                              entrega del pack
@@ -983,6 +996,41 @@ Dos bots: el que se viste y uno que mira.
 | `/arkcontent reload` sin cambios, con un título cambiado, y `/minecraft:reload` | el progreso se conserva en los tres; tras cambiar el título el servidor ya usa el nuevo (la consola anuncia «Rojo como la sangre (v2)») |
 | SQLite | `PRAGMA user_version` = 4; una fila por jugador y logro en `advancement_unlocks` |
 
+### Números de CustomModelData (`pack.custom-model-data`)
+
+Muchos plugins solo saben pedir un ítem como «este material con este número»: los pergaminos de
+ClueScrolls, los ítems flotantes de Holographic Displays, el `model_data` de DeluxeMenus o
+BossShop, recompensas y menús en general. No pueden poner un `item_model`. ItemsAdder los cubre
+dando un número a cada ítem (`/iacustommodeldata`); este plugin hace lo mismo:
+
+```
+/arkcontent cmd demo:ruby          ->  demo:ruby: material PAPER, custom_model_data 10000
+%arkcontent_cmd_demo:ruby%         ->  10000
+```
+
+```yaml
+# un menú, una recompensa... que solo admite material + número
+material: PAPER
+custom-model-data: 10000          # se ve como el rubí
+```
+
+- **Números estables.** Cada ítem recibe uno a partir de `first` (10000), el primero libre, y lo
+  conserva para siempre en `data/custom_model_data.json`, como los estados de note block y los
+  caracteres de emoji: añadir o quitar ítems no mueve el de nadie.
+- **En el pack.** Para cada material usado, `assets/minecraft/items/<material>.json` despacha por
+  `custom_model_data`: el número de un ítem dibuja ese ítem (su propia definición, con lo que
+  tenga) y el número siguiente vuelve al modelo vanilla, de modo que un número intermedio no toma
+  prestado el aspecto del anterior. Cualquier otro número, o ninguno, se dibuja como el vanilla. Si
+  otro pack fusionado también numera ese material, sus entradas se conservan (`JsonMerge`).
+- **En las stacks.** Las del plugin llevan también su número, así que un plugin que reconoce ítems
+  por material y número reconoce el de verdad. Lo que lo dibuja sigue siendo el `item_model`.
+- **Qué materiales.** Solo los que en vanilla son un único modelo (1274 de los 1416 ítems de 1.21.8,
+  lista en `vanilla-item-models.txt`). Los que tienen definición propia —arcos y ballestas que se
+  tensan, estandartes, armaduras con adornos, relojes, brújulas, cofres, camas, ítems teñidos— se
+  dejan fuera: reemplazar su definición les quitaría lo que hacen. Sus ítems no reciben número
+  (`/arkcontent cmd` lo dice). En la demo: rubí, semillas, espada, bloque y muebles sí; armadura,
+  cofre y cama no.
+
 ## 5. Integraciones
 
 Todas opcionales. `paper-plugin.yml` declara cada plugin como dependencia con
@@ -1008,10 +1056,16 @@ gancho. `/arkcontent info` muestra cuáles están activos (`Hooks: MythicMobs, .
 | Citizens, DecentHolograms | antes de este | solo se les llama por comando o interacción |
 | EconomyShopGUI Premium | después de este | pide los proveedores de ítems al cargar sus tiendas |
 | SCore, ExecutableBlocks | antes de este | la guardia de bloques se pregunta al identificar uno |
-| Jobs Reborn, ExcellentJobs (+ nightcore) | antes de este | se les paga al romper o cosechar; la API de ExcellentJobs se busca en los servicios de Bukkit |
+| Jobs Reborn | antes de este | se le paga al romper o cosechar |
 | HibiscusCommons | antes de este | el gancho de ítems se registra en esa librería… |
 | HMCCosmetics | después de este | …antes de que HMCCosmetics lea sus cosméticos |
 | zAuctionHouse v4 | antes de este | sus eventos de venta y retirada se escuchan desde el arranque |
+| eco | antes de este | el proveedor `arkcontent` se añade a su búsqueda de ítems… |
+| EcoItems, EcoArmor, EcoEnchants, EcoMobs, Reforges, StatTrackers, Talismans, EcoSkills, EcoShop… | después de este | …antes de que lean sus configuraciones |
+| nightcore | antes de este | el adaptador `arkcontent` se registra en su `ItemBridge`… |
+| ExcellentCrates, ExcellentShop, ExcellentEnchants, ExcellentJobs | después de este | …antes de que lean sus recompensas y productos |
+| Mimic, ItemBridge, WorldEdit, BetonQuest, AuthMe | antes de este | este plugin se registra en sus APIs al habilitarse |
+| DeluxeMenus | antes de este | el gancho se añade a su tabla; ver su apartado |
 
 **Aislamiento.** Ninguna clase que arranca los ganchos nombra un tipo que herede de otro plugin, ni
 siquiera como lo que devuelve una lambda (la JVM resuelve ese tipo antes de ejecutarla): una clase
@@ -1415,6 +1469,105 @@ venta (`AuctionPreSellEvent`) y al salir de la casa de subastas —comprado, ret
 caducar (`RemoveEvent`)— se le devuelve el aspecto desde su definición (`item_model` y `equippable`;
 nombre, lore y lo demás no se tocan).
 
+### eco: EcoItems, EcoArmor, EcoEnchants, EcoMobs, Reforges, StatTrackers, Talismans…
+
+Todos los plugins de Auxilor leen los ítems de su configuración (recetas, drops, tiendas, piedras de
+mejora, ingredientes) con la búsqueda de ítems de eco, a la que otros plugins añaden un espacio de
+nombres. Este añade `arkcontent`:
+
+```yaml
+# una receta de EcoItems, un drop de EcoMobs, un producto de EcoShop...
+item: arkcontent:demo__ruby
+```
+
+eco parte la búsqueda por los `:`, así que el `namespace:id` del ítem va con `__` en lugar de `:`,
+como en cualquier integración de eco con espacios de nombres. Lo que eco recibe se compara por el
+id del ítem, no por su aspecto: un papel con el mismo modelo no cuenta.
+
+### nightcore: ExcellentCrates, ExcellentShop, ExcellentEnchants…
+
+nightcore, la librería de NightExpress, pregunta a cada adaptador registrado si un ítem es de su
+plugin cuando un admin lo pone en una caja o en una tienda desde la mano; si lo es, guarda solo el
+plugin y el id, y lo vuelve a crear cada vez que lo da. Lo hace para ItemsAdder, Oraxen, Nexo y
+MMOItems; el adaptador `arkcontent` hace que lo haga también para este plugin. Así un rubí puesto
+en una caja sigue siendo un rubí —con el aspecto de su definición actual— y no una copia de la
+stack del día en que se añadió. Es también una alternativa a PhoenixCrates.
+
+### Mimic e ItemBridge
+
+Dos registros de ítems compartidos, por los que otros plugins piden ítems sin saber de qué plugin
+son (RPGInventory y los plugins RPG escritos para Mimic; los que usan ItemBridge):
+
+```
+/mimic items give Steve arkcontent:demo:ruby
+/ib give Steve arkcontent:demo:ruby
+```
+
+ItemBridge, además, coloca y lee bloques: un plugin que pone bloques a través de él pone los
+bloques personalizados de este (registrados como si los hubiera puesto un jugador) y puede
+preguntar cuál hay en un sitio.
+
+### WorldEdit
+
+```
+//set demo:ruby_block
+//replace stone 10%demo:ruby_block,90%stone
+```
+
+Los bloques personalizados valen donde WorldEdit acepta un bloque: `//set`, `//replace`, patrones,
+máscaras, pinceles, con autocompletado. El analizador se consulta antes que el de WorldEdit y solo
+responde a ids de este plugin. WorldEdit coloca, copia, gira y deshace el estado de note block del
+bloque como cualquier otro; pero sus efectos secundarios lo actualizan como un note block vanilla
+(recalculan `powered` y el instrumento), lo que lo devolvería a vanilla. Por eso cada bloque
+personalizado que una edición coloca se anota al pasar y, un tick después, se reafirma en su estado
+sin física y se registra; uno que una edición sustituye (un `//undo`, un `//set air`) se olvida.
+
+### DeluxeMenus
+
+```yaml
+items:
+  ruby:
+    material: arkcontent-demo:ruby
+    slot: 13
+```
+
+Como `itemsadder-<id>` o `nexo-<id>`. DeluxeMenus revisa los materiales de cada menú al habilitarse,
+contra una lista de prefijos que copia una vez de sus ganchos, y crea la tabla de ganchos en el mismo
+paso: no hay un momento para añadir el de este plugin antes, y el primer arranque avisa
+`Material for item: ... is not valid!`. Por eso el gancho entra en la tabla, su prefijo en esa lista
+y, si algún menú usa `arkcontent-`, DeluxeMenus se recarga (su propio `/dm reload`, que conserva
+ambos) un tick después de que todo haya arrancado. El aviso del primer intento queda en la consola;
+tras la recarga el menú carga. DeluxeMenus no publica su API: se compila contra firmas copiadas
+de 1.14.1, como Iris o MMOItems.
+
+### BetonQuest
+
+```yaml
+items:
+  ruby: "arkcontent demo:ruby"
+conditions:
+  hasRuby: "item ruby:3"
+  rubyOnAltar: "arkcontentBlock demo:ruby_block 100;64;100;world"
+actions:
+  giveRuby: "give ruby:5"
+  buildAltar: "arkcontentBlock demo:ruby_block 100;64;100;world"
+```
+
+Lo mismo que la integración de ItemsAdder que trae BetonQuest: un tipo de ítem (y con él todas
+las acciones, condiciones y objetivos de BetonQuest que manejan ítems, por id), una condición y una
+acción de bloque. Se registra por el servicio de integraciones de BetonQuest, la vía que ofrece a
+otros plugins. Que el id sea un bloque se comprueba al ejecutarse la misión, no al cargarla:
+BetonQuest lee sus paquetes antes de que la primera compilación de este plugin asigne los estados
+de los bloques.
+
+### AuthMe
+
+Con AuthMe el pack no se envía al entrar sino al iniciar sesión (por contraseña o por sesión
+recordada): la pantalla de descarga no tapa el aviso de `/login`, y un pack obligatorio rechazado
+ahí no expulsa al jugador antes de poder entrar. Es lo que la página de AuthMe de ItemsAdder pide
+montar a mano (`apply-on-join: false` y un comando en `onLogin`). `delivery.after-login: false` lo
+desactiva.
+
 ### PhoenixCrates
 
 **No integrado.** Su SDK de complementos (que se descarga del repositorio de Phoenix Plugins) no
@@ -1441,6 +1594,20 @@ gancho. Mientras tanto, dos formas que funcionan sin gancho:
 | zAuctionHouse 4 | **Solo compilado** contra `zauctionhousev4-api` 4.0.1.3. Verificado en el servidor lo que necesita: una pieza de la armadura conserva `item_model`, `equippable` e id por los tres caminos de serialización —stream de objetos de Bukkit, YAML y bytes de Paper—, y la stack recuperada es igual a la original |
 | PhoenixCrates | **No integrado** (ver arriba) |
 | Pago por cosechar un cultivo | Usa el mismo código que el del bloque; no se ha probado en vivo |
+
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (v1.6)
+
+| Integración | Estado |
+|---|---|
+| eco 2026.40 | **Verificado** con la búsqueda que usan sus plugins: `Items.lookup("arkcontent:demo__ruby")` devuelve el rubí con su `item_model`; coincide con el rubí real y no con un papel; un id que no existe da vacío. EcoItems y los demás son de pago y no se han arrancado |
+| nightcore 2.16.3 + ExcellentCrates 6.6.1 | **Verificado** con lo que hace nightcore con un ítem de la mano: el adaptador del rubí es `arkcontent`, id `demo:ruby`, y la stack que reconstruye conserva `item_model`; `createItem("demo:ruby")` funciona. El editor de recompensas de ExcellentCrates no se ha recorrido |
+| Mimic 0.8.0 | **Verificado.** Registros `[mimic, arkcontent, minecraft]`; `getItem` y `getItemId` (`arkcontent:demo:ruby`); `/mimic items give … arkcontent:demo:ruby 2` da dos rubíes |
+| ItemBridge (compilación 2acbb8ffe8 de jitpack, con un `plugin.yml` escrito para la prueba) | **Verificado.** `/ib give … arkcontent:demo:ruby 4`; la clave del rubí en la mano; `setBlock`, `getBlock` y `removeBlock` con `demo:ruby_block` |
+| WorldEdit 7.3.19 | **Verificado.** `//set demo:ruby_block` en 3 bloques: los tres reconocidos (antes de reafirmar el estado salían como note block vanilla con `powered=false`); romper uno suelta *Block of Ruby*; `//undo` los quita |
+| DeluxeMenus 1.14.1 | **Verificado.** Menú con `material: arkcontent-demo:ruby`: el cliente recibe el rubí con su `item_model` en la casilla (tras la recarga automática, ver arriba) |
+| BetonQuest 3.2.0 | **Verificado.** `give ruby:3` da 3 rubíes; `item ruby:3` es verdadera; `arkcontentBlock` coloca el bloque y la condición lo ve |
+| AuthMe 5.7.0 | **Verificado.** Ni al registrarse ni al volver a entrar llega el pack en los 5 s ante el aviso de AuthMe; llega 70–150 ms después de `/register` y de `/login` |
+| `custom_model_data` | **Verificado.** Números 10000–10006 para los 7 ítems de materiales simples; `paper.json`, `diamond_sword.json`, `note_block.json` y `barrier.json` en el pack; las stacks llevan su número; el casco no tiene (`/arkcontent cmd` lo explica); `%arkcontent_cmd_demo:ruby%` → `10000`. El dibujo en un cliente real no se puede comprobar aquí |
 
 ## 6. Importar desde ItemsAdder
 
@@ -1602,5 +1769,120 @@ con `join-classpath: true` para ver sus clases.
   contratos: no mira el horario laboral, no suma puntos de contrato ni aplica sus bonus por nivel.
 - PhoenixCrates no está integrado; HMCCosmetics y zAuctionHouse están compilados contra sus APIs
   reales, pero los plugins completos no se han podido arrancar aquí (sección 5).
+- 1.6, integraciones: los plugins construidos sobre eco (EcoItems y los demás) son de pago y no se
+  han arrancado; lo verificado es la búsqueda de eco que ellos usan. Igual con ExcellentCrates: se
+  ha verificado el adaptador de nightcore, no el editor de recompensas. ItemBridge se probó con su
+  compilación de jitpack (su repositorio no trae `plugin.yml`). Con FastAsyncWorldEdit, en lugar de
+  WorldEdit, no se ha probado. DeluxeMenus deja en consola el aviso de su primer intento con un menú
+  `arkcontent-` antes de recargarse. Los bloques que pone WorldEdit quedan bien un tick después de la
+  edición, no en el mismo.
+- Números CustomModelData: solo para ítems de materiales con una definición vanilla de un solo
+  modelo (ver sección 4); el resto no recibe número.
 - El pack se envía en `PlayerJoinEvent`. En 1.21.7+ Paper permite enviarlo durante la fase de
   configuración, antes de entrar al mundo; es el siguiente paso natural.
+
+## 10. Compatibilidad frente a ItemsAdder
+
+La [página de compatibilidad de ItemsAdder](https://wiki.itemsadder.com/compatibility-with-other-plugins/compatible)
+lista 73 plugins. «Compatible» ahí significa cosas muy distintas, según su propia wiki: una
+integración que escribió ItemsAdder; una que escribió el otro plugin (que llama a la API de
+ItemsAdder y solo a la suya); emojis a través de PlaceholderAPI; fusionar el pack del otro; poner
+un número de CustomModelData; o un apaño o un «probado y funciona». Esta tabla dice, para cada uno,
+cómo lo cubre ArkcronistContent.
+
+Leyenda: **gancho** – integración propia de este plugin · **puente** – a través de un registro
+compartido que este plugin alimenta (eco, nightcore, Mimic, PlaceholderAPI, `pack.merge`, números
+de CustomModelData) · **sin gancho** – el otro plugin guarda o usa la stack entera, o va por
+material, y los ítems de este plugin ya funcionan · **necesita al otro plugin** – solo funciona si
+ese plugin añade soporte para este, como lo añadió para ItemsAdder · **no aplica**.
+✔ verificado en el servidor de prueba · ◐ compilado contra su API real o verificado solo a través
+de su librería · ○ sin probar.
+
+| Plugin | Cómo lo hace ItemsAdder | ArkcronistContent | |
+|---|---|---|---|
+| AdditionsPlus | sin detalle en su wiki | puente: PlaceholderAPI (emojis); ítems desde la mano | ○ |
+| AdvancedEnchantments | declarar el encantamiento en el ítem | sin gancho: los encantamientos van por el material base, que es vanilla | ○ |
+| AdvancedOreGen | el generador nombra bloques de IA | necesita al otro plugin | — |
+| AlixAnimations | sin página en su wiki | no aplica (no se sabe qué integra) | — |
+| AnimatedScoreboard | `%img_x%` por PlaceholderAPI | puente: `%arkcontent_emoji_x%` | ◐ |
+| AuthMe | config + comando en `onLogin` | gancho: el pack tras iniciar sesión | ✔ |
+| BanItem | sin detalle | sin gancho: se banea el ítem sostenido | ○ |
+| BentoBox | arreglo de explosiones de granadas de IA | no aplica (este plugin no tiene explosivos) | — |
+| BetonQuest | addon de terceros / integración de BetonQuest | gancho: tipo de ítem, condición y acción de bloque | ✔ |
+| BossShop | addon de terceros | puente: material + número CustomModelData | ○ |
+| ChatControl-Red | emojis | puente: `%arkcontent_emoji_x%` en formatos; el reemplazo de `:ruby:` en mensajes no se ha probado con ChatControl | ○ |
+| Citizens | NPCs con ítems de IA | gancho (v1.3) | ◐ |
+| ClueScrolls | material + CustomModelData | puente: número CustomModelData | ○ |
+| CMI | rangos por PlaceholderAPI | puente: PlaceholderAPI | ◐ |
+| CosmeticsCore | fusión de packs | puente: `pack.merge` | ◐ |
+| CraftEnhance | parcial | sin gancho: recetas con el ítem de la mano | ○ |
+| CustomCrafting | arrastrar ítems de IA | sin gancho: arrastrar el ítem lo guarda entero (coincidencia exacta); con eco instalado, también por eco | ○ |
+| DailyShop | — | no aplica: la 3.8 no arranca en Paper 1.21.8 (verificado en v1.3) | — |
+| DecentHolograms | — | gancho (v1.3) | ✔ |
+| DeluxeMenus | `material: itemsadder-<id>` | gancho: `material: arkcontent-<id>`; y emojis por PlaceholderAPI | ✔ |
+| DimensionsAddons | sin detalle | no aplica (no se sabe qué integra) | — |
+| EcoArmor | integración de eco | puente: eco (`arkcontent:<ns>__<id>`) | ◐ |
+| EcoEnchants | integración de eco | puente: eco | ◐ |
+| EcoItems | integración de eco | puente: eco | ◐ |
+| EcoMobs (EcoBosses) | integración de eco | puente: eco | ◐ |
+| EpicBackpacks | `type: ITEMSADDER_ITEM` | necesita al otro plugin | — |
+| ExcellentEnchants | encantamiento declarado en el ítem | sin gancho (por material) + puente nightcore | ◐ |
+| ExecutableBlocks | — | gancho (v1.3) | ◐ |
+| ExecutableItems | enlazar un ítem de EI a la textura de IA | sin gancho: el ítem de EI puede llevar `item_model: demo:ruby` o su número CustomModelData | ○ |
+| FancyWaystones | sin detalle | necesita al otro plugin | — |
+| Graves / GravesX | muebles/bloques de IA como tumba | necesita al otro plugin (los ítems sí caen en la tumba tal cual) | — |
+| GriefPreventionStickFix | arreglo para ítems con metadatos | no aplica: funciona igual con estos ítems | — |
+| HeadsAnywhere | fusionar su pack de fuente | puente: `pack.merge` (las fuentes se unen) | ◐ |
+| HMCCosmetics | — | gancho (v1.5, HibiscusCommons) | ◐ |
+| Holographic Displays | `%img_x%` y CustomModelData | puente: PlaceholderAPI y número CustomModelData | ○ |
+| HopperSorter | sin detalle | sin gancho (ordena por la stack) | ○ |
+| HyperStones | «probado» | sin gancho (por material) | ○ |
+| InteractionVisualizer | sin detalle | sin gancho (muestra la stack) | ○ |
+| InteractiveChat | «probado» | sin gancho (muestra la stack, con su `item_model`) | ○ |
+| Iris | inyector de bloques | gancho (v1.1) | ◐ |
+| ItemBridge | `ia:<id>` | gancho: `arkcontent:<id>`, ítems y bloques | ✔ |
+| ItemFrameShops | precios por tienda | sin gancho | ○ |
+| JetsPrisonMines | minas con bloques de IA | necesita al otro plugin | — |
+| LootChest | sin detalle | sin gancho (guarda las stacks) | ○ |
+| Mimic | `ia:<id>` | gancho: `arkcontent:<id>` | ✔ |
+| MMOItems | — | gancho (v1.2) | ◐ |
+| ModelEngine | fusión de packs | gancho (v1.1) | ◐ |
+| MythicMobs | drops de IA | gancho (v1.1) | ✔ |
+| Nova | fusión de packs | puente: `pack.merge` | ○ |
+| Ore Regenerator | bloques de IA | necesita al otro plugin | — |
+| Ouroboros-Mines | bloques de IA | necesita al otro plugin | — |
+| RealisticWorldGenerator | bloques de IA en menas | necesita al otro plugin | — |
+| Recipe Control | sin detalle | sin gancho (recetas con el ítem de la mano) | ○ |
+| Reforges | integración de eco | puente: eco | ◐ |
+| RPG Chest Premium | sin detalle | sin gancho (guarda las stacks) | ○ |
+| RPGBank | iconos por id de IA | necesita al otro plugin | — |
+| RPGInventory | addon de terceros | puente: Mimic | ○ |
+| RPGMoney | iconos por id de IA | necesita al otro plugin | — |
+| Scoreboard-revision | `%img_x%` | puente: PlaceholderAPI | ○ |
+| ShopGUI+ | — | gancho (v1.1) | ◐ |
+| SkinsRestorer | volver a aplicar el pack tras cambiar la piel | no aplica (es un apaño entre otros dos plugins) | — |
+| Slimefun4 | fusionar su pack | puente: `pack.merge` | ○ |
+| Space | fusionar su pack | puente: `pack.merge` | ○ |
+| Spartan Anti Cheat | sin detalle | no aplica: los bloques se rompen a la velocidad de un note block | — |
+| StatTrackers | integración de eco | puente: eco | ◐ |
+| TAB | `%img_x%` | puente: PlaceholderAPI | ◐ |
+| Talismans | integración de eco | puente: eco | ◐ |
+| TrMenu | `source:ITEMSADDER:<id>` | necesita al otro plugin para `source:`; por número CustomModelData y PlaceholderAPI sí | — |
+| ValhallaMMO | ItemsAdderAdditions escribe sus datos en el ítem | no hecho (necesitaría escribir los datos de ValhallaMMO en la stack) | — |
+| ValhallaTrinkets | ídem | no hecho | — |
+| Wailat | hecho para IA | necesita al otro plugin | — |
+| WorldEdit | addon oficial | gancho: bloques en `//set`, patrones y máscaras | ✔ |
+| WorldGuard | flags de IA | gancho: protección (v1.2) | ✔ |
+
+**En números:** de los 73, **52 quedan cubiertos** —16 con gancho propio, 22 a través de un
+puente, 14 sin necesitar gancho— y en **7 la cuestión no aplica**. De los 52, 9 están verificados
+en el servidor de prueba con el plugin real, 20 compilados contra su API real o verificados a
+través de su librería (eco, nightcore, Mimic, PlaceholderAPI) y 23 sin probar con ese plugin. Los
+**14 restantes no están cubiertos**: 12 solo funcionarían si ese plugin añadiera soporte para
+ArkcronistContent, como lo añadió para ItemsAdder (llaman a la API de ItemsAdder y a ninguna
+otra), y 2 —ValhallaMMO y ValhallaTrinkets— sí se podrían hacer desde aquí, escribiendo sus datos
+en las stacks como hace ItemsAdderAdditions, pero no están hechos.
+
+ItemsAdder lleva años siendo el estándar y gran parte de su lista son integraciones que escribieron
+los otros plugins. La cifra que ArkcronistContent puede cambiar por sí solo es la de sus propios
+ganchos y puentes.

@@ -537,6 +537,39 @@ class PackCompilerTest {
         out.closeEntry();
     }
 
+    @Test
+    void itemsOnAPlainMaterialAreAlsoDrawnByTheirNumber() throws IOException {
+        Path demo = temp.resolve("contents/demo");
+        write(demo, "models/item/ruby.json", "{ \"parent\": \"minecraft:item/generated\" }");
+        write(demo, "models/item/longbow.json", "{ \"parent\": \"minecraft:item/generated\" }");
+        // Another plugin's pack that numbers paper too.
+        Path hats = temp.resolve("hats");
+        write(hats, "assets/minecraft/items/paper.json", """
+                { "model": { "type": "minecraft:range_dispatch", "property": "minecraft:custom_model_data",
+                    "entries": [ { "threshold": 20000, "model": { "type": "minecraft:model", "model": "hats:crown" } } ],
+                    "fallback": { "type": "minecraft:model", "model": "minecraft:item/paper" } } }
+                """);
+        ItemDefinition longbow = new ItemDefinition("demo", "longbow", "BOW", null, List.of(),
+                provided(demo, "demo:item/longbow"), ItemBehaviour.DEFAULT, null, Path.of("items.yml"));
+
+        Path pack = temp.resolve("pack");
+        PackCompiler.Result result = new PackCompiler(SETTINGS).compile(pack,
+                List.of(item("ruby", provided(demo, "demo:item/ruby")), longbow, item("letter", null)),
+                Map.of(), Map.of(), List.of(), Map.of("demo:ruby", 10000, "demo:longbow", 10001, "demo:letter", 10002),
+                List.of(new ExternalPack("hats", hats)));
+
+        assertEquals(List.of(), result.problems());
+        JsonObject dispatch = json(pack.resolve("assets/minecraft/items/paper.json")).getAsJsonObject("model");
+        List<String> entries = new java.util.ArrayList<>();
+        dispatch.getAsJsonArray("entries").forEach(entry -> entries.add(entry.getAsJsonObject().get("threshold")
+                .getAsInt() + "=" + entry.getAsJsonObject().getAsJsonObject("model").get("model").getAsString()));
+        // The ruby's own look for its number, paper again from the next one, the other pack's crown kept.
+        assertEquals(List.of("10000=demo:item/ruby", "10001=minecraft:item/paper", "20000=hats:crown"), entries);
+        assertEquals("minecraft:item/paper", dispatch.getAsJsonObject("fallback").get("model").getAsString());
+        // A bow draws back as it is pulled; its vanilla definition is left alone. No look, no entry.
+        assertFalse(Files.exists(pack.resolve("assets/minecraft/items/bow.json")));
+    }
+
     // ---------------------------------------------------------------- fixtures
 
     /** What the loader makes of {@code texture:} on a custom block. */

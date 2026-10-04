@@ -31,7 +31,8 @@ public final class PackDeliveryListener implements Listener {
      */
     @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent event) {
-        if (settings.delivery().sendOnJoin()) {
+        // A player a login plugin holds gets the pack when they log in.
+        if (settings.delivery().sendOnJoin() && !delivery.held(event.getPlayer())) {
             delivery.send(event.getPlayer());
         }
     }

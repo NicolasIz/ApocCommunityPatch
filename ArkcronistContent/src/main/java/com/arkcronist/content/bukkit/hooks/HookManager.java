@@ -2,25 +2,33 @@ package com.arkcronist.content.bukkit.hooks;
 
 import com.arkcronist.content.bukkit.ArkContentPlugin;
 import com.arkcronist.content.bukkit.hooks.auraskills.AuraSkillsHook;
+import com.arkcronist.content.bukkit.hooks.authme.AuthMeHook;
+import com.arkcronist.content.bukkit.hooks.betonquest.BetonQuestHook;
 import com.arkcronist.content.bukkit.hooks.citizens.CitizensHook;
 import com.arkcronist.content.bukkit.hooks.decentholograms.DecentHologramsHook;
+import com.arkcronist.content.bukkit.hooks.deluxemenus.DeluxeMenusHook;
+import com.arkcronist.content.bukkit.hooks.eco.EcoHook;
 import com.arkcronist.content.bukkit.hooks.economyshopgui.EconomyShopGuiHook;
 import com.arkcronist.content.bukkit.hooks.executableblocks.ExecutableBlocksHook;
 import com.arkcronist.content.bukkit.hooks.griefprevention.GriefPreventionProtection;
 import com.arkcronist.content.bukkit.hooks.hmccosmetics.HmcCosmeticsHook;
 import com.arkcronist.content.bukkit.hooks.iris.IrisHook;
+import com.arkcronist.content.bukkit.hooks.itembridge.ItemBridgeHook;
 import com.arkcronist.content.bukkit.hooks.jobs.ExcellentJobsHook;
 import com.arkcronist.content.bukkit.hooks.jobs.JobsRebornHook;
 import com.arkcronist.content.bukkit.hooks.mcmmo.McMMOHook;
+import com.arkcronist.content.bukkit.hooks.mimic.MimicHook;
 import com.arkcronist.content.bukkit.hooks.mmoitems.MMOItemsHook;
 import com.arkcronist.content.bukkit.hooks.modelengine.ModelEngineHook;
 import com.arkcronist.content.bukkit.hooks.mythicarmor.MythicArmorHook;
 import com.arkcronist.content.bukkit.hooks.mythicmobs.MythicMobsHook;
+import com.arkcronist.content.bukkit.hooks.nightcore.NightcoreItemsHook;
 import com.arkcronist.content.bukkit.hooks.placeholderapi.PlaceholderApiHook;
 import com.arkcronist.content.bukkit.hooks.shopgui.ShopGuiPlusHook;
 import com.arkcronist.content.bukkit.hooks.skillapi.FabledHook;
 import com.arkcronist.content.bukkit.hooks.skillapi.SkillAPIHook;
 import com.arkcronist.content.bukkit.hooks.vault.VaultShop;
+import com.arkcronist.content.bukkit.hooks.worldedit.WorldEditHook;
 import com.arkcronist.content.bukkit.hooks.worldguard.WorldGuardProtection;
 import com.arkcronist.content.bukkit.hooks.zauctionhouse.ZAuctionHouseHook;
 import com.arkcronist.content.bukkit.menu.Shop;
@@ -210,6 +218,33 @@ public final class HookManager {
                     return false;
                 }
             };
+        }
+
+        // 1.6: the registries other plugins share items and blocks through. Each answers from the
+        // same place, so an id means the same thing in all of them.
+        ContentAccess content = new ContentAccess(plugin.items(), plugin.itemFactory(), plugin.blocks(),
+                plugin::customBlocks);
+        // eco: EcoItems, EcoArmor, EcoEnchants, EcoMobs, Reforges, StatTrackers, Talismans and the rest.
+        create("eco", "com.willfp.eco.core.items.provider.ItemProvider", () -> EcoHook.register(content));
+        // nightcore: ExcellentCrates, ExcellentShop, ExcellentEnchants and the rest.
+        create("nightcore (ExcellentCrates, ExcellentShop...)",
+                "su.nightexpress.nightcore.integration.item.adapter.IdentifiableItemAdapter",
+                () -> NightcoreItemsHook.register(content));
+        create("Mimic", "ru.endlesscode.mimic.items.BukkitItemsRegistry", () -> MimicHook.register(content, plugin));
+        create("ItemBridge", "com.jojodmo.itembridge.ItemBridgeListener",
+                () -> ItemBridgeHook.register(content, plugin));
+        create("WorldEdit", "com.sk89q.worldedit.internal.registry.InputParser",
+                () -> WorldEditHook.register(content, plugin));
+        create("DeluxeMenus", "com.extendedclip.deluxemenus.hooks.ItemHook",
+                () -> DeluxeMenusHook.register(content, plugin));
+        create("BetonQuest", "org.betonquest.betonquest.api.integration.IntegrationService",
+                () -> BetonQuestHook.register(content, plugin, plugin.getServer().getServicesManager()));
+        if (plugin.settings().delivery().afterLogin()) {
+            AuthMeHook authMe = create("AuthMe", "fr.xephi.authme.api.v3.AuthMeApi",
+                    () -> new AuthMeHook(plugin.delivery()));
+            if (authMe != null) {
+                listen(authMe);
+            }
         }
     }
 

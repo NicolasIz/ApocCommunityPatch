@@ -54,6 +54,15 @@ public final class ContentAdminCommand {
                 .executes(this::menuOrHelp)
                 .then(Commands.literal("reload").requires(ContentAdminCommand::admin).executes(this::reload))
                 .then(Commands.literal("info").requires(ContentAdminCommand::admin).executes(this::info))
+                .then(Commands.literal("cmd").requires(ContentAdminCommand::admin)
+                        .then(Commands.argument("item", StringArgumentType.greedyString())
+                                .suggests((context, builder) -> {
+                                    String typed = builder.getRemainingLowerCase();
+                                    plugin.items().all().stream().map(CustomItem::id)
+                                            .filter(id -> id.startsWith(typed)).sorted().forEach(builder::suggest);
+                                    return builder.buildFuture();
+                                })
+                                .executes(this::modelData)))
                 .then(Commands.literal("import").requires(ContentAdminCommand::admin).executes(this::importContent))
                 .then(Commands.literal("animate").requires(ContentAdminCommand::admin)
                         .then(Commands.argument("animation", StringArgumentType.word())
@@ -285,6 +294,30 @@ public final class ContentAdminCommand {
                         + " problem(s) - listed in the console.", NamedTextColor.YELLOW));
             }
         }, plugin.pipeline().mainThread());
+    }
+
+    /**
+     * The material and custom_model_data number an item is also drawn by, for plugins that only
+     * take those two (pack.custom-model-data).
+     */
+    private int modelData(CommandContext<CommandSourceStack> context) {
+        CommandSender sender = context.getSource().getSender();
+        String id = StringArgumentType.getString(context, "item");
+        Optional<CustomItem> item = plugin.items().find(id);
+        if (item.isEmpty()) {
+            sender.sendMessage(Component.text("No item '" + id + "'.", NamedTextColor.RED));
+            return 0;
+        }
+        Optional<Integer> number = plugin.itemFactory().modelData(item.get());
+        if (number.isEmpty()) {
+            sender.sendMessage(Component.text(item.get().id() + " has no custom_model_data number: its material, "
+                    + item.get().material() + ", has its own vanilla definition (or pack.custom-model-data is off).",
+                    NamedTextColor.YELLOW));
+            return 0;
+        }
+        sender.sendMessage(Component.text(item.get().id() + ": material " + item.get().material()
+                + ", custom_model_data " + number.get(), NamedTextColor.GOLD));
+        return number.get();
     }
 
     private int info(CommandContext<CommandSourceStack> context) {
