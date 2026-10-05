@@ -412,7 +412,9 @@ public final class ContentLoader {
                     layers.add(layer);
                 }
             }
-            if (!layers.contains(slot.layer)) {
+            // With none of its textures here, the asset may come whole from a merged pack (an
+            // ItemsAdder pack's equipment/): the pack compiler, which sees those, checks it.
+            if (!layers.isEmpty() && !layers.contains(slot.layer)) {
                 problems.add(prefix + "worn on " + slot + ", " + asset + " is drawn from textures/"
                         + Equipment.layerTexture(asset, slot.layer).path() + ".png, which is not in "
                         + sourceRoot.getFileName() + " - the piece would be invisible");

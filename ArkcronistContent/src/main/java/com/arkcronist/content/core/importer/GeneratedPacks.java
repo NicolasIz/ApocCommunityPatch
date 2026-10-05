@@ -471,6 +471,104 @@ final class GeneratedPacks {
         return ids;
     }
 
+    private static final Pattern EQUIPMENT = Pattern.compile("(?:[^/]+/)?assets/([^/]+)/equipment/([a-z0-9_.-]+)\\.json");
+
+    /** Words that name something worn on the head, in the languages packs are written in. */
+    private static final java.util.Set<String> HEADGEAR = java.util.Set.of("yelmo", "casco", "helmet", "helm", "hat",
+            "sombrero", "gorro", "crown", "corona", "mask", "mascara", "hood", "capucha", "tiara");
+
+    /**
+     * The equipment assets - armour layer sets - the pack has, by namespace: every
+     * {@code assets/<ns>/equipment/<name>.json}, in its base or in an overlay.
+     */
+    static Map<String, java.util.SortedSet<String>> equipmentAssets(PackSource source) throws IOException {
+        Map<String, java.util.SortedSet<String>> assets = new TreeMap<>();
+        for (String file : source.files()) {
+            Matcher matcher = EQUIPMENT.matcher(file);
+            if (matcher.matches()) {
+                assets.computeIfAbsent(matcher.group(1), key -> new java.util.TreeSet<>()).add(matcher.group(2));
+            }
+        }
+        return assets;
+    }
+
+    /** The slot an item made of this vanilla material is worn in - HEAD, CHEST, LEGS, FEET - or null. */
+    static @Nullable String armourSlot(String material) {
+        String name = material.toLowerCase(Locale.ROOT);
+        if (name.endsWith("_helmet")) {
+            return "HEAD";
+        }
+        if (name.endsWith("_chestplate")) {
+            return "CHEST";
+        }
+        if (name.endsWith("_leggings")) {
+            return "LEGS";
+        }
+        return name.endsWith("_boots") ? "FEET" : null;
+    }
+
+    /**
+     * The asset an armour piece is drawn with on the player, as far as the pack shows it: the one
+     * whose name begins with the most of the item's words ({@code astralion_peto} and
+     * {@code astralion_armadura}; {@code carmesina_coloso_peto} and {@code carmesina_coloso_armadura},
+     * not {@code carmesina_armadura}), the shortest on a tie; or, with none sharing a word, the
+     * namespace's only asset. Never for leather: dyed armour takes its look from the stack's colour,
+     * which only the configs know. Null when nothing fits.
+     */
+    static @Nullable String armourAsset(String id, String material, java.util.SortedSet<String> assets) {
+        if (assets == null || assets.isEmpty()) {
+            return null;
+        }
+        String[] words = id.split("_");
+        String best = null;
+        int bestShared = 0;
+        int bestExtra = Integer.MAX_VALUE;
+        boolean tie = false;
+        for (String asset : assets) {
+            String[] parts = asset.split("_");
+            int shared = 0;
+            while (shared < Math.min(words.length, parts.length) && words[shared].equals(parts[shared])) {
+                shared++;
+            }
+            int extra = parts.length - shared;
+            if (shared == 0) {
+                continue;
+            }
+            if (shared > bestShared || (shared == bestShared && extra < bestExtra)) {
+                best = asset;
+                bestShared = shared;
+                bestExtra = extra;
+                tie = false;
+            } else if (shared == bestShared && extra == bestExtra) {
+                tie = true;
+            }
+        }
+        if (best != null) {
+            return tie ? null : best;
+        }
+        return assets.size() == 1 && !material.toLowerCase(Locale.ROOT).startsWith("leather_") ? assets.first() : null;
+    }
+
+    /**
+     * Whether an item that is no armour is meant for the head - ItemsAdder's hats, a 3D helm made of
+     * paper: named or filed as headgear ({@code abyssor_yelmo}, {@code armor/...}), with a model
+     * that says how it sits on a head ({@code display.head}).
+     */
+    static boolean headgear(String id, ResourceLocation model, PackSource source) throws IOException {
+        boolean named = java.util.Arrays.stream(id.split("[_.-]")).anyMatch(HEADGEAR::contains)
+                || java.util.Arrays.asList(model.path().split("/")).contains("armor");
+        if (!named) {
+            return false;
+        }
+        byte[] bytes = source.read(model.assetPath("models", ".json"));
+        try {
+            return bytes != null && JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)) instanceof JsonObject json
+                    && json.get("display") instanceof JsonObject display && display.has("head");
+        } catch (JsonParseException exception) {
+            return false;
+        }
+    }
+
     /** {@code nm_plushie_shulker} as {@code Nm Plushie Shulker}: the only name a generated pack gives. */
     static String displayName(String id) {
         StringBuilder name = new StringBuilder();

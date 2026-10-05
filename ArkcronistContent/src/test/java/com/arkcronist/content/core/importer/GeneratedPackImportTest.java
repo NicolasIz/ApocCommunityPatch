@@ -1,5 +1,6 @@
 package com.arkcronist.content.core.importer;
 
+import com.arkcronist.content.core.definition.Equipment;
 import com.arkcronist.content.core.definition.ItemDefinition;
 import com.arkcronist.content.core.definition.ModelSource;
 import com.arkcronist.content.core.definition.ResourceLocation;
@@ -30,6 +31,7 @@ import java.util.zip.ZipOutputStream;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** ItemsAdder's generated resource pack, split in two zips, through import, load and compile. */
@@ -84,7 +86,14 @@ class GeneratedPackImportTest {
         files.put("assets/arkcronist_jefes/sounds/golem_ancestral/invocar.ogg",
                 "OggS\0\2 vorbis 48000 Hz 2 channels".getBytes(StandardCharsets.UTF_8));
         text(files, "assets/modelengine/models/golem/bone.json", "{}");
-        text(files, "ia_overlay_1_21_4_plus/assets/dragones_epicos/equipment/voltharion.json", "{\"layers\":{}}");
+        // Armour: a layer set, a breastplate that matches it by name, boots that are dyed per stack.
+        text(files, "ia_overlay_1_21_4_plus/assets/dragones_epicos/equipment/voltharion_armadura.json", "{\"layers\":{}}");
+        text(files, "assets/dragones_epicos/models/item/ia_auto/voltharion_peto.json", "{\"parent\":\"minecraft:item/generated\"}");
+        text(files, "assets/dragones_epicos/models/item/ia_auto/dyed_botas.json", "{\"parent\":\"minecraft:item/generated\"}");
+        text(files, "ia_overlay_1_21_6_plus/assets/minecraft/items/netherite_chestplate.json", dispatch(true,
+                "{\"threshold\":10018,\"model\":{\"type\":\"model\",\"model\":\"dragones_epicos:item/ia_auto/voltharion_peto\"}}"));
+        text(files, "ia_overlay_1_21_6_plus/assets/minecraft/items/leather_boots.json", dispatch(true,
+                "{\"threshold\":10020,\"model\":{\"type\":\"model\",\"model\":\"dragones_epicos:item/ia_auto/dyed_botas\"}}"));
         // The 1.21.4-1.21.5 copy names other models; a 1.21.8 client never reads it.
         text(files, "ia_overlay_1_21_4_to_5/assets/minecraft/items/paper.json", dispatch(false,
                 "{\"threshold\":10000,\"model\":{\"type\":\"minecraft:model\",\"model\":\"old:wrong\"}}"));
@@ -142,13 +151,19 @@ class GeneratedPackImportTest {
         assertFalse(Files.exists(temp.resolve("outside.txt")));
         assertTrue(Files.readString(absorbed.resolve(GeneratedPacks.MARKER_FILE)).contains("import/generated_4 - parte 1.zip + generated_4 - parte 2.zip"));
 
-        // Helmet and crate from the 1.21.6+ copy, the bow, the katana through the pack's own definition.
-        assertEquals(4, report.items());
+        // Helmet and crate from the 1.21.6+ copy, the bow, the katana through the pack's own definition,
+        // a breastplate and boots.
+        assertEquals(6, report.items());
         assertEquals(List.of("darksteel/imported/generated_4-pack.yml", "dragones_epicos/imported/generated_4-pack.yml",
                 "medieval_rpg/imported/generated_4-pack.yml", "nazgul/imported/generated_4-pack.yml"), report.written());
         assertNote(report, "1 custom_model_data entry not made items - bones of ModelEngine models");
         assertNote(report, "1 custom_model_data entry not made items - vanilla models");
         assertNote(report, "1 custom_model_data entry not made items - ItemsAdder's own internal icons");
+        assertNote(report, "1 armour piece(s) worn with the layer set of the pack's equipment/ whose name matches"
+                + " theirs (astralion_peto -> astralion_armadura), and 1 helm(s) and hat(s) worn on the head");
+        assertNote(report, "1 armour piece(s) look as theirs in the inventory but are worn with their material's own"
+                + " layers - no equipment asset of the pack matches them by name (leather is dyed per stack, which"
+                + " only the configs say): dragones_epicos:dyed_botas");
 
         // The definition is the pack's entry as it was, tints and all, with oversized_in_gui.
         JsonObject crate = json(contents().resolve("medieval_rpg/items/crate_1.json"));
@@ -162,8 +177,16 @@ class GeneratedPackImportTest {
         assertEquals(List.of(), loaded.problems());
         Map<String, ItemDefinition> items = loaded.items().stream()
                 .collect(Collectors.toMap(ItemDefinition::fullId, Function.identity()));
-        assertEquals(List.of("darksteel:katana", "dragones_epicos:voltharion_yelmo", "medieval_rpg:crate_1",
-                "nazgul:greatbow"), items.keySet().stream().sorted().toList());
+        assertEquals(List.of("darksteel:katana", "dragones_epicos:dyed_botas", "dragones_epicos:voltharion_peto",
+                "dragones_epicos:voltharion_yelmo", "medieval_rpg:crate_1", "nazgul:greatbow"),
+                items.keySet().stream().sorted().toList());
+        // The breastplate wears the pack's own layer set; the 3D helm sits on the head as its model.
+        assertEquals(Equipment.Slot.CHEST, items.get("dragones_epicos:voltharion_peto").equipment().slot());
+        assertEquals(new ResourceLocation("dragones_epicos", "voltharion_armadura"),
+                items.get("dragones_epicos:voltharion_peto").equipment().asset());
+        assertEquals(Equipment.Slot.HEAD, items.get("dragones_epicos:voltharion_yelmo").equipment().slot());
+        assertNull(items.get("dragones_epicos:voltharion_yelmo").equipment().asset());
+        assertNull(items.get("dragones_epicos:dyed_botas").equipment());
         ItemDefinition helmet = items.get("dragones_epicos:voltharion_yelmo");
         assertEquals("PAPER", helmet.material());
         assertEquals("Voltharion Yelmo", helmet.displayName());
@@ -245,7 +268,7 @@ class GeneratedPackImportTest {
     }
 
     @Test
-    void soundNamesThatWouldPlayNothingAreReportedButCopiedAsTheyAre() throws IOException {
+    void soundNamesThatWouldPlayNothingAreCopiedAsTheyAreAndFixedInThePackPlayersGet() throws IOException {
         Map<String, byte[]> files = generatedPack();
         byte[] index = ("{\"golem_ancestral.invocar\":{\"sounds\":[\"golem_ancestral/invocar\"]}}")
                 .getBytes(StandardCharsets.UTF_8);
@@ -254,12 +277,42 @@ class GeneratedPackImportTest {
 
         ImportReport report = new ItemsAdderImporter().run(importDir(), contents(), packs());
 
-        assertArrayEquals(index, Files.readAllBytes(packs().resolve("generated_4/assets/arkcronist_jefes/sounds.json")));
-        assertEquals(List.of("packs/generated_4/assets/arkcronist_jefes/sounds.json: 1 sound name(s) have no namespace,"
-                + " so the client plays them from minecraft:sounds/ - e.g. 'golem_ancestral/invocar' is"
-                + " minecraft:sounds/golem_ancestral/invocar.ogg - while the files are in arkcronist_jefes/sounds/;"
-                + " those events play nothing. Left as they are: write 'arkcronist_jefes:golem_ancestral/invocar' (and"
-                + " the same for the rest) in sounds.json to make them play"), report.problems());
+        Path absorbed = packs().resolve("generated_4");
+        assertArrayEquals(index, Files.readAllBytes(absorbed.resolve("assets/arkcronist_jefes/sounds.json")));
+        assertEquals(List.of(), report.problems());
+        assertNote(report, "packs/generated_4/assets/arkcronist_jefes/sounds.json: 1 sound name(s) point where their"
+                + " file is not - e.g. 'golem_ancestral/invocar', while the file is in arkcronist_jefes/sounds/. This"
+                + " copy stays as ItemsAdder wrote it; the pack players get has"
+                + " 'arkcronist_jefes:golem_ancestral/invocar' and so on (pack.fix-sound-names)");
+
+        Path out = temp.resolve("pack");
+        PackCompiler.Result compiled = new PackCompiler(SETTINGS).compile(out, new PackCompiler.Input(List.of(),
+                Map.of(), Map.of(), List.of(), Map.of(), Map.of(), List.of(), false,
+                List.of(new ExternalPack("packs/generated_4", absorbed)), contents()));
+        assertEquals(List.of(), compiled.problems());
+        assertEquals(JsonParser.parseString(
+                        "{\"golem_ancestral.invocar\":{\"sounds\":[\"arkcronist_jefes:golem_ancestral/invocar\"]}}"),
+                JsonParser.parseString(Files.readString(out.resolve("assets/arkcronist_jefes/sounds.json"))));
+        assertArrayEquals(files.get("assets/arkcronist_jefes/sounds/golem_ancestral/invocar.ogg"),
+                Files.readAllBytes(out.resolve("assets/arkcronist_jefes/sounds/golem_ancestral/invocar.ogg")));
+    }
+
+    @Test
+    void anArmourPieceTakesTheLayerSetWhoseNameSharesTheMostOfItsWords() {
+        java.util.SortedSet<String> assets = new java.util.TreeSet<>(List.of("carmesina_armadura",
+                "carmesina_coloso_armadura", "astralion_armadura"));
+        assertEquals("carmesina_coloso_armadura", GeneratedPacks.armourAsset("carmesina_coloso_peto",
+                "netherite_chestplate", assets));
+        assertEquals("carmesina_armadura", GeneratedPacks.armourAsset("carmesina_peto", "netherite_chestplate", assets));
+        assertEquals("astralion_armadura", GeneratedPacks.armourAsset("astralion_casco", "netherite_helmet", assets));
+        assertNull(GeneratedPacks.armourAsset("pechera", "netherite_chestplate", assets), "nothing shared, several");
+        java.util.SortedSet<String> one = new java.util.TreeSet<>(List.of("armadura_dragon"));
+        assertEquals("armadura_dragon", GeneratedPacks.armourAsset("pechera", "netherite_chestplate", one),
+                "the namespace's only set");
+        assertNull(GeneratedPacks.armourAsset("valkyrie_boots", "leather_boots", one), "leather is dyed per stack");
+        assertEquals("FEET", GeneratedPacks.armourSlot("netherite_boots"));
+        assertEquals("HEAD", GeneratedPacks.armourSlot("turtle_helmet"));
+        assertNull(GeneratedPacks.armourSlot("elytra"));
     }
 
     @Test

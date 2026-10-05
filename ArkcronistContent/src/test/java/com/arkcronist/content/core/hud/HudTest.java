@@ -29,7 +29,10 @@ class HudTest {
             assertEquals(pixels, Spaces.width(Spaces.of(pixels)), "pixels " + pixels);
         }
         assertEquals("", Spaces.of(0));
-        assertEquals("", Spaces.of(-1035), "the largest steps first");
+        // Steps of 128 at most: ItemsAdder's font draws the three larger ones a pixel wider.
+        assertEquals("\uf80c".repeat(8) + "\uf808\uf803", Spaces.of(-1035), "the largest steps first");
+        assertEquals("\uf82c\uf82a\uf825", Spaces.of(165));
+        assertTrue(Spaces.of(-3000).chars().allMatch(character -> character <= 0xF80C));
     }
 
     @Test

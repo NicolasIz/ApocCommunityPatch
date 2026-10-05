@@ -289,24 +289,42 @@ class PackOverlayTest {
     }
 
     @Test
-    void aSoundNameWithNoNamespaceIsReportedAndLeftAsWritten() throws IOException {
+    void aSoundNameWithNoNamespaceIsGivenTheOneItsFileIsIn() throws IOException {
         Path contents = temp.resolve("contents");
-        String index = "{\"golem.roar\":{\"sounds\":[\"golem/roar\",{\"name\":\"bosses:golem/step\"},"
-                + "{\"name\":\"entity.warden.roar\",\"type\":\"event\"},\"ambient/cave/cave1\"]}}";
+        // A pack renamed from old_bosses, whose names still say so.
+        String index = "{\"golem.roar\":{\"subtitle\":\"bosses.roar\",\"sounds\":[\"golem/roar\","
+                + "{\"name\":\"bosses:golem/step\"},{\"name\":\"golem/roar\",\"volume\":0.4,\"pitch\":1.2,\"stream\":true},"
+                + "{\"name\":\"entity.warden.roar\",\"type\":\"event\"},\"ambient/cave/cave1\",\"old_bosses:golem/step\"]}}";
         write(contents, "bosses/sounds.json", index);
-        write(contents, "bosses/sounds/golem/roar.ogg", ogg("roar"));
+        byte[] roar = ogg("roar");
+        write(contents, "bosses/sounds/golem/roar.ogg", roar);
         write(contents, "bosses/sounds/golem/step.ogg", ogg("step"));
         Path out = temp.resolve("pack");
 
         PackCompiler.Result result = new PackCompiler(SETTINGS).compile(out, new PackCompiler.Input(List.of(), Map.of(),
                 Map.of(), List.of(), Map.of(), Map.of(), List.of(), false, List.of(), contents));
 
-        assertEquals(index, Files.readString(out.resolve("assets/bosses/sounds.json")), "not rewritten");
-        // Only golem/roar: the step names its namespace, the event is an event, the cave sound is vanilla's.
-        assertEquals(List.of("bosses sounds: bosses/sounds.json: 1 sound name(s) have no namespace, so the client"
-                + " plays them from minecraft:sounds/ - e.g. 'golem/roar' is minecraft:sounds/golem/roar.ogg - while"
-                + " the files are in bosses/sounds/; those events play nothing. Left as they are: write"
-                + " 'bosses:golem/roar' (and the same for the rest) in sounds.json to make them play"), result.problems());
+        // golem/roar is in bosses/sounds/: it gets bosses:, its volume, pitch and streaming as they were;
+        // so does the step the old namespace names. The event is an event, the cave sound vanilla's.
+        assertEquals(JsonParser.parseString("{\"golem.roar\":{\"subtitle\":\"bosses.roar\",\"sounds\":[\"bosses:golem/roar\","
+                + "{\"name\":\"bosses:golem/step\"},{\"name\":\"bosses:golem/roar\",\"volume\":0.4,\"pitch\":1.2,\"stream\":true},"
+                + "{\"name\":\"entity.warden.roar\",\"type\":\"event\"},\"ambient/cave/cave1\",\"bosses:golem/step\"]}}"),
+                JsonParser.parseString(Files.readString(out.resolve("assets/bosses/sounds.json"))));
+        assertArrayEquals(roar, Files.readAllBytes(out.resolve("assets/bosses/sounds/golem/roar.ogg")));
+        assertEquals(index, Files.readString(contents.resolve("bosses/sounds.json")), "the source is left as it is");
+        assertEquals(List.of(), result.problems());
+        assertEquals(List.of("assets/bosses/sounds.json: 2 sound name(s) pointed where their file is not and now name"
+                + " 'bosses:', where it is - e.g. 'golem/roar' is now 'bosses:golem/roar' (pack.fix-sound-names)"),
+                result.notes());
+
+        // Turned off, the file goes in as it is and the names are reported.
+        PackCompiler.Result strict = new PackCompiler(SETTINGS, false).compile(out, new PackCompiler.Input(List.of(),
+                Map.of(), Map.of(), List.of(), Map.of(), Map.of(), List.of(), false, List.of(), contents));
+        assertEquals(index, Files.readString(out.resolve("assets/bosses/sounds.json")));
+        assertEquals(List.of("bosses sounds: assets/bosses/sounds.json: 2 sound name(s) point where their file is not"
+                + " - e.g. 'golem/roar', which the client plays from minecraft:sounds/golem/roar.ogg - while the files"
+                + " are in bosses/sounds/; those events play nothing. Left as they are: write 'bosses:golem/roar' (and"
+                + " the same for the rest) in sounds.json to make them play"), strict.problems());
     }
 
     @Test
@@ -322,6 +340,29 @@ class PackOverlayTest {
                             new com.arkcronist.content.core.block.NoteBlockState("basedrum", 3, true).index()),
                     BlockStates.customNoteBlockStates(source));
         }
+    }
+
+    @Test
+    void anArmourLayerSetAMergedPackHasIsWornAsItIs() throws IOException {
+        Path generated = generatedPack();
+        Path knight = temp.resolve("contents/holy_knight");
+        Files.createDirectories(knight);
+        Path out = temp.resolve("pack");
+        java.util.function.Function<String, ItemDefinition> piece = asset -> new ItemDefinition("holy_knight",
+                asset + "_chest", "NETHERITE_CHESTPLATE", null, List.of(), null, ItemBehaviour.DEFAULT, null,
+                Path.of("items.yml")).withEquipment(new com.arkcronist.content.core.definition.Equipment(
+                com.arkcronist.content.core.definition.Equipment.Slot.CHEST, new ResourceLocation("holy_knight", asset),
+                List.of(), null, knight));
+
+        PackCompiler.Result result = new PackCompiler(SETTINGS).compile(out, List.of(piece.apply("knight"),
+                piece.apply("nobody")), Map.of(), List.of(new ExternalPack("packs/generated", generated)));
+
+        // knight is in the pack's 1.21.4+ overlay: nothing to write, nothing missing.
+        assertFalse(Files.exists(out.resolve("assets/holy_knight/equipment/knight.json")));
+        assertTrue(Files.exists(out.resolve("ia_overlay_1_21_4_plus/assets/holy_knight/equipment/knight.json")));
+        assertEquals(List.of("holy_knight:nobody_chest: worn on CHEST, holy_knight:nobody is drawn from"
+                + " textures/entity/equipment/humanoid/nobody.png, which is not in holy_knight, and no merged pack has"
+                + " assets/holy_knight/equipment/nobody.json - the piece would be invisible"), result.problems());
     }
 
     @Test

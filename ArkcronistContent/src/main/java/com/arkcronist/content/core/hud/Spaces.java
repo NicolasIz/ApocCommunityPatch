@@ -15,13 +15,21 @@ import java.util.Map;
  *   U+F801..U+F808   -1 .. -8       U+F821..U+F828   1 .. 8
  *   U+F809..U+F80F   -16 .. -1024   U+F829..U+F82F   16 .. 1024   (doubling)
  * </pre>
+ *
+ * <p>Text this plugin writes with them ({@link #of}) uses steps of at most 128, more of them for a
+ * longer move. ItemsAdder's font draws the same characters as bitmap glyphs, and the client works out
+ * their widths as {@code (int) (0.5 + height) + 1}: exactly ours up to 128, but 257, 513 and 1025
+ * for the three largest. With its pack merged, its glyphs are the ones drawn, so those three are
+ * left alone and a HUD lands on the same pixel with either font.</p>
  */
 public final class Spaces {
 
     private static final int NEGATIVE = 0xF800;
     private static final int POSITIVE = 0xF820;
-    /** Larger steps than this are written as several of the largest. */
+    /** The largest step the font defines. */
     private static final int LARGEST = 1024;
+    /** The largest step {@link #of} uses: the same width in every negative space font. */
+    private static final int LARGEST_USED = 128;
 
     private Spaces() {
     }
@@ -54,7 +62,7 @@ public final class Spaces {
         int left = Math.abs(pixels);
         StringBuilder text = new StringBuilder();
         while (left >= 16) {
-            int step = Math.min(LARGEST, Integer.highestOneBit(left));
+            int step = Math.min(LARGEST_USED, Integer.highestOneBit(left));
             text.append((char) (base + 9 + Integer.numberOfTrailingZeros(step) - 4));
             left -= step;
         }

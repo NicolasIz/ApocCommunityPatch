@@ -48,6 +48,13 @@ pack:
   custom-model-data:
     enabled: true
     first: 10000
+  # A sounds.json name with no namespace ("golem/roar") is read by the client as
+  # minecraft:golem/roar, so when its .ogg is in the sounds.json's own namespace
+  # (assets/bosses/sounds/golem/roar.ogg) the event plays nothing. On, such names are
+  # written bosses:golem/roar in the pack players get - the source files stay as
+  # they are; off, they are only reported. Only the name changes: volume, pitch,
+  # weight, streaming and the .ogg itself are left alone.
+  fix-sound-names: true
   # Space characters in the font that move text by whole pixels, right or left
   # (U+F801-F80F back, U+F821-F82F forward). HUDs use them; menus and scoreboards can
   # too, through %arkcontent_space_<pixels>%. Written even with no HUD or emoji.

@@ -1976,6 +1976,14 @@ cliente. Así que no se convierte: **se absorbe entero**.
    (`voltharion_yelmo` -> "Voltharion Yelmo"), porque el pack no tiene otro: si pones también las
    configuraciones de ItemsAdder en `import/`, **sus ítems ganan**, con su nombre y su lore, y el
    modelo no se copia otra vez.
+4. **Armaduras.** Una pieza de armadura (casco, peto, grebas, botas) se pone con el juego de capas
+   del pack (`assets/<ns>/equipment/`) cuyo nombre comparte más palabras con el suyo
+   (`astralion_peto` -> `astralion_armadura`, `carmesina_coloso_peto` -> `carmesina_coloso_armadura`)
+   o, si ninguno comparte, con el único del namespace: `equipment: {slot: CHEST, asset: ...}`. El
+   cuero no, porque su aspecto lo da el color de cada stack, que solo dicen las configuraciones. Un
+   yelmo, sombrero o corona de papel con `display.head` en su modelo se lleva en la cabeza con su
+   propio modelo (`equipment: {slot: HEAD}`). Las piezas sin pareja se listan en consola; si alguna
+   deducción no te vale, cambia o quita su `equipment:`.
 
 `resource.item-model` sirve también a mano: el ítem apunta con `item_model` a ese archivo de
 definición, copiado sin tocar desde `contents/<ns>/items/` o tomado de un pack de `packs/`.
@@ -1998,10 +2006,18 @@ Cómo conviven el pack absorbido y el nuestro, sin alterar lo de ItemsAdder:
   ser el de cualquier barrera sin número nuestro.
 - **Sonidos.** Un `sounds.json` con nombres sin namespace (`"golem_ancestral/invocar"` dentro de
   `arkcronist_jefes`) hace que el cliente los busque en `minecraft:sounds/` (el cliente 1.21.8 los
-  lee con `ResourceLocation.parse`) y no suenan. No se reescribe: se avisa con la corrección
-  (`"arkcronist_jefes:golem_ancestral/invocar"`).
+  lee con `ResourceLocation.parse`), y uno con el namespace de otro pack
+  (`"enderman_overhaul:cave_hurt_1"` dentro de `enderman_expansion`) los busca allí: en ambos casos,
+  si el `.ogg` está en el namespace del propio `sounds.json`, **el pack que reciben los jugadores**
+  lo nombra con ese namespace (`"arkcronist_jefes:golem_ancestral/invocar"`) y el sonido suena. Solo
+  cambia el nombre: eventos, volumen, tono, `stream` y el `.ogg` quedan igual, y la copia de
+  `packs/` y de `contents/` no se toca. Con `pack.fix-sound-names: false` solo se avisa.
+- **Espacios negativos.** Su fuente dibuja U+F801... con glifos bitmap; el cliente calcula su ancho
+  como `(int) (0.5 + altura) + 1`, que da exactamente lo nuestro hasta 128 px, pero 257, 513 y 1025
+  en los tres más grandes. Por eso nuestros HUDs y `%arkcontent_space_<n>%` solo usan pasos de hasta
+  128 (más caracteres para un salto largo): caen en el mismo píxel con cualquiera de las dos fuentes.
 
-#### Qué se ha verificado con un pack real (v1.7.1)
+#### Qué se ha verificado con un pack real (v1.7.1 y v1.7.2)
 
 Con un pack generado de ItemsAdder de 22.127 archivos en dos zips (40 namespaces, 12 overlays):
 
@@ -2016,6 +2032,11 @@ Con un pack generado de ItemsAdder de 22.127 archivos en dos zips (40 namespaces
   una textura vanilla. Yelmo `dragones_epicos:armor/voltharion_yelmo` -> `ia:564` -> PNG de 112x112;
   crate `medieval_rpg:crate_1` -> `ia:1206` -> PNG de 256x256; UV como en Blockbench.
 - `arkcronist_jefes/sounds/golem_ancestral/invocar.ogg` idéntico (Vorbis 44,1 kHz, 1 canal).
+- v1.7.2: 318 nombres de sonido corregidos en 4 `sounds.json` (`arkcronist_jefes` 228,
+  `littleroom_warden` 47, `enderman_expansion` 24, `sonidos_custom` 19), con los mismos eventos y
+  ajustes; de los 387 nombres del pack, **ninguno** queda apuntando a un archivo que no existe. 287
+  piezas de armadura con su juego de capas y 84 yelmos/sombreros en la cabeza; 13 piezas sin pareja
+  (8 de cuero teñido de `elitecreatures`, 4 de `darksteel`, 1 de `littleroom_warden`).
 - En el servidor Paper 1.21.8 de pruebas, con contenido previo: `/arkcontent import` desde consola,
   recompilación, un bot recibe el pack con su hash (y la descarga coincide con él), y los ítems dados
   llevan `item_model` (`dragones_epicos:voltharion_yelmo`...) y su nombre. En el pack servido siguen

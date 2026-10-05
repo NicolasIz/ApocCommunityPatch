@@ -91,19 +91,32 @@ public final class PackCompiler {
      * @param sounds            sound files and {@code sounds.json} files taken from the content packs
      * @param problems          missing or unreadable files and conflicting paths, each naming the
      *                          item that ran into it
+     * @param notes             what the pack was given that its sources did not say, such as sound
+     *                          names given their namespace
      */
     public record Result(int itemDefinitions, int models, int textures, int customBlockStates,
-                         int glyphs, int externalFiles, int sounds, List<String> problems) {
+                         int glyphs, int externalFiles, int sounds, List<String> problems, List<String> notes) {
 
         public Result {
             problems = List.copyOf(problems);
+            notes = List.copyOf(notes);
         }
     }
 
     private final PackSettings settings;
+    private final boolean fixSoundNames;
 
     public PackCompiler(PackSettings settings) {
+        this(settings, true);
+    }
+
+    /**
+     * @param fixSoundNames give a sound name with no namespace the namespace its file is in
+     *                      ({@link SoundNames}); off, such names are only reported
+     */
+    public PackCompiler(PackSettings settings, boolean fixSoundNames) {
         this.settings = settings;
+        this.fixSoundNames = fixSoundNames;
     }
 
     /** {@link #compile(Path, Collection, Map, List)} with no other plugin's pack to merge. */
@@ -261,9 +274,10 @@ public final class PackCompiler {
         }
         run.atlas();
         run.overlayShared();
+        run.soundNames(fixSoundNames);
         run.overlayEntries(settings.mcmeta());
         return new Result(run.itemDefinitions, run.models, run.textures, run.customBlockStates,
-                run.glyphs, run.externalFiles, run.sounds, run.problems);
+                run.glyphs, run.externalFiles, run.sounds, run.problems, run.notes);
     }
 
     /** State for one compile. */
@@ -273,6 +287,7 @@ public final class PackCompiler {
         /** The merged packs, in merge order. */
         private final List<PackSource> sources;
         private final List<String> problems = new ArrayList<>();
+        private final List<String> notes = new ArrayList<>();
         /** Pack-relative path of each file written, and the item it was written for. */
         private final Map<String, String> placed = new HashMap<>();
         /** Source files already followed, so shared parents and cycles are read once. */
@@ -534,9 +549,19 @@ public final class PackCompiler {
          */
         private void equipmentAsset(String namespace, Equipment equipment, String origin) throws IOException {
             ResourceLocation asset = equipment.asset();
-            if (!asset.namespace().equals(namespace) || equipment.layers().isEmpty()) {
-                // Another namespace's asset - minecraft:netherite - is only referenced; one with no
-                // textures was reported by the loader.
+            if (!asset.namespace().equals(namespace)) {
+                // Another namespace's asset - minecraft:netherite - is only referenced.
+                return;
+            }
+            if (equipment.layers().isEmpty()) {
+                // No textures of it in the content pack: a merged pack has to bring the whole asset.
+                String relative = asset.assetPath("equipment", ".json");
+                if (!supplied(relative)) {
+                    problems.add(origin + ": worn on " + equipment.slot() + ", " + asset + " is drawn from textures/"
+                            + Equipment.layerTexture(asset, equipment.slot().layer).path() + ".png, which is not in "
+                            + equipment.sourceRoot().getFileName() + ", and no merged pack has " + relative
+                            + " - the piece would be invisible");
+                }
                 return;
             }
             JsonObject layers = new JsonObject();
@@ -854,6 +879,45 @@ public final class PackCompiler {
             }
         }
 
+        /**
+         * Every {@code sounds.json} in the pack - a content pack's, a merged pack's, an overlay's copy -
+         * checked for names that point where their file is not, while it is in the file's own
+         * namespace ({@link SoundNames}): pointed there, so the events play, or only reported.
+         */
+        void soundNames(boolean fix) throws IOException {
+            java.util.regex.Pattern index = java.util.regex.Pattern.compile("(?:([^/]+)/)?assets/([^/]+)/sounds\\.json");
+            for (String file : new TreeSet<>(placed.keySet())) {
+                java.util.regex.Matcher matcher = index.matcher(file);
+                if (!matcher.matches()) {
+                    continue;
+                }
+                String overlay = matcher.group(1);
+                String namespace = matcher.group(2);
+                Path target = packDir.resolve(file);
+                JsonObject events;
+                try {
+                    if (!(JsonParser.parseString(Files.readString(target)) instanceof JsonObject object)) {
+                        continue;
+                    }
+                    events = object;
+                } catch (JsonParseException exception) {
+                    continue;
+                }
+                java.util.SortedMap<String, String> names = SoundNames.misplaced(events, namespace, path ->
+                        Files.isRegularFile(packDir.resolve(path))
+                                || overlay != null && Files.isRegularFile(packDir.resolve(overlay + "/" + path)));
+                if (names.isEmpty()) {
+                    continue;
+                }
+                if (fix) {
+                    Files.write(target, json(SoundNames.fix(events, names)));
+                    notes.add(SoundNames.describeFixed(file, namespace, names));
+                } else {
+                    problems.add(placed.get(file) + ": " + SoundNames.describe(file, namespace, names));
+                }
+            }
+        }
+
         /** pack.mcmeta again, declaring the merged packs' overlays, each entry as its pack wrote it. */
         void overlayEntries(JsonObject mcmeta) throws IOException {
             if (overlays.isEmpty()) {
@@ -904,20 +968,6 @@ public final class PackCompiler {
                         }
                         if (place("assets/" + namespace + "/sounds.json", bytes, origin)) {
                             sounds++;
-                        }
-                        String own = "assets/" + namespace + "/sounds/";
-                        String report = SoundNames.describe(namespace + "/sounds.json", namespace,
-                                SoundNames.bareButOwn(events, namespace, path -> {
-                                    try {
-                                        return path.startsWith(own)
-                                                && Files.isRegularFile(files.resolve(path.substring(own.length())))
-                                                || placed.containsKey(path) || supplied(path);
-                                    } catch (IOException exception) {
-                                        return false;
-                                    }
-                                }));
-                        if (report != null) {
-                            problems.add(origin + ": " + report);
                         }
                     } catch (JsonParseException exception) {
                         problems.add(origin + ": sounds.json is not valid - " + exception.getMessage()

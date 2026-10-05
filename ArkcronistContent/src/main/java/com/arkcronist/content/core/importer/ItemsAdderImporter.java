@@ -1007,6 +1007,10 @@ public final class ItemsAdderImporter {
             String where = "packs/" + pack.name();
             Map<String, Map<String, Object>> byNamespace = new TreeMap<>();
             Map<GeneratedPacks.Entry, String> ids = GeneratedPacks.ids(entries);
+            Map<String, java.util.SortedSet<String>> equipment = GeneratedPacks.equipmentAssets(source);
+            int worn = 0;
+            int onHead = 0;
+            List<String> unworn = new ArrayList<>();
             for (GeneratedPacks.Entry entry : entries) {
                 String namespace = entry.primary().namespace();
                 String id = ids.get(entry);
@@ -1038,6 +1042,24 @@ public final class ItemsAdderImporter {
                 item.put("material", entry.material().toUpperCase(Locale.ROOT));
                 item.put("display-name", GeneratedPacks.displayName(id));
                 item.put("resource", Map.of("item-model", id));
+                // Worn the way the pack shows: an armour piece with its layer set, a helm on the head.
+                String slot = GeneratedPacks.armourSlot(entry.material());
+                if (slot != null) {
+                    String asset = GeneratedPacks.armourAsset(id, entry.material(), equipment.get(namespace));
+                    if (asset != null) {
+                        Map<String, Object> wear = new LinkedHashMap<>();
+                        wear.put("slot", slot);
+                        wear.put("asset", asset);
+                        item.put("equipment", wear);
+                        worn++;
+                    } else {
+                        unworn.add(namespace + ":" + id);
+                    }
+                } else if (!entry.material().equals("elytra")
+                        && GeneratedPacks.headgear(id, entry.primary(), source)) {
+                    item.put("equipment", Map.of("slot", "HEAD"));
+                    onHead++;
+                }
                 byNamespace.computeIfAbsent(namespace, key -> new TreeMap<>()).put(id, item);
             }
 
@@ -1071,11 +1093,28 @@ public final class ItemsAdderImporter {
             int total = byNamespace.values().stream().mapToInt(Map::size).sum();
             notes.add(where + ": " + packFilesOf(source) + " file(s) merged as they are; " + total + " item(s) drawn by"
                     + " item_model instead of custom_model_data, in " + byNamespace.size() + " namespace(s)");
+            if (worn > 0 || onHead > 0) {
+                notes.add(where + ": " + worn + " armour piece(s) worn with the layer set of the pack's equipment/"
+                        + " whose name matches theirs (astralion_peto -> astralion_armadura), and " + onHead
+                        + " helm(s) and hat(s) worn on the head with their own model - as the pack shows them;"
+                        + " change or remove 'equipment:' in the file where that guess is wrong");
+            }
+            if (!unworn.isEmpty()) {
+                notes.add(where + ": " + unworn.size() + " armour piece(s) look as theirs in the inventory but are"
+                        + " worn with their material's own layers - no equipment asset of the pack matches them by"
+                        + " name (leather is dyed per stack, which only the configs say): "
+                        + String.join(", ", unworn.subList(0, Math.min(12, unworn.size())))
+                        + (unworn.size() > 12 ? ", ..." : ""));
+            }
             left.forEach((reason, count) -> notes.add(where + ": " + count + " custom_model_data entr"
                     + (count == 1 ? "y" : "ies") + " not made items - " + reason));
         }
 
-        /** Sound names a pack's sounds.json gives with no namespace, which play nothing: reported, not rewritten. */
+        /**
+         * Sound names a pack's sounds.json points where their file is not, which would play nothing: noted.
+         * The copy in packs/ stays as it is; the pack compiler gives them their namespace in the pack
+         * players get, unless pack.fix-sound-names is off.
+         */
         private void checkSoundNames(GeneratedPacks.Found pack, PackSource source) throws IOException {
             for (String file : source.files()) {
                 java.util.regex.Matcher matcher = SOUNDS_JSON.matcher(file);
@@ -1087,7 +1126,7 @@ public final class ItemsAdderImporter {
                     if (bytes != null && JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8))
                             instanceof JsonObject sounds) {
                         String namespace = matcher.group(1);
-                        java.util.SortedSet<String> names = com.arkcronist.content.core.pack.SoundNames.bareButOwn(
+                        java.util.SortedMap<String, String> names = com.arkcronist.content.core.pack.SoundNames.misplaced(
                                 sounds, namespace, path -> {
                                     try {
                                         return source.has(path);
@@ -1095,10 +1134,12 @@ public final class ItemsAdderImporter {
                                         return false;
                                     }
                                 });
-                        String report = com.arkcronist.content.core.pack.SoundNames.describe("packs/" + pack.name()
-                                + "/" + file, namespace, names);
-                        if (report != null) {
-                            problems.add(report);
+                        if (!names.isEmpty()) {
+                            String first = names.firstKey();
+                            notes.add("packs/" + pack.name() + "/" + file + ": " + names.size() + " sound name(s) point"
+                                    + " where their file is not - e.g. '" + first + "', while the file is in " + namespace
+                                    + "/sounds/. This copy stays as ItemsAdder wrote it; the pack players get has '"
+                                    + names.get(first) + "' and so on (pack.fix-sound-names)");
                         }
                     }
                 } catch (JsonParseException exception) {

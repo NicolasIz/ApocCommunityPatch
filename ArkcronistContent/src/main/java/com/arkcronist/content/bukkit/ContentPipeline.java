@@ -302,7 +302,7 @@ public final class ContentPipeline {
         this.emojis = emojis;
         this.delivery = delivery;
         this.logger = plugin.getLogger();
-        this.compiler = new PackCompiler(settings.pack().toPackSettings());
+        this.compiler = new PackCompiler(settings.pack().toPackSettings(), settings.pack().fixSoundNames());
         // Packs named in config.yml: CosmeticsCore's, a model pack bought separately, any other.
         Path server = plugin.getDataFolder().toPath().toAbsolutePath().getParent().getParent();
         for (String merge : settings.pack().merge()) {
@@ -734,6 +734,7 @@ public final class ContentPipeline {
                     build.modelData(), build.liquids(), build.hudGlyphs(), settings.pack().negativeSpaces(),
                     mergedPacks(), contentsDir));
             build.problems().addAll(result.problems());
+            result.notes().forEach(note -> logger.info("[pack] " + note));
             return build;
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);

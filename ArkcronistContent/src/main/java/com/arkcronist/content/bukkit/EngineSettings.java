@@ -54,11 +54,17 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
     /**
      * pack.mcmeta, and the other packs merged in. {@code description} is MiniMessage.
      *
-     * @param merge other plugins' packs to merge into this one: folders holding {@code assets/}, or
-     *              zips, relative to the server folder
+     * @param merge         other plugins' packs to merge into this one: folders holding
+     *                      {@code assets/}, or zips, relative to the server folder
+     * @param fixSoundNames give a sounds.json name with no namespace the namespace its file is in
      */
     public record Pack(String description, int format, int minFormat, int maxFormat, List<String> merge,
-                       ModelData modelData, boolean negativeSpaces) {
+                       ModelData modelData, boolean negativeSpaces, boolean fixSoundNames) {
+
+        public Pack(String description, int format, int minFormat, int maxFormat, List<String> merge,
+                    ModelData modelData, boolean negativeSpaces) {
+            this(description, format, minFormat, maxFormat, merge, modelData, negativeSpaces, true);
+        }
 
         public Pack(String description, int format, int minFormat, int maxFormat, List<String> merge,
                     ModelData modelData) {
@@ -221,14 +227,14 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
                     + " and pack.max-format " + max + " - using 46, 46 and 99.");
             return new Pack(description, PackSettings.FIRST_ITEM_MODEL_FORMAT,
                     PackSettings.FIRST_ITEM_MODEL_FORMAT, 99, merges(section), modelData(section),
-                    section.getBoolean("negative-spaces", true));
+                    section.getBoolean("negative-spaces", true), section.getBoolean("fix-sound-names", true));
         }
         if (min < PackSettings.FIRST_ITEM_MODEL_FORMAT) {
             logger.warning("pack.min-format " + min + " is below 46 (1.21.4). Older clients cannot"
                     + " show these items whatever the pack claims.");
         }
         return new Pack(description, format, min, max, merges(section), modelData(section),
-                section.getBoolean("negative-spaces", true));
+                section.getBoolean("negative-spaces", true), section.getBoolean("fix-sound-names", true));
     }
 
     private static ModelData modelData(ConfigurationSection pack) {

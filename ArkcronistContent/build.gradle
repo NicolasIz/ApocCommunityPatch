@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'com.arkcronist'
-version = '1.7.1'
+version = '1.7.2'
 description = 'Custom items from YAML, drawn by a resource pack the plugin compiles, zips, hashes and serves itself.'
 
 java {
