@@ -2,7 +2,8 @@
 
 Motor de contenido personalizado para **Paper 1.21.8+**, Java 21: define ítems, bloques, muebles
 (también asientos, muebles con inventario, cofres con animaciones de Blockbench y camas de dos
-bloques), armaduras (con cascos 3D), cultivos, emojis de chat y logros en YAML y el plugin compila
+bloques), armaduras (con cascos 3D), cultivos, emojis de chat, logros, armas de fuego, líquidos que
+fluyen y barras de HUD en YAML y el plugin compila
 su propio resource pack, lo empaqueta en ZIP, calcula su SHA-1, lo sirve con un servidor HTTP
 integrado —o lo sube solo a un servicio de almacenamiento— y se lo envía a cada jugador. Los bloques
 y muebles colocados, los cultivos y lo guardado en los muebles se conservan en SQLite. El mismo
@@ -18,13 +19,15 @@ concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer
 /arkcontent animate <animación>            reproduce una animación del mueble que miras (sección 4)
 /arkcontent shop                           tienda: los ítems con `price`, pagados con Vault (sección 5)
 /arkcontent npc equip <hueco> <item> | sit NPC de Citizens con un ítem o sentado (sección 5)
+/arkcontent hud <jugador> <hud> [set|add|take <n>]  ver o cambiar el valor de una barra (sección 4)
+/arkcontent liquids                        líquidos cargados y fuentes vertidas por mundo (sección 4)
 /emojis                                    los emojis de chat disponibles, dibujados (sección 4)
 ```
 
 | Permiso | Por defecto | Para |
 |---|---|---|
 | `arkcontent.give` | op | `/customgive`, y sacar ítems del explorador |
-| `arkcontent.admin` | op | `reload`, `info`, `import`, `animate`, `npc` |
+| `arkcontent.admin` | op | `reload`, `info`, `import`, `animate`, `npc`, `hud`, `liquids` |
 | `arkcontent.menu` | op | abrir el explorador (solo mirar, si no tiene `arkcontent.give`) |
 | `arkcontent.emojis` | todos | `/emojis`. Usar un emoji no necesita permiso, salvo que el emoji declare el suyo |
 | `arkcontent.shop` | todos | `/arkcontent shop` (necesita Vault y un plugin de economía) |
@@ -85,6 +88,7 @@ ArkcronistContent/
     │   ├── paper-plugin.yml
     │   ├── config.yml
     │   ├── vanilla-item-models.txt   el modelo de cada ítem vanilla de un solo modelo (1.21.8)
+    │   ├── vanilla-tripwire.json     los 32 modelos que vanilla da a la cuerda (1.21.8)
     │   └── contents/demo/…               pack de ejemplo: entero en el primer arranque, lo nuevo al actualizar
     └── java/com/arkcronist/content/
         ├── core/                          ── sin Bukkit ──
@@ -93,12 +97,30 @@ ArkcronistContent/
         │   │   ├── AdvancementDefinition  un logro: título, icono, padre, qué lo completa, anuncio
         │   │   ├── JobReward              dinero y experiencia de trabajo por romper o cosechar
         │   │   ├── Equipment              cómo se lleva puesto: hueco, asset de equipo, modelo en la cabeza
-        │   │   ├── ContentType            item · custom_block · custom_furniture
+        │   │   ├── GunDefinition          cómo dispara un arma: daño, cargador, munición, retroceso
+        │   │   ├── ContentType            item · custom_block · custom_furniture · custom_crop · custom_liquid
         │   │   ├── Placement              qué pone en el mundo: Block o Furniture (+ Display)
         │   │   ├── ModelSource            modelo aportado, o generado desde parent + texturas
         │   │   ├── ItemBehaviour          qué conserva del material base
         │   │   └── ResourceLocation       namespace:ruta validado (anti path traversal)
         │   ├── allocation/StableAllocator números estables por id (estados de note block, emojis)
+        │   ├── ballistics/                ── trazado de rayos de las armas (1.7) ──
+        │   │   ├── Vec3 · Ray · Aabb      vectores, rayos y cajas; el test de slabs de rayo contra caja
+        │   │   ├── VoxelTraversal         los bloques que cruza un rayo, en orden (Amanatides-Woo)
+        │   │   ├── RayCaster              primer impacto: paredes, hitboxes, cabeza, perforación
+        │   │   ├── Spread                 direcciones de los perdigones, uniformes dentro de un cono
+        │   │   ├── DamageFalloff          daño que se pierde con la distancia
+        │   │   └── Shot                   un disparo copiado del mundo; resolve() es toda la cuenta
+        │   ├── liquid/
+        │   │   ├── FluidSolver            adónde fluye un líquido desde sus fuentes, y qué cambiar
+        │   │   ├── TripwireState          los 32 estados de tripwire libres; dos por líquido
+        │   │   └── LiquidModels           modelos padre y el blockstate de minecraft:tripwire
+        │   ├── hud/
+        │   │   ├── HudDefinition          una barra: iconos, altura, posición, de dónde sale su valor
+        │   │   ├── HudRenderer · HudLayout el texto de una barra, que acaba donde empezó
+        │   │   ├── Spaces                 caracteres de espacio negativo (U+F801…) y positivo
+        │   │   ├── GlyphMetrics           el ancho con que el cliente dibuja un icono
+        │   │   └── DefaultFontWidths      el ancho de un texto en la fuente vanilla
         │   ├── animation/
         │   │   ├── BbModelReader          .bbmodel de Blockbench -> un modelo por hueso + animaciones
         │   │   ├── AnimatedModel          huesos, clips, texturas e icono, ya en el marco del display
@@ -173,6 +195,11 @@ ArkcronistContent/
             ├── advancement/               AdvancementService (registro, set puesto, anuncio, sonido y
             │                              partículas), AdvancementListener
             ├── emoji/                     EmojiRegistry, ChatEmojiListener (AsyncChatEvent)
+            ├── gun/                       GunService (copia → hilo ArkContent-Guns → daño), GunListener
+            ├── liquid/                    LiquidService (hilo ArkContent-Fluids), LiquidRegistry,
+            │                              LiquidListener (cubos, física, pistones, explosiones)
+            ├── hud/                       HudService, HudRegistry, ActionBars (barra de acción
+            │                              compartida), HudListener
             ├── pack/PackDelivery          pack vivo + envío con setResourcePack
             ├── menu/                      ContentMenu (inventario paginado), ContentMenus,
             │                              ContentMenuListener (bloquea todo movimiento)
@@ -421,8 +448,8 @@ configurado antes de entrar al mundo; lo que sale del hilo principal es la escri
   carga no "resucita" cuando llegan las filas.
 - **Apagado.** Es la única espera: `onDisable` deja terminar las escrituras encoladas (máx. 10 s).
 - **Esquema.** `PRAGMA user_version` lleva la versión: 1 (`custom_blocks_world`), 2 (+ `custom_crops`),
-  3 (+ `furniture_storage`, ver *Muebles con almacenamiento*) y 4 (+ `advancement_unlocks`, ver
-  *Logros*). Un archivo de una versión anterior
+  3 (+ `furniture_storage`, ver *Muebles con almacenamiento*), 4 (+ `advancement_unlocks`, ver
+  *Logros*) y 5 (+ `liquid_sources` y `hud_values`, ver *Líquidos* y *HUDs*). Un archivo de una versión anterior
   gana al abrirse las tablas que le faltan; no se toca nada de lo que ya hay.
 
 El driver es el `org.xerial` SQLite que Paper/Spigot traen en el servidor; si faltara, se avisa en
@@ -1031,6 +1058,233 @@ custom-model-data: 10000          # se ve como el rubí
   (`/arkcontent cmd` lo dice). En la demo: rubí, semillas, espada, bloque y muebles sí; armadura,
   cofre y cama no.
 
+### Armas de fuego (`gun`)
+
+Cualquier ítem con una sección `gun:` dispara con clic derecho y recarga con la tecla de cambiar de
+mano (F). El ejemplo completo, con todas las claves comentadas, está en `contents/demo/guns.yml`:
+
+```yaml
+ruby_pistol:
+  material: IRON_HORSE_ARMOR
+  resource: { texture: item/ruby_pistol }
+  gun:
+    damage: 6                      # medio corazón por punto, por perdigón
+    headshot-multiplier: 1.75
+    range: 64
+    falloff: { start: 24, min-factor: 0.5 }   # entero hasta 24 bloques, la mitad a 64
+    pellets: 1                     # 8 para una escopeta; spread es el cono en grados
+    spread: 0.6
+    magazine: 12
+    ammo: ruby_bullet              # un ítem de este plugin o un material; sin ammo, no gasta nada
+    reload-seconds: 1.4
+    fire-rate: 4                   # disparos por segundo como máximo
+    recoil: { pitch: 1.8, yaw: 0.6 }
+    targets: [players, mythic_mobs, mobs]
+```
+
+**Cómo es un disparo.** Leer el mundo solo se puede en el hilo del servidor, así que cada disparo
+va en tres pasos, cada uno en el hilo que le corresponde:
+
+1. **Hilo principal, la copia.** Las direcciones de los perdigones (un cono uniforme), las cajas de
+   colisión de los bloques que cruza cada línea —recorridos bloque a bloque con
+   `VoxelTraversal`, hasta el primer bloque entero— y las hitboxes de las entidades vivas cerca de
+   la línea, con una caja de cabeza encima de cada una. Solo valores: ninguna entidad ni bloque.
+2. **`ArkContent-Guns`, el trazado.** Un `CompletableFuture` en el hilo de las armas resuelve el
+   disparo entero (`Shot.resolve()`): paredes y medias losas que paran o no, primer impacto, si
+   entró por la cabeza, perforación, caída del daño, y la suma de los perdigones por objetivo.
+3. **Hilo principal, el daño.** Un solo golpe por objetivo, con la suma de sus perdigones, como
+   `DamageSource` cuya entidad causante y directa es el tirador: para el resto del servidor es el
+   ataque de un jugador. El flag `pvp` de WorldGuard, la protección PvP de los claims de
+   GriefPrevention, las mecánicas de daño y la tabla de amenaza de MythicMobs, la armadura y los
+   encantamientos lo ven así. Los sonidos suenan en el mundo, para todos los que estén cerca.
+
+El cargador vive en la propia stack (PDC), así que viaja con el arma a un cofre o a otro jugador.
+Mientras se dispara, la cuenta se lleva en memoria y se escribe en la stack al guardarla, moverla,
+soltarla, recargar o guardar el mundo: cada cambio de la stack hace que el cliente baje y suba el
+ítem en la mano, y en cada disparo el arma no pararía de cabecear. Recargar tarda `reload-seconds`
+y se cancela si el arma sale de la mano; con el cargador vacío, el siguiente clic recarga solo. En
+creativo no se gasta munición.
+
+El retroceso gira la cámara del jugador desde el servidor (Paper lo envía como
+`player_rotation`): no toca su posición, su velocidad ni el vehículo en el que vaya.
+
+Placeholders: `%arkcontent_gun_ammo%`, `%arkcontent_gun_magazine%`, `%arkcontent_gun_reserve%` (la
+munición que lleva) y `%arkcontent_gun_reloading%`, del arma de la mano; vacíos sin arma. Se leen de
+valores guardados para ellos, así que TAB puede pedirlos desde su propio hilo.
+
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (v1.7, armas)
+
+| Qué | Resultado |
+|---|---|
+| Daño al cuerpo de un zombi sin armadura | 18 → 12: **6,0**, exactamente `damage` |
+| Disparo a la cabeza | 12 → 1,5: **10,5** = 6 × 1,75 |
+| Una pared de piedra en medio | 0 de daño |
+| MythicMobs 5.13 (`RubyKnight`) | muere en 4 disparos con «Ruby Knight was shot by Gunner» y suelta sus drops `arkcontent{…}` |
+| Otro jugador, PvP permitido | pierde vida; con `/rg flag __global__ pvp deny`, 0 |
+| Cargador | 12 → 9 tras tres disparos; vacío, recarga sola y toma 12 balas (reserva 20 → 8) |
+| Escopeta, 8 perdigones a 5 bloques | 4 aciertan: 10 de daño en un solo golpe; munición 6 → 5 |
+| Retroceso | el cliente recibe `player_rotation` y la cámara sube 1,8° por disparo |
+| El arma en la mano | 31 actualizaciones de su casilla en toda la prueba, con solo 5 versiones distintas de la stack: no cambia en cada disparo |
+| Mensaje de munición con barras de HUD | en la misma barra de acción, centrado, sin mover las barras |
+
+Con **AuraSkills** y **mcMMO** instalados, el daño de las armas cambia, porque los dos lo tratan
+como el ataque de un jugador y aplican sus bonificaciones; las cifras de arriba son con los dos
+retirados. Un jugador recién conectado es invulnerable unos segundos, como en vanilla.
+
+### Líquidos (`custom_liquid`)
+
+Una entrada `type: custom_liquid` es un cubo: con clic derecho vierte una fuente, que fluye como el
+agua; con un cubo vacío se recoge. `contents/demo/liquids.yml` trae ácido y escarcha líquida:
+
+```yaml
+acid:
+  type: custom_liquid
+  display-name: "<!i><#7ee05a>Cubo de ácido"
+  resource: { texture: item/acid_bucket }       # el cubo; sin él, el de agua vanilla
+  liquid:
+    texture: block/acid                         # acid.png + acid.png.mcmeta: animada y translúcida
+    flow-distance: 4                            # cuánto se extiende de lado (1-8)
+    tick-rate: 8                                # ticks entre un paso y el siguiente
+    max-fall: 32
+    contact:
+      element: acid                             # fire, frost, poison, wither o acid
+      damage: 1.5
+      interval-ticks: 20
+      effects: [ { type: poison, duration: 60 } ]
+```
+
+**Dónde vive.** Cada líquido se dibuja con dos estados de `minecraft:tripwire` que vanilla no
+usa nunca (`disarmed=true, powered=false`): uno para la fuente y otro para el flujo. El tripwire se
+dibuja translúcido y no tiene colisión, así que el líquido se ve a través y se puede entrar en él.
+Hay 32 de esos estados, para 16 líquidos. Se reparten primero los 16 con `attached=true`: Bukkit
+avisa antes de que algo los pise, y el plugin lo cancela, así que esos estados no cambian nunca.
+Los líquidos 9 a 16 usan los de `attached=false`, que vanilla pisa sin avisar; el plugin los
+devuelve a su estado en el mismo tick. Vanilla también reconecta la cuerda con sus vecinos cada vez
+que uno cambia; el plugin corta esa propagación de un bloque de líquido al siguiente y devuelve a su
+estado el que haya tocado (lleva un índice del estado que debe tener cada bloque).
+
+**Cómo fluye.** Solo se guardan las **fuentes**: en memoria y en SQLite (`liquid_sources`). El
+flujo se deduce de ellas y del terreno, y se vuelve a calcular cuando algo cambia cerca (construir,
+romper, explosiones, pistones, cargar el chunk):
+
+1. **Hilo principal.** Se copian como `ChunkSnapshot` los chunks alrededor del cambio, que se pueden
+   leer desde cualquier hilo, con las fuentes que podrían llegar a ellos.
+2. **`ArkContent-Fluids`.** `FluidSolver` calcula dónde debe haber líquido —cae mientras puede, al
+   aterrizar se extiende `flow-distance` bloques, perdiendo fuerza en cada paso— y lo compara con la
+   copia: qué bloques llenar y cuáles vaciar. Toda la búsqueda va en este hilo.
+3. **Hilo principal, poco a poco.** Los cambios se aplican del más cercano a la fuente al más
+   lejano, un paso cada `tick-rate` ticks —se ve correr el líquido— y como mucho
+   `liquids.changes-per-tick` por tick. Cada uno se comprueba otra vez contra el mundo de ese
+   momento: el bloque sigue vacío y el líquido sigue al lado.
+
+**Protección.** El líquido nunca entra en una región de WorldGuard ni en un claim de GriefPrevention
+desde fuera (la misma regla que siguen el agua y la lava vanilla), ni donde una región tenga
+`arkcontent-liquid-flow deny`. Verterlo pide permiso de construir; recogerlo, de romper. El contacto
+no hace daño donde una región tenga `arkcontent-liquid-damage deny`, ni a quien esté dentro de un
+claim al que ese líquido no podría haber llegado desde su fuente. Los dos flags son de este plugin y
+se registran en WorldGuard al cargar el servidor:
+
+```
+/rg flag spawn arkcontent-liquid-flow deny
+/rg flag spawn arkcontent-liquid-damage deny
+```
+
+**Contacto.** Cada `liquids.contact-ticks` se mira qué jugadores tienen los pies o la cabeza en un
+líquido. A quien está dentro se le aplica, cada `interval-ticks`, el daño (con el `damage-type`
+vanilla que se diga), el fuego, la congelación y los efectos del líquido.
+
+Además, el líquido no se rompe a golpes, no se lo llevan pistones, explosiones ni agua vanilla, y
+no hace saltar ganchos de tripwire.
+
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (v1.7, líquidos)
+
+| Qué | Resultado |
+|---|---|
+| Verter ácido sobre hierba | la fuente aparece; el cubo pasa a ser un cubo vacío |
+| Flujo en llano (`flow-distance: 4`) | llega a los bloques a 1, 2 y 3 de la fuente; los que están a 4 siguen siendo aire |
+| Saliente: fuente sobre un pilar de 4 bloques | cae por el lado hasta el suelo y allí se extiende 3 bloques más |
+| Cuerda vanilla colocada junto al líquido | el bloque de líquido no cambia de estado |
+| Un jugador dentro | 17 → 14 de vida y envenenado; con `arkcontent-liquid-damage deny`, nada |
+| `arkcontent-liquid-flow deny` | la fuente se queda sola, sin flujo |
+| Recoger con un cubo vacío | la mano pasa a tener el cubo de ácido; la fuente y su flujo desaparecen |
+| Reinicio | «3 liquid source(s) loaded»; un bloque de flujo borrado sin eventos (`/setblock … air`) vuelve a aparecer al arrancar |
+| Base de datos de 1.6 | pasa sola a `user_version` 5 con las tablas nuevas |
+
+Lo que no se puede comprobar aquí es cómo se ve: no hay un cliente real con el pack. El blockstate
+de tripwire (los 128 estados) y los modelos de los líquidos se han revisado en el ZIP generado.
+
+### HUDs (`huds`)
+
+Barras dibujadas con la fuente del pack, como el maná o la sed. Cada barra es una fila de iconos
+(lleno, medio, vacío) escrita con **espacios negativos**: caracteres que no dibujan nada y mueven
+el texto unos píxeles a la derecha o a la izquierda. Así la barra queda justo donde se pone, y el
+resto de la línea no se mueve. `contents/demo/huds.yml`:
+
+```yaml
+huds:
+  thirst:
+    icons: { full: hud/thirst_full, half: hud/thirst_half, empty: hud/thirst_empty }
+    height: 9
+    ascent: -5              # en la barra de acción, -5 la deja justo encima de la armadura
+    segments: 10
+    spacing: -1             # píxeles entre iconos
+    offset: 10              # desde el centro: encima del hambre
+    action-bar: true
+    value:                  # un valor que guarda este plugin
+      max: 20
+      per-second: -0.025    # se va vaciando
+      empty-damage: 1       # daño por segundo a 0
+      consume: { POTION: 8, MILK_BUCKET: 4 }
+  mana:
+    icons: { full: hud/mana_full, empty: hud/mana_empty }
+    value: { placeholder: "%mmocore_mana%", max: "%mmocore_max_mana%" }   # o el de otro plugin
+```
+
+**Fuente.** El pack escribe en `assets/minecraft/font/default.json` un glifo por icono, en
+U+F000–U+F7FF (los emojis pasan a U+E000–U+EFFF), y un proveedor `space` con los caracteres que la
+comunidad ya usa para esto: U+F801…F808 (−1 a −8 px), U+F809…F80F (−16 a −1024), U+F821…F82F (lo
+mismo hacia delante). Se escribe aunque no haya HUDs, para menús y marcadores que maquetan con
+ellos (`pack.negative-spaces: false` lo quita). El ancho de cada icono se mide en su PNG como lo
+mide el cliente (última columna con algún píxel visible, escalada a `height`, más uno). Así la barra
+sabe exactamente cuánto retroceder.
+
+**Dónde se muestra.**
+
+| Placeholder | Devuelve |
+|---|---|
+| `%arkcontent_hud_<id>%` | la barra, lista para pintar |
+| `%arkcontent_hud_<id>_value%` · `_max` | su valor y su máximo |
+| `%arkcontent_space_<píxeles>%` | ese desplazamiento, positivo o negativo |
+
+Sirven en cualquier sitio que lea PlaceholderAPI: TAB (marcador, cabecera, pie, bossbar),
+DeluxeMenus (títulos, nombres, lore), hologramas. Las barras con `action-bar: true` las envía
+además el plugin a la barra de acción cada `huds.action-bar-ticks`. La comparte con los mensajes
+cortos (la munición de un arma), que se centran sin desplazar las barras.
+
+**Valores guardados.** Los HUD sin `placeholder` guardan su valor por jugador en SQLite
+(`hud_values`): se leen al entrar, cambian cada segundo según `per-second`, suben al comer o beber
+lo que diga `consume` (un material o el id de un ítem de este plugin) y se escriben cada
+`huds.save-seconds` y al salir. Para cambiarlos a mano, `/arkcontent hud <jugador> <hud> set|add|take <n>`.
+
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (v1.7, HUDs)
+
+| Qué | Resultado |
+|---|---|
+| `%arkcontent_hud_thirst%` a 19,9 de 20 | +10 px, 9 gotas llenas separadas por −1 px, 1 media, y −91 px de vuelta: ancho neto 0 |
+| `/arkcontent hud … thirst set 7` | 3 llenas, 1 media, 6 vacías; `_value` = 7 |
+| Beber una botella de agua | 7 → 14,9 (`consume: POTION: 8`, menos lo que se vacía) |
+| `%arkcontent_space_-20%` | U+F809 U+F804 |
+| Barra de acción | sed (desde +10 px) y maná (desde −91 px) en cada envío |
+| **TAB 6.2.0** | la cabecera de la tablist trae la barra de sed |
+| **DeluxeMenus 1.14.1** | el título del menú trae la barra y «Sed 14.8/20» |
+| Persistencia | una fila por jugador y HUD en `hud_values` |
+
+AuraSkills envía su propia barra de acción (vida y maná) varias veces por segundo y tapa la de este
+plugin. Con AuraSkills, desactiva la suya (`action_bar` en su configuración) o muestra las barras
+por placeholders. El texto de la barra de acción y de TAB lleva sombra; en la barra de acción el
+plugin la quita, pero lo que llega por PlaceholderAPI es texto plano y la sombra depende de quien
+lo pinte.
+
 ## 5. Integraciones
 
 Todas opcionales. `paper-plugin.yml` declara cada plugin como dependencia con
@@ -1200,6 +1454,15 @@ Verificado en un Paper 1.21.8 real con MythicMobs 5.13.0: el mob aparece con `de
 (modelo, nombre, lore y PDC correctos), los drops salen como entradas separadas, y
 `/arkcontent reload` y `/mm reload` funcionan con el gancho activo.
 
+**Orden de carga (desde 1.7).** Hasta 1.6, ArkcronistContent cargaba antes que MythicMobs para estar
+escuchando cuando este lee sus mobs. Con AuraSkills y BetonQuest también instalados, que cargan
+después de MythicMobs y antes que este plugin, eso forma un ciclo, y Paper se niega a arrancar
+(`Circular plugin loading`). Pasó de verdad en el servidor de prueba. Ahora MythicMobs carga
+primero, y si alguno de sus archivos usa `arkcontent{`, el plugin ejecuta `/mythicmobs reload` una
+vez, un tick después de arrancar. MythicMobs vuelve a leer los mobs con el gancho escuchando.
+Verificado con AuraSkills, BetonQuest y MythicMobs juntos: arranca, recarga MythicMobs, y el
+`RubyKnight` lleva su espada y suelta sus drops.
+
 ### ModelEngine
 
 Un mueble con `furniture.modelengine-id` (o `modelengine_id`) se dibuja con ese blueprint en lugar
@@ -1248,6 +1511,9 @@ Con PlaceholderAPI instalado se registra la expansión `arkcontent`:
 | `%arkcontent_emoji_<nombre>%` | el carácter del emoji, que el pack dibuja como su imagen |
 | `%arkcontent_held%` | id del ítem personalizado en la mano principal, o vacío |
 | `%arkcontent_items%` | cuántos ítems personalizados hay cargados |
+| `%arkcontent_gun_ammo%` · `_magazine` · `_reserve` · `_reloading` | el arma de la mano (sección 4, *Armas*) |
+| `%arkcontent_hud_<id>%` · `_value` · `_max` | una barra de HUD y su valor (sección 4, *HUDs*) |
+| `%arkcontent_space_<píxeles>%` | espacio positivo o negativo, para maquetar |
 
 **TAB** (NEZNAMY) lee placeholders de PlaceholderAPI en cabecera, pie, prefijos y nombres, así que
 un emoji en la tablist es `header: "&fBienvenido %arkcontent_emoji_heart%"`. El `&f` delante
@@ -1268,7 +1534,9 @@ ruby_button:
 ```
 
 Verificado: con PlaceholderAPI 2.11.6 en un Paper 1.21.8 real, `/papi parse` devuelve el carácter
-del emoji y el número de ítems.
+del emoji y el número de ítems. En 1.7, con **TAB 6.2.0** instalado, la cabecera de la tablist
+llega al cliente con la barra de `%arkcontent_hud_thirst%`; y el título de un menú de DeluxeMenus,
+con la barra y su valor.
 
 ### ShopGUI+
 
@@ -1357,6 +1625,10 @@ bloque. Esas se consultan antes con WorldGuard y GriefPrevention, y se detienen 
 | Abrir un mueble con almacenamiento | `interact` + `chest-access` | `/containertrust` |
 | Una explosión que alcanza un bloque personalizado o la tierra bajo un cultivo | `build` + `block-break` desde el origen de la explosión, y su flag (`tnt`, `creeper-explosion`...) | el claim admite explosiones (`/claimexplosions`) |
 | Un mob que pisotea, agua que fluye | `build` + `block-break` desde donde viene | mismo claim o mismo dueño |
+| Un líquido de este plugin que fluye | `build` + `block-break` desde su fuente, y `arkcontent-liquid-flow` | mismo claim o mismo dueño que su fuente |
+| Un líquido que hace daño a quien está dentro | `arkcontent-liquid-damage` | el líquido podría haber llegado ahí desde su fuente |
+| Verter / recoger un líquido | `build` + `block-place` / `block-break` | `/trust` |
+| Un disparo a un jugador | `pvp` (el disparo es el ataque de un jugador) | su protección PvP en claims |
 
 - Todos los listeners de cultivos y note blocks que reaccionan a un evento vanilla (explosiones,
   pistones, pisotones, cubos, agua) corren tarde (`HIGHEST`/`MONITOR`) e ignoran lo ya cancelado,
@@ -1780,6 +2052,25 @@ con `join-classpath: true` para ver sus clases.
   modelo (ver sección 4); el resto no recibe número.
 - El pack se envía en `PlayerJoinEvent`. En 1.21.7+ Paper permite enviarlo durante la fase de
   configuración, antes de entrar al mundo; es el siguiente paso natural.
+- 1.7, armas: el trazado (la cuenta) va en su hilo, pero copiar lo que hay alrededor del disparo
+  —bloques y entidades— se hace en el hilo principal, porque Paper solo deja leer el mundo ahí. Es
+  un disparo por clic: el cliente repite el clic derecho mantenido cada 4 ticks, así que el
+  automático llega a 5 disparos por segundo. Los disparos son instantáneos (sin balas que viajen ni
+  caigan). Un objetivo dentro de un bloque no lleno (una valla, un panel de cristal) se copia caja
+  a caja de su forma de colisión.
+- 1.7, líquidos: 16 como máximo; solo los 8 primeros usan estados que nadie altera, y los otros 8 se
+  restauran en cada tick en que alguien está dentro. Con un modelo de bloque no se puede ocultar la
+  cara entre dos bloques de líquido contiguos, así que con texturas translúcidas se ven esas caras
+  interiores. Solo hay dos alturas (fuente y flujo), no los 8 niveles del agua. No se puede
+  construir dentro de un líquido (la cuerda no es reemplazable, como sí lo es el agua): hay que
+  recoger la fuente primero. El flujo no sale de los chunks cargados alrededor de su fuente
+  (`liquids.chunk-reach`), ni empuja a quien está dentro, ni apaga el fuego. Solo los jugadores
+  reciben el efecto de contacto, no los mobs.
+- 1.7, HUDs: la posición en pantalla depende de `ascent` y `offset`, y la escala de interfaz del
+  jugador no cambia nada (es todo en píxeles de fuente), pero otros mods de cliente que muevan la
+  barra de acción sí. AuraSkills tapa la barra de acción con la suya (ver sección 4). El dibujo en
+  un cliente real no se ha podido comprobar aquí: lo verificado es el texto exacto que recibe el
+  cliente y la fuente del pack.
 
 ## 10. Compatibilidad frente a ItemsAdder
 
@@ -1865,18 +2156,18 @@ de su librería · ○ sin probar.
 | Space | fusionar su pack | puente: `pack.merge` | ○ |
 | Spartan Anti Cheat | sin detalle | no aplica: los bloques se rompen a la velocidad de un note block | — |
 | StatTrackers | integración de eco | puente: eco | ◐ |
-| TAB | `%img_x%` | puente: PlaceholderAPI | ◐ |
+| TAB | `%img_x%` | puente: PlaceholderAPI (emojis, barras de HUD) | ✔ |
 | Talismans | integración de eco | puente: eco | ◐ |
 | TrMenu | `source:ITEMSADDER:<id>` | necesita al otro plugin para `source:`; por número CustomModelData y PlaceholderAPI sí | — |
 | ValhallaMMO | ItemsAdderAdditions escribe sus datos en el ítem | no hecho (necesitaría escribir los datos de ValhallaMMO en la stack) | — |
 | ValhallaTrinkets | ídem | no hecho | — |
 | Wailat | hecho para IA | necesita al otro plugin | — |
 | WorldEdit | addon oficial | gancho: bloques en `//set`, patrones y máscaras | ✔ |
-| WorldGuard | flags de IA | gancho: protección (v1.2) | ✔ |
+| WorldGuard | flags de IA | gancho: protección (v1.2) y flags propios para líquidos (v1.7) | ✔ |
 
 **En números:** de los 73, **52 quedan cubiertos** —16 con gancho propio, 22 a través de un
-puente, 14 sin necesitar gancho— y en **7 la cuestión no aplica**. De los 52, 9 están verificados
-en el servidor de prueba con el plugin real, 20 compilados contra su API real o verificados a
+puente, 14 sin necesitar gancho— y en **7 la cuestión no aplica**. De los 52, 10 están verificados
+en el servidor de prueba con el plugin real, 19 compilados contra su API real o verificados a
 través de su librería (eco, nightcore, Mimic, PlaceholderAPI) y 23 sin probar con ese plugin. Los
 **14 restantes no están cubiertos**: 12 solo funcionarían si ese plugin añadiera soporte para
 ArkcronistContent, como lo añadió para ItemsAdder (llaman a la API de ItemsAdder y a ninguna

@@ -29,10 +29,12 @@ import java.util.List;
  * @param price       what one costs in the content shop ({@code /arkcontent shop}, with Vault);
  *                    0 when it is not for sale
  * @param equipment   how it is worn - armour - or null for an item that is not
+ * @param gun         how it shoots, or null for an item that does not
  */
 public record ItemDefinition(String namespace, String id, String material, String displayName,
                              List<String> lore, ModelSource model, ItemBehaviour behaviour,
-                             Placement placement, Path source, double price, @Nullable Equipment equipment) {
+                             Placement placement, Path source, double price, @Nullable Equipment equipment,
+                             @Nullable GunDefinition gun) {
 
     public ItemDefinition {
         lore = List.copyOf(lore);
@@ -41,25 +43,38 @@ public record ItemDefinition(String namespace, String id, String material, Strin
     /** An item that is not for sale. */
     public ItemDefinition(String namespace, String id, String material, String displayName, List<String> lore,
                           ModelSource model, ItemBehaviour behaviour, Placement placement, Path source) {
-        this(namespace, id, material, displayName, lore, model, behaviour, placement, source, 0, null);
+        this(namespace, id, material, displayName, lore, model, behaviour, placement, source, 0, null, null);
     }
 
     /** An item that is not worn. */
     public ItemDefinition(String namespace, String id, String material, String displayName, List<String> lore,
                           ModelSource model, ItemBehaviour behaviour, Placement placement, Path source, double price) {
-        this(namespace, id, material, displayName, lore, model, behaviour, placement, source, price, null);
+        this(namespace, id, material, displayName, lore, model, behaviour, placement, source, price, null, null);
+    }
+
+    /** An item that does not shoot. */
+    public ItemDefinition(String namespace, String id, String material, String displayName, List<String> lore,
+                          ModelSource model, ItemBehaviour behaviour, Placement placement, Path source, double price,
+                          @Nullable Equipment equipment) {
+        this(namespace, id, material, displayName, lore, model, behaviour, placement, source, price, equipment, null);
     }
 
     /** The same item with a price: what one costs in the content shop, through Vault. 0 is not for sale. */
     public ItemDefinition withPrice(double price) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment);
+                equipment, gun);
     }
 
     /** The same item, worn as {@code equipment}. */
     public ItemDefinition withEquipment(@Nullable Equipment equipment) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment);
+                equipment, gun);
+    }
+
+    /** The same item, shooting as {@code gun}. */
+    public ItemDefinition withGun(@Nullable GunDefinition gun) {
+        return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
+                equipment, gun);
     }
 
     /** {@code namespace:id}, the key the item is registered, given and recognised by. */

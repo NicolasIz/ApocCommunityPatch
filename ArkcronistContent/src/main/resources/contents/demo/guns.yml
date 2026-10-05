@@ -1,0 +1,94 @@
+# ---------------------------------------------------------------------------
+#  Guns (1.7): right click fires, F (swap hands) reloads.
+# ---------------------------------------------------------------------------
+#     /customgive <player> demo:ruby_pistol
+#     /customgive <player> demo:ruby_shotgun
+#     /customgive <player> demo:ruby_bullet 64
+#
+#  A shot is traced along where the player looks: walls and slabs stop it,
+#  a pellet entering through the head hits harder, and damage fades with
+#  distance. The hit is the shooter's attack - WorldGuard's pvp flag,
+#  GriefPrevention's claims, armour and MythicMobs all see it as one.
+#
+#  gun:
+#    damage               one pellet's damage at close range (half hearts)
+#    headshot-multiplier  what a headshot multiplies it by
+#    range                how far a shot reaches, in blocks (up to 256)
+#    falloff              {start, min-factor}: full damage up to start, then
+#                         down in a straight line to min-factor of it at range
+#    pellets              pellets per shot; spread is the cone they fly in,
+#    spread               in degrees; sneak-spread the same while sneaking
+#    pierce               targets a pellet goes on through after the first
+#    magazine             rounds before reloading
+#    ammo                 the item a reload uses, one per round: one of this
+#                         plugin's items or a material; leave it out for none
+#    reload-seconds       how long a reload takes
+#    fire-rate            shots per second at most
+#    recoil               {pitch, yaw}: degrees the view kicks up, and sideways
+#    targets              players, mythic_mobs, mobs (all three if left out)
+#    damage-type          the vanilla damage type: arrow (the default) counts
+#                         as a projectile for Projectile Protection
+#    particle             drawn along each pellet's path; none for no trail
+#    sounds               shoot, empty, reload, reloaded, hit, headshot: a
+#                         sound key, none, or {sound, volume, pitch}
+#
+#  Placeholders for TAB, scoreboards, holograms:
+#    %arkcontent_gun_ammo% / %arkcontent_gun_magazine% / %arkcontent_gun_reserve%
+# ---------------------------------------------------------------------------
+
+items:
+
+  ruby_bullet:
+    material: PAPER
+    display-name: "<!i><#ff566a>Bala de rubí"
+    lore:
+      - "<!i><gray>Munición para las armas de rubí."
+    resource:
+      texture: item/ruby_bullet
+
+  ruby_pistol:
+    material: IRON_HORSE_ARMOR
+    display-name: "<!i><gradient:#ff5a6e:#b3122e><b>Pistola de Rubí</b></gradient>"
+    lore:
+      - "<!i><gray>Clic derecho: disparar"
+      - "<!i><gray>F: recargar"
+    resource:
+      texture: item/ruby_pistol
+    gun:
+      damage: 6
+      headshot-multiplier: 1.75
+      range: 64
+      falloff: { start: 24, min-factor: 0.5 }
+      spread: 0.6
+      magazine: 12
+      ammo: ruby_bullet
+      reload-seconds: 1.4
+      fire-rate: 4
+      recoil: { pitch: 1.8, yaw: 0.6 }
+      sounds:
+        shoot: { sound: entity.firework_rocket.blast, volume: 1.4, pitch: 1.6 }
+
+  ruby_shotgun:
+    material: IRON_HORSE_ARMOR
+    display-name: "<!i><gradient:#ff5a6e:#5e0716><b>Escopeta de Rubí</b></gradient>"
+    lore:
+      - "<!i><gray>Ocho perdigones por disparo."
+      - "<!i><gray>Clic derecho: disparar · F: recargar"
+    resource:
+      texture: item/ruby_shotgun
+    gun:
+      damage: 2.5
+      headshot-multiplier: 1.5
+      pellets: 8
+      spread: 7
+      sneak-spread: 4.5
+      range: 32
+      falloff: { start: 8, min-factor: 0.2 }
+      magazine: 6
+      ammo: ruby_bullet
+      reload-seconds: 2.2
+      fire-rate: 1.2
+      recoil: { pitch: 6, yaw: 1.5 }
+      particle: smoke
+      sounds:
+        shoot: { sound: entity.generic.explode, volume: 1.2, pitch: 1.4 }

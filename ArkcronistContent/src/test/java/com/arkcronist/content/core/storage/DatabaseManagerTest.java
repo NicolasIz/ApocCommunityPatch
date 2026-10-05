@@ -147,7 +147,49 @@ class DatabaseManagerTest {
         try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
              Statement statement = connection.createStatement();
              ResultSet version = statement.executeQuery("PRAGMA user_version")) {
-            assertEquals(4, version.getInt(1));
+            assertEquals(DatabaseManager.SCHEMA_VERSION, version.getInt(1));
+        }
+    }
+
+    /** Schema 5: a 1.6 file (schema 4) gains the liquid and HUD tables, and both round-trip. */
+    @Test
+    void liquidSourcesAndHudValuesRoundTripInAnOlderFile() throws Exception {
+        Path file = temp.resolve("content.db");
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+             Statement statement = connection.createStatement()) {
+            statement.execute("CREATE TABLE advancement_unlocks (player_uuid TEXT NOT NULL, advancement TEXT NOT NULL,"
+                    + " unlocked_at INTEGER NOT NULL, PRIMARY KEY (player_uuid, advancement)) WITHOUT ROWID");
+            statement.execute("PRAGMA user_version=4");
+        }
+        database = open();
+        UUID player = UUID.fromString("f3d28cb0-7225-3cb1-baeb-2dadd2be89ae");
+
+        DatabaseManager.LiquidSource acid = new DatabaseManager.LiquidSource(10, 64, -3, "demo:acid", player);
+        DatabaseManager.LiquidSource poured = new DatabaseManager.LiquidSource(-200, -60, 7, "demo:frost", null);
+        get(database.saveLiquid(OVERWORLD, acid));
+        get(database.saveLiquid(OVERWORLD, poured));
+        get(database.saveLiquid(NETHER, acid));
+        // Poured again on the same block: one source, the newer one.
+        get(database.saveLiquid(OVERWORLD, new DatabaseManager.LiquidSource(10, 64, -3, "demo:lava_like", null)));
+
+        List<DatabaseManager.LiquidSource> overworld = new ArrayList<>(get(database.loadLiquids(OVERWORLD)));
+        overworld.sort(Comparator.comparingInt(DatabaseManager.LiquidSource::x));
+        assertEquals(List.of(poured, new DatabaseManager.LiquidSource(10, 64, -3, "demo:lava_like", null)), overworld);
+        assertTrue(get(database.deleteLiquid(OVERWORLD, -200, -60, 7)));
+        assertFalse(get(database.deleteLiquid(OVERWORLD, -200, -60, 7)));
+        assertEquals(List.of(acid), get(database.loadLiquids(NETHER)));
+
+        get(database.saveHudValues(player, java.util.Map.of("demo:thirst", 14.5, "demo:mana", 80.0)));
+        get(database.saveHudValues(player, java.util.Map.of("demo:thirst", 3.25)));
+        assertEquals(java.util.Map.of("demo:thirst", 3.25, "demo:mana", 80.0), get(database.loadHudValues(player)));
+        assertTrue(get(database.loadHudValues(UUID.randomUUID())).isEmpty());
+
+        database.close();
+        database = null;
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+             Statement statement = connection.createStatement();
+             ResultSet version = statement.executeQuery("PRAGMA user_version")) {
+            assertEquals(5, version.getInt(1));
         }
     }
 

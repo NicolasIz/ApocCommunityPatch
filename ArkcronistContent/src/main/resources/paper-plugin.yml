@@ -13,10 +13,12 @@ folia-supported: false
 # required, and without one its hook simply stays off.
 dependencies:
   server:
-    # Loads after this plugin: MythicMobs reads its mobs, and asks for drop types such as
-    # arkcontent{item=...}, as it enables - this plugin has to be listening by then.
+    # Loads before this plugin. Loading after it - to be listening as MythicMobs reads its mobs -
+    # makes a loop with AuraSkills and BetonQuest, which load after MythicMobs and before this
+    # plugin, and Paper refuses to start. So MythicMobs is reloaded once instead, if its files use
+    # arkcontent drops or equipment (see MythicMobsHook).
     MythicMobs:
-      load: AFTER
+      load: BEFORE
       required: false
       join-classpath: true
     # HMCCosmetics takes items from other plugins through HibiscusCommons: the hook is registered

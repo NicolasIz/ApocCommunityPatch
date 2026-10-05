@@ -91,6 +91,19 @@ public final class WorldGuardProtection implements ProtectionProvider {
                 new DelayedRegionOverlapAssociation(query, BukkitAdapter.adapt(from)), Flags.BLOCK_BREAK);
     }
 
+    @Override
+    public boolean allowsLiquidFlow(Block block) {
+        StateFlag flag = WorldGuardFlags.liquidFlow();
+        return flag == null || query().testState(BukkitAdapter.adapt(block.getLocation()), (RegionAssociable) null, flag);
+    }
+
+    @Override
+    public boolean allowsLiquidContact(Player player, Block block) {
+        StateFlag flag = WorldGuardFlags.liquidDamage();
+        return flag == null || query().testState(BukkitAdapter.adapt(block.getLocation()),
+                WorldGuardPlugin.inst().wrapPlayer(player), flag);
+    }
+
     /** The region flag that switches off this kind of explosion. */
     private static StateFlag explosionFlag(@Nullable Entity source) {
         if (source instanceof Creeper) {

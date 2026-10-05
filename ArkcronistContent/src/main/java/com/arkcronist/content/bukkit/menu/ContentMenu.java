@@ -61,8 +61,8 @@ public final class ContentMenu implements InventoryHolder {
     static final int CLOSE = 52;
     static final int NEXT = 53;
     private static final Map<Integer, ContentType> TABS = Map.of(
-            47, ContentType.ITEM, 48, ContentType.CUSTOM_BLOCK, 49, ContentType.CUSTOM_FURNITURE,
-            50, ContentType.CUSTOM_CROP);
+            46, ContentType.ITEM, 47, ContentType.CUSTOM_BLOCK, 48, ContentType.CUSTOM_FURNITURE,
+            49, ContentType.CUSTOM_CROP, 50, ContentType.CUSTOM_LIQUID);
 
     private static final Component TITLE = Component.text("Custom content");
     private static final Component SHOP_TITLE = Component.text("Shop");
@@ -311,6 +311,7 @@ public final class ContentMenu implements InventoryHolder {
             case CUSTOM_BLOCK -> Material.BRICKS;
             case CUSTOM_FURNITURE -> Material.PAINTING;
             case CUSTOM_CROP -> Material.WHEAT;
+            case CUSTOM_LIQUID -> Material.WATER_BUCKET;
         };
     }
 
@@ -320,6 +321,7 @@ public final class ContentMenu implements InventoryHolder {
             case CUSTOM_BLOCK -> "Blocks";
             case CUSTOM_FURNITURE -> "Furniture";
             case CUSTOM_CROP -> "Crops";
+            case CUSTOM_LIQUID -> "Liquids";
         };
     }
 }

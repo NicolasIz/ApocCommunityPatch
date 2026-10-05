@@ -1,6 +1,7 @@
 package com.arkcronist.content.core.storage;
 
 import com.arkcronist.content.core.crop.PlantedCrop;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -49,14 +50,16 @@ public final class DatabaseManager {
     public static final String CROP_TABLE = "custom_crops";
     public static final String STORAGE_TABLE = "furniture_storage";
     public static final String UNLOCK_TABLE = "advancement_unlocks";
+    public static final String LIQUID_TABLE = "liquid_sources";
+    public static final String HUD_TABLE = "hud_values";
 
     /**
      * Bumped with each change to the schema, so a later version knows what it opened.
      * 1: custom_blocks_world. 2: custom_crops added. 3: furniture_storage added. 4:
-     * advancement_unlocks added. An older file gains the tables it lacks on open; nothing existing is
-     * touched.
+     * advancement_unlocks added. 5: liquid_sources and hud_values added. An older file gains the
+     * tables it lacks on open; nothing existing is touched.
      */
-    public static final int SCHEMA_VERSION = 4;
+    public static final int SCHEMA_VERSION = 5;
 
     private static final String CREATE_TABLE = """
             CREATE TABLE IF NOT EXISTS custom_blocks_world (
@@ -109,6 +112,43 @@ public final class DatabaseManager {
                 unlocked_at INTEGER NOT NULL,
                 PRIMARY KEY (player_uuid, advancement)
             ) WITHOUT ROWID""";
+
+    /**
+     * Every liquid source poured, by where it is. Only sources: where a liquid flows follows from
+     * them, and is worked out again whenever the chunk is loaded.
+     *
+     * <p>owner_uuid is the player who poured it, kept for protection plugins' sake; null for one
+     * placed by a command.</p>
+     */
+    private static final String CREATE_LIQUID_TABLE = """
+            CREATE TABLE IF NOT EXISTS liquid_sources (
+                world_uuid  TEXT    NOT NULL,
+                x           INTEGER NOT NULL,
+                y           INTEGER NOT NULL,
+                z           INTEGER NOT NULL,
+                liquid_id   TEXT    NOT NULL,
+                owner_uuid  TEXT,
+                PRIMARY KEY (world_uuid, x, y, z)
+            ) WITHOUT ROWID""";
+
+    /** The values of HUD bars kept by this plugin - thirst, a mana of its own - per player. */
+    private static final String CREATE_HUD_TABLE = """
+            CREATE TABLE IF NOT EXISTS hud_values (
+                player_uuid TEXT NOT NULL,
+                hud_id      TEXT NOT NULL,
+                value       REAL NOT NULL,
+                PRIMARY KEY (player_uuid, hud_id)
+            ) WITHOUT ROWID""";
+
+    private static final String UPSERT_LIQUID = "INSERT OR REPLACE INTO " + LIQUID_TABLE
+            + " (world_uuid, x, y, z, liquid_id, owner_uuid) VALUES (?, ?, ?, ?, ?, ?)";
+    private static final String DELETE_LIQUID = "DELETE FROM " + LIQUID_TABLE
+            + " WHERE world_uuid = ? AND x = ? AND y = ? AND z = ?";
+    private static final String SELECT_LIQUIDS = "SELECT x, y, z, liquid_id, owner_uuid FROM " + LIQUID_TABLE
+            + " WHERE world_uuid = ?";
+    private static final String UPSERT_HUD = "INSERT OR REPLACE INTO " + HUD_TABLE
+            + " (player_uuid, hud_id, value) VALUES (?, ?, ?)";
+    private static final String SELECT_HUDS = "SELECT hud_id, value FROM " + HUD_TABLE + " WHERE player_uuid = ?";
 
     private static final String INSERT_UNLOCK = "INSERT OR IGNORE INTO " + UNLOCK_TABLE
             + " (player_uuid, advancement, unlocked_at) VALUES (?, ?, ?)";
@@ -414,6 +454,104 @@ public final class DatabaseManager {
         }, false);
     }
 
+    /** A liquid source, as stored: where, which liquid, and who poured it (null for nobody). */
+    public record LiquidSource(int x, int y, int z, String liquid, @Nullable UUID owner) {
+    }
+
+    public CompletableFuture<Void> saveLiquid(UUID world, LiquidSource source) {
+        return submit(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(UPSERT_LIQUID)) {
+                statement.setString(1, world.toString());
+                statement.setInt(2, source.x());
+                statement.setInt(3, source.y());
+                statement.setInt(4, source.z());
+                statement.setString(5, source.liquid());
+                statement.setString(6, source.owner() == null ? null : source.owner().toString());
+                statement.executeUpdate();
+            }
+            return null;
+        }, false);
+    }
+
+    public CompletableFuture<Boolean> deleteLiquid(UUID world, int x, int y, int z) {
+        return submit(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(DELETE_LIQUID)) {
+                statement.setString(1, world.toString());
+                statement.setInt(2, x);
+                statement.setInt(3, y);
+                statement.setInt(4, z);
+                return statement.executeUpdate() > 0;
+            }
+        }, false);
+    }
+
+    /** Every liquid source in a world. A row whose owner is not a UUID keeps the source, ownerless. */
+    public CompletableFuture<List<LiquidSource>> loadLiquids(UUID world) {
+        return submit(connection -> {
+            List<LiquidSource> sources = new ArrayList<>();
+            try (PreparedStatement statement = connection.prepareStatement(SELECT_LIQUIDS)) {
+                statement.setString(1, world.toString());
+                try (ResultSet rows = statement.executeQuery()) {
+                    while (rows.next()) {
+                        String owner = rows.getString(5);
+                        UUID ownerId = null;
+                        if (owner != null) {
+                            try {
+                                ownerId = UUID.fromString(owner);
+                            } catch (IllegalArgumentException ignored) {
+                                // Kept ownerless.
+                            }
+                        }
+                        sources.add(new LiquidSource(rows.getInt(1), rows.getInt(2), rows.getInt(3),
+                                rows.getString(4), ownerId));
+                    }
+                }
+            }
+            return sources;
+        }, false);
+    }
+
+    /** Writes a player's HUD values, in one transaction. */
+    public CompletableFuture<Void> saveHudValues(UUID player, Map<String, Double> values) {
+        Map<String, Double> copy = Map.copyOf(values);
+        return submit(connection -> {
+            boolean autoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+            try (PreparedStatement statement = connection.prepareStatement(UPSERT_HUD)) {
+                for (Map.Entry<String, Double> value : copy.entrySet()) {
+                    statement.setString(1, player.toString());
+                    statement.setString(2, value.getKey());
+                    statement.setDouble(3, value.getValue());
+                    statement.addBatch();
+                }
+                statement.executeBatch();
+                connection.commit();
+            } catch (SQLException exception) {
+                connection.rollback();
+                throw exception;
+            } finally {
+                connection.setAutoCommit(autoCommit);
+            }
+            return null;
+        }, false);
+    }
+
+    /** A player's HUD values, by HUD id. */
+    public CompletableFuture<Map<String, Double>> loadHudValues(UUID player) {
+        return submit(connection -> {
+            Map<String, Double> values = new LinkedHashMap<>();
+            try (PreparedStatement statement = connection.prepareStatement(SELECT_HUDS)) {
+                statement.setString(1, player.toString());
+                try (ResultSet rows = statement.executeQuery()) {
+                    while (rows.next()) {
+                        values.put(rows.getString(1), rows.getDouble(2));
+                    }
+                }
+            }
+            return values;
+        }, false);
+    }
+
     /**
      * Lets every queued statement finish, then closes the file. Blocks for at most ten seconds;
      * called once, from the plugin's shutdown.
@@ -479,6 +617,8 @@ public final class DatabaseManager {
             statement.execute(CREATE_CROP_TABLE);
             statement.execute(CREATE_STORAGE_TABLE);
             statement.execute(CREATE_UNLOCK_TABLE);
+            statement.execute(CREATE_LIQUID_TABLE);
+            statement.execute(CREATE_HUD_TABLE);
             int version;
             try (ResultSet result = statement.executeQuery("PRAGMA user_version")) {
                 version = result.next() ? result.getInt(1) : 0;

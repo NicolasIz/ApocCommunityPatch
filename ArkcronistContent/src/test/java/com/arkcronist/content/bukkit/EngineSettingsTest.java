@@ -73,6 +73,35 @@ class EngineSettingsTest {
     }
 
     @Test
+    void gunsLiquidsAndHudsHaveTheirDefaultsAndLimits() throws Exception {
+        EngineSettings settings = read("");
+        assertEquals(1, settings.guns().threads());
+        assertEquals(64, settings.liquids().changesPerTick());
+        assertEquals(10, settings.liquids().contactTicks());
+        assertEquals(1, settings.liquids().chunkReach());
+        assertEquals(20, settings.huds().actionBarTicks());
+        assertEquals(30, settings.huds().saveSeconds());
+        assertTrue(settings.pack().negativeSpaces());
+
+        EngineSettings changed = read("""
+                pack:
+                  negative-spaces: false
+                guns:
+                  threads: 99
+                liquids:
+                  changes-per-tick: 0
+                  chunk-reach: 3
+                huds:
+                  action-bar-ticks: 1
+                """);
+        assertEquals(8, changed.guns().threads(), "capped");
+        assertEquals(1, changed.liquids().changesPerTick(), "at least one");
+        assertEquals(3, changed.liquids().chunkReach());
+        assertEquals(2, changed.huds().actionBarTicks());
+        assertFalse(changed.pack().negativeSpaces());
+    }
+
+    @Test
     void anExternalLinkReplacesTheBuiltInServer() throws Exception {
         EngineSettings settings = read("""
                 http:

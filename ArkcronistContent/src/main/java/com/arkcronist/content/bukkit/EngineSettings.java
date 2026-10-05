@@ -26,7 +26,12 @@ import java.util.regex.PatternSyntaxException;
  * config.yml, read once and then immutable, so any thread may hold on to it.
  */
 public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nullable UploadSettings upload,
-                             Delivery delivery, Crops crops) {
+                             Delivery delivery, Crops crops, Guns guns, Liquids liquids, Huds huds) {
+
+    public EngineSettings(boolean extractExamples, Pack pack, Http http, @Nullable UploadSettings upload,
+                          Delivery delivery, Crops crops) {
+        this(extractExamples, pack, http, upload, delivery, crops, Guns.DEFAULT, Liquids.DEFAULT, Huds.DEFAULT);
+    }
 
     /** Where players download the pack from. */
     public enum Hosting {
@@ -53,7 +58,12 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
      *              zips, relative to the server folder
      */
     public record Pack(String description, int format, int minFormat, int maxFormat, List<String> merge,
-                       ModelData modelData) {
+                       ModelData modelData, boolean negativeSpaces) {
+
+        public Pack(String description, int format, int minFormat, int maxFormat, List<String> merge,
+                    ModelData modelData) {
+            this(description, format, minFormat, maxFormat, merge, modelData, true);
+        }
 
         public Pack(String description, int format, int minFormat, int maxFormat, List<String> merge) {
             this(description, format, minFormat, maxFormat, merge, ModelData.DEFAULT);
@@ -141,15 +151,64 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
     public record Crops(int tickSeconds) {
     }
 
+    /**
+     * Guns.
+     *
+     * @param threads   the threads shots are traced on, {@code ArkContent-Guns-n}
+     * @param reloading shown on the action bar while reloading
+     * @param noAmmo    shown when there is nothing left to reload with
+     */
+    public record Guns(int threads, Component reloading, Component noAmmo) {
+
+        public static final Guns DEFAULT = new Guns(1,
+                MiniMessage.miniMessage().deserialize("<yellow>Reloading..."),
+                MiniMessage.miniMessage().deserialize("<red>Out of ammo"));
+    }
+
+    /**
+     * Custom liquids.
+     *
+     * @param changesPerTick how many liquid blocks may appear or drain in one tick, across the server
+     * @param contactTicks   how often players are checked for standing in a liquid
+     * @param chunkReach     how many chunks around a source its flow is worked out over
+     */
+    public record Liquids(int changesPerTick, int contactTicks, int chunkReach) {
+
+        public static final Liquids DEFAULT = new Liquids(64, 10, 1);
+    }
+
+    /**
+     * HUD bars.
+     *
+     * @param actionBarTicks how often bars shown on the action bar are sent again
+     * @param saveSeconds    how often changed HUD values are written to the database
+     */
+    public record Huds(int actionBarTicks, int saveSeconds) {
+
+        public static final Huds DEFAULT = new Huds(20, 30);
+    }
+
     static EngineSettings read(FileConfiguration config, String serverIp, Logger logger) {
         UploadSettings upload = readUpload(section(config, "upload"), logger);
+        ConfigurationSection guns = section(config, "guns");
+        ConfigurationSection liquids = section(config, "liquids");
+        ConfigurationSection huds = section(config, "huds");
+        MiniMessage text = MiniMessage.miniMessage();
         return new EngineSettings(
                 config.getBoolean("extract-examples", true),
                 readPack(section(config, "pack"), logger),
                 readHttp(section(config, "http"), serverIp, upload != null, logger),
                 upload,
                 readDelivery(section(config, "delivery")),
-                new Crops(Math.max(1, Math.min(60, section(config, "crops").getInt("tick-seconds", 5)))));
+                new Crops(Math.max(1, Math.min(60, section(config, "crops").getInt("tick-seconds", 5)))),
+                new Guns(Math.max(1, Math.min(8, guns.getInt("threads", 1))),
+                        text.deserialize(guns.getString("messages.reloading", "<yellow>Reloading...")),
+                        text.deserialize(guns.getString("messages.no-ammo", "<red>Out of ammo"))),
+                new Liquids(Math.max(1, Math.min(4096, liquids.getInt("changes-per-tick", 64))),
+                        Math.max(1, Math.min(200, liquids.getInt("contact-ticks", 10))),
+                        Math.max(1, Math.min(4, liquids.getInt("chunk-reach", 1)))),
+                new Huds(Math.max(2, Math.min(60, huds.getInt("action-bar-ticks", 20))),
+                        Math.max(5, Math.min(3600, huds.getInt("save-seconds", 30)))));
     }
 
     private static Pack readPack(ConfigurationSection section, Logger logger) {
@@ -161,13 +220,15 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
             logger.warning("pack.format " + format + " must lie between pack.min-format " + min
                     + " and pack.max-format " + max + " - using 46, 46 and 99.");
             return new Pack(description, PackSettings.FIRST_ITEM_MODEL_FORMAT,
-                    PackSettings.FIRST_ITEM_MODEL_FORMAT, 99, merges(section), modelData(section));
+                    PackSettings.FIRST_ITEM_MODEL_FORMAT, 99, merges(section), modelData(section),
+                    section.getBoolean("negative-spaces", true));
         }
         if (min < PackSettings.FIRST_ITEM_MODEL_FORMAT) {
             logger.warning("pack.min-format " + min + " is below 46 (1.21.4). Older clients cannot"
                     + " show these items whatever the pack claims.");
         }
-        return new Pack(description, format, min, max, merges(section), modelData(section));
+        return new Pack(description, format, min, max, merges(section), modelData(section),
+                section.getBoolean("negative-spaces", true));
     }
 
     private static ModelData modelData(ConfigurationSection pack) {

@@ -76,6 +76,24 @@ public final class Protection {
         return all(provider -> provider.allowsChange(block, from));
     }
 
+    /**
+     * Whether a liquid poured at {@code source} may flow on into {@code block}: the change has to be
+     * one a fluid may make from there - into a claim or region only from inside it - and no region
+     * may have switched liquids off.
+     */
+    public boolean allowsLiquidFlow(Block block, Location source) {
+        return all(provider -> provider.allowsChange(block, source) && provider.allowsLiquidFlow(block));
+    }
+
+    /**
+     * Whether a liquid poured at {@code source} may hurt {@code player} in it at {@code block}: not
+     * where a region has switched it off, nor where the liquid could not have flowed in from its
+     * source - so a claim keeps its people safe from what an outsider poured before it was claimed.
+     */
+    public boolean allowsLiquidContact(Player player, Block block, Location source) {
+        return all(provider -> provider.allowsLiquidContact(player, block) && provider.allowsChange(block, source));
+    }
+
     private boolean all(Predicate<ProtectionProvider> question) {
         for (ProtectionProvider provider : providers) {
             try {

@@ -32,4 +32,21 @@ public interface ProtectionProvider {
      * area from outside it.
      */
     boolean allowsChange(Block block, Location from);
+
+    /**
+     * Whether a liquid of this plugin's may flow into {@code block} - over and above
+     * {@link #allowsChange}, for a plugin with a switch of its own for it (WorldGuard's
+     * {@code arkcontent-liquid-flow} flag).
+     */
+    default boolean allowsLiquidFlow(Block block) {
+        return true;
+    }
+
+    /**
+     * Whether a liquid of this plugin's may hurt {@code player} standing in it at {@code block}
+     * (WorldGuard's {@code arkcontent-liquid-damage} flag).
+     */
+    default boolean allowsLiquidContact(Player player, Block block) {
+        return true;
+    }
 }

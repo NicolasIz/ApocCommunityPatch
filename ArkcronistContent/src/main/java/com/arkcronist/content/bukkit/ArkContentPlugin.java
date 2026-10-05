@@ -16,9 +16,18 @@ import com.arkcronist.content.bukkit.furniture.AnimationPlayer;
 import com.arkcronist.content.bukkit.furniture.FurnitureService;
 import com.arkcronist.content.bukkit.furniture.SeatService;
 import com.arkcronist.content.bukkit.furniture.StorageService;
+import com.arkcronist.content.bukkit.gun.GunListener;
+import com.arkcronist.content.bukkit.gun.GunService;
 import com.arkcronist.content.bukkit.hooks.HookManager;
+import com.arkcronist.content.bukkit.hud.ActionBars;
+import com.arkcronist.content.bukkit.hud.HudListener;
+import com.arkcronist.content.bukkit.hud.HudRegistry;
+import com.arkcronist.content.bukkit.hud.HudService;
 import com.arkcronist.content.bukkit.item.ItemFactory;
 import com.arkcronist.content.bukkit.item.ItemRegistry;
+import com.arkcronist.content.bukkit.liquid.LiquidListener;
+import com.arkcronist.content.bukkit.liquid.LiquidRegistry;
+import com.arkcronist.content.bukkit.liquid.LiquidService;
 import com.arkcronist.content.bukkit.listener.CustomBlockListener;
 import com.arkcronist.content.bukkit.listener.FurnitureListener;
 import com.arkcronist.content.bukkit.listener.ItemCombatListener;
@@ -98,6 +107,12 @@ public final class ArkContentPlugin extends JavaPlugin {
     private ContentMenus menus;
     private AdvancementService advancements;
     private CustomBlockService blockService;
+    private ActionBars actionBars;
+    private GunService guns;
+    private final LiquidRegistry liquidRegistry = new LiquidRegistry();
+    private final HudRegistry hudRegistry = new HudRegistry();
+    private LiquidService liquids;
+    private HudService huds;
     /** Set by the worker once the port is bound; read from the main thread. */
     private volatile PackHttpServer http;
     private ContentPipeline pipeline;
@@ -161,6 +176,12 @@ public final class ArkContentPlugin extends JavaPlugin {
         crops.stopAt(block -> furniture.identify(block).isPresent());
         this.menus = new ContentMenus(getServer(), items, itemFactory);
         this.advancements = new AdvancementService(this, items, itemFactory, database);
+        this.actionBars = new ActionBars(() -> getServer().getCurrentTick());
+        this.guns = new GunService(this, items, itemFactory, hooks, actionBars, settings.guns());
+        hooks.addPlaceholders(guns::placeholder);
+        this.liquids = new LiquidService(this, liquidRegistry, protection, database, settings.liquids());
+        this.huds = new HudService(this, hudRegistry, database, actionBars, settings.huds(), hooks::placeholders);
+        hooks.addPlaceholders(huds::placeholder);
 
         PluginManager plugins = getServer().getPluginManager();
         plugins.registerEvents(new PackDeliveryListener(delivery, settings, getLogger()), this);
@@ -174,6 +195,9 @@ public final class ArkContentPlugin extends JavaPlugin {
         plugins.registerEvents(new PlacedContentListener(placed, blockService, furniture, getLogger()), this);
         plugins.registerEvents(new ContentMenuListener(this), this);
         plugins.registerEvents(new AdvancementListener(this, advancements), this);
+        plugins.registerEvents(new GunListener(this, guns), this);
+        plugins.registerEvents(new LiquidListener(liquids, liquidRegistry, itemFactory, protection), this);
+        plugins.registerEvents(new HudListener(huds, itemFactory), this);
 
         openStorage();
 
@@ -195,6 +219,9 @@ public final class ArkContentPlugin extends JavaPlugin {
         pipeline.rebuild();
         cropTicker.start();
         storage.start();
+        // Queued behind the database opening, like the rest of storage.
+        liquids.start(getServer().getWorlds());
+        huds.start();
     }
 
     /**
@@ -272,6 +299,17 @@ public final class ArkContentPlugin extends JavaPlugin {
         if (animations != null) {
             animations.stopAll();
         }
+        // Rounds still in memory go onto the guns before the players' inventories are saved.
+        if (guns != null) {
+            guns.shutdown();
+        }
+        if (liquids != null) {
+            liquids.shutdown();
+        }
+        // HUD values are queued for writing ahead of the database closing below.
+        if (huds != null) {
+            huds.shutdown();
+        }
         if (hooks != null) {
             hooks.disable();
         }
@@ -313,12 +351,12 @@ public final class ArkContentPlugin extends JavaPlugin {
         return blocks;
     }
 
-    /** Where custom blocks and furniture stand, answered from memory. */
     /** Custom blocks in the world; null until the plugin has enabled. */
     public CustomBlockService customBlocks() {
         return blockService;
     }
 
+    /** Where custom blocks and furniture stand, answered from memory. */
     public PlacedContentStore placed() {
         return placed;
     }
@@ -357,12 +395,42 @@ public final class ArkContentPlugin extends JavaPlugin {
         return crops;
     }
 
-    /** Opens and refreshes the content browser. */
     /** The plugin's advancements on the server; null before enable. */
     public AdvancementService advancements() {
         return advancements;
     }
 
+    /** Guns: shooting, magazines, reloading. Null before enable. */
+    public GunService guns() {
+        return guns;
+    }
+
+    /** Every loaded liquid, by id and by state. */
+    public LiquidRegistry liquidRegistry() {
+        return liquidRegistry;
+    }
+
+    /** Liquids poured in the world. Null before enable. */
+    public LiquidService liquids() {
+        return liquids;
+    }
+
+    /** Every loaded HUD. */
+    public HudRegistry hudRegistry() {
+        return hudRegistry;
+    }
+
+    /** HUD values and bars. Null before enable. */
+    public HudService huds() {
+        return huds;
+    }
+
+    /** The action bar, shared by HUD bars and short messages. Null before enable. */
+    public ActionBars actionBars() {
+        return actionBars;
+    }
+
+    /** Opens and refreshes the content browser. */
     public ContentMenus menus() {
         return menus;
     }

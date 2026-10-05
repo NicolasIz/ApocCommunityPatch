@@ -1,0 +1,67 @@
+# ---------------------------------------------------------------------------
+#  HUDs (1.7): bars drawn on the screen with the pack's font.
+# ---------------------------------------------------------------------------
+#  Each HUD is a row of icons - full, half, empty - written with negative
+#  space characters so it sits exactly where it is put and the rest of the
+#  line is not moved by it. Show it with PlaceholderAPI anywhere text goes -
+#  TAB (scoreboard, header, bossbar), DeluxeMenus, holograms:
+#
+#     %arkcontent_hud_thirst%         the bar
+#     %arkcontent_hud_thirst_value%   its value, and _max its maximum
+#     %arkcontent_space_-20%          20 pixels back (any number, + or -)
+#
+#  or on the action bar, sent by the plugin: action-bar: true.
+#
+#    icons     textures/hud/<name>.png; half and empty are optional
+#    height    icon height in font pixels (a chat line is 9)
+#    ascent    how high above the line's baseline it reaches: lower or
+#              negative moves it down the screen (at most 'height'). On the
+#              action bar, -5 puts a 9-pixel bar just over the armour row
+#    segments  icons in the bar
+#    spacing   extra pixels between icons, negative to overlap
+#    offset    pixels from where it is written; negative moves it left
+#    value     either {placeholder, max} - another plugin's value, such as
+#              "%mmocore_mana%" out of "%mmocore_max_mana%" - or a value
+#              kept by this plugin in its database:
+#                start, max      its first and highest value
+#                per-second      how it changes by itself (negative drains)
+#                empty-damage    damage each second while it is at 0
+#                consume         what eating or drinking an item adds:
+#                                a material, or a custom item's id
+#              set and change it with /arkcontent hud <player> <hud> set|add|take <n>
+# ---------------------------------------------------------------------------
+
+huds:
+
+  # Over the hunger bar: from 10 pixels right of the centre, ten drops 8 apart.
+  thirst:
+    icons: { full: hud/thirst_full, half: hud/thirst_half, empty: hud/thirst_empty }
+    height: 9
+    ascent: -5
+    segments: 10
+    spacing: -1
+    offset: 10
+    action-bar: true
+    value:
+      start: 20
+      max: 20
+      per-second: -0.025
+      empty-damage: 1
+      consume:
+        POTION: 8
+        MILK_BUCKET: 4
+        MELON_SLICE: 2
+
+  # Over the hearts: from 91 pixels left of the centre.
+  mana:
+    icons: { full: hud/mana_full, half: hud/mana_half, empty: hud/mana_empty }
+    height: 9
+    ascent: -5
+    segments: 10
+    spacing: -2
+    offset: -91
+    action-bar: true
+    value:
+      start: 100
+      max: 100
+      per-second: 2

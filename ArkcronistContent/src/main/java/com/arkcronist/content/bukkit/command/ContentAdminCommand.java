@@ -3,14 +3,21 @@ package com.arkcronist.content.bukkit.command;
 import com.arkcronist.content.bukkit.ArkContentPlugin;
 import com.arkcronist.content.bukkit.ContentPipeline;
 import com.arkcronist.content.bukkit.hooks.NpcBridge;
+import com.arkcronist.content.bukkit.hud.HudService;
 import com.arkcronist.content.bukkit.item.CustomItem;
+import com.arkcronist.content.bukkit.liquid.LiquidRegistry;
+import com.arkcronist.content.bukkit.liquid.LiquidService;
 import com.arkcronist.content.bukkit.menu.ContentMenu;
 import com.arkcronist.content.bukkit.menu.Shop;
-import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.block.NoteBlockState;
+import com.arkcronist.content.core.definition.Placement;
+import com.arkcronist.content.core.hud.HudDefinition;
+import com.arkcronist.content.core.hud.HudLayout;
 import com.arkcronist.content.core.importer.ImportReport;
+import com.arkcronist.content.core.liquid.TripwireState;
 import com.arkcronist.content.core.pack.PackArtifact;
 import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -20,19 +27,23 @@ import io.papermc.paper.command.brigadier.Commands;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 
 /**
- * {@code /arkcontent}: {@code reload}, {@code info}, {@code import} and {@code animate} for admins,
+ * {@code /arkcontent}: {@code reload}, {@code info}, {@code import}, {@code animate}, {@code hud}
+ * and {@code liquids} for admins,
  * {@code menu} for anyone allowed to browse, {@code shop} for buyers when Vault is installed, and
  * {@code npc} for admins when Citizens is. On its own, run by a player who may browse, it opens the
  * menu.
@@ -75,6 +86,28 @@ public final class ContentAdminCommand {
                                     return builder.buildFuture();
                                 })
                                 .executes(this::animate)))
+                .then(Commands.literal("hud").requires(ContentAdminCommand::admin)
+                        .then(Commands.argument("player", StringArgumentType.word())
+                                .suggests((context, builder) -> {
+                                    plugin.getServer().getOnlinePlayers().forEach(online -> builder.suggest(online.getName()));
+                                    return builder.buildFuture();
+                                })
+                                .then(Commands.argument("hud", StringArgumentType.word())
+                                        .suggests((context, builder) -> {
+                                            plugin.hudRegistry().all().forEach(hud -> builder.suggest(hud.definition().fullId()));
+                                            return builder.buildFuture();
+                                        })
+                                        .executes(context -> hud(context, null, 0))
+                                        .then(Commands.argument("change", StringArgumentType.word())
+                                                .suggests((context, builder) -> {
+                                                    List.of("set", "add", "take").forEach(builder::suggest);
+                                                    return builder.buildFuture();
+                                                })
+                                                .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0))
+                                                        .executes(context -> hud(context,
+                                                                StringArgumentType.getString(context, "change"),
+                                                                DoubleArgumentType.getDouble(context, "amount"))))))))
+                .then(Commands.literal("liquids").requires(ContentAdminCommand::admin).executes(this::liquids))
                 .then(Commands.literal("menu")
                         .requires(source -> source.getSender().hasPermission(ContentMenu.BROWSE_PERMISSION))
                         .executes(this::menu))
@@ -318,6 +351,61 @@ public final class ContentAdminCommand {
         sender.sendMessage(Component.text(item.get().id() + ": material " + item.get().material()
                 + ", custom_model_data " + number.get(), NamedTextColor.GOLD));
         return number.get();
+    }
+
+    /** {@code /arkcontent hud <player> <hud> [set|add|take <amount>]}: shows or changes a bar's value. */
+    private int hud(CommandContext<CommandSourceStack> context, @Nullable String change, double amount) {
+        CommandSender sender = context.getSource().getSender();
+        String name = StringArgumentType.getString(context, "player");
+        Player player = plugin.getServer().getPlayerExact(name);
+        Optional<HudLayout> hud = plugin.hudRegistry().find(StringArgumentType.getString(context, "hud"));
+        if (player == null || hud.isEmpty()) {
+            sender.sendMessage(Component.text(player == null ? "No player '" + name + "' online."
+                    : "No HUD '" + StringArgumentType.getString(context, "hud") + "'.", NamedTextColor.RED));
+            return 0;
+        }
+        HudService huds = plugin.huds();
+        String id = hud.get().definition().fullId();
+        if (change != null) {
+            boolean stored = hud.get().definition().source() instanceof HudDefinition.Source.Stored;
+            if (!stored) {
+                sender.sendMessage(Component.text(id + " shows another plugin's value through a placeholder;"
+                        + " change it there.", NamedTextColor.RED));
+                return 0;
+            }
+            switch (change.toLowerCase(Locale.ROOT)) {
+                case "set" -> huds.set(player.getUniqueId(), hud.get(), amount);
+                case "add" -> huds.add(player.getUniqueId(), hud.get(), amount);
+                case "take" -> huds.add(player.getUniqueId(), hud.get(), -amount);
+                default -> {
+                    sender.sendMessage(Component.text("Use set, add or take.", NamedTextColor.RED));
+                    return 0;
+                }
+            }
+            plugin.actionBars().send(player);
+        }
+        double[] value = huds.valueAndMax(player, hud.get());
+        sender.sendMessage(Component.text(player.getName() + " - " + id + ": " + value[0] + " / " + value[1],
+                NamedTextColor.GOLD));
+        return (int) Math.round(value[0]);
+    }
+
+    /** {@code /arkcontent liquids}: the liquids loaded, and the sources poured in each world. */
+    private int liquids(CommandContext<CommandSourceStack> context) {
+        CommandSender sender = context.getSource().getSender();
+        sender.sendMessage(Component.text("Liquids: " + plugin.liquidRegistry().all().size() + " of "
+                + TripwireState.LIQUIDS + " (" + String.join(", ", plugin.liquidRegistry().all().stream()
+                .map(LiquidRegistry.Liquid::id).sorted().toList()) + ")", NamedTextColor.GOLD));
+        int total = 0;
+        for (World world : plugin.getServer().getWorlds()) {
+            Map<Long, LiquidService.Source> sources = plugin.liquids().sources(world);
+            if (!sources.isEmpty()) {
+                sender.sendMessage(Component.text("  " + world.getName() + ": " + sources.size() + " source(s)",
+                        NamedTextColor.YELLOW));
+                total += sources.size();
+            }
+        }
+        return total;
     }
 
     private int info(CommandContext<CommandSourceStack> context) {

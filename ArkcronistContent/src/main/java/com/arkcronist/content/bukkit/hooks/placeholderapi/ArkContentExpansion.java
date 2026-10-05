@@ -1,6 +1,7 @@
 package com.arkcronist.content.bukkit.hooks.placeholderapi;
 
 import com.arkcronist.content.bukkit.emoji.EmojiRegistry;
+import com.arkcronist.content.bukkit.hooks.PlaceholderSource;
 import com.arkcronist.content.bukkit.item.CustomItem;
 import com.arkcronist.content.bukkit.item.ItemFactory;
 import com.arkcronist.content.bukkit.item.ItemRegistry;
@@ -9,6 +10,8 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
 
 /**
  * Placeholders, so plugins that only know PlaceholderAPI - TAB, DeluxeMenus, scoreboards, holograms
@@ -19,6 +22,10 @@ import org.jetbrains.annotations.Nullable;
  * %arkcontent_cmd_demo:ruby%  the ruby's custom_model_data number (pack.custom-model-data)
  * %arkcontent_held%          id of the custom item in the player's main hand, or nothing
  * %arkcontent_items%         how many custom items are loaded
+ * %arkcontent_gun_ammo%      rounds in the magazine of the gun in hand; also gun_magazine,
+ *                            gun_reserve (ammunition carried) and gun_reloading
+ * %arkcontent_hud_mana%      the mana bar, drawn in the pack's font; also hud_mana_value and
+ *                            hud_mana_max, and space_-20 for a 20-pixel step back
  * </pre>
  *
  * <p>An emoji placeholder returns the bare character, so the text around it decides its colour;
@@ -30,12 +37,15 @@ public final class ArkContentExpansion extends PlaceholderExpansion {
     private final EmojiRegistry emojis;
     private final ItemRegistry items;
     private final ItemFactory factory;
+    private final List<PlaceholderSource> sources;
 
-    public ArkContentExpansion(String version, EmojiRegistry emojis, ItemRegistry items, ItemFactory factory) {
+    public ArkContentExpansion(String version, EmojiRegistry emojis, ItemRegistry items, ItemFactory factory,
+                               List<PlaceholderSource> sources) {
         this.version = version;
         this.emojis = emojis;
         this.items = items;
         this.factory = factory;
+        this.sources = sources;
     }
 
     @Override
@@ -75,7 +85,18 @@ public final class ArkContentExpansion extends PlaceholderExpansion {
                     ? factory.identify(online.getInventory().getItemInMainHand()).map(CustomItem::id).orElse("")
                     : "";
             case "items" -> String.valueOf(items.size());
-            default -> null;
+            default -> fromSources(player, params);
         };
+    }
+
+    /** Guns, HUDs: the parts of the plugin that answer placeholders of their own. */
+    private @Nullable String fromSources(@Nullable OfflinePlayer player, String params) {
+        for (PlaceholderSource source : sources) {
+            String value = source.resolve(player, params);
+            if (value != null) {
+                return value;
+            }
+        }
+        return null;
     }
 }

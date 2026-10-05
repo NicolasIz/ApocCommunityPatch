@@ -19,7 +19,9 @@ public enum ContentType {
     /** Placed as an invisible support block with an item display showing its model. */
     CUSTOM_FURNITURE("custom_furniture"),
     /** Planted on soil, and grows through stages - each its own model - until it can be harvested. */
-    CUSTOM_CROP("custom_crop");
+    CUSTOM_CROP("custom_crop"),
+    /** Poured from its bucket as a tripwire state of its own, and flows from there like water. */
+    CUSTOM_LIQUID("custom_liquid");
 
     private final String yamlName;
 

@@ -32,7 +32,7 @@ class HookIsolationTest {
                 "ru.endlesscode.mimic.items.BukkitItemsRegistry", "com.jojodmo.itembridge.ItemBridgeListener",
                 "com.extendedclip.deluxemenus.hooks.ItemHook",
                 "org.betonquest.betonquest.api.integration.IntegrationService", "fr.xephi.authme.api.v3.AuthMeApi",
-                "com.sk89q.worldedit.internal.registry.InputParser")) {
+                "com.sk89q.worldedit.internal.registry.InputParser", "com.sk89q.worldguard.WorldGuard")) {
             assertThrows(ClassNotFoundException.class, () -> Class.forName(foreign), foreign);
         }
     }
@@ -40,7 +40,12 @@ class HookIsolationTest {
     @Test
     void whatStartsTheHooksLoadsWithoutThem() {
         for (Class<?> type : List.of(HookManager.class, ArkContentPlugin.class, ContentAdminCommand.class,
-                com.arkcronist.content.bukkit.advancement.AdvancementService.class, ContentAccess.class)) {
+                com.arkcronist.content.bukkit.advancement.AdvancementService.class, ContentAccess.class,
+                com.arkcronist.content.bukkit.gun.GunService.class, com.arkcronist.content.bukkit.gun.GunListener.class,
+                com.arkcronist.content.bukkit.liquid.LiquidService.class,
+                com.arkcronist.content.bukkit.liquid.LiquidListener.class,
+                com.arkcronist.content.bukkit.hud.HudService.class, com.arkcronist.content.bukkit.hud.ActionBars.class,
+                com.arkcronist.content.bukkit.ContentPipeline.class)) {
             assertDoesNotThrow(type::getDeclaredMethods, type.getName());
             assertDoesNotThrow(type::getDeclaredFields, type.getName());
         }

@@ -244,4 +244,58 @@ public sealed interface Placement {
         public static final Vec3 ZERO = new Vec3(0, 0, 0);
         public static final Vec3 ONE = new Vec3(1, 1, 1);
     }
+
+    /**
+     * A liquid: poured from its item - a bucket - it becomes a source, and flows from there the way
+     * water does: down while it can, then out to the sides for {@code flowDistance} blocks.
+     *
+     * <p>Drawn by two tripwire states that no vanilla tripwire takes (disarmed, unpowered): one for
+     * a source, one for flowing liquid. Tripwire is drawn translucent and has no collision, so a
+     * liquid can be seen through and walked into.</p>
+     *
+     * @param flowDistance how far it runs sideways from a source, or from where it lands, 1-8
+     * @param tickRate     ticks between one step of the flow and the next: 5 is water, 30 lava
+     * @param maxFall      how many blocks it falls at most before it stops
+     * @param source       how a source is drawn
+     * @param flowing      how flowing liquid is drawn
+     * @param contact      what it does to a player standing in it
+     */
+    record Liquid(int flowDistance, int tickRate, int maxFall, ModelSource source, ModelSource flowing,
+                  Contact contact) implements Placement {
+
+        @Override
+        public ContentType type() {
+            return ContentType.CUSTOM_LIQUID;
+        }
+    }
+
+    /**
+     * What a liquid does to a player in it, every {@code intervalTicks} they stay in.
+     *
+     * @param damage     half hearts each time; 0 for none
+     * @param damageType the vanilla damage type it is dealt as, e.g. {@code minecraft:in_fire}
+     * @param fireTicks  sets the player alight for this long; 0 for not
+     * @param freezeTicks freezes the player, as powder snow does, for this long; 0 for not
+     * @param effects    potion effects given each time
+     */
+    record Contact(int intervalTicks, double damage, String damageType, int fireTicks, int freezeTicks,
+                   List<Effect> effects) {
+
+        public static final Contact HARMLESS = new Contact(10, 0, "minecraft:generic", 0, 0, List.of());
+
+        public Contact {
+            effects = List.copyOf(effects);
+        }
+
+        public boolean harmless() {
+            return damage <= 0 && fireTicks <= 0 && freezeTicks <= 0 && effects.isEmpty();
+        }
+    }
+
+    /**
+     * A potion effect: its type by key ({@code minecraft:poison}), how long, and its level counted
+     * from 0.
+     */
+    record Effect(String type, int durationTicks, int amplifier) {
+    }
 }

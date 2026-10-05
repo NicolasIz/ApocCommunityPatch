@@ -5,6 +5,7 @@ import com.arkcronist.content.bukkit.block.CustomBlock;
 import com.arkcronist.content.bukkit.emoji.EmojiRegistry;
 import com.arkcronist.content.bukkit.item.CustomItem;
 import com.arkcronist.content.bukkit.item.ItemRegistry;
+import com.arkcronist.content.bukkit.liquid.LiquidRegistry;
 import com.arkcronist.content.bukkit.pack.PackDelivery;
 import com.arkcronist.content.core.advancement.AdvancementCompiler;
 import com.arkcronist.content.core.allocation.StableAllocator;
@@ -13,8 +14,14 @@ import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.definition.EmojiDefinition;
 import com.arkcronist.content.core.definition.ItemDefinition;
 import com.arkcronist.content.core.definition.Placement;
+import com.arkcronist.content.core.hud.GlyphMetrics;
+import com.arkcronist.content.core.hud.HudDefinition;
+import com.arkcronist.content.core.hud.HudGlyph;
+import com.arkcronist.content.core.hud.HudLayout;
+import com.arkcronist.content.core.hud.HudRenderer;
 import com.arkcronist.content.core.importer.ImportReport;
 import com.arkcronist.content.core.importer.ItemsAdderImporter;
+import com.arkcronist.content.core.liquid.TripwireState;
 import com.arkcronist.content.core.loader.ContentLoader;
 import com.arkcronist.content.core.loader.ExampleUpdates;
 import com.arkcronist.content.core.loader.LoadReport;
@@ -37,6 +44,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -129,7 +137,26 @@ public final class ContentPipeline {
                     "contents/demo/textures/item/ruby_helmet_worn.png"),
             "1.5.0", List.of(
                     "contents/demo/advancements.yml",
-                    "contents/demo/textures/gui/advancements/ruby.png"));
+                    "contents/demo/textures/gui/advancements/ruby.png"),
+            "1.7.0", List.of(
+                    "contents/demo/guns.yml",
+                    "contents/demo/textures/item/ruby_pistol.png",
+                    "contents/demo/textures/item/ruby_shotgun.png",
+                    "contents/demo/textures/item/ruby_bullet.png",
+                    "contents/demo/liquids.yml",
+                    "contents/demo/textures/block/acid.png",
+                    "contents/demo/textures/block/acid.png.mcmeta",
+                    "contents/demo/textures/block/frost.png",
+                    "contents/demo/textures/block/frost.png.mcmeta",
+                    "contents/demo/textures/item/acid_bucket.png",
+                    "contents/demo/textures/item/frost_bucket.png",
+                    "contents/demo/huds.yml",
+                    "contents/demo/textures/hud/thirst_full.png",
+                    "contents/demo/textures/hud/thirst_half.png",
+                    "contents/demo/textures/hud/thirst_empty.png",
+                    "contents/demo/textures/hud/mana_full.png",
+                    "contents/demo/textures/hud/mana_half.png",
+                    "contents/demo/textures/hud/mana_empty.png"));
 
     /** Copied into contents/ the first time the plugin starts. */
     private static final List<String> EXAMPLES = Stream.concat(FIRST_EXAMPLES.stream(),
@@ -157,49 +184,75 @@ public final class ContentPipeline {
     private record Hosted(@Nullable String url, String note, boolean keepPrevious) {
     }
 
-    /** Emoji characters: Unicode's private use area, which no font draws until a pack says so. */
-    private static final StableAllocator EMOJI_CHARACTERS = new StableAllocator(0xE000, 0xF8FF, "emoji character",
+    /**
+     * Emoji characters: Unicode's private use area, which no font draws until a pack says so - its
+     * first 4096 characters; the rest is for HUD icons and the space characters.
+     */
+    private static final StableAllocator EMOJI_CHARACTERS = new StableAllocator(0xE000, 0xEFFF, "emoji character",
             "to emojis no longer defined; remove those from emoji_characters.json once no sign or book uses them");
+
+    /** HUD icons: the private use area above the emojis', up to where the space characters begin. */
+    private static final StableAllocator HUD_CHARACTERS = new StableAllocator(0xF000, 0xF7FF, "HUD character",
+            "to HUDs no longer defined; remove those from hud_characters.json");
+
+    /** Liquids: one pair of tripwire states each, of the sixteen free pairs. */
+    private static final StableAllocator LIQUID_SLOTS = new StableAllocator(0, TripwireState.LIQUIDS - 1,
+            "pair of tripwire states", "to liquids no longer defined; remove those from liquid_states.json once"
+            + " none is left poured in a world");
 
     /**
      * One rebuild's progress, handed from stage to stage.
      *
-     * @param noteBlocks the state each custom block got, by id
-     * @param emojis     every emoji defined, and the character it got once assigned
+     * @param noteBlocks     the state each custom block got, by id
+     * @param emojis         every emoji defined, and the character it got once assigned
+     * @param liquids        the pair of tripwire states each liquid got, by id
+     * @param huds           every HUD, with the characters its icons got
      */
     private record Build(Map<String, CustomItem> items, Map<String, NoteBlockState> noteBlocks,
                          List<EmojiDefinition> emojiDefinitions, Map<EmojiDefinition, Integer> emojis,
                          List<AdvancementCompiler.Compiled> advancements, Map<String, Integer> modelData,
-                         List<String> problems, int files, PackArtifact artifact, Hosted hosted) {
+                         List<HudDefinition> hudDefinitions, Map<String, Integer> liquids, List<HudLayout> huds,
+                         List<HudGlyph> hudGlyphs, List<String> problems, int files, PackArtifact artifact,
+                         Hosted hosted) {
 
         Build withNoteBlocks(Map<String, NoteBlockState> noteBlocks) {
-            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, problems, files,
-                    artifact, hosted);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
+                    liquids, huds, hudGlyphs, problems, files, artifact, hosted);
         }
 
         Build withEmojis(Map<EmojiDefinition, Integer> emojis) {
-            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, problems, files,
-                    artifact, hosted);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
+                    liquids, huds, hudGlyphs, problems, files, artifact, hosted);
         }
 
         Build withFiles(int files) {
-            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, problems, files,
-                    artifact, hosted);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
+                    liquids, huds, hudGlyphs, problems, files, artifact, hosted);
         }
 
         Build withArtifact(PackArtifact artifact) {
-            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, problems, files,
-                    artifact, hosted);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
+                    liquids, huds, hudGlyphs, problems, files, artifact, hosted);
         }
 
         Build withModelData(Map<String, Integer> modelData) {
-            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, problems, files,
-                    artifact, hosted);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
+                    liquids, huds, hudGlyphs, problems, files, artifact, hosted);
+        }
+
+        Build withLiquids(Map<String, Integer> liquids) {
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
+                    liquids, huds, hudGlyphs, problems, files, artifact, hosted);
+        }
+
+        Build withHuds(List<HudLayout> huds, List<HudGlyph> hudGlyphs) {
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
+                    liquids, huds, hudGlyphs, problems, files, artifact, hosted);
         }
 
         Build withHosted(Hosted hosted) {
-            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, problems, files,
-                    artifact, hosted);
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
+                    liquids, huds, hudGlyphs, problems, files, artifact, hosted);
         }
     }
 
@@ -219,6 +272,8 @@ public final class ContentPipeline {
     private final Path noteBlockStateFile;
     private final Path emojiCharacterFile;
     private final Path modelDataFile;
+    private final Path liquidStateFile;
+    private final Path hudCharacterFile;
     /** The example sets offered to contents/ so far, one per line. */
     private final Path examplesOfferedFile;
     /** What 1.4.0 wrote instead: the one set it knew, 1.4.0. */
@@ -266,6 +321,8 @@ public final class ContentPipeline {
         this.noteBlockStateFile = data.resolve("data").resolve("note_block_states.json");
         this.emojiCharacterFile = data.resolve("data").resolve("emoji_characters.json");
         this.modelDataFile = data.resolve("data").resolve("custom_model_data.json");
+        this.liquidStateFile = data.resolve("data").resolve("liquid_states.json");
+        this.hudCharacterFile = data.resolve("data").resolve("hud_characters.json");
         this.examplesOfferedFile = data.resolve("data").resolve("examples_offered.txt");
         this.legacyExamplesFile = data.resolve("data").resolve("examples_version.txt");
 
@@ -375,6 +432,8 @@ public final class ContentPipeline {
                 .thenApplyAsync(this::assignNoteBlockStates, worker)
                 .thenApplyAsync(this::assignEmojiCharacters, worker)
                 .thenApplyAsync(this::assignModelData, worker)
+                .thenApplyAsync(this::assignLiquidStates, worker)
+                .thenApplyAsync(this::assignHudCharacters, worker)
                 .thenApplyAsync(this::compilePack, worker)
                 .thenComposeAsync(this::zipPack, worker)
                 .thenApplyAsync(this::hashPack, worker)
@@ -426,7 +485,7 @@ public final class ContentPipeline {
                     ContentPipeline::textComponent);
             problems.addAll(advancements.problems());
             return new Build(items, Map.of(), report.emojis(), Map.of(), advancements.advancements(), Map.of(),
-                    problems, 0, null, null);
+                    report.huds(), Map.of(), List.of(), List.of(), problems, 0, null, null);
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
@@ -551,15 +610,108 @@ public final class ContentPipeline {
         }
     }
 
+    /**
+     * A pair of tripwire states for every liquid: the pair it had before, or the lowest free one.
+     * Kept in data/liquid_states.json, because a poured liquid is only its state in the world.
+     */
+    private Build assignLiquidStates(Build build) {
+        try {
+            List<String> ids = build.items().values().stream()
+                    .filter(item -> item.placement() instanceof Placement.Liquid)
+                    .map(CustomItem::id)
+                    .toList();
+            Map<String, Integer> previous = StableAllocator.read(liquidStateFile);
+            if (ids.isEmpty() && previous.isEmpty()) {
+                return build;
+            }
+            StableAllocator.Allocation allocation = LIQUID_SLOTS.allocate(previous, ids);
+            if (allocation.changed()) {
+                StableAllocator.write(liquidStateFile, allocation.assignments());
+            }
+            build.problems().addAll(allocation.problems());
+            return build.withLiquids(allocation.active());
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
+        }
+    }
+
+    /**
+     * A character for every HUD icon, kept in data/hud_characters.json like the emojis', and each
+     * icon's width as the client will draw it - read from its image, since the bar steps back over
+     * itself by exactly that much.
+     */
+    private Build assignHudCharacters(Build build) {
+        try {
+            List<String> keys = new ArrayList<>();
+            for (HudDefinition hud : build.hudDefinitions()) {
+                hud.icons().forEach(icon -> keys.add(hud.iconKey(icon.name())));
+            }
+            Map<String, Integer> previous = StableAllocator.read(hudCharacterFile);
+            if (keys.isEmpty() && previous.isEmpty()) {
+                return build;
+            }
+            StableAllocator.Allocation allocation = HUD_CHARACTERS.allocate(previous, keys);
+            if (allocation.changed()) {
+                StableAllocator.write(hudCharacterFile, allocation.assignments());
+            }
+            build.problems().addAll(allocation.problems());
+
+            List<HudLayout> layouts = new ArrayList<>();
+            List<HudGlyph> glyphs = new ArrayList<>();
+            for (HudDefinition hud : build.hudDefinitions()) {
+                Map<String, int[]> icons = new HashMap<>();
+                for (HudDefinition.Icon icon : hud.icons()) {
+                    Integer character = allocation.active().get(hud.iconKey(icon.name()));
+                    if (character == null) {
+                        continue;
+                    }
+                    String origin = "hud " + hud.fullId() + " " + icon.name();
+                    icons.put(icon.name(), new int[]{character, iconAdvance(hud, icon, origin, build.problems())});
+                    glyphs.add(new HudGlyph(origin, hud.namespace(), icon.texture(), hud.sourceRoot(), hud.height(),
+                            hud.ascent(), character));
+                }
+                int[] full = icons.get("full");
+                if (full == null) {
+                    continue;
+                }
+                int[] half = icons.getOrDefault("half", new int[]{0, 0});
+                int[] empty = icons.getOrDefault("empty", new int[]{0, 0});
+                layouts.add(new HudLayout(hud, new HudRenderer.Glyphs((char) full[0], full[1], (char) half[0], half[1],
+                        (char) empty[0], empty[1])));
+            }
+            return build.withHuds(layouts, glyphs);
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
+        }
+    }
+
+    /** How wide the client draws an icon; for a texture this plugin cannot read, its height plus one. */
+    private static int iconAdvance(HudDefinition hud, HudDefinition.Icon icon, String origin, List<String> problems) {
+        if (icon.texture().namespace().equals(hud.namespace())) {
+            Path file = hud.sourceRoot().resolve("textures").resolve(icon.texture().path() + ".png");
+            try {
+                return GlyphMetrics.advance(file, hud.height());
+            } catch (IOException exception) {
+                problems.add(origin + ": could not read " + file.getFileName() + " to measure it - "
+                        + exception.getMessage() + "; the bar may be placed a few pixels off");
+            }
+        } else {
+            problems.add(origin + ": " + icon.texture() + " is another pack's texture, so its width is not known;"
+                    + " taken as " + (hud.height() + 1) + " pixels");
+        }
+        return hud.height() + 1;
+    }
+
     /** The vanilla folder layout under pack/. Only items that survived loading get assets. */
     private Build compilePack(Build build) {
         try {
             List<ItemDefinition> definitions = build.items().values().stream()
                     .map(CustomItem::definition)
                     .toList();
-            PackCompiler.Result result = compiler.compile(packDir, definitions, build.noteBlocks(), build.emojis(),
-                    build.advancements().stream().map(AdvancementCompiler.Compiled::definition).toList(),
-                    build.modelData(), List.copyOf(externalPacks.values()));
+            PackCompiler.Result result = compiler.compile(packDir, new PackCompiler.Input(definitions, build.noteBlocks(),
+                    build.emojis(), build.advancements().stream().map(AdvancementCompiler.Compiled::definition).toList(),
+                    build.modelData(), build.liquids(), build.hudGlyphs(), settings.pack().negativeSpaces(),
+                    List.copyOf(externalPacks.values())));
             build.problems().addAll(result.problems());
             return build;
         } catch (IOException exception) {
@@ -704,6 +856,18 @@ public final class ContentPipeline {
                     plugin.getServer().createBlockData(entry.getValue().asBlockData())));
         }
         blocks.replace(customBlocks);
+        List<LiquidRegistry.Liquid> liquids = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : build.liquids().entrySet()) {
+            CustomItem item = build.items().get(entry.getKey());
+            if (item != null && item.placement() instanceof Placement.Liquid liquid) {
+                int slot = entry.getValue();
+                liquids.add(new LiquidRegistry.Liquid(item, liquid, slot,
+                        plugin.getServer().createBlockData(TripwireState.source(slot).blockData()),
+                        plugin.getServer().createBlockData(TripwireState.flowing(slot).blockData())));
+            }
+        }
+        plugin.liquidRegistry().replace(liquids);
+        plugin.hudRegistry().replace(build.huds());
         emojis.replace(build.emojis());
         int advancements = plugin.advancements() == null ? 0 : plugin.advancements().publish(build.advancements());
         if (plugin.hooks() != null) {

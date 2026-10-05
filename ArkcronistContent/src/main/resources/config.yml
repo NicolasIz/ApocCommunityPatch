@@ -43,6 +43,10 @@ pack:
   custom-model-data:
     enabled: true
     first: 10000
+  # Space characters in the font that move text by whole pixels, right or left
+  # (U+F801-F80F back, U+F821-F82F forward). HUDs use them; menus and scoreboards can
+  # too, through %arkcontent_space_<pixels>%. Written even with no HUD or emoji.
+  negative-spaces: true
 
 http:
   # The built-in web server that hands the pack to players. With it off, the pack
@@ -129,3 +133,30 @@ crops:
   # chunk. It runs off the main thread; only a crop moving to its next stage costs
   # the server tick anything. Growth speed itself is each crop's stage-seconds.
   tick-seconds: 5
+
+guns:
+  # Threads shots are traced on (ArkContent-Guns-n). The world is copied on the
+  # server thread; walls, hitboxes, heads and falloff are worked out on these.
+  threads: 1
+  # Shown on the action bar. MiniMessage.
+  messages:
+    reloading: "<yellow>Reloading..."
+    no-ammo: "<red>Out of ammo"
+
+liquids:
+  # How many liquid blocks may appear or drain in one tick, across the server.
+  # A liquid is seen to run at its own tick-rate; this only caps a burst.
+  changes-per-tick: 64
+  # How often, in ticks, players are checked for standing in a liquid. Each
+  # liquid then hurts at its own contact.interval-ticks.
+  contact-ticks: 10
+  # Chunks around a source its flow is worked out over (1-4), on the
+  # ArkContent-Fluids thread. A liquid stops at the edge of this.
+  chunk-reach: 1
+
+huds:
+  # How often, in ticks, HUDs with action-bar: true are sent again.
+  action-bar-ticks: 20
+  # How often, in seconds, changed HUD values (thirst...) are written to SQLite.
+  # They are written as a player leaves too.
+  save-seconds: 30

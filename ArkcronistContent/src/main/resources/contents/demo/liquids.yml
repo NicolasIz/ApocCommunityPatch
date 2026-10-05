@@ -1,0 +1,66 @@
+# ---------------------------------------------------------------------------
+#  Liquids (1.7): poured from their bucket, they flow like water.
+# ---------------------------------------------------------------------------
+#     /customgive <player> demo:acid
+#     /customgive <player> demo:frost
+#
+#  Right click with the bucket pours a source; right click it with an empty
+#  bucket to scoop it up again. It runs down while it can, then spreads out
+#  'flow-distance' blocks, a step every 'tick-rate' ticks. The flow is worked
+#  out on its own thread, never on the server's. It never runs into a
+#  WorldGuard region or a GriefPrevention claim from outside, nor where a
+#  region sets the arkcontent-liquid-flow flag to deny; it hurts no one where
+#  arkcontent-liquid-damage is denied.
+#
+#  liquid:
+#    texture          what it looks like; textures/block/acid.png here, with
+#                     acid.png.mcmeta to animate it. Seen through, like water
+#    flowing-texture  flowing liquid's own look; the same if left out
+#    model            or models of your own, for a source and flowing liquid
+#    flowing-model
+#    flow-distance    1-8: how far it spreads sideways
+#    tick-rate        ticks between one step and the next (water 5, lava 30)
+#    max-fall         blocks it falls at most
+#    contact          what it does to a player in it, every interval-ticks:
+#      element        fire, frost, poison, wither or acid - a starting point;
+#                     any key below changes that part of it
+#      damage, damage-type, fire-ticks, freeze-ticks
+#      effects        a list of {type, duration, amplifier}
+#
+#  Sixteen liquids fit: each is drawn by two of the tripwire states vanilla
+#  never uses.
+# ---------------------------------------------------------------------------
+
+items:
+
+  acid:
+    type: custom_liquid
+    display-name: "<!i><#7ee05a>Cubo de ácido"
+    lore:
+      - "<!i><gray>Corroe a quien se meta en él."
+    resource:
+      texture: item/acid_bucket
+    liquid:
+      texture: block/acid
+      flow-distance: 4
+      tick-rate: 8
+      contact:
+        element: acid
+        damage: 1.5
+        interval-ticks: 20
+        effects:
+          - { type: poison, duration: 60, amplifier: 0 }
+
+  frost:
+    type: custom_liquid
+    display-name: "<!i><#9fd6ff>Cubo de escarcha líquida"
+    lore:
+      - "<!i><gray>Congela y frena a quien la pisa."
+    resource:
+      texture: item/frost_bucket
+    liquid:
+      texture: block/frost
+      flow-distance: 3
+      tick-rate: 12
+      contact:
+        element: frost

@@ -2,16 +2,20 @@ package com.arkcronist.content.core.loader;
 
 import com.arkcronist.content.core.animation.AnimatedModel;
 import com.arkcronist.content.core.animation.BbModelReader;
+import com.arkcronist.content.core.ballistics.DamageFalloff;
 import com.arkcronist.content.core.definition.AdvancementDefinition;
 import com.arkcronist.content.core.definition.ContentType;
 import com.arkcronist.content.core.definition.EmojiDefinition;
 import com.arkcronist.content.core.definition.Equipment;
+import com.arkcronist.content.core.definition.GunDefinition;
 import com.arkcronist.content.core.definition.ItemBehaviour;
 import com.arkcronist.content.core.definition.ItemDefinition;
 import com.arkcronist.content.core.definition.JobReward;
 import com.arkcronist.content.core.definition.ModelSource;
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.definition.ResourceLocation;
+import com.arkcronist.content.core.hud.HudDefinition;
+import com.arkcronist.content.core.liquid.LiquidModels;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
@@ -25,13 +29,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -97,17 +104,18 @@ public final class ContentLoader {
         Map<String, ItemDefinition> items = new LinkedHashMap<>();
         Map<String, EmojiDefinition> emojis = new LinkedHashMap<>();
         Map<String, AdvancementDefinition> advancements = new LinkedHashMap<>();
+        Map<String, HudDefinition> huds = new LinkedHashMap<>();
         List<String> problems = new ArrayList<>();
         for (Path file : files) {
-            readFile(contentsDir, file, items, emojis, advancements, problems);
+            readFile(contentsDir, file, items, emojis, advancements, huds, problems);
         }
         return new LoadReport(new ArrayList<>(items.values()), new ArrayList<>(emojis.values()),
-                new ArrayList<>(advancements.values()), problems);
+                new ArrayList<>(advancements.values()), new ArrayList<>(huds.values()), problems);
     }
 
     private void readFile(Path contentsDir, Path file, Map<String, ItemDefinition> items,
                           Map<String, EmojiDefinition> emojis, Map<String, AdvancementDefinition> advancements,
-                          List<String> problems) {
+                          Map<String, HudDefinition> huds, List<String> problems) {
         String where = unix(contentsDir.relativize(file));
 
         Object document;
@@ -140,6 +148,7 @@ public final class ContentLoader {
         readEmojis(root.get("emojis"), namespace, sourceRoot, file, where, contentsDir, emojis, problems);
         readAdvancements(root.get("advancements"), namespace, sourceRoot, file, where, contentsDir, advancements,
                 problems);
+        readHuds(root.get("huds"), namespace, sourceRoot, file, where, contentsDir, huds, problems);
 
         // A file without items is not an error: it may hold only emojis, or another kind of
         // content this version does not read yet.
@@ -211,6 +220,7 @@ public final class ContentLoader {
         unusedSection(section, "block", ContentType.CUSTOM_BLOCK, type, prefix, problems);
         unusedSection(section, "furniture", ContentType.CUSTOM_FURNITURE, type, prefix, problems);
         unusedSection(section, "crop", ContentType.CUSTOM_CROP, type, prefix, problems);
+        unusedSection(section, "liquid", ContentType.CUSTOM_LIQUID, type, prefix, problems);
 
         String displayName = text(section, "display-name", prefix, problems);
         List<String> lore = lines(section, "lore", prefix, problems);
@@ -236,7 +246,148 @@ public final class ContentLoader {
                 item = item.withEquipment(equipment(namespace, equipment, model, sourceRoot, prefix, problems));
             }
         }
+        Map<?, ?> gun = section(section, "gun", prefix, problems);
+        if (gun != null) {
+            if (type != ContentType.ITEM) {
+                problems.add(prefix + "'gun' is only read on items held in the hand (type: item)");
+            } else {
+                item = item.withGun(gun(gun, prefix, problems));
+            }
+        }
         return item;
+    }
+
+    /**
+     * {@code gun:} - how the item shoots. Every key has a default, so {@code gun: {}} is already a
+     * pistol; a value out of its range is reported and replaced by the default, never clamped
+     * silently.
+     */
+    private static GunDefinition gun(Map<?, ?> section, String prefix, List<String> problems) {
+        String where = prefix + "gun: ";
+        double damage = number(section, "damage", 5, 0, 1000, where, problems);
+        double headshot = number(section, "headshot-multiplier", 1.5, 0, 100, where, problems);
+        double range = number(section, "range", 64, 1, 256, where, problems);
+        double falloffStart = range;
+        double minFactor = 1;
+        Map<?, ?> falloff = section(section, "falloff", where, problems);
+        if (falloff != null) {
+            falloffStart = number(falloff, "start", Math.min(24, range), 0, range, where + "falloff ", problems);
+            minFactor = number(falloff, "min-factor", 0.5, 0, 1, where + "falloff ", problems);
+        }
+        int pellets = (int) number(section, "pellets", 1, 1, 64, where, problems);
+        double spread = number(section, "spread", pellets > 1 ? 6 : 0.5, 0, 45, where, problems);
+        double sneakSpread = number(section, "sneak-spread", spread / 2, 0, 45, where, problems);
+        int pierce = (int) number(section, "pierce", 0, 0, 64, where, problems);
+        int magazine = (int) number(section, "magazine", 12, 1, 10000, where, problems);
+        double reloadSeconds = number(section, "reload-seconds", 1.5, 0, 60, where, problems);
+        double fireRate = number(section, "fire-rate", 4, 0.05, 20, where, problems);
+
+        String ammo = null;
+        String rawAmmo = text(section, "ammo", where, problems);
+        if (rawAmmo != null && !rawAmmo.isBlank() && !rawAmmo.trim().equalsIgnoreCase("none")) {
+            // Whether it is a custom item or a material is only known once every file is read.
+            ammo = rawAmmo.trim();
+        }
+
+        GunDefinition.Recoil recoil = recoil(section.get("recoil"), where, problems);
+
+        String damageType = text(section, "damage-type", where, problems);
+        damageType = damageType == null || damageType.isBlank() ? "minecraft:arrow"
+                : damageType.trim().toLowerCase(Locale.ROOT);
+        if (damageType.indexOf(':') < 0) {
+            damageType = "minecraft:" + damageType;
+        }
+
+        Set<GunDefinition.TargetKind> targets = EnumSet.allOf(GunDefinition.TargetKind.class);
+        if (section.containsKey("targets")) {
+            targets = EnumSet.noneOf(GunDefinition.TargetKind.class);
+            for (String raw : lines(section, "targets", where, problems)) {
+                Optional<GunDefinition.TargetKind> kind = GunDefinition.TargetKind.parse(raw);
+                if (kind.isPresent()) {
+                    targets.add(kind.get());
+                } else {
+                    problems.add(where + "unknown target '" + raw.trim() + "' (players, mythic_mobs, mobs)");
+                }
+            }
+            if (targets.isEmpty()) {
+                problems.add(where + "'targets' leaves nothing to hit; using players, mythic_mobs and mobs");
+                targets = EnumSet.allOf(GunDefinition.TargetKind.class);
+            }
+        }
+
+        String particle = "minecraft:crit";
+        if (section.containsKey("particle")) {
+            String raw = text(section, "particle", where, problems);
+            particle = raw == null || raw.isBlank() || raw.trim().equalsIgnoreCase("none") ? null
+                    : raw.trim().toLowerCase(Locale.ROOT);
+        }
+
+        return new GunDefinition(damage, headshot, new DamageFalloff(falloffStart, range, minFactor), pellets, spread,
+                sneakSpread, pierce, magazine, ammo, (int) Math.round(reloadSeconds * 20),
+                Math.max(1, (int) Math.round(20 / fireRate)), recoil, damageType, targets, particle,
+                sounds(section(section, "sounds", where, problems), where, problems));
+    }
+
+    /** {@code recoil:} - degrees up per shot, or {@code {pitch, yaw}}. */
+    private static GunDefinition.Recoil recoil(Object node, String prefix, List<String> problems) {
+        if (node == null) {
+            return new GunDefinition.Recoil(1.5, 0.5);
+        }
+        if (node instanceof Number number) {
+            return new GunDefinition.Recoil(Math.max(0, Math.min(45, number.doubleValue())), 0);
+        }
+        if (node instanceof Map<?, ?> section) {
+            return new GunDefinition.Recoil(number(section, "pitch", 1.5, 0, 45, prefix + "recoil ", problems),
+                    number(section, "yaw", 0.5, 0, 45, prefix + "recoil ", problems));
+        }
+        problems.add(prefix + "'recoil' should be a number of degrees or {pitch, yaw}; using pitch 1.5, yaw 0.5");
+        return new GunDefinition.Recoil(1.5, 0.5);
+    }
+
+    /**
+     * {@code sounds:} - each a sound key, {@code none}, or {@code {sound, volume, pitch}}; the ones
+     * left out keep their defaults.
+     */
+    private static GunDefinition.Sounds sounds(Map<?, ?> section, String prefix, List<String> problems) {
+        GunDefinition.Sounds defaults = GunDefinition.Sounds.DEFAULT;
+        if (section == null) {
+            return defaults;
+        }
+        GunDefinition.Sound[] sounds = {defaults.shoot(), defaults.empty(), defaults.reload(), defaults.reloaded(),
+                defaults.hit(), defaults.headshot()};
+        for (Object key : section.keySet()) {
+            int index = GunDefinition.Sounds.KEYS.indexOf(String.valueOf(key));
+            if (index < 0) {
+                problems.add(prefix + "unknown sound '" + key + "' " + GunDefinition.Sounds.KEYS);
+                continue;
+            }
+            sounds[index] = sound(section.get(key), sounds[index], prefix + "sounds." + key + " ", problems);
+        }
+        return new GunDefinition.Sounds(sounds[0], sounds[1], sounds[2], sounds[3], sounds[4], sounds[5]);
+    }
+
+    private static GunDefinition.Sound sound(Object node, GunDefinition.Sound fallback, String prefix,
+                                             List<String> problems) {
+        Map<?, ?> section = node instanceof Map<?, ?> map ? map : null;
+        Object rawKey = section != null ? section.get("sound") : node;
+        if (rawKey == null || rawKey instanceof Map<?, ?> || rawKey instanceof List<?>) {
+            problems.add(prefix + "should be a sound key, none, or {sound, volume, pitch}");
+            return fallback;
+        }
+        String key = String.valueOf(rawKey).trim().toLowerCase(Locale.ROOT);
+        if (key.equals("none") || key.isEmpty()) {
+            return null;
+        }
+        if (!key.matches("([a-z0-9_.-]+:)?[a-z0-9_./-]+")) {
+            problems.add(prefix + "'" + key + "' is not a sound key (like entity.generic.explode)");
+            return fallback;
+        }
+        if (key.indexOf(':') < 0) {
+            key = "minecraft:" + key;
+        }
+        float volume = section == null ? 1f : (float) number(section, "volume", 1, 0, 16, prefix, problems);
+        float pitch = section == null ? 1f : (float) number(section, "pitch", 1, 0.5, 2, prefix, problems);
+        return new GunDefinition.Sound(key, volume, pitch);
     }
 
     /**
@@ -311,6 +462,9 @@ public final class ContentLoader {
         if (type == ContentType.CUSTOM_CROP) {
             return crop(namespace, id, section, model, displayName, lore, sourceRoot, file, prefix, problems);
         }
+        if (type == ContentType.CUSTOM_LIQUID) {
+            return liquid(namespace, id, section, model, displayName, lore, sourceRoot, file, prefix, problems);
+        }
 
         // Blocks and furniture: the material is what the placement needs, the look is mandatory, and
         // the item has to stay placeable.
@@ -352,7 +506,8 @@ public final class ContentLoader {
         }
         Optional<ContentType> type = ContentType.parse(raw);
         if (type.isEmpty()) {
-            problems.add(prefix + "unknown type '" + raw.trim() + "' (item, custom_block, custom_furniture)");
+            problems.add(prefix + "unknown type '" + raw.trim()
+                    + "' (item, custom_block, custom_furniture, custom_crop, custom_liquid)");
             return null;
         }
         return type.get();
@@ -752,6 +907,154 @@ public final class ContentLoader {
     }
 
     /**
+     * A liquid: the entry's item is its bucket, and {@code liquid:} says how it looks, how it flows
+     * and what it does to a player in it.
+     *
+     * <pre>
+     * acid:
+     *   type: custom_liquid
+     *   display-name: "&lt;green&gt;Bucket of acid"
+     *   resource: { texture: item/acid_bucket }
+     *   liquid:
+     *     texture: block/acid          # or model: / flowing-model: for models of your own
+     *     flow-distance: 4
+     *     tick-rate: 10
+     *     contact: { element: poison, damage: 1 }
+     * </pre>
+     */
+    private static ItemDefinition liquid(String namespace, String id, Map<?, ?> section, ModelSource model,
+                                         String displayName, List<String> lore, Path sourceRoot, Path file,
+                                         String prefix, List<String> problems) {
+        Map<?, ?> liquid = section(section, "liquid", prefix, problems);
+        if (liquid == null) {
+            problems.add(prefix + "a custom_liquid needs a 'liquid' section with at least its 'texture'");
+            return null;
+        }
+        String where = prefix + "liquid: ";
+        ResourceLocation stillModel = location(liquid, "model", namespace, where, problems);
+        ResourceLocation flowingModel = location(liquid, "flowing-model", namespace, where, problems);
+        ResourceLocation still = location(liquid, "texture", namespace, where, problems);
+        ResourceLocation flowingTexture = location(liquid, "flowing-texture", namespace, where, problems);
+        if (stillModel == null && still == null) {
+            problems.add(where + "needs 'texture' (or 'model') - without one it would be invisible");
+            return null;
+        }
+        ModelSource source = stillModel != null ? new ModelSource.Provided(sourceRoot, stillModel)
+                : liquidModel(namespace, id, "source", still, sourceRoot);
+        ModelSource flowing;
+        if (flowingModel != null) {
+            flowing = new ModelSource.Provided(sourceRoot, flowingModel);
+        } else if (still != null || flowingTexture != null) {
+            flowing = liquidModel(namespace, id, "flowing", flowingTexture != null ? flowingTexture : still, sourceRoot);
+        } else {
+            flowing = source;
+        }
+
+        int flowDistance = (int) number(liquid, "flow-distance", 4, 1, 8, where, problems);
+        int tickRate = (int) number(liquid, "tick-rate", 5, 1, 200, where, problems);
+        int maxFall = (int) number(liquid, "max-fall", 32, 0, 256, where, problems);
+        Map<?, ?> contactSection = section(liquid, "contact", where, problems);
+        Placement.Contact contact = contactSection == null ? Placement.Contact.HARMLESS
+                : contact(contactSection, where + "contact ", problems);
+
+        if (section.containsKey("material")) {
+            problems.add(prefix + "'material' is ignored - a custom_liquid's bucket is always PAPER underneath");
+        }
+        // Without a look of its own, the bucket looks like a water bucket rather than paper.
+        ModelSource bucket = model != null ? model
+                : new ModelSource.Provided(sourceRoot, new ResourceLocation(ResourceLocation.MINECRAFT, "item/water_bucket"));
+        return new ItemDefinition(namespace, id, "PAPER", displayName, lore, bucket, new ItemBehaviour(true, false),
+                new Placement.Liquid(flowDistance, tickRate, maxFall, source, flowing, contact), file);
+    }
+
+    /**
+     * The model a liquid is drawn with: its texture on a box a little lower than a block, under one
+     * of the two parents the pack compiler writes ({@link LiquidModels}).
+     */
+    private static ModelSource liquidModel(String namespace, String id, String kind, ResourceLocation texture,
+                                           Path sourceRoot) {
+        ResourceLocation parent = kind.equals("source") ? LiquidModels.SOURCE_PARENT : LiquidModels.FLOWING_PARENT;
+        return new ModelSource.Generated(sourceRoot, new ResourceLocation(namespace, "block/" + id + "_" + kind), parent,
+                Map.of(LiquidModels.TEXTURE_VARIABLE, texture, "particle", texture));
+    }
+
+    /**
+     * {@code contact:} - {@code element} sets what a kind of liquid usually does, and any key
+     * written next to it changes that part:
+     * fire burns, frost freezes and slows, poison and wither give their effect, acid only hurts.
+     */
+    private static Placement.Contact contact(Map<?, ?> section, String prefix, List<String> problems) {
+        double damage = 0;
+        String damageType = "minecraft:generic";
+        int fireTicks = 0;
+        int freezeTicks = 0;
+        List<Placement.Effect> effects = new ArrayList<>();
+        String element = text(section, "element", prefix, problems);
+        if (element != null) {
+            switch (element.trim().toLowerCase(Locale.ROOT)) {
+                case "fire" -> {
+                    damage = 1;
+                    damageType = "minecraft:in_fire";
+                    fireTicks = 80;
+                }
+                case "frost", "ice" -> {
+                    damage = 1;
+                    damageType = "minecraft:freeze";
+                    freezeTicks = 200;
+                    effects.add(new Placement.Effect("minecraft:slowness", 40, 1));
+                }
+                case "poison" -> {
+                    damageType = "minecraft:magic";
+                    effects.add(new Placement.Effect("minecraft:poison", 60, 0));
+                }
+                case "wither" -> {
+                    damageType = "minecraft:wither";
+                    effects.add(new Placement.Effect("minecraft:wither", 60, 0));
+                }
+                case "acid" -> {
+                    damage = 2;
+                    damageType = "minecraft:magic";
+                }
+                default -> problems.add(prefix + "unknown element '" + element.trim()
+                        + "' (fire, frost, poison, wither, acid)");
+            }
+        }
+        int interval = (int) number(section, "interval-ticks", 10, 1, 1200, prefix, problems);
+        damage = number(section, "damage", damage, 0, 1000, prefix, problems);
+        String rawType = text(section, "damage-type", prefix, problems);
+        if (rawType != null && !rawType.isBlank()) {
+            damageType = rawType.trim().toLowerCase(Locale.ROOT);
+            if (damageType.indexOf(':') < 0) {
+                damageType = "minecraft:" + damageType;
+            }
+        }
+        fireTicks = (int) number(section, "fire-ticks", fireTicks, 0, 72000, prefix, problems);
+        freezeTicks = (int) number(section, "freeze-ticks", freezeTicks, 0, 72000, prefix, problems);
+        if (section.containsKey("effects")) {
+            effects.clear();
+            Object node = section.get("effects");
+            if (!(node instanceof List<?> list)) {
+                problems.add(prefix + "'effects' should be a list of {type, duration, amplifier}");
+            } else {
+                for (Object entry : list) {
+                    Map<?, ?> effect = entry instanceof Map<?, ?> map ? map
+                            : entry == null ? null : Map.of("type", String.valueOf(entry));
+                    String type = effect == null ? null : text(effect, "type", prefix, problems);
+                    if (type == null || type.isBlank()) {
+                        problems.add(prefix + "each effect needs a 'type', e.g. poison");
+                        continue;
+                    }
+                    String key = type.trim().toLowerCase(Locale.ROOT);
+                    effects.add(new Placement.Effect(key.indexOf(':') < 0 ? "minecraft:" + key : key,
+                            (int) number(effect, "duration", 60, 1, 72000, prefix, problems),
+                            (int) number(effect, "amplifier", 0, 0, 255, prefix, problems)));
+                }
+            }
+        }
+        return new Placement.Contact(interval, damage, damageType, fireTicks, freezeTicks, effects);
+    }
+
+    /**
      * One stage's look. The same keys as {@code resource}, but a lone {@code texture} makes a
      * {@code block/cross} - two crossed planes, like every vanilla sapling and flower - since a
      * crop drawn as a cube or a flat item would look like neither.
@@ -871,6 +1174,117 @@ public final class ContentLoader {
                         + " - this one is ignored");
             }
         }
+    }
+
+    /**
+     * {@code huds:} - bars drawn on the screen, by id.
+     *
+     * <pre>
+     * huds:
+     *   thirst:
+     *     icons: { full: hud/drop_full, half: hud/drop_half, empty: hud/drop_empty }
+     *     height: 9
+     *     ascent: -32
+     *     segments: 10
+     *     offset: 10
+     *     value: { start: 20, max: 20, per-second: -0.05, empty-damage: 1, consume: { POTION: 6 } }
+     *   mana:
+     *     icons: { full: hud/mana_full, empty: hud/mana_empty }
+     *     value: { placeholder: "%mmocore_mana%", max: "%mmocore_max_mana%" }
+     * </pre>
+     */
+    private static void readHuds(Object node, String namespace, Path sourceRoot, Path file, String where,
+                                 Path contentsDir, Map<String, HudDefinition> huds, List<String> problems) {
+        if (node == null) {
+            return;
+        }
+        if (!(node instanceof Map<?, ?> section)) {
+            problems.add(where + ": 'huds' should be a section of HUD ids");
+            return;
+        }
+        for (Map.Entry<?, ?> entry : section.entrySet()) {
+            String id = String.valueOf(entry.getKey());
+            String prefix = where + " > hud " + namespace + ":" + id + ": ";
+            if (!EMOJI_NAME.matcher(id).matches()) {
+                problems.add(prefix + "invalid id (allowed: a-z 0-9 _)");
+                continue;
+            }
+            if (!(entry.getValue() instanceof Map<?, ?> hud)) {
+                problems.add(prefix + "should be a section with at least 'icons' and 'value'");
+                continue;
+            }
+            HudDefinition definition = hud(namespace, id, hud, sourceRoot, file, prefix, problems);
+            if (definition == null) {
+                continue;
+            }
+            HudDefinition earlier = huds.putIfAbsent(definition.fullId(), definition);
+            if (earlier != null) {
+                problems.add(prefix + "already defined in " + unix(contentsDir.relativize(earlier.file()))
+                        + " - this one is ignored");
+            }
+        }
+    }
+
+    private static HudDefinition hud(String namespace, String id, Map<?, ?> section, Path sourceRoot, Path file,
+                                     String prefix, List<String> problems) {
+        Map<?, ?> icons = section(section, "icons", prefix, problems);
+        ResourceLocation full = icons == null ? null : location(icons, "full", namespace, prefix + "icons ", problems);
+        if (full == null) {
+            problems.add(prefix + "needs 'icons' with at least 'full', e.g. icons: { full: hud/mana_full }");
+            return null;
+        }
+        ResourceLocation half = location(icons, "half", namespace, prefix + "icons ", problems);
+        ResourceLocation empty = location(icons, "empty", namespace, prefix + "icons ", problems);
+        for (ResourceLocation icon : Arrays.asList(full, half, empty)) {
+            if (icon != null && icon.namespace().equals(namespace)
+                    && !Files.isRegularFile(texturePath(sourceRoot, icon))) {
+                problems.add(prefix + "icon textures/" + icon.path() + ".png is not in " + sourceRoot.getFileName());
+                return null;
+            }
+        }
+
+        int height = (int) number(section, "height", 9, 1, 256, prefix, problems);
+        int ascent = (int) number(section, "ascent", 7, -512, 256, prefix, problems);
+        if (ascent > height) {
+            problems.add(prefix + "'ascent' can be at most 'height' (" + height + "); using " + height);
+            ascent = height;
+        }
+        int segments = (int) number(section, "segments", 10, 1, 100, prefix, problems);
+        int spacing = (int) number(section, "spacing", 0, -64, 64, prefix, problems);
+        int offset = (int) number(section, "offset", 0, -2048, 2048, prefix, problems);
+
+        Map<?, ?> value = section(section, "value", prefix, problems);
+        HudDefinition.Source source;
+        if (value != null && value.containsKey("placeholder")) {
+            String placeholder = text(value, "placeholder", prefix, problems);
+            Object max = value.get("max");
+            if (placeholder == null || placeholder.isBlank() || max == null || max instanceof Map<?, ?>
+                    || max instanceof List<?>) {
+                problems.add(prefix + "a placeholder value needs 'placeholder' and 'max' (a number or a placeholder)");
+                return null;
+            }
+            source = new HudDefinition.Source.Placeholder(placeholder.trim(), String.valueOf(max).trim());
+        } else {
+            Map<?, ?> stored = value == null ? Map.of() : value;
+            double max = number(stored, "max", 20, 0.001, 1_000_000, prefix, problems);
+            double start = number(stored, "start", max, 0, max, prefix, problems);
+            Map<String, Double> consume = new LinkedHashMap<>();
+            Map<?, ?> consumeSection = section(stored, "consume", prefix, problems);
+            if (consumeSection != null) {
+                for (Map.Entry<?, ?> item : consumeSection.entrySet()) {
+                    if (item.getValue() instanceof Number amount && Double.isFinite(amount.doubleValue())) {
+                        consume.put(String.valueOf(item.getKey()).trim(), amount.doubleValue());
+                    } else {
+                        problems.add(prefix + "'consume." + item.getKey() + "' should be a number to add");
+                    }
+                }
+            }
+            source = new HudDefinition.Source.Stored(start, max,
+                    number(stored, "per-second", 0, -1_000_000, 1_000_000, prefix, problems),
+                    number(stored, "empty-damage", 0, 0, 1000, prefix, problems), consume);
+        }
+        return new HudDefinition(namespace, id, full, half, empty, height, ascent, segments, spacing, offset, source,
+                flag(section, "action-bar", false, prefix, problems), sourceRoot, file);
     }
 
     /**
@@ -1121,6 +1535,27 @@ public final class ContentLoader {
             return List.of();
         }
         return List.of(String.valueOf(value));
+    }
+
+    /** A number from {@code min} to {@code max}; anything else is reported and the fallback used. */
+    private static double number(Map<?, ?> section, String key, double fallback, double min, double max,
+                                 String prefix, List<String> problems) {
+        Object value = section.get(key);
+        if (value == null) {
+            return fallback;
+        }
+        if (value instanceof Number number && Double.isFinite(number.doubleValue())
+                && number.doubleValue() >= min && number.doubleValue() <= max) {
+            return number.doubleValue();
+        }
+        problems.add(prefix + "'" + key + "' should be a number from " + plain(min) + " to " + plain(max)
+                + "; using " + plain(fallback));
+        return fallback;
+    }
+
+    /** 2 rather than 2.0, for messages. */
+    private static String plain(double value) {
+        return value == Math.rint(value) && Math.abs(value) < 1e15 ? String.valueOf((long) value) : String.valueOf(value);
     }
 
     private static int integer(Map<?, ?> section, String key, int fallback, String prefix, List<String> problems) {

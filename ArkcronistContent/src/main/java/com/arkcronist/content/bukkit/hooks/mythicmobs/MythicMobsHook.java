@@ -7,13 +7,20 @@ import com.arkcronist.content.bukkit.item.ItemRegistry;
 import io.lumine.mythic.bukkit.MythicBukkit;
 import io.lumine.mythic.bukkit.events.MythicDropLoadEvent;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Entity;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.server.PluginEnableEvent;
+import org.bukkit.plugin.Plugin;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 /**
  * This plugin's items inside MythicMobs mob files:
@@ -29,9 +36,11 @@ import java.util.logging.Logger;
  * a drop name as the old {@code MATERIAL:data} form before any plugin is asked.</p>
  *
  * <p>MythicMobs reads its mobs as it enables, and a drop type it does not know by then is reported
- * as missing. So this plugin loads before MythicMobs ({@code load: AFTER} in paper-plugin.yml) and
- * listens from its own onEnable; the item suppliers, which need MythicMobs running, are registered
- * once it is.</p>
+ * as missing. This plugin cannot load before it: AuraSkills and BetonQuest load after MythicMobs
+ * and before this plugin, and the three would make a loop Paper refuses to start with. So
+ * MythicMobs loads first, and if any of its files uses {@code arkcontent} it is reloaded once, a
+ * tick after the server has started - its own {@code /mm reload}, which reads the mobs again with
+ * this plugin listening and its item suppliers registered.</p>
  */
 public final class MythicMobsHook implements Listener, ContentHook {
 
@@ -60,6 +69,47 @@ public final class MythicMobsHook implements Listener, ContentHook {
         if (event.getPlugin().getName().equals("MythicMobs")) {
             registerSuppliers();
         }
+    }
+
+    /**
+     * Reloads MythicMobs once the server has started, if it enabled before this plugin and its
+     * files name {@code arkcontent} - drops or equipment it could not read then.
+     */
+    public void reloadIfReadEarly(Plugin plugin) {
+        Plugin mythic = plugin.getServer().getPluginManager().getPlugin("MythicMobs");
+        if (mythic == null || !mythic.isEnabled() || !namesThisPlugin(mythic.getDataFolder().toPath())) {
+            return;
+        }
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            logger.info("Reloading MythicMobs so that its arkcontent drops and equipment are read again, now that"
+                    + " they are known.");
+            registerSuppliers();
+            plugin.getServer().dispatchCommand(plugin.getServer().getConsoleSender(), "mythicmobs reload");
+        });
+    }
+
+    private static boolean namesThisPlugin(Path folder) {
+        if (!Files.isDirectory(folder)) {
+            return false;
+        }
+        try (Stream<Path> files = Files.walk(folder)) {
+            return files.filter(file -> file.toString().endsWith(".yml") && Files.isRegularFile(file))
+                    .anyMatch(file -> {
+                        try {
+                            return Files.readString(file).contains(DROP_NAME + "{");
+                        } catch (IOException | UncheckedIOException exception) {
+                            return false;
+                        }
+                    });
+        } catch (IOException | UncheckedIOException exception) {
+            return false;
+        }
+    }
+
+    /** Whether MythicMobs runs this entity; false while MythicMobs is not enabled. */
+    public boolean isMythicMob(Entity entity) {
+        MythicBukkit mythic = MythicBukkit.inst();
+        return mythic != null && mythic.getAPIHelper().isMythicMob(entity);
     }
 
     /** New namespaces may have appeared; each gets its supplier. Main thread. */

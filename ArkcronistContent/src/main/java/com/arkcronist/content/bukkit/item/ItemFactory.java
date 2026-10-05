@@ -1,6 +1,7 @@
 package com.arkcronist.content.bukkit.item;
 
 import com.arkcronist.content.core.definition.Equipment;
+import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.definition.ResourceLocation;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.CustomModelData;
@@ -75,6 +76,10 @@ public final class ItemFactory {
             // and number reads, and draws it if it copies only those (pack.custom-model-data).
             stack.setData(DataComponentTypes.CUSTOM_MODEL_DATA,
                     CustomModelData.customModelData().addFloat(number).build());
+        }
+        if (item.placement() instanceof Placement.Liquid) {
+            // A bucket: one per slot, as vanilla's filled buckets.
+            stack.setData(DataComponentTypes.MAX_STACK_SIZE, 1);
         }
         return stack;
     }

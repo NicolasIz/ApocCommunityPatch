@@ -29,11 +29,14 @@ import com.arkcronist.content.bukkit.hooks.skillapi.FabledHook;
 import com.arkcronist.content.bukkit.hooks.skillapi.SkillAPIHook;
 import com.arkcronist.content.bukkit.hooks.vault.VaultShop;
 import com.arkcronist.content.bukkit.hooks.worldedit.WorldEditHook;
+import com.arkcronist.content.bukkit.hooks.worldguard.WorldGuardFlags;
 import com.arkcronist.content.bukkit.hooks.worldguard.WorldGuardProtection;
 import com.arkcronist.content.bukkit.hooks.zauctionhouse.ZAuctionHouseHook;
 import com.arkcronist.content.bukkit.menu.Shop;
 import com.arkcronist.content.core.definition.JobReward;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.block.Block;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.jetbrains.annotations.Nullable;
@@ -42,6 +45,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -62,9 +67,9 @@ import java.util.logging.Logger;
  * such a class cannot be loaded without its parent. Each hook here is either a plain class of this
  * plugin's, or a static method on one; {@code HookIsolationTest} checks it.</p>
  *
- * <p>Presence is decided by the classes rather than by the plugin being enabled: MythicMobs and
- * MythicArmor are made to load after this plugin, so that it can listen to them from the start,
- * and are not enabled yet when this runs.</p>
+ * <p>Presence is decided by the classes rather than by the plugin being enabled: MythicArmor is
+ * made to load after this plugin, so that it can listen to it from the start, and is not enabled
+ * yet when this runs.</p>
  *
  * <p>A hook keeps failing safe after it has started, too: a skills plugin whose API throws while
  * paying out experience is logged once and left out from then on, and the break or harvest that
@@ -85,6 +90,11 @@ public final class HookManager {
     private Shop shop;
     private NpcBridge npcs;
     private Predicate<Block> foreignBlocks = block -> false;
+    private Predicate<Entity> mythicMobs = entity -> false;
+    /** Answered by parts of the plugin made after the hooks; read by the expansion on any thread. */
+    private final List<PlaceholderSource> placeholders = new CopyOnWriteArrayList<>();
+    /** Fills in other plugins' placeholders; leaves the text as it is without PlaceholderAPI. */
+    private volatile BiFunction<OfflinePlayer, String, String> placeholderText = (player, text) -> text;
 
     public HookManager(ArkContentPlugin plugin) {
         this.plugin = plugin;
@@ -100,6 +110,9 @@ public final class HookManager {
             MMOItemsHook.register(plugin::items, logger);
             return Boolean.TRUE;
         });
+        // WorldGuard takes new flags only until it enables.
+        create("WorldGuard flags", "com.sk89q.worldguard.protection.flags.registry.FlagRegistry",
+                () -> WorldGuardFlags.register(logger));
     }
 
     /** Detects and starts every other hook. Main thread, from onEnable. */
@@ -109,6 +122,14 @@ public final class HookManager {
         if (mythicMobs != null) {
             listen(mythicMobs);
             contentHooks.add(mythicMobs);
+            mythicMobs.reloadIfReadEarly(plugin);
+            this.mythicMobs = entity -> {
+                try {
+                    return mythicMobs.isMythicMob(entity);
+                } catch (RuntimeException | LinkageError error) {
+                    return false;
+                }
+            };
         }
 
         modelEngine = create("ModelEngine", "com.ticxo.modelengine.api.ModelEngineAPI",
@@ -121,9 +142,12 @@ public final class HookManager {
         }
 
         // Loads before this plugin; registered at once, so TAB and DeluxeMenus find it from the start.
-        create("PlaceholderAPI", "me.clip.placeholderapi.expansion.PlaceholderExpansion",
+        PlaceholderApiHook placeholderApi = create("PlaceholderAPI", "me.clip.placeholderapi.expansion.PlaceholderExpansion",
                 () -> PlaceholderApiHook.register(plugin.getPluginMeta().getVersion(), plugin.emojis(), plugin.items(),
-                        plugin.itemFactory()));
+                        plugin.itemFactory(), placeholders));
+        if (placeholderApi != null) {
+            this.placeholderText = placeholderApi::resolve;
+        }
 
         // Loads after this plugin: the hook listens for the moment ShopGUI+ asks for item providers.
         ShopGuiPlusHook shopGui = create("ShopGUI+", "net.brcdev.shopgui.event.ShopGUIPlusPostEnableEvent",
@@ -319,6 +343,24 @@ public final class HookManager {
     /** Blocks another plugin has placed and keeps records of, which are never this plugin's custom blocks. */
     public Predicate<Block> foreignBlocks() {
         return foreignBlocks;
+    }
+
+    /**
+     * Fills in other plugins' placeholders in {@code text}, through PlaceholderAPI when it is there.
+     * Any thread, as PlaceholderAPI itself.
+     */
+    public String placeholders(OfflinePlayer player, String text) {
+        return placeholderText.apply(player, text);
+    }
+
+    /** Adds placeholders to {@code %arkcontent_...%}; they answer whether or not PlaceholderAPI is there. */
+    public void addPlaceholders(PlaceholderSource source) {
+        placeholders.add(source);
+    }
+
+    /** Whether an entity is one of MythicMobs' mobs; always false without MythicMobs. Main thread. */
+    public boolean isMythicMob(Entity entity) {
+        return mythicMobs.test(entity);
     }
 
     /** On disable: hooks that leave things in the world - temporary holograms - clear them. */

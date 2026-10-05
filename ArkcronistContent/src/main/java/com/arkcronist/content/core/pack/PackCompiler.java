@@ -9,6 +9,10 @@ import com.arkcronist.content.core.definition.ItemDefinition;
 import com.arkcronist.content.core.definition.ModelSource;
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.definition.ResourceLocation;
+import com.arkcronist.content.core.hud.HudGlyph;
+import com.arkcronist.content.core.hud.Spaces;
+import com.arkcronist.content.core.liquid.LiquidModels;
+import com.arkcronist.content.core.liquid.TripwireState;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -163,6 +167,40 @@ public final class PackCompiler {
                           Collection<AdvancementDefinition> advancements,
                           Map<String, Integer> modelData,
                           List<ExternalPack> externalPacks) throws IOException {
+        return compile(packDir, new Input(items, noteBlockStates, glyphs, advancements, modelData, Map.of(), List.of(),
+                false, externalPacks));
+    }
+
+    /**
+     * Everything one compile is given.
+     *
+     * @param noteBlockStates the state each custom block is drawn through, by full id; empty leaves
+     *                        the vanilla note block untouched
+     * @param glyphs          the character each emoji is drawn as
+     * @param advancements    their tab backgrounds, when they are this plugin's textures
+     * @param modelData       the {@code custom_model_data} number each item is also drawn by on its
+     *                        plain material, by full id ({@link ModelDataDispatch}); empty writes none
+     * @param liquidSlots     the pair of tripwire states each liquid is drawn through, by full id
+     *                        ({@link TripwireState#source(int)}); empty leaves tripwire untouched
+     * @param hudGlyphs       every HUD icon, on its character
+     * @param spaces          write the space characters ({@link Spaces}) even with no emoji or HUD
+     *                        needing the font - for menus and scoreboards that lay text out with them
+     * @param externalPacks   other plugins' packs to merge in, after this plugin's own files
+     */
+    public record Input(Collection<ItemDefinition> items, Map<String, NoteBlockState> noteBlockStates,
+                        Map<EmojiDefinition, Integer> glyphs, Collection<AdvancementDefinition> advancements,
+                        Map<String, Integer> modelData, Map<String, Integer> liquidSlots, List<HudGlyph> hudGlyphs,
+                        boolean spaces, List<ExternalPack> externalPacks) {
+    }
+
+    /** Deletes {@code packDir} and writes the pack for {@code input} into it. */
+    public Result compile(Path packDir, Input input) throws IOException {
+        Collection<ItemDefinition> items = input.items();
+        Map<String, NoteBlockState> noteBlockStates = input.noteBlockStates();
+        Map<EmojiDefinition, Integer> glyphs = input.glyphs();
+        Collection<AdvancementDefinition> advancements = input.advancements();
+        Map<String, Integer> modelData = input.modelData();
+        List<ExternalPack> externalPacks = input.externalPacks();
         Run run = new Run(packDir);
         run.reset();
         run.writeText("pack.mcmeta", GSON.toJson(settings.mcmeta()) + "\n");
@@ -176,7 +214,8 @@ public final class PackCompiler {
         }
         run.noteBlockStates(ordered, noteBlockStates);
         run.modelData(ordered, modelData);
-        run.font(glyphs);
+        run.liquids(ordered, input.liquidSlots());
+        run.font(glyphs, input.hudGlyphs(), input.spaces());
         run.advancementBackgrounds(advancements);
         for (ExternalPack pack : externalPacks.stream().sorted(Comparator.comparing(ExternalPack::name)).toList()) {
             run.merge(pack);
@@ -427,14 +466,16 @@ public final class PackCompiler {
         }
 
         /**
-         * {@code assets/minecraft/font/default.json}: one bitmap glyph per emoji, on a private-use
-         * character. In the default font, so the character draws anywhere text does - chat, signs,
-         * books, and other plugins' scoreboards and menus. The client merges this file with the
-         * vanilla one rather than replacing it, so every other character is untouched. Written in
-         * character order: the same emojis give the same bytes.
+         * {@code assets/minecraft/font/default.json}: one bitmap glyph per emoji and per HUD icon,
+         * each on a private-use character, and the space characters HUDs and menus move text with
+         * ({@link Spaces}). In the default font, so the characters draw anywhere text does - chat,
+         * signs, books, other plugins' scoreboards, tab lists and menus. The client merges this file
+         * with the vanilla one rather than replacing it, so every other character is untouched.
+         * Written in character order: the same content gives the same bytes.
          */
-        void font(Map<EmojiDefinition, Integer> characters) throws IOException {
-            if (characters.isEmpty()) {
+        void font(Map<EmojiDefinition, Integer> characters, List<HudGlyph> hudGlyphs, boolean spacesAnyway)
+                throws IOException {
+            if (characters.isEmpty() && hudGlyphs.isEmpty() && !spacesAnyway) {
                 return;
             }
             JsonArray providers = new JsonArray();
@@ -447,21 +488,74 @@ public final class PackCompiler {
                 if (emoji.texture().namespace().equals(emoji.namespace())) {
                     copyTexture(emoji.sourceRoot(), emoji.texture(), origin);
                 }
-                JsonObject provider = new JsonObject();
-                provider.addProperty("type", "bitmap");
-                provider.addProperty("file", emoji.texture() + ".png");
-                provider.addProperty("ascent", emoji.ascent());
-                provider.addProperty("height", emoji.height());
-                JsonArray chars = new JsonArray();
-                chars.add(new String(Character.toChars(glyph.getValue())));
-                provider.add("chars", chars);
-                providers.add(provider);
+                providers.add(bitmap(emoji.texture(), emoji.ascent(), emoji.height(), glyph.getValue()));
                 glyphs++;
             }
+            for (HudGlyph glyph : hudGlyphs.stream().sorted(Comparator.comparingInt(HudGlyph::character)).toList()) {
+                if (glyph.texture().namespace().equals(glyph.namespace())) {
+                    copyTexture(glyph.sourceRoot(), glyph.texture(), glyph.origin());
+                }
+                providers.add(bitmap(glyph.texture(), glyph.ascent(), glyph.height(), glyph.character()));
+                glyphs++;
+            }
+            JsonObject spaces = new JsonObject();
+            spaces.addProperty("type", "space");
+            JsonObject advances = new JsonObject();
+            Spaces.advances().forEach(advances::addProperty);
+            spaces.add("advances", advances);
+            providers.add(spaces);
+
             JsonObject font = new JsonObject();
             font.add("providers", providers);
             Files.createDirectories(packDir.resolve("assets/minecraft/font"));
-            place("assets/minecraft/font/default.json", json(font), "emojis");
+            place("assets/minecraft/font/default.json", json(font), "font");
+        }
+
+        private static JsonObject bitmap(ResourceLocation texture, int ascent, int height, int character) {
+            JsonObject provider = new JsonObject();
+            provider.addProperty("type", "bitmap");
+            provider.addProperty("file", texture + ".png");
+            provider.addProperty("ascent", ascent);
+            provider.addProperty("height", height);
+            JsonArray chars = new JsonArray();
+            chars.add(new String(Character.toChars(character)));
+            provider.add("chars", chars);
+            return provider;
+        }
+
+        /**
+         * Liquids: the two parent models their own models sit under, and
+         * {@code assets/minecraft/blockstates/tripwire.json} pointing each liquid's source and flowing
+         * states at its models - and every other state at vanilla's, so string is untouched.
+         */
+        void liquids(List<ItemDefinition> ordered, Map<String, Integer> slots) throws IOException {
+            if (slots.isEmpty()) {
+                return;
+            }
+            scaffold(LiquidModels.NAMESPACE);
+            place(LiquidModels.SOURCE_PARENT.assetPath("models", ".json"),
+                    json(LiquidModels.parent(LiquidModels.SOURCE_HEIGHT)), "liquids");
+            place(LiquidModels.FLOWING_PARENT.assetPath("models", ".json"),
+                    json(LiquidModels.parent(LiquidModels.FLOWING_HEIGHT)), "liquids");
+            models += 2;
+
+            Map<TripwireState, ResourceLocation> drawn = new HashMap<>();
+            for (ItemDefinition item : ordered) {
+                Integer slot = slots.get(item.fullId());
+                if (slot == null || !(item.placement() instanceof Placement.Liquid liquid)) {
+                    continue;
+                }
+                String origin = item.fullId() + " liquid";
+                look(item.namespace(), liquid.source(), origin);
+                if (liquid.flowing() != liquid.source()) {
+                    look(item.namespace(), liquid.flowing(), origin);
+                }
+                drawn.put(TripwireState.source(slot), liquid.source().location());
+                drawn.put(TripwireState.flowing(slot), liquid.flowing().location());
+                customBlockStates += 2;
+            }
+            Files.createDirectories(packDir.resolve("assets/minecraft/blockstates"));
+            place("assets/minecraft/blockstates/tripwire.json", json(LiquidModels.blockstate(drawn)), "liquids");
         }
 
         /**
