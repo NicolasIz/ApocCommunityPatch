@@ -25,10 +25,15 @@ pack:
   min-format: 46
   max-format: 99
   # Other plugins' resource packs to merge into this one, so players get one
-  # pack: folders holding assets/, or zips, relative to the server folder.
-  # Shared files - fonts, atlases, sounds.json, lang files and vanilla items'
-  # custom_model_data lists - are combined; a real ID collision (one
-  # custom_model_data number for two models) keeps ours and is reported.
+  # pack: folders holding assets/, or zips, relative to the server folder. Their
+  # overlays (the folders their pack.mcmeta declares) come with them. Every folder
+  # or zip in plugins/ArkcronistContent/packs/ is merged as well: that is where
+  # /arkcontent import puts ItemsAdder's generated pack, byte for byte.
+  # Shared files - fonts, atlases, sounds.json, lang files, blockstates and vanilla
+  # items' custom_model_data lists - are combined. The custom_model_data numbers and
+  # font characters a merged pack uses are never given to an item or emoji of ours
+  # (one that had one is given a free one, and that is reported); a clash left over
+  # keeps ours, except inside the merged pack's own overlays, where its entry wins.
   # e.g.
   #   merge:
   #     - plugins/CosmeticsCore/resourcepack

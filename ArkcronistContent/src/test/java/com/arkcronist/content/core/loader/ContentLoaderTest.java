@@ -70,6 +70,45 @@ class ContentLoaderTest {
     }
 
     @Test
+    void itemModelNamesAnItemDefinitionFileTheItemIsPointedAtDirectly() throws IOException {
+        write("holy_knight/imported/pack.yml", """
+                namespace: holy_knight
+                items:
+                  rapier:
+                    material: NETHERITE_SWORD
+                    resource:
+                      item-model: rapier
+                  shield:
+                    material: PAPER
+                    resource:
+                      item-model: weapons/shield.json
+                      texture: item/shield
+                  wall:
+                    type: custom_block
+                    resource:
+                      item-model: wall
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+
+        Map<String, ItemDefinition> items = new java.util.HashMap<>();
+        report.items().forEach(item -> items.put(item.id(), item));
+        assertEquals(new ModelSource.Definition(contents.resolve("holy_knight"), new ResourceLocation("holy_knight", "rapier")),
+                items.get("rapier").model());
+        assertEquals(new ResourceLocation("holy_knight", "rapier"), items.get("rapier").itemModel());
+        assertEquals(new ResourceLocation("holy_knight", "weapons/shield"), items.get("shield").itemModel());
+        assertFalse(items.containsKey("wall"));
+        assertEquals(List.of(
+                "holy_knight/imported/pack.yml > holy_knight:shield: only 'item-model' is used - the item definition"
+                        + " file decides everything the item draws",
+                "holy_knight/imported/pack.yml > holy_knight:wall: 'item-model' draws items and furniture only; a"
+                        + " custom_block needs resource.model, resource.texture or resource.textures",
+                "holy_knight/imported/pack.yml > holy_knight:wall: a custom_block needs resource.model,"
+                        + " resource.texture or resource.textures - without one it would look like its support block"),
+                report.problems());
+    }
+
+    @Test
     void namespaceDefaultsToTheContentPackFolderAndFilesMayNest() throws IOException {
         write("gems/configs/weapons/blades.yml", """
                 items:

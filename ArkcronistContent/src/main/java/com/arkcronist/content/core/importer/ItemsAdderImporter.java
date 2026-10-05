@@ -2,13 +2,14 @@ package com.arkcronist.content.core.importer;
 
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.definition.ResourceLocation;
+import com.arkcronist.content.core.pack.ExternalPack;
+import com.arkcronist.content.core.pack.PackSource;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
-import com.google.gson.JsonPrimitive;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
@@ -36,6 +37,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -65,7 +67,21 @@ import java.util.stream.Stream;
  *       rotation and the item display transformation.</li>
  * </ul>
  * <p>Everything else - recipes, loot, events, durability, enchantments - is listed in the report's
- * notes, per item, rather than dropped silently.</p>
+ * notes, per item, rather than dropped silently. The {@code custom_model_data} number an item had is
+ * not carried over: the item is drawn by its {@code item_model}.</p>
+ *
+ * <p>Assets are copied <b>byte for byte</b>: a model keeps its texture variables, elements and UVs
+ * exactly as written, a texture its size and pixels, a {@code .png.mcmeta} its frames, an
+ * {@code .ogg} its sample rate and channels; the folder structure under {@code assets/<ns>/} is
+ * kept. Nothing is renamed, re-encoded or "fixed" - a reference that would not resolve is reported,
+ * not rewritten. A namespace's {@code sounds.json} and {@code sounds/} go to
+ * {@code contents/<namespace>/}, where the pack compiler takes them as they are.</p>
+ *
+ * <p>ItemsAdder's <b>generated</b> resource pack - the zip {@code /iazip} writes, whole or split in
+ * parts - is recognised too, and taken whole into {@code packs/} ({@link GeneratedPacks}): every
+ * file as it is, overlays included. Each item it draws by number becomes an item drawn by
+ * {@code item_model}; where the same item is also in an ItemsAdder config under import/, the
+ * config's item is the one kept, with its name and lore.</p>
  *
  * <p>A file that cannot be read, or an item that cannot be converted, is reported and skipped; the
  * rest of the import carries on. Nothing in import/ is changed, and a file already in contents/ is
@@ -81,6 +97,7 @@ public final class ItemsAdderImporter {
     static final String MARKER = "# Imported from ItemsAdder by /arkcontent import";
 
     private static final Pattern ITEM_ID = Pattern.compile("[a-z0-9_.-]+");
+    private static final Pattern SOUNDS_JSON = Pattern.compile("assets/([^/]+)/sounds\\.json");
     private static final Pattern DICTIONARY_KEY = Pattern.compile("[a-z0-9_.]+-[a-z0-9_.-]+");
 
     /** ItemsAdder's order for a block's six textures. */
@@ -106,18 +123,27 @@ public final class ItemsAdderImporter {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
     /**
-     * Imports everything under {@code importDir} into {@code contentsDir}. Creates import/ when it
-     * does not exist yet, so there is a place to put things.
+     * {@link #run(Path, Path, Path)} with generated packs going to {@code packs/} beside
+     * {@code contents/}.
+     */
+    public ImportReport run(Path importDir, Path contentsDir) throws IOException {
+        return run(importDir, contentsDir, contentsDir.resolveSibling("packs"));
+    }
+
+    /**
+     * Imports everything under {@code importDir} into {@code contentsDir}, and every generated
+     * resource pack into {@code packsDir}. Creates import/ when it does not exist yet, so there is a
+     * place to put things.
      *
      * @throws IOException only when import/ itself cannot be listed; a single broken file is
      *                     reported in the result instead
      */
-    public ImportReport run(Path importDir, Path contentsDir) throws IOException {
+    public ImportReport run(Path importDir, Path contentsDir, Path packsDir) throws IOException {
         if (!Files.isDirectory(importDir)) {
             Files.createDirectories(importDir);
-            return new ImportReport(0, 0, 0, 0, 0, List.of(), List.of(), List.of());
+            return new ImportReport(0, 0, 0, 0, 0, 0, 0, List.of(), List.of(), List.of());
         }
-        return new Run(importDir, contentsDir).execute();
+        return new Run(importDir, contentsDir, packsDir).execute();
     }
 
     /** One config file with items. */
@@ -128,6 +154,7 @@ public final class ItemsAdderImporter {
 
         private final Path importDir;
         private final Path contentsDir;
+        private final Path packsDir;
         private final List<String> problems = new ArrayList<>();
         private final List<String> notes = new ArrayList<>();
         private final List<String> written = new ArrayList<>();
@@ -137,19 +164,76 @@ public final class ItemsAdderImporter {
         /** Destination files already handled in this run, so shared textures are copied once. */
         private final Set<Path> handled = new HashSet<>();
         private AssetIndex assets;
+        /** The generated packs taken into packs/ by this run: what they hold is not copied again. */
+        private final List<PackSource> absorbed = new ArrayList<>();
+        /** Items the configs gave, {@code ns:id}, and the models they are drawn with. */
+        private final Set<String> configItems = new HashSet<>();
+        private final Set<String> configModels = new HashSet<>();
 
         private int files;
         private int converted;
         private int items;
         private int skipped;
         private int resources;
+        private int packs;
+        private int packFiles;
 
-        Run(Path importDir, Path contentsDir) {
+        Run(Path importDir, Path contentsDir, Path packsDir) {
             this.importDir = importDir;
             this.contentsDir = contentsDir;
+            this.packsDir = packsDir;
         }
 
         ImportReport execute() throws IOException {
+            try {
+                List<GeneratedPacks.Found> generated = absorbGeneratedPacks();
+                convertConfigs();
+                for (GeneratedPacks.Found pack : generated) {
+                    PackSource source = absorbed.get(generated.indexOf(pack));
+                    if (source != null) {
+                        try {
+                            packItems(pack, source);
+                        } catch (IOException | RuntimeException exception) {
+                            problems.add("packs/" + pack.name() + ": its items could not be imported - " + describe(exception));
+                        }
+                    }
+                }
+            } finally {
+                for (PackSource source : absorbed) {
+                    if (source != null) {
+                        source.close();
+                    }
+                }
+            }
+            return new ImportReport(files, converted, items, skipped, resources, packs, packFiles, written, problems,
+                    notes);
+        }
+
+        /** Every generated pack in import/, copied whole into packs/; the list matches {@link #absorbed}. */
+        private List<GeneratedPacks.Found> absorbGeneratedPacks() throws IOException {
+            List<GeneratedPacks.Found> generated = GeneratedPacks.find(importDir, notes);
+            for (GeneratedPacks.Found pack : generated) {
+                PackSource source = null;
+                try {
+                    Files.createDirectories(packsDir);
+                    int copied = GeneratedPacks.absorb(pack, importDir, packsDir, problems, notes);
+                    if (copied >= 0) {
+                        packs++;
+                        packFiles += copied;
+                        source = PackSource.open(new ExternalPack("packs/" + pack.name(), packsDir.resolve(pack.name())));
+                        checkSoundNames(pack, source);
+                    }
+                } catch (IOException | RuntimeException exception) {
+                    problems.add(String.join(" + ", pack.parts().stream()
+                            .map(part -> unix(importDir.relativize(part))).toList())
+                            + ": could not be taken into packs/ - " + describe(exception));
+                }
+                absorbed.add(source);
+            }
+            return generated;
+        }
+
+        private void convertConfigs() throws IOException {
             List<Path> yamlFiles;
             try (Stream<Path> walk = Files.walk(importDir)) {
                 yamlFiles = walk.filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
@@ -171,14 +255,23 @@ public final class ItemsAdderImporter {
             }
             assets = AssetIndex.scan(importDir, packs);
 
+            Map<String, Source> namespaces = new TreeMap<>();
             for (Source source : sources) {
+                namespaces.putIfAbsent(source.namespace(), source);
                 try {
                     convert(source);
                 } catch (IOException | RuntimeException exception) {
                     problems.add(source.where() + ": could not be imported - " + describe(exception));
                 }
             }
-            return new ImportReport(files, converted, items, skipped, resources, written, problems, notes);
+            for (Source source : namespaces.values()) {
+                try {
+                    copySounds(source);
+                } catch (IOException | RuntimeException exception) {
+                    problems.add(source.where() + ": the sounds of " + source.namespace() + " could not be copied - "
+                            + describe(exception));
+                }
+            }
         }
 
         // ------------------------------------------------------------ reading
@@ -289,6 +382,7 @@ public final class ItemsAdderImporter {
                     } else {
                         converted.put(id, item);
                         items++;
+                        configItems.add(source.namespace() + ":" + id);
                     }
                 } catch (IOException | RuntimeException exception) {
                     problems.add(prefix + "could not be converted - " + describe(exception));
@@ -376,6 +470,10 @@ public final class ItemsAdderImporter {
 
             Map<?, ?> resource = map(ia.get("resource"));
             Map<?, ?> graphics = map(ia.get("graphics"));
+            if (resource != null && resource.get("model_id") != null) {
+                notes.add(prefix + "custom_model_data " + resource.get("model_id") + " (resource.model_id) is not"
+                        + " carried over - the item is drawn by item_model " + source.namespace() + ":" + id);
+            }
             if (!block && !furniture) {
                 Object material = ia.get("material");
                 if (material == null && resource != null) {
@@ -570,6 +668,7 @@ public final class ItemsAdderImporter {
             if (model.namespace().equals(source.namespace())) {
                 copyModel(source, model, prefix, new HashSet<>());
             }
+            configModels.add(model.toString());
             Map<String, Object> resource = new LinkedHashMap<>();
             resource.put("model", shown(model, source.namespace()));
             return resource;
@@ -714,6 +813,10 @@ public final class ItemsAdderImporter {
         // ------------------------------------------------------------ assets
 
         private void copyTexture(Source source, ResourceLocation texture, String prefix) throws IOException {
+            if (absorbedHas(texture.assetPath("textures", ".png"))) {
+                // A generated pack in packs/ has it, with its animation: that copy is the one drawn.
+                return;
+            }
             Optional<Path> found = assets.find(texture.namespace(), "textures", texture.path() + ".png", source.pack());
             if (found.isEmpty()) {
                 problems.add(prefix + "texture " + texture + " not found under import/");
@@ -728,14 +831,22 @@ public final class ItemsAdderImporter {
         }
 
         /**
-         * Copies a model, and with it every parent and texture it pulls in from its namespace. A bare
-         * texture path - {@code item/sword} instead of {@code my_items:item/sword} - means minecraft to
-         * the client, and is the classic reason an exported model shows purple and black; when the
-         * texture is really in this pack, the reference is corrected in the copy.
+         * Copies a model byte for byte, and with it every parent and texture it pulls in from its
+         * namespace. Nothing in it is changed: its texture variables, elements and UVs are what the
+         * client draws, exactly as Blockbench or the pack's author wrote them.
+         *
+         * <p>A bare texture path - {@code item/sword} instead of {@code my_items:item/sword} - means
+         * minecraft to the client, and is the classic reason an exported model shows purple and black.
+         * When the texture is really in this pack, that is reported, and the texture copied so that
+         * adding the namespace in the model is all it takes; the model itself is not rewritten.</p>
          */
         private void copyModel(Source source, ResourceLocation model, String prefix, Set<ResourceLocation> seen)
                 throws IOException {
             if (!seen.add(model)) {
+                return;
+            }
+            if (absorbedHas(model.assetPath("models", ".json"))) {
+                // A generated pack in packs/ has it, with its textures: that copy is the one drawn.
                 return;
             }
             Optional<Path> found = assets.find(model.namespace(), "models", model.path() + ".json", source.pack());
@@ -744,6 +855,7 @@ public final class ItemsAdderImporter {
                 return;
             }
             byte[] bytes = Files.readAllBytes(found.get());
+            copyBytes(bytes, assetTarget(model, "models", ".json"), found.get(), prefix);
             JsonObject json;
             try {
                 JsonElement parsed = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8));
@@ -753,39 +865,36 @@ public final class ItemsAdderImporter {
                 json = parsed.getAsJsonObject();
             } catch (JsonParseException exception) {
                 problems.add(prefix + "model " + model + " is not valid JSON, copied as it is - " + firstLine(exception.getMessage()));
-                copy(found.get(), assetTarget(model, "models", ".json"), prefix);
                 return;
             }
 
-            boolean corrected = false;
             List<ResourceLocation> textures = new ArrayList<>();
             if (json.get("textures") instanceof JsonObject variables) {
                 for (Map.Entry<String, JsonElement> entry : variables.entrySet()) {
-                    ResourceLocation texture = reference(entry.getValue(), source, "textures", ".png", prefix);
+                    ResourceLocation texture = reference(entry.getValue(), prefix);
                     if (texture == null) {
                         continue;
                     }
-                    if (!entry.getValue().getAsString().equals(texture.toString())
-                            && texture.namespace().equals(model.namespace())) {
-                        entry.setValue(new JsonPrimitive(texture.toString()));
-                        corrected = true;
+                    ResourceLocation own = bareButOwn(entry.getValue(), model, "textures", ".png", source);
+                    if (own != null) {
+                        problems.add(prefix + "model " + model + ": texture '" + entry.getKey() + "' is '"
+                                + entry.getValue().getAsString() + "' with no namespace, which the client reads as "
+                                + texture + " - the model is copied unchanged; write " + own
+                                + " in it if it shows purple and black");
+                        texture = own;
                     }
                     textures.add(texture);
                 }
             }
-            ResourceLocation parent = reference(json.get("parent"), source, "models", ".json", prefix);
-            if (parent != null && !json.get("parent").getAsString().equals(parent.toString())
-                    && parent.namespace().equals(model.namespace())) {
-                json.addProperty("parent", parent.toString());
-                corrected = true;
-            }
-            if (corrected) {
-                notes.add(prefix + "model " + model + ": texture paths without a namespace pointed at vanilla -"
-                        + " corrected to " + model.namespace() + ": in the copy");
+            ResourceLocation parent = reference(json.get("parent"), prefix);
+            ResourceLocation ownParent = bareButOwn(json.get("parent"), model, "models", ".json", source);
+            if (ownParent != null) {
+                problems.add(prefix + "model " + model + ": parent '" + json.get("parent").getAsString() + "' has no"
+                        + " namespace, which the client reads as " + parent + " - the model is copied unchanged; write "
+                        + ownParent + " in it if it does not draw");
+                parent = ownParent;
             }
 
-            copyBytes(corrected ? (GSON.toJson(json) + "\n").getBytes(StandardCharsets.UTF_8) : bytes,
-                    assetTarget(model, "models", ".json"), found.get(), prefix);
             for (ResourceLocation texture : textures) {
                 if (texture.namespace().equals(model.namespace())) {
                     copyTexture(source, texture, prefix);
@@ -800,12 +909,8 @@ public final class ItemsAdderImporter {
             }
         }
 
-        /**
-         * A location named inside a model. Bare means minecraft, as it does to the client - unless the
-         * file exists in the model's own namespace in import/ and nowhere else would make sense.
-         */
-        private ResourceLocation reference(JsonElement value, Source source, String folder, String extension,
-                                           String prefix) {
+        /** A location named inside a model, read as the client reads it: bare means minecraft. */
+        private ResourceLocation reference(JsonElement value, String prefix) {
             if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) {
                 return null;
             }
@@ -814,18 +919,211 @@ public final class ItemsAdderImporter {
                 return null;
             }
             try {
-                ResourceLocation location = ResourceLocation.parse(raw, ResourceLocation.MINECRAFT);
-                if (raw.indexOf(':') < 0) {
-                    ResourceLocation own = new ResourceLocation(source.namespace(), location.path());
-                    if (assets.find(own.namespace(), folder, own.path() + extension, source.pack()).isPresent()) {
-                        return own;
-                    }
-                }
-                return location;
+                return ResourceLocation.parse(raw, ResourceLocation.MINECRAFT);
             } catch (IllegalArgumentException exception) {
                 problems.add(prefix + "a model refers to '" + raw + "' - " + exception.getMessage());
                 return null;
             }
+        }
+
+        /**
+         * The model's own namespace's file, when a bare location names one that exists in import/ -
+         * what the author most likely meant - or null.
+         */
+        private ResourceLocation bareButOwn(JsonElement value, ResourceLocation model, String folder, String extension,
+                                            Source source) throws IOException {
+            if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) {
+                return null;
+            }
+            String raw = value.getAsString();
+            if (raw.startsWith("#") || raw.isBlank() || raw.indexOf(':') >= 0
+                    || model.namespace().equals(ResourceLocation.MINECRAFT)) {
+                return null;
+            }
+            try {
+                ResourceLocation own = new ResourceLocation(model.namespace(), raw);
+                return assets.find(own.namespace(), folder, own.path() + extension, source.pack()).isPresent()
+                        || absorbedHas(own.assetPath(folder, extension)) ? own : null;
+            } catch (IllegalArgumentException exception) {
+                return null;
+            }
+        }
+
+        /**
+         * A namespace's {@code sounds.json} and {@code sounds/*.ogg}, byte for byte, into
+         * {@code contents/<namespace>/} - unless a generated pack in packs/ brings them already.
+         */
+        private void copySounds(Source source) throws IOException {
+            String namespace = source.namespace();
+            String prefix = source.where() + " > " + namespace + " sounds: ";
+            Optional<Path> index = assets.find(namespace, ".", "sounds.json", source.pack());
+            if (index.isPresent() && !absorbedHas("assets/" + namespace + "/sounds.json")) {
+                copy(index.get(), contentsDir.resolve(namespace).resolve("sounds.json"), prefix);
+            }
+            Map<String, Path> sounds = assets.all(namespace, "sounds", source.pack());
+            for (Map.Entry<String, Path> sound : sounds.entrySet()) {
+                if (!sound.getKey().endsWith(".ogg")
+                        || absorbedHas("assets/" + namespace + "/sounds/" + sound.getKey())) {
+                    continue;
+                }
+                copy(sound.getValue(), contentsDir.resolve(namespace).resolve("sounds").resolve(sound.getKey()), prefix);
+            }
+            if (index.isEmpty() && sounds.keySet().stream().anyMatch(name -> name.endsWith(".ogg"))
+                    && !absorbedHas("assets/" + namespace + "/sounds.json")) {
+                notes.add(prefix + "sound files copied, but there is no sounds.json naming them as sound events");
+            }
+        }
+
+        private boolean absorbedHas(String relative) throws IOException {
+            for (PackSource source : absorbed) {
+                if (source != null && source.has(relative)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // ------------------------------------------------------------ generated packs
+
+        /**
+         * The items a generated pack draws by number, each written as an item drawn by
+         * {@code item_model}: {@code contents/<ns>/items/<id>.json} is the pack's own entry for it, as
+         * it is, unless the pack has an item definition of that name already, which is then used.
+         */
+        private void packItems(GeneratedPacks.Found pack, PackSource source) throws IOException {
+            Map<String, Integer> left = new TreeMap<>();
+            List<GeneratedPacks.Entry> entries = new ArrayList<>();
+            Set<String> seen = new HashSet<>();
+            for (GeneratedPacks.Entry entry : GeneratedPacks.entries(source, left)) {
+                if (!seen.add(entry.primary().namespace() + "|" + entry.model())) {
+                    left.merge("numbers drawing the same model as another number", 1, Integer::sum);
+                } else if (configModels.contains(entry.primary().toString())) {
+                    left.merge("items an ItemsAdder config under import/ gives, with its name and lore", 1, Integer::sum);
+                } else {
+                    entries.add(entry);
+                }
+            }
+
+            String where = "packs/" + pack.name();
+            Map<String, Map<String, Object>> byNamespace = new TreeMap<>();
+            Map<GeneratedPacks.Entry, String> ids = GeneratedPacks.ids(entries);
+            for (GeneratedPacks.Entry entry : entries) {
+                String namespace = entry.primary().namespace();
+                String id = ids.get(entry);
+                if (configItems.contains(namespace + ":" + id)) {
+                    left.merge("items an ItemsAdder config under import/ gives, with its name and lore", 1, Integer::sum);
+                    continue;
+                }
+                String prefix = where + " > " + entry.material() + " " + entry.threshold() + " (" + entry.primary() + "): ";
+                ResourceLocation definition = new ResourceLocation(namespace, id);
+                byte[] theirs = source.read(definition.assetPath("items", ".json"));
+                boolean ownDefinition = theirs != null && drawsSame(theirs, entry);
+                for (int n = 2; theirs != null && !ownDefinition; n++) {
+                    // The pack's file of that name draws something else: never shadow it.
+                    id = ids.get(entry) + "_" + n;
+                    definition = new ResourceLocation(namespace, id);
+                    theirs = source.read(definition.assetPath("items", ".json"));
+                }
+                if (!ownDefinition) {
+                    JsonObject file = new JsonObject();
+                    if (entry.oversized()) {
+                        file.addProperty("oversized_in_gui", true);
+                    }
+                    file.add("model", entry.model().deepCopy());
+                    copyBytes((GSON.toJson(file) + "\n").getBytes(StandardCharsets.UTF_8),
+                            contentsDir.resolve(namespace).resolve("items").resolve(id + ".json"),
+                            packsDir.resolve(pack.name()), prefix);
+                }
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("material", entry.material().toUpperCase(Locale.ROOT));
+                item.put("display-name", GeneratedPacks.displayName(id));
+                item.put("resource", Map.of("item-model", id));
+                byNamespace.computeIfAbsent(namespace, key -> new TreeMap<>()).put(id, item);
+            }
+
+            for (Map.Entry<String, Map<String, Object>> namespace : byNamespace.entrySet()) {
+                Path target = contentsDir.resolve(namespace.getKey()).resolve("imported").resolve(pack.name() + "-pack.yml");
+                if (Files.exists(target) && !writtenByImporter(target)) {
+                    problems.add(where + ": " + unix(contentsDir.relativize(target))
+                            + " already exists and was not written by the importer - left alone");
+                    continue;
+                }
+                Map<String, Object> document = new LinkedHashMap<>();
+                document.put("namespace", namespace.getKey());
+                document.put("items", namespace.getValue());
+                String text = MARKER + "\n"
+                        + "# Source: import/" + String.join(" + ", pack.parts().stream()
+                        .map(part -> unix(importDir.relativize(part))).toList())
+                        + " - an ItemsAdder generated resource pack, now in " + where + "/\n"
+                        + "# Running the import again rewrites this file. To keep changes you make, move the\n"
+                        + "# file out of imported/ (anywhere else in this folder) and delete the source.\n"
+                        + "#\n"
+                        + "# A generated pack holds what the client draws, not ItemsAdder's configs: each item here is\n"
+                        + "# one custom_model_data entry of it, now drawn by item_model - items/<id>.json, the pack's\n"
+                        + "# own entry as it is - and named after its id. For names, lore and behaviours, put the\n"
+                        + "# ItemsAdder configs (contents/<pack>/configs/*.yml) in import/ too: their items win.\n"
+                        + YamlWriter.write(document);
+                writeAtomically(target, text.getBytes(StandardCharsets.UTF_8));
+                written.add(unix(contentsDir.relativize(target)));
+                converted++;
+                items += namespace.getValue().size();
+            }
+            int total = byNamespace.values().stream().mapToInt(Map::size).sum();
+            notes.add(where + ": " + packFilesOf(source) + " file(s) merged as they are; " + total + " item(s) drawn by"
+                    + " item_model instead of custom_model_data, in " + byNamespace.size() + " namespace(s)");
+            left.forEach((reason, count) -> notes.add(where + ": " + count + " custom_model_data entr"
+                    + (count == 1 ? "y" : "ies") + " not made items - " + reason));
+        }
+
+        /** Sound names a pack's sounds.json gives with no namespace, which play nothing: reported, not rewritten. */
+        private void checkSoundNames(GeneratedPacks.Found pack, PackSource source) throws IOException {
+            for (String file : source.files()) {
+                java.util.regex.Matcher matcher = SOUNDS_JSON.matcher(file);
+                if (!matcher.matches()) {
+                    continue;
+                }
+                byte[] bytes = source.read(file);
+                try {
+                    if (bytes != null && JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8))
+                            instanceof JsonObject sounds) {
+                        String namespace = matcher.group(1);
+                        java.util.SortedSet<String> names = com.arkcronist.content.core.pack.SoundNames.bareButOwn(
+                                sounds, namespace, path -> {
+                                    try {
+                                        return source.has(path);
+                                    } catch (IOException exception) {
+                                        return false;
+                                    }
+                                });
+                        String report = com.arkcronist.content.core.pack.SoundNames.describe("packs/" + pack.name()
+                                + "/" + file, namespace, names);
+                        if (report != null) {
+                            problems.add(report);
+                        }
+                    }
+                } catch (JsonParseException exception) {
+                    problems.add("packs/" + pack.name() + "/" + file + " is not valid JSON - the client drops every"
+                            + " sound of that namespace; copied as it is");
+                }
+            }
+        }
+
+        private static int packFilesOf(PackSource source) throws IOException {
+            return source.files().size();
+        }
+
+        /** Whether the pack's own item definition draws the entry's model. */
+        private static boolean drawsSame(byte[] definition, GeneratedPacks.Entry entry) {
+            try {
+                if (JsonParser.parseString(new String(definition, StandardCharsets.UTF_8)) instanceof JsonObject object) {
+                    String primary = GeneratedPacks.primary(object.get("model"));
+                    return primary != null
+                            && ResourceLocation.parse(primary, ResourceLocation.MINECRAFT).equals(entry.primary());
+                }
+            } catch (JsonParseException | IllegalArgumentException exception) {
+                return false;
+            }
+            return false;
         }
 
         private Path assetTarget(ResourceLocation location, String folder, String extension) {

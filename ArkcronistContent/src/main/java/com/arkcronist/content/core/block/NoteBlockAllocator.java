@@ -49,7 +49,16 @@ public final class NoteBlockAllocator {
      * @param blockIds every custom block defined now
      */
     public static Allocation allocate(Map<String, Integer> previous, Collection<String> blockIds) {
-        StableAllocator.Allocation allocation = STATES.allocate(previous, blockIds);
+        return allocate(previous, blockIds, java.util.Set.of());
+    }
+
+    /**
+     * @param reserved states a merged pack draws as blocks of its own: never given to a new block. A
+     *                 block holding one from before keeps it - it is in the world in that state
+     */
+    public static Allocation allocate(Map<String, Integer> previous, Collection<String> blockIds,
+                                      java.util.Set<Integer> reserved) {
+        StableAllocator.Allocation allocation = STATES.allocate(previous, blockIds, reserved);
         Map<String, NoteBlockState> active = new LinkedHashMap<>();
         allocation.active().forEach((id, index) -> active.put(id, NoteBlockState.fromIndex(index)));
         return new Allocation(allocation.assignments(), active, allocation.problems(), allocation.changed());

@@ -1,7 +1,10 @@
 package com.arkcronist.content.core.pack;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedReader;
@@ -11,9 +14,13 @@ import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedMap;
+import java.util.TreeSet;
+import java.util.regex.Pattern;
 
 /**
  * The other way to draw this plugin's items: a vanilla material with a {@code custom_model_data}
@@ -35,6 +42,8 @@ import java.util.SortedMap;
  * armour with trims, clocks - are left out: replacing their definition would lose what it does.</p>
  */
 public final class ModelDataDispatch {
+
+    private static final Pattern VANILLA_DEFINITION = Pattern.compile("assets/minecraft/items/[^/]+\\.json");
 
     private static volatile @Nullable Map<String, String> vanilla;
 
@@ -89,6 +98,52 @@ public final class ModelDataDispatch {
         JsonObject definition = new JsonObject();
         definition.add("model", dispatch);
         return definition;
+    }
+
+    /**
+     * The {@code custom_model_data} numbers another pack's vanilla item definitions draw, in its
+     * base assets and in its overlays: an ItemsAdder pack's, a cosmetics plugin's. None of them is
+     * handed to an item of this plugin, so that both packs' numbers keep drawing what they did.
+     */
+    public static Set<Integer> numbersUsedBy(PackSource source) throws IOException {
+        Set<Integer> numbers = new TreeSet<>();
+        List<String> folders = new java.util.ArrayList<>(List.of("assets/minecraft/items"));
+        source.overlays().keySet().forEach(overlay -> folders.add(overlay + "/assets/minecraft/items"));
+        List<String> files = new java.util.ArrayList<>();
+        for (String folder : folders) {
+            files.addAll(source.children(folder));
+        }
+        for (String file : files) {
+            if (!VANILLA_DEFINITION.matcher(PackSource.inner(file)).matches()) {
+                continue;
+            }
+            byte[] bytes = source.read(file);
+            JsonElement root;
+            try {
+                root = bytes == null ? null : JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8));
+            } catch (JsonParseException exception) {
+                continue;
+            }
+            if (root instanceof JsonObject definition && definition.get("model") instanceof JsonObject model
+                    && "custom_model_data".equals(JsonMerge.bare(string(model, "property")))
+                    && "range_dispatch".equals(JsonMerge.bare(string(model, "type")))
+                    && model.get("entries") instanceof JsonArray entries) {
+                for (JsonElement entry : entries) {
+                    if (entry instanceof JsonObject object && object.get("threshold") instanceof JsonElement threshold
+                            && threshold.isJsonPrimitive() && threshold.getAsJsonPrimitive().isNumber()) {
+                        double value = threshold.getAsDouble();
+                        if (value == Math.rint(value) && Math.abs(value) <= Integer.MAX_VALUE) {
+                            numbers.add((int) value);
+                        }
+                    }
+                }
+            }
+        }
+        return numbers;
+    }
+
+    private static @Nullable String string(JsonObject object, String key) {
+        return object.get(key) instanceof JsonElement value && value.isJsonPrimitive() ? value.getAsString() : null;
     }
 
     private static JsonObject entry(int threshold, JsonObject model) {

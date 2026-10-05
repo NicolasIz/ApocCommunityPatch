@@ -77,6 +77,29 @@ public final class StableAllocator {
      * @param ids      every id defined now
      */
     public Allocation allocate(Map<String, Integer> previous, Collection<String> ids) {
+        return allocate(previous, ids, Set.of());
+    }
+
+    /**
+     * @param previous what the assignment file held
+     * @param ids      every id defined now
+     * @param reserved numbers something else already uses - another pack's custom_model_data
+     *                 numbers, its font's characters: never handed to a new id
+     */
+    public Allocation allocate(Map<String, Integer> previous, Collection<String> ids, Set<Integer> reserved) {
+        return allocate(previous, ids, reserved, false);
+    }
+
+    /**
+     * @param previous    what the assignment file held
+     * @param ids         every id defined now
+     * @param reserved    numbers something else already uses: never handed to a new id
+     * @param moveClashes whether an id that holds a reserved number from before is given a free one
+     *                    (and that reported): right where the other pack's use of the number wins
+     *                    anyway, so keeping it would only keep it broken
+     */
+    public Allocation allocate(Map<String, Integer> previous, Collection<String> ids, Set<Integer> reserved,
+                               boolean moveClashes) {
         List<String> problems = new ArrayList<>();
         Map<String, Integer> assignments = new TreeMap<>();
         Set<Integer> taken = new HashSet<>();
@@ -87,6 +110,10 @@ public final class StableAllocator {
             if (number == null || number < first || number > last) {
                 problems.add(noun + " " + number + " for " + entry.getKey() + " is outside " + first + "-" + last
                         + " - it will be given a new one");
+            } else if (moveClashes && reserved.contains(number) && ids.contains(entry.getKey())) {
+                problems.add(noun + " " + number + " of " + entry.getKey() + " is also used by a pack merged in"
+                        + " - " + entry.getKey() + " is given a free one; what was made with the old one now"
+                        + " shows that pack's");
             } else if (!taken.add(number)) {
                 problems.add(noun + " " + number + " is assigned twice; " + entry.getKey()
                         + " will be given a new one");
@@ -100,7 +127,7 @@ public final class StableAllocator {
             if (assignments.containsKey(id)) {
                 continue;
             }
-            while (next <= last && taken.contains(next)) {
+            while (next <= last && (taken.contains(next) || reserved.contains(next))) {
                 next++;
             }
             if (next > last) {

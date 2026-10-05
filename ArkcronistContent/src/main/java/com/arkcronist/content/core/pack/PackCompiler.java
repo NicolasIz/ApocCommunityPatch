@@ -20,6 +20,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -32,6 +33,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -56,6 +58,11 @@ import java.util.stream.Stream;
  * <p>When there are custom blocks it also writes {@code assets/minecraft/blockstates/note_block.json},
  * which is how the client learns to draw a note block state as one of them.</p>
  *
+ * <p>Files that are not drawn from a definition go in exactly as they are, never re-encoded: a
+ * content pack's {@code sounds.json} and {@code sounds/*.ogg}, a texture's {@code .png.mcmeta}
+ * animation, an item definition file ({@code resource.item-model}), and every file of a merged
+ * pack ({@link PackSource}) - its overlays and their {@code pack.mcmeta} entries included.</p>
+ *
  * <p>Only what is referenced is copied. A model is read, and its {@code parent} and
  * {@code textures} followed, for as long as they stay inside the item's namespace; anything in
  * {@code minecraft:} is already on the client. A stray draft texture in the content folder therefore
@@ -70,6 +77,7 @@ public final class PackCompiler {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
     private static final byte[] PNG_SIGNATURE = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'};
+    private static final byte[] OGG_SIGNATURE = {'O', 'g', 'g', 'S'};
 
     /** What the pack draws for every note block state that is not a custom block's. */
     private static final String VANILLA_NOTE_BLOCK = "minecraft:block/note_block";
@@ -80,11 +88,12 @@ public final class PackCompiler {
      * @param customBlockStates note block states mapped to a custom block's model
      * @param glyphs            emojis written into the font
      * @param externalFiles     files taken from other plugins' packs
+     * @param sounds            sound files and {@code sounds.json} files taken from the content packs
      * @param problems          missing or unreadable files and conflicting paths, each naming the
      *                          item that ran into it
      */
     public record Result(int itemDefinitions, int models, int textures, int customBlockStates,
-                         int glyphs, int externalFiles, List<String> problems) {
+                         int glyphs, int externalFiles, int sounds, List<String> problems) {
 
         public Result {
             problems = List.copyOf(problems);
@@ -186,22 +195,49 @@ public final class PackCompiler {
      * @param spaces          write the space characters ({@link Spaces}) even with no emoji or HUD
      *                        needing the font - for menus and scoreboards that lay text out with them
      * @param externalPacks   other plugins' packs to merge in, after this plugin's own files
+     * @param contentsDir     the content packs' folder: each pack's {@code sounds.json} and
+     *                        {@code sounds/} go into {@code assets/<its folder name>/} as they are;
+     *                        null takes no sounds
      */
     public record Input(Collection<ItemDefinition> items, Map<String, NoteBlockState> noteBlockStates,
                         Map<EmojiDefinition, Integer> glyphs, Collection<AdvancementDefinition> advancements,
                         Map<String, Integer> modelData, Map<String, Integer> liquidSlots, List<HudGlyph> hudGlyphs,
-                        boolean spaces, List<ExternalPack> externalPacks) {
+                        boolean spaces, List<ExternalPack> externalPacks, @Nullable Path contentsDir) {
+
+        /** No content pack sounds. */
+        public Input(Collection<ItemDefinition> items, Map<String, NoteBlockState> noteBlockStates,
+                     Map<EmojiDefinition, Integer> glyphs, Collection<AdvancementDefinition> advancements,
+                     Map<String, Integer> modelData, Map<String, Integer> liquidSlots, List<HudGlyph> hudGlyphs,
+                     boolean spaces, List<ExternalPack> externalPacks) {
+            this(items, noteBlockStates, glyphs, advancements, modelData, liquidSlots, hudGlyphs, spaces, externalPacks,
+                    null);
+        }
     }
 
     /** Deletes {@code packDir} and writes the pack for {@code input} into it. */
     public Result compile(Path packDir, Input input) throws IOException {
+        // Opened first: an item may be drawn with a merged pack's model or item definition, and is
+        // not reported missing when one of them has it.
+        List<PackSource> sources = new ArrayList<>();
+        try {
+            for (ExternalPack pack : input.externalPacks().stream().sorted(Comparator.comparing(ExternalPack::name)).toList()) {
+                sources.add(PackSource.open(pack));
+            }
+            return compile(packDir, input, sources);
+        } finally {
+            for (PackSource source : sources) {
+                source.close();
+            }
+        }
+    }
+
+    private Result compile(Path packDir, Input input, List<PackSource> sources) throws IOException {
         Collection<ItemDefinition> items = input.items();
         Map<String, NoteBlockState> noteBlockStates = input.noteBlockStates();
         Map<EmojiDefinition, Integer> glyphs = input.glyphs();
         Collection<AdvancementDefinition> advancements = input.advancements();
         Map<String, Integer> modelData = input.modelData();
-        List<ExternalPack> externalPacks = input.externalPacks();
-        Run run = new Run(packDir);
+        Run run = new Run(packDir, sources);
         run.reset();
         run.writeText("pack.mcmeta", GSON.toJson(settings.mcmeta()) + "\n");
 
@@ -217,18 +253,25 @@ public final class PackCompiler {
         run.liquids(ordered, input.liquidSlots());
         run.font(glyphs, input.hudGlyphs(), input.spaces());
         run.advancementBackgrounds(advancements);
-        for (ExternalPack pack : externalPacks.stream().sorted(Comparator.comparing(ExternalPack::name)).toList()) {
-            run.merge(pack);
+        if (input.contentsDir() != null) {
+            run.sounds(input.contentsDir());
+        }
+        for (PackSource source : sources) {
+            run.merge(source);
         }
         run.atlas();
+        run.overlayShared();
+        run.overlayEntries(settings.mcmeta());
         return new Result(run.itemDefinitions, run.models, run.textures, run.customBlockStates,
-                run.glyphs, run.externalFiles, run.problems);
+                run.glyphs, run.externalFiles, run.sounds, run.problems);
     }
 
     /** State for one compile. */
     private static final class Run {
 
         private final Path packDir;
+        /** The merged packs, in merge order. */
+        private final List<PackSource> sources;
         private final List<String> problems = new ArrayList<>();
         /** Pack-relative path of each file written, and the item it was written for. */
         private final Map<String, String> placed = new HashMap<>();
@@ -244,9 +287,16 @@ public final class PackCompiler {
         private int customBlockStates;
         private int glyphs;
         private int externalFiles;
+        private int sounds;
+        /** The merged packs' overlay entries, by directory: what pack.mcmeta has to declare. */
+        private final Map<String, JsonObject> overlays = new LinkedHashMap<>();
+        /** This plugin's own version of each shared file ({@link JsonMerge}), before any pack was merged in. */
+        private final Map<String, byte[]> own = new HashMap<>();
+        private boolean merging;
 
-        Run(Path packDir) {
+        Run(Path packDir, List<PackSource> sources) {
             this.packDir = packDir;
+            this.sources = sources;
         }
 
         void reset() throws IOException {
@@ -276,14 +326,22 @@ public final class PackCompiler {
             look(item.namespace(), source, origin);
 
             ModelSource worn = equipment == null ? null : equipment.worn();
-            if (worn != null) {
-                look(item.namespace(), worn, origin);
-            }
-            byte[] definition = worn == null
-                    ? itemDefinition(source.location())
-                    : wornItemDefinition(source.location(), worn.location());
-            if (place(item.itemModel().assetPath("items", ".json"), definition, origin)) {
-                itemDefinitions++;
+            if (source instanceof ModelSource.Definition) {
+                // The file is the item definition itself, and already placed as it is.
+                if (worn != null) {
+                    problems.add(origin + ": equipment.model is not drawn - the item's look is an item definition"
+                            + " file (resource.item-model), and that file decides what the head shows too");
+                }
+            } else {
+                if (worn != null) {
+                    look(item.namespace(), worn, origin);
+                }
+                byte[] definition = worn == null
+                        ? itemDefinition(source.location())
+                        : wornItemDefinition(source.location(), worn.location());
+                if (place(item.itemModel().assetPath("items", ".json"), definition, origin)) {
+                    itemDefinitions++;
+                }
             }
             if (item.placement() instanceof Placement.Crop crop) {
                 stages(item, crop, origin);
@@ -361,7 +419,112 @@ public final class PackCompiler {
                         models++;
                     }
                 }
+                case ModelSource.Definition definition -> definitionFile(namespace, definition, origin);
             }
+        }
+
+        /**
+         * An item definition file, byte for byte, and the models it names in its namespace. With no
+         * such file in the content pack, a merged pack has to supply it.
+         */
+        private void definitionFile(String namespace, ModelSource.Definition definition, String origin)
+                throws IOException {
+            ResourceLocation location = definition.location();
+            if (!location.namespace().equals(namespace)) {
+                return;
+            }
+            String relative = location.assetPath("items", ".json");
+            Path file = definition.sourceRoot().resolve("items").resolve(location.path() + ".json");
+            if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) {
+                if (!supplied(relative)) {
+                    problems.add(origin + ": item definition " + location + " not found, expected "
+                            + shown(definition.sourceRoot(), file) + " or in a merged pack");
+                }
+                return;
+            }
+            byte[] bytes = Files.readAllBytes(file);
+            JsonElement json;
+            try {
+                json = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8));
+            } catch (JsonParseException exception) {
+                problems.add(origin + ": " + shown(definition.sourceRoot(), file) + " is not valid JSON - "
+                        + exception.getMessage());
+                return;
+            }
+            if (!(json instanceof JsonObject object) || !(object.get("model") instanceof JsonObject)) {
+                problems.add(origin + ": " + shown(definition.sourceRoot(), file) + " has no 'model' object - an item"
+                        + " definition needs one");
+                return;
+            }
+            if (place(relative, bytes, origin)) {
+                itemDefinitions++;
+            }
+            Set<ResourceLocation> named = new java.util.TreeSet<>(Comparator.comparing(ResourceLocation::toString));
+            namedModels(object.get("model"), named, location, origin);
+            for (ResourceLocation model : named) {
+                if (model.namespace().equals(namespace)) {
+                    copyModel(definition.sourceRoot(), model, origin);
+                }
+            }
+        }
+
+        /**
+         * Every model an item model names, at any depth: a plain model's {@code model}, a special
+         * model's {@code base}, inside conditions, selects, dispatches and composites alike.
+         */
+        private void namedModels(JsonElement element, Set<ResourceLocation> named, ResourceLocation definition,
+                                 String origin) {
+            if (element instanceof JsonArray array) {
+                array.forEach(child -> namedModels(child, named, definition, origin));
+                return;
+            }
+            if (!(element instanceof JsonObject object)) {
+                return;
+            }
+            String type = object.get("type") instanceof JsonElement value && value.isJsonPrimitive()
+                    ? value.getAsString() : "";
+            String key = switch (type) {
+                case "model", "minecraft:model" -> "model";
+                case "special", "minecraft:special" -> "base";
+                default -> null;
+            };
+            if (key != null && object.get(key) instanceof JsonElement value && value.isJsonPrimitive()) {
+                ResourceLocation model = reference(value, definition, origin);
+                if (model != null) {
+                    named.add(model);
+                }
+            }
+            for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
+                if (entry.getValue().isJsonObject() || entry.getValue().isJsonArray()) {
+                    namedModels(entry.getValue(), named, definition, origin);
+                }
+            }
+        }
+
+        /** Whether a merged pack has this file - in its base assets/ or in one of its overlays. */
+        private boolean supplied(String relative) throws IOException {
+            for (PackSource source : sources) {
+                if (source.has(relative)) {
+                    return true;
+                }
+                for (String overlay : source.overlays().keySet()) {
+                    if (source.has(overlay + "/" + relative)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        /** The first merged pack's copy of a base file, or null. */
+        private @Nullable byte[] supplier(String relative) throws IOException {
+            for (PackSource source : sources) {
+                byte[] bytes = source.read(relative);
+                if (bytes != null) {
+                    return bytes;
+                }
+            }
+            return null;
         }
 
         /**
@@ -427,12 +590,20 @@ public final class PackCompiler {
                 if (number == null || !ModelDataDispatch.dispatchable(item.material())) {
                     continue;
                 }
-                Path definition = packDir.resolve(item.itemModel().assetPath("items", ".json"));
-                if (!Files.isRegularFile(definition)) {
+                String relative = item.itemModel().assetPath("items", ".json");
+                Path definition = packDir.resolve(relative);
+                byte[] bytes = Files.isRegularFile(definition) ? Files.readAllBytes(definition) : supplier(relative);
+                JsonObject model;
+                try {
+                    model = bytes != null
+                            && JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)) instanceof JsonObject root
+                            && root.get("model") instanceof JsonObject drawn ? drawn : null;
+                } catch (JsonParseException exception) {
+                    model = null;
+                }
+                if (model == null) {
                     continue;
                 }
-                JsonObject model = JsonParser.parseString(Files.readString(definition)).getAsJsonObject()
-                        .getAsJsonObject("model");
                 byMaterial.computeIfAbsent(item.material().toLowerCase(Locale.ROOT), material -> new TreeMap<>())
                         .put(number, model);
             }
@@ -608,24 +779,38 @@ public final class PackCompiler {
         }
 
         /**
-         * Copies another plugin's {@code assets/} in, from its folder or its zip. Runs after this
-         * plugin's own files, so a path both supply keeps this plugin's version and the clash is
-         * reported - except for the shared lists {@link JsonMerge} combines, where the other pack's
-         * entries are added to ours and only true ID collisions are reported.
+         * Copies another plugin's pack in, from its folder or its zip: its {@code assets/} and its
+         * overlays ({@link PackSource}), every file as it is. Runs after this plugin's own files, so a
+         * path both supply keeps this plugin's version and the clash is reported - except for the
+         * shared lists {@link JsonMerge} combines, where the other pack's entries are added to ours
+         * and only true ID collisions are reported.
          */
-        void merge(ExternalPack pack) throws IOException {
-            String origin = pack.name() + " pack";
-            Map<String, byte[]> files = Files.isRegularFile(pack.root()) ? zipped(pack, origin) : folder(pack, origin);
-            if (files == null) {
-                return;
+        void merge(PackSource source) throws IOException {
+            String origin = source.name() + " pack";
+            merging = true;
+            try {
+                mergeFiles(source, origin);
+            } finally {
+                merging = false;
             }
-            for (Map.Entry<String, byte[]> file : files.entrySet()) {
-                String name = file.getKey();
-                byte[] theirs = file.getValue();
-                String owner = placed.get(name);
-                if (owner != null && JsonMerge.mergeable(name)) {
-                    Path target = packDir.resolve(name);
-                    JsonMerge.Result merged = JsonMerge.merge(name, Files.readAllBytes(target), theirs);
+            source.problems().forEach(problem -> problems.add(origin + ": " + problem));
+            for (Map.Entry<String, JsonObject> overlay : source.overlays().entrySet()) {
+                JsonObject earlier = overlays.putIfAbsent(overlay.getKey(), overlay.getValue());
+                if (earlier != null && !earlier.equals(overlay.getValue())) {
+                    problems.add(origin + ": overlay " + overlay.getKey() + " is declared by an earlier pack for other"
+                            + " versions - keeping the first declaration, both packs' files share the folder");
+                }
+            }
+        }
+
+        private void mergeFiles(PackSource source, String origin) throws IOException {
+            for (String file : source.files()) {
+                byte[] theirs = source.read(file);
+                String owner = placed.get(file);
+                String inner = PackSource.inner(file);
+                if (owner != null && JsonMerge.mergeable(inner)) {
+                    Path target = packDir.resolve(file);
+                    JsonMerge.Result merged = JsonMerge.merge(inner, Files.readAllBytes(target), theirs);
                     if (merged.merged() != null) {
                         Files.write(target, merged.merged());
                         merged.collisions().forEach(collision -> problems.add(origin + ": " + collision));
@@ -633,60 +818,135 @@ public final class PackCompiler {
                         continue;
                     }
                 }
-                if (place(name, theirs, origin)) {
+                if (place(file, theirs, origin)) {
                     externalFiles++;
                 }
             }
         }
 
-        private Map<String, byte[]> folder(ExternalPack pack, String origin) throws IOException {
-            Path assets = pack.root().resolve("assets");
-            if (!Files.isDirectory(assets)) {
-                problems.add(origin + ": no assets folder in " + pack.root() + " - nothing merged");
-                return null;
+        /**
+         * A merged overlay replaces a base file for the clients it is for. When it carries a file this
+         * plugin shares in the base - a vanilla item's {@code custom_model_data} definition, as
+         * ItemsAdder's overlays do for 1.21.6 and later, the default font, an atlas, a
+         * {@code sounds.json} - those clients would never see this plugin's part of it; so ours is
+         * joined into the overlay's copy as well ({@link JsonMerge#mergeIntoTheirs}). On a clash the
+         * overlay's own entry is kept: the pack draws exactly as it was made, and an item of ours is
+         * drawn by its item_model whatever its number does.
+         */
+        void overlayShared() throws IOException {
+            for (String file : new TreeSet<>(placed.keySet())) {
+                String overlay = PackSource.overlayOf(file);
+                if (overlay == null || !overlays.containsKey(overlay)) {
+                    continue;
+                }
+                String inner = PackSource.inner(file);
+                byte[] ours = own.get(inner);
+                if (ours == null || !JsonMerge.mergeable(inner)) {
+                    continue;
+                }
+                Path target = packDir.resolve(file);
+                JsonMerge.Result merged = JsonMerge.mergeIntoTheirs(inner, ours, Files.readAllBytes(target));
+                if (merged.merged() != null) {
+                    Files.write(target, merged.merged());
+                    merged.collisions().forEach(collision -> problems.add(placed.get(file) + ": " + overlay + "/"
+                            + collision));
+                }
             }
-            // Links are not followed: the pack is served publicly, and a link could point anywhere.
-            List<Path> paths;
-            try (Stream<Path> walk = Files.walk(assets)) {
-                paths = walk.filter(file -> Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)).sorted().toList();
-            }
-            Map<String, byte[]> files = new TreeMap<>();
-            for (Path file : paths) {
-                Path relative = pack.root().relativize(file);
-                files.put(relative.toString().replace(relative.getFileSystem().getSeparator(), "/"),
-                        Files.readAllBytes(file));
-            }
-            return files;
         }
 
-        /** A pack shipped as a zip: its {@code assets/} entries, any folder they sit under stripped. */
-        private Map<String, byte[]> zipped(ExternalPack pack, String origin) throws IOException {
-            Map<String, byte[]> files = new TreeMap<>();
-            try (java.util.zip.ZipFile zip = new java.util.zip.ZipFile(pack.root().toFile())) {
-                for (java.util.zip.ZipEntry entry : java.util.Collections.list(zip.entries())) {
-                    String name = entry.getName().replace('\\', '/');
-                    int at = name.startsWith("assets/") ? 0 : name.indexOf("/assets/") + 1;
-                    if (entry.isDirectory() || at < 0 || (at > 0 && name.substring(0, at - 1).contains("/"))) {
-                        continue;
-                    }
-                    String relative = name.substring(at);
-                    // A crafted zip could name ../ to write outside the pack.
-                    if (relative.contains("..") || relative.startsWith("/") || !relative.startsWith("assets/")) {
-                        continue;
-                    }
-                    try (java.io.InputStream in = zip.getInputStream(entry)) {
-                        files.put(relative, in.readAllBytes());
+        /** pack.mcmeta again, declaring the merged packs' overlays, each entry as its pack wrote it. */
+        void overlayEntries(JsonObject mcmeta) throws IOException {
+            if (overlays.isEmpty()) {
+                return;
+            }
+            JsonArray entries = new JsonArray();
+            overlays.values().forEach(entries::add);
+            JsonObject section = new JsonObject();
+            section.add("entries", entries);
+            JsonObject root = mcmeta.deepCopy();
+            root.add("overlays", section);
+            Files.write(packDir.resolve("pack.mcmeta"), (GSON.toJson(root) + "\n").getBytes(StandardCharsets.UTF_8));
+        }
+
+        /**
+         * Each content pack's sounds, as they are: {@code contents/<folder>/sounds.json} becomes
+         * {@code assets/<folder>/sounds.json} - the folder name is the namespace its sound events are
+         * played by - and every {@code .ogg} under {@code contents/<folder>/sounds/} goes beside it at
+         * the same path, never re-encoded: its sample rate and channels are the file's.
+         */
+        void sounds(Path contentsDir) throws IOException {
+            if (!Files.isDirectory(contentsDir)) {
+                return;
+            }
+            List<Path> folders;
+            try (Stream<Path> list = Files.list(contentsDir)) {
+                folders = list.filter(path -> Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)).sorted().toList();
+            }
+            for (Path folder : folders) {
+                String namespace = folder.getFileName().toString();
+                Path index = folder.resolve("sounds.json");
+                Path files = folder.resolve("sounds");
+                boolean hasIndex = Files.isRegularFile(index, LinkOption.NOFOLLOW_LINKS);
+                if (!hasIndex && !Files.isDirectory(files, LinkOption.NOFOLLOW_LINKS)) {
+                    continue;
+                }
+                String origin = namespace + " sounds";
+                if (!ResourceLocation.isValidNamespace(namespace)) {
+                    problems.add(origin + ": '" + namespace + "' is not a valid namespace (a-z 0-9 _ . -) - its"
+                            + " sounds are not packed");
+                    continue;
+                }
+                if (hasIndex) {
+                    byte[] bytes = Files.readAllBytes(index);
+                    try {
+                        if (!(JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)) instanceof JsonObject events)) {
+                            throw new JsonParseException("not a JSON object of sound events");
+                        }
+                        if (place("assets/" + namespace + "/sounds.json", bytes, origin)) {
+                            sounds++;
+                        }
+                        String own = "assets/" + namespace + "/sounds/";
+                        String report = SoundNames.describe(namespace + "/sounds.json", namespace,
+                                SoundNames.bareButOwn(events, namespace, path -> {
+                                    try {
+                                        return path.startsWith(own)
+                                                && Files.isRegularFile(files.resolve(path.substring(own.length())))
+                                                || placed.containsKey(path) || supplied(path);
+                                    } catch (IOException exception) {
+                                        return false;
+                                    }
+                                }));
+                        if (report != null) {
+                            problems.add(origin + ": " + report);
+                        }
+                    } catch (JsonParseException exception) {
+                        problems.add(origin + ": sounds.json is not valid - " + exception.getMessage()
+                                + "; the client would drop every sound of " + namespace + ", so it is left out");
                     }
                 }
-            } catch (java.util.zip.ZipException exception) {
-                problems.add(origin + ": " + pack.root() + " is not a readable zip - nothing merged");
-                return null;
+                if (!Files.isDirectory(files, LinkOption.NOFOLLOW_LINKS)) {
+                    continue;
+                }
+                List<Path> oggs;
+                try (Stream<Path> walk = Files.walk(files)) {
+                    oggs = walk.filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
+                            .filter(path -> path.getFileName().toString().endsWith(".ogg"))
+                            .sorted()
+                            .toList();
+                }
+                for (Path ogg : oggs) {
+                    byte[] bytes = Files.readAllBytes(ogg);
+                    if (!startsWith(bytes, OGG_SIGNATURE)) {
+                        problems.add(origin + ": " + shown(folder, ogg) + " is not an Ogg Vorbis file - left out");
+                        continue;
+                    }
+                    Path relative = files.relativize(ogg);
+                    if (place("assets/" + namespace + "/sounds/" + relative.toString()
+                            .replace(relative.getFileSystem().getSeparator(), "/"), bytes, origin)) {
+                        sounds++;
+                    }
+                }
             }
-            if (files.isEmpty()) {
-                problems.add(origin + ": no assets/ in " + pack.root() + " - nothing merged");
-                return null;
-            }
-            return files;
         }
 
         /** The vanilla layout for a namespace, created even while it is still empty. */
@@ -705,7 +965,10 @@ public final class PackCompiler {
             }
             Path source = sourceRoot.resolve("models").resolve(model.path() + ".json");
             if (!Files.isRegularFile(source)) {
-                problems.add(origin + ": model " + model + " not found, expected " + shown(sourceRoot, source));
+                // Not this content pack's to copy when a merged pack has it: that copy goes in as it is.
+                if (!supplied(model.assetPath("models", ".json"))) {
+                    problems.add(origin + ": model " + model + " not found, expected " + shown(sourceRoot, source));
+                }
                 return;
             }
             byte[] bytes = Files.readAllBytes(source);
@@ -802,14 +1065,19 @@ public final class PackCompiler {
                             + " plugin's atlas sources");
                 }
             }
+            JsonArray mine = new JsonArray();
             for (String sprite : atlasSprites) {
                 JsonObject single = new JsonObject();
                 single.addProperty("type", "minecraft:single");
                 single.addProperty("resource", sprite);
+                mine.add(single);
                 if (!sources.contains(single)) {
                     sources.add(single);
                 }
             }
+            JsonObject ownAtlas = new JsonObject();
+            ownAtlas.add("sources", mine);
+            own.put(relative, json(ownAtlas));
             atlas.add("sources", sources);
             if (merged) {
                 Files.write(target, json(atlas));
@@ -825,7 +1093,9 @@ public final class PackCompiler {
             }
             Path source = sourceRoot.resolve("textures").resolve(texture.path() + ".png");
             if (!Files.isRegularFile(source)) {
-                problems.add(origin + ": texture " + texture + " not found, expected " + shown(sourceRoot, source));
+                if (!supplied(texture.assetPath("textures", ".png"))) {
+                    problems.add(origin + ": texture " + texture + " not found, expected " + shown(sourceRoot, source));
+                }
                 return;
             }
             byte[] bytes = Files.readAllBytes(source);
@@ -894,6 +1164,9 @@ public final class PackCompiler {
             }
             Files.createDirectories(target.getParent());
             Files.write(target, bytes);
+            if (!merging && JsonMerge.mergeable(relative)) {
+                own.put(relative, bytes);
+            }
             return true;
         }
 

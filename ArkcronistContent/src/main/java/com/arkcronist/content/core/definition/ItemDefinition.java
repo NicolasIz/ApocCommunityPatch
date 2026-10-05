@@ -92,8 +92,14 @@ public record ItemDefinition(String namespace, String id, String material, Strin
      * <p>Since 1.21.4 an item stack's {@code item_model} component names one of these files, not a
      * model. The indirection is what lets a stack already sitting in a chest pick up a new model: the
      * stack only ever stores this key, and the pack decides what it draws.</p>
+     *
+     * <p>An item whose look is an item definition file ({@code resource.item-model}) is pointed at
+     * that file instead.</p>
      */
     public ResourceLocation itemModel() {
+        if (model instanceof ModelSource.Definition definition) {
+            return definition.location();
+        }
         return new ResourceLocation(namespace, id);
     }
 }

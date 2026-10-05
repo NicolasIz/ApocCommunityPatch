@@ -523,12 +523,28 @@ public final class ContentLoader {
      *       {@code all});</li>
      *   <li>{@code textures} + {@code parent} - any vanilla-style parent with its own texture
      *       variables, e.g. {@code block/cube_column} with {@code end} and {@code side}.</li>
+     *   <li>{@code item-model} - an item definition file, {@code items/<path>.json}, used as it is:
+     *       from the content pack, or from a resource pack merged in. For items and furniture; a
+     *       block, a crop and a liquid are drawn from models.</li>
      * </ul>
      */
     private static ModelSource model(String namespace, String id, ContentType type, Map<?, ?> resource,
                                      Path sourceRoot, String prefix, List<String> problems) {
         if (resource == null) {
             return null;
+        }
+        ResourceLocation definition = location(resource, "item-model", namespace, prefix, problems);
+        if (definition != null) {
+            if (type != ContentType.ITEM && type != ContentType.CUSTOM_FURNITURE) {
+                problems.add(prefix + "'item-model' draws items and furniture only; a " + type.yamlName()
+                        + " needs resource.model, resource.texture or resource.textures");
+                return null;
+            }
+            if (resource.size() > 1) {
+                problems.add(prefix + "only 'item-model' is used - the item definition file decides everything"
+                        + " the item draws");
+            }
+            return new ModelSource.Definition(sourceRoot, definition);
         }
         ResourceLocation model = location(resource, "model", namespace, prefix, problems);
         ResourceLocation texture = location(resource, "texture", namespace, prefix, problems);

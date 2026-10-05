@@ -46,4 +46,25 @@ class StableAllocatorTest {
         assertEquals(1, allocation.problems().size());
         assertTrue(allocation.problems().get(0).startsWith("emoji character 65 for ruby is outside"));
     }
+
+    @Test
+    void reservedNumbersAreSkippedForNewIdsButKeptByOldOnes() {
+        StableAllocator numbers = new StableAllocator(10000, 10999, "custom_model_data number", "free one");
+        StableAllocator.Allocation allocation = numbers.allocate(Map.of("demo:old", 10001),
+                List.of("demo:a", "demo:b", "demo:old"), java.util.Set.of(10000, 10001, 10002));
+
+        assertEquals(Map.of("demo:a", 10003, "demo:b", 10004, "demo:old", 10001), allocation.active());
+    }
+
+    @Test
+    void aClashWithAMergedPackMovesTheIdWhenAskedAndSaysSo() {
+        StableAllocator numbers = new StableAllocator(10000, 10999, "custom_model_data number", "free one");
+        StableAllocator.Allocation allocation = numbers.allocate(Map.of("demo:old", 10001, "demo:gone", 10002),
+                List.of("demo:old"), java.util.Set.of(10000, 10001, 10002), true);
+
+        assertEquals(Map.of("demo:old", 10003), allocation.active());
+        assertEquals(10002, allocation.assignments().get("demo:gone"), "a retired id is not moved");
+        assertEquals(List.of("custom_model_data number 10001 of demo:old is also used by a pack merged in - demo:old"
+                + " is given a free one; what was made with the old one now shows that pack's"), allocation.problems());
+    }
 }

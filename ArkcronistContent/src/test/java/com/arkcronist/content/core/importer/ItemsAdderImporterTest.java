@@ -184,7 +184,11 @@ class ItemsAdderImporterTest {
 
         ImportReport report = new ItemsAdderImporter().run(importDir(), contents());
 
-        assertEquals(List.of(), report.problems());
+        // The bare path is reported, never rewritten: the model is the client's to read as written.
+        assertEquals(List.of("contents/myitems/configs/items.yml > myitems:floating_sword: model"
+                + " myitems:item/floating_sword: texture '0' is 'item/floating_sword_blade' with no namespace, which"
+                + " the client reads as minecraft:item/floating_sword_blade - the model is copied unchanged; write"
+                + " myitems:item/floating_sword_blade in it if it shows purple and black"), report.problems());
         assertEquals(7, report.items());
         assertEquals(0, report.skipped());
         assertEquals(3, report.converted());
@@ -197,7 +201,6 @@ class ItemsAdderImporterTest {
         assertNote(report, "myitems:red_block: not imported - behaviours.block.hardness");
         assertNote(report, "furniture.yml: not imported - recipes");
         assertNote(report, "myitems:table: hitbox is larger than one block");
-        assertNote(report, "model myitems:item/floating_sword: texture paths without a namespace");
 
         LoadReport loaded = new ContentLoader().load(contents());
         assertEquals(List.of(), loaded.problems());
@@ -247,17 +250,21 @@ class ItemsAdderImporterTest {
         assertFalse(table.facePlayer());
         assertEquals("HEAD", table.display().transform());
 
-        // The copy points at the pack's own texture now; the original in import/ is untouched.
-        JsonObject model = JsonParser.parseString(Files.readString(contents().resolve("myitems/models/item/floating_sword.json")))
-                .getAsJsonObject();
-        assertEquals("myitems:item/floating_sword_blade", model.getAsJsonObject("textures").get("0").getAsString());
-        assertEquals("item/handheld", model.get("parent").getAsString());
-        assertTrue(Files.readString(pack.resolve("models/item/floating_sword.json")).contains("\"item/floating_sword_blade\""));
+        // Every model is the same bytes as in import/, texture variables and all; so is every texture.
+        for (String model : List.of("item/floating_sword", "item/table", "lava_lamp")) {
+            assertArrayEquals(Files.readAllBytes(pack.resolve("models/" + model + ".json")),
+                    Files.readAllBytes(contents().resolve("myitems/models/" + model + ".json")), model);
+        }
+        assertArrayEquals(Files.readAllBytes(pack.resolve("textures/item/ruby.png.mcmeta")),
+                Files.readAllBytes(contents().resolve("myitems/textures/item/ruby.png.mcmeta")));
+        // The texture it most likely meant is copied too, so adding the namespace is all it takes.
+        assertTrue(Files.exists(contents().resolve("myitems/textures/item/floating_sword_blade.png")));
 
         PackCompiler.Result compiled = new PackCompiler(SETTINGS).compile(temp.resolve("pack"), loaded.items(), Map.of());
         assertEquals(List.of(), compiled.problems());
         assertTrue(Files.exists(temp.resolve("pack/assets/myitems/textures/item/ruby.png.mcmeta")));
-        assertTrue(Files.exists(temp.resolve("pack/assets/myitems/textures/item/floating_sword_blade.png")));
+        assertArrayEquals(Files.readAllBytes(pack.resolve("models/item/floating_sword.json")),
+                Files.readAllBytes(temp.resolve("pack/assets/myitems/models/item/floating_sword.json")));
     }
 
     @Test

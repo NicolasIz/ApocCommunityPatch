@@ -271,16 +271,19 @@ public final class ContentAdminCommand {
                 return;
             }
             if (report.empty()) {
-                sender.sendMessage(Component.text("Nothing to import. Copy ItemsAdder's contents folder, or one"
-                        + " pack from it, into plugins/" + plugin.getName() + "/import/ and run this again.",
+                sender.sendMessage(Component.text("Nothing to import. Copy ItemsAdder's contents folder, one"
+                        + " pack from it, or its generated resource pack zip into plugins/" + plugin.getName()
+                        + "/import/ and run this again.",
                         NamedTextColor.YELLOW));
                 return;
             }
             sender.sendMessage(Component.text("Imported " + report.items() + " item(s) from " + report.converted()
-                    + " file(s); " + report.resources() + " model/texture file(s) copied into contents/.",
+                    + " file(s); " + report.resources() + " asset file(s) copied into contents/ byte for byte"
+                    + (report.packs() == 0 ? "." : "; " + report.packs() + " generated pack(s) of " + report.packFiles()
+                    + " file(s) taken whole into packs/."),
                     NamedTextColor.GREEN));
             summarise(sender, report);
-            if (report.items() > 0) {
+            if (report.items() > 0 || report.packs() > 0) {
                 sender.sendMessage(Component.text("Rebuilding...", NamedTextColor.GRAY));
                 tellWhenLive(sender, pipeline.rebuild());
             }

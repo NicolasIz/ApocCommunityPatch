@@ -155,7 +155,9 @@ ArkcronistContent/
         │   │   └── LoadReport             ítems leídos + problemas encontrados
         │   ├── importer/
         │   │   ├── ItemsAdderImporter     import/ (formato ItemsAdder) -> contents/ (este formato)
-        │   │   ├── AssetIndex             modelos y texturas en las 5 estructuras de ItemsAdder
+        │   │   ├── GeneratedPacks         el pack generado (zip en partes) -> packs/, y sus números
+        │   │   │                          de custom_model_data -> ítems con item_model
+        │   │   ├── AssetIndex             modelos, texturas y sonidos en las 5 estructuras de ItemsAdder
         │   │   ├── LegacyText             &c, &#rrggbb... -> MiniMessage
         │   │   └── Rotations              cuaterniones / eje-ángulo -> grados x, y, z
         │   ├── menu/Page                  paginación del explorador
@@ -163,9 +165,14 @@ ArkcronistContent/
         │   │   ├── PackCompiler           assets/<ns>/{items,models,textures}, pack.mcmeta y el
         │   │   │                          blockstate de minecraft:note_block
         │   │   ├── PackSettings           contenido de pack.mcmeta
-        │   │   ├── ExternalPack           assets de otro plugin (carpeta o ZIP) que se fusionan en el nuestro
+        │   │   ├── ExternalPack           pack de otro plugin (carpeta o ZIP) que se fusiona en el nuestro
+        │   │   ├── PackSource             lee ese pack archivo a archivo: assets/ y sus overlays
         │   │   ├── JsonMerge              une los archivos que comparten los packs (atlas, fuentes,
-        │   │   │                          sonidos, idiomas, custom_model_data) y nombra las colisiones
+        │   │   │                          sonidos, idiomas, blockstates, custom_model_data) y nombra
+        │   │   │                          las colisiones
+        │   │   ├── BlockStates            variantes de un blockstate como las empareja el cliente
+        │   │   ├── FontCharacters         los caracteres que dibuja una fuente
+        │   │   ├── SoundNames             nombres de sounds.json sin namespace que no sonarían
         │   │   ├── ModelDataDispatch      un material vanilla que dibuja cada ítem por su número
         │   │   │                          custom_model_data y el modelo vanilla para cualquier otro
         │   │   ├── PackZipper             ZIP determinista, escritura atómica, versión asíncrona
@@ -1884,9 +1891,17 @@ gancho. Mientras tanto, dos formas que funcionan sin gancho:
 ## 6. Importar desde ItemsAdder
 
 ```
-plugins/ArkcronistContent/import/     <- copia aquí plugins/ItemsAdder/contents/ (o un pack suelto)
+plugins/ArkcronistContent/import/     <- copia aquí plugins/ItemsAdder/contents/ (o un pack suelto),
+                                         y/o el pack generado de ItemsAdder (.zip, entero o en partes)
 /arkcontent import                    <- convierte, copia recursos y recompila
 ```
+
+**Regla de oro: los recursos se copian byte a byte.** Un modelo conserva su diccionario `textures`,
+sus elementos y sus UV exactamente como los escribió Blockbench; una textura, su tamaño (16x16, 32x32
+o HD) y sus píxeles; un `.png.mcmeta`, sus fotogramas; un `.ogg`, su frecuencia y sus canales. Nada
+se renombra, se recodifica ni se "optimiza", y la jerarquía bajo `assets/<ns>/` se mantiene
+(`assets/itemsadder/textures/item/custom/arma.png` sigue en esa misma ruta). Si una referencia no va
+a resolverse, se **avisa** con la corrección exacta; el archivo no se reescribe.
 
 El importador lee todo lo que haya en `import/`, en cualquiera de las cinco estructuras de carpetas
 que acepta ItemsAdder (`configs/` + `models/`/`textures/`, `resourcepack/assets/<ns>/`,
@@ -1902,15 +1917,20 @@ loader y el compilador del pack los buscan. Después recompila, y los ítems ya 
 | `resource` con `generate: true` + `textures` | `resource.texture` (o `textures` + `parent`); espadas y herramientas con `item/handheld` |
 | `resource.model_path` / `graphics.model` | `resource.model`, con el modelo, sus padres y sus texturas copiados |
 | `graphics.texture` / `graphics.textures` / `graphics.parent` | igual, con el padre por defecto de ItemsAdder (`block/cube` o `cube_all` en bloques) |
-| `resource.model_id` (CustomModelData) | innecesario: cada ítem tiene su `item_model` |
+| `resource.model_id` (CustomModelData) | no se arrastra: el ítem se dibuja con `meta.setItemModel()` (`item_model`) y se anota en consola |
 | `behaviours.block` | `type: custom_block`; 6 texturas en el orden de ItemsAdder (down, east, north, south, up, west); `drop_when_mined` / `cancel_drop` -> `block.drop-self` |
 | `behaviours.furniture` | `type: custom_furniture`; `solid` -> `BARRIER`, si no `LIGHT` con `light_level`; `fixed_rotation` -> `face-player: false`; `display_transformation` (transform, translation, scale, left/right_rotation) -> `furniture.display` |
 
-Arreglos que hace de paso: un modelo exportado de Blockbench con texturas sin namespace
-(`"item/espada"`, que el cliente busca en `minecraft:`) se corrige en la copia a `mi_ns:item/espada`
-cuando esa textura está en el pack; y a los bloques de seis caras se les da textura de partículas.
+Un modelo exportado de Blockbench con texturas sin namespace (`"item/espada"`, que el cliente busca
+en `minecraft:`) **ya no se corrige**: se copia tal cual y se avisa de que escribas `mi_ns:item/espada`
+en él si sale morado y negro (la textura se copia igualmente, para que baste ese cambio). A los
+bloques de seis caras que el importador genera se les da textura de partículas.
 
-Lo que no tiene equivalente —recetas, loot, eventos, durabilidad, encantamientos, sonidos, hitbox de
+Los sonidos de cada namespace importado (`sounds.json` y `sounds/**/*.ogg`) se copian byte a byte a
+`contents/<namespace>/`, y el compilador los mete en `assets/<namespace>/` tal cual: `sounds.json` se
+une al de otros packs por eventos (`JsonMerge`), y los `.ogg` no se tocan.
+
+Lo que no tiene equivalente —recetas, loot, eventos, durabilidad, encantamientos, hitbox de
 más de un bloque, `variant_of`— no se importa, y **se lista por ítem** en la consola en vez de
 perderse en silencio. En el juego, el comando resume: ítems importados, archivos copiados, y cuántos
 problemas y notas hay en consola.
@@ -1934,6 +1954,72 @@ aunque en ItemsAdder fueran `REAL_TRANSPARENT`, `REAL_WIRE` o `TILE`); los muebl
 item display en el centro del bloque, así que si ItemsAdder usaba un armor stand o un marco, la altura
 puede necesitar ajustar `furniture.display.translation`; y los bloques ya colocados en un mundo por
 ItemsAdder no se migran (sus estados de note block eran los de ItemsAdder).
+
+### El pack generado de ItemsAdder (`/iazip`)
+
+El zip que genera ItemsAdder —el que se envía a los jugadores, a menudo partido en `parte 1`,
+`parte 2`...— no trae configuraciones: ni nombres, ni lore, ni comportamientos; solo lo que dibuja el
+cliente. Así que no se convierte: **se absorbe entero**.
+
+1. Las partes se reconocen por el nombre (`generated_4 - parte 1.zip`, `pack_part2.zip`, `x.pt3.zip`)
+   y se juntan en `plugins/ArkcronistContent/packs/<nombre>/`: cada archivo byte a byte, en su misma
+   ruta, con `assets/`, **los overlays** (`ia_overlay_1_21_6_plus/`, `mythicarmors_1_21_6/`...) y el
+   `pack.mcmeta` que los declara. Si falta una parte o no hay `pack.mcmeta`, se avisa.
+2. Todo lo que hay en `packs/` (carpetas o `.zip`) se funde con nuestro pack en cada recompilación,
+   y las entradas `overlays` de su `pack.mcmeta` se añaden al nuestro tal cual.
+3. Cada número de `custom_model_data` del pack que dibuja un ítem pasa a ser un ítem de este plugin
+   dibujado con **`item_model`**: `contents/<ns>/imported/<pack>-pack.yml` con
+   `resource.item-model: <id>`, y `contents/<ns>/items/<id>.json` = la entrada de ItemsAdder **tal
+   cual** (condiciones de arco, `tints`, `oversized_in_gui`). Si el pack ya trae su propio
+   `assets/<ns>/items/<id>.json`, se usa ese. Los huesos de ModelEngine, los modelos vanilla y los
+   iconos internos de ItemsAdder no son ítems y se dejan al pack. El nombre sale del id
+   (`voltharion_yelmo` -> "Voltharion Yelmo"), porque el pack no tiene otro: si pones también las
+   configuraciones de ItemsAdder en `import/`, **sus ítems ganan**, con su nombre y su lore, y el
+   modelo no se copia otra vez.
+
+`resource.item-model` sirve también a mano: el ítem apunta con `item_model` a ese archivo de
+definición, copiado sin tocar desde `contents/<ns>/items/` o tomado de un pack de `packs/`.
+
+Cómo conviven el pack absorbido y el nuestro, sin alterar lo de ItemsAdder:
+
+- **Atlas.** ItemsAdder renombra sus texturas como sprites (`"4": "ia:564"` en un modelo, y
+  `ia:564 -> dragones_epicos:armor/voltharion/yelmo` en `atlases/blocks.json`). El atlas se copia y,
+  si hay sprites nuestros, se añaden detrás: sus 2231 fuentes siguen intactas.
+- **CustomModelData.** Los números que usa el pack (también en sus overlays) quedan reservados: a
+  ningún ítem nuestro se le da uno. Si ya tenía uno de esos, se le da otro libre y se avisa. En la copia
+  de un overlay (lo que ven los clientes 1.21.6+), nuestras entradas se añaden y, si coinciden, gana la
+  de ItemsAdder.
+- **Fuente.** Los caracteres que dibuja su `default.json` quedan reservados para emojis y HUDs (los
+  nuestros que coincidían se mueven, avisando), y nuestros espacios negativos (U+F801...) ceden ante
+  sus glifos en esos caracteres.
+- **Bloques.** `note_block.json` se une estado por estado: un bloque de cualquiera de los dos gana al
+  aspecto vanilla, y los estados que usan sus bloques no se dan a bloques nuevos nuestros.
+- **Ítems vanilla con otro aspecto** (ItemsAdder dibuja la barrera como un botón): ese aspecto pasa a
+  ser el de cualquier barrera sin número nuestro.
+- **Sonidos.** Un `sounds.json` con nombres sin namespace (`"golem_ancestral/invocar"` dentro de
+  `arkcronist_jefes`) hace que el cliente los busque en `minecraft:sounds/` (el cliente 1.21.8 los
+  lee con `ResourceLocation.parse`) y no suenan. No se reescribe: se avisa con la corrección
+  (`"arkcronist_jefes:golem_ancestral/invocar"`).
+
+#### Qué se ha verificado con un pack real (v1.7.1)
+
+Con un pack generado de ItemsAdder de 22.127 archivos en dos zips (40 namespaces, 12 overlays):
+
+- Importación: 1588 ítems con `item_model` en 40 namespaces; 7542 entradas de ModelEngine, 55
+  vanilla y 19 internas no se convierten en ítems; 0 problemas al cargar.
+- Compilación, zip y hash: 23.716 entradas, 36,7 MiB, SHA-1 de 40 hex que coincide con el del zip, y
+  **el mismo SHA-1 al recompilar**.
+- 22.018 de 22.125 archivos idénticos byte a byte; los 107 restantes son listas compartidas a las que
+  se añadió lo nuestro (106 `items/*.json` de CMD y `font/default.json`), en las que **se conservan
+  intactas** las 5058 entradas de ItemsAdder y sus 478 glifos.
+- 9268 modelos con 10.273 referencias de textura: todas resuelven (por el atlas) a un PNG del pack o a
+  una textura vanilla. Yelmo `dragones_epicos:armor/voltharion_yelmo` -> `ia:564` -> PNG de 112x112;
+  crate `medieval_rpg:crate_1` -> `ia:1206` -> PNG de 256x256; UV como en Blockbench.
+- `arkcronist_jefes/sounds/golem_ancestral/invocar.ogg` idéntico (Vorbis 44,1 kHz, 1 canal).
+- En el servidor Paper 1.21.8 de pruebas, con contenido previo: `/arkcontent import` desde consola,
+  recompilación, un bot recibe el pack con su hash (y la descarga coincide con él), y los ítems dados
+  llevan `item_model` (`dragones_epicos:voltharion_yelmo`...) y su nombre. En el pack servido siguen
+  sus 2231 sprites del atlas, sus 124 estados de note block y sus 36.384 entradas de CMD.
 
 ## 7. Explorador de contenido
 

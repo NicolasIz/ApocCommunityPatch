@@ -55,4 +55,16 @@ public sealed interface ModelSource {
      */
     record Inline(Path sourceRoot, ResourceLocation location, String json) implements ModelSource {
     }
+
+    /**
+     * An item definition used as it is: {@code items/<path>.json}, copied byte for byte from the
+     * content pack - or, when the content pack has none, supplied by a resource pack merged in
+     * ({@code packs/}, {@code pack.merge}). The item's {@code item_model} component names it
+     * directly and nothing is generated around it, so tints, a bow's pull states and
+     * {@code oversized_in_gui} stay exactly as the file has them.
+     *
+     * @param location the item definition, not a model: {@code assets/<ns>/items/<path>.json}
+     */
+    record Definition(Path sourceRoot, ResourceLocation location) implements ModelSource {
+    }
 }

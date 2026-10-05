@@ -17,7 +17,7 @@ import java.util.TreeMap;
 import java.util.stream.Stream;
 
 /**
- * Where each namespace's {@code models/} and {@code textures/} are inside import/.
+ * Where each namespace's {@code models/}, {@code textures/} and {@code sounds/} are inside import/.
  *
  * <p>ItemsAdder accepts five layouts for a content pack, and a server that has been through a few
  * versions usually has more than one of them:</p>
@@ -118,6 +118,35 @@ final class AssetIndex {
         return roots.containsKey(namespace);
     }
 
+    /**
+     * Every file under {@code folder} of {@code namespace}, by its path inside that folder: the
+     * folders under {@code near} first, so where two packs have the same file the asking pack's wins.
+     */
+    Map<String, Path> all(String namespace, String folder, Path near) throws IOException {
+        Set<Path> candidates = roots.get(namespace);
+        Map<String, Path> files = new TreeMap<>();
+        if (candidates == null) {
+            return files;
+        }
+        List<Path> ordered = new ArrayList<>(candidates);
+        ordered.sort(Comparator.comparing((Path root) -> !root.startsWith(near)).thenComparing(Path::toString));
+        for (Path root : ordered) {
+            Path base = root.resolve(folder);
+            if (!Files.isDirectory(base, LinkOption.NOFOLLOW_LINKS)) {
+                continue;
+            }
+            try (Stream<Path> walk = Files.walk(base)) {
+                for (Path file : walk.filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)).sorted().toList()) {
+                    if (inside(file)) {
+                        Path relative = base.relativize(file);
+                        files.putIfAbsent(relative.toString().replace(relative.getFileSystem().getSeparator(), "/"), file);
+                    }
+                }
+            }
+        }
+        return files;
+    }
+
     private void add(String namespace, Path folder) {
         if (ResourceLocation.isValidNamespace(namespace)) {
             roots.computeIfAbsent(namespace, key -> new LinkedHashSet<>()).add(folder);
@@ -135,7 +164,9 @@ final class AssetIndex {
 
     private static boolean holdsAssets(Path folder) {
         return Files.isDirectory(folder.resolve("models"), LinkOption.NOFOLLOW_LINKS)
-                || Files.isDirectory(folder.resolve("textures"), LinkOption.NOFOLLOW_LINKS);
+                || Files.isDirectory(folder.resolve("textures"), LinkOption.NOFOLLOW_LINKS)
+                || Files.isDirectory(folder.resolve("sounds"), LinkOption.NOFOLLOW_LINKS)
+                || Files.isRegularFile(folder.resolve("sounds.json"), LinkOption.NOFOLLOW_LINKS);
     }
 
     private static List<Path> children(Path folder) throws IOException {

@@ -29,6 +29,7 @@ import com.arkcronist.content.core.pack.ExternalPack;
 import com.arkcronist.content.core.pack.ModelDataDispatch;
 import com.arkcronist.content.core.pack.PackArtifact;
 import com.arkcronist.content.core.pack.PackCompiler;
+import com.arkcronist.content.core.pack.PackSource;
 import com.arkcronist.content.core.pack.PackZipper;
 import com.arkcronist.content.core.upload.PackUploader;
 import com.arkcronist.content.core.upload.UploadSettings;
@@ -267,6 +268,8 @@ public final class ContentPipeline {
 
     private final Path contentsDir;
     private final Path importDir;
+    /** Resource packs merged whole into ours, every file as it is: what the importer absorbed, or anything dropped in. */
+    private final Path packsDir;
     private final Path packDir;
     private final Path zipFile;
     private final Path noteBlockStateFile;
@@ -316,6 +319,7 @@ public final class ContentPipeline {
         Path data = plugin.getDataFolder().toPath();
         this.contentsDir = data.resolve("contents");
         this.importDir = data.resolve("import");
+        this.packsDir = data.resolve("packs");
         this.packDir = data.resolve("pack");
         this.zipFile = data.resolve("output").resolve("resource_pack.zip");
         this.noteBlockStateFile = data.resolve("data").resolve("note_block_states.json");
@@ -382,7 +386,7 @@ public final class ContentPipeline {
      */
     public CompletableFuture<ImportReport> importFromItemsAdder() {
         return exclusive(() -> {
-            ImportReport report = new ItemsAdderImporter().run(importDir, contentsDir);
+            ImportReport report = new ItemsAdderImporter().run(importDir, contentsDir, packsDir);
             logImport(report);
             return report;
         });
@@ -408,8 +412,8 @@ public final class ContentPipeline {
 
     private void logImport(ImportReport report) {
         if (report.empty()) {
-            logger.info("Nothing to import in " + importDir + ". Copy ItemsAdder's contents folder, or one"
-                    + " pack from it, in there and run /arkcontent import again.");
+            logger.info("Nothing to import in " + importDir + ". Copy ItemsAdder's contents folder, one"
+                    + " pack from it, or its generated resource pack zip in there and run /arkcontent import again.");
             return;
         }
         for (String note : report.notes()) {
@@ -422,7 +426,10 @@ public final class ContentPipeline {
             logger.info("[import] wrote contents/" + file);
         }
         logger.info("ItemsAdder import: " + report.items() + " item(s) from " + report.converted() + " file(s), "
-                + report.resources() + " model/texture file(s) copied, " + report.skipped() + " item(s) skipped"
+                + report.resources() + " asset file(s) copied byte for byte, "
+                + (report.packs() == 0 ? "" : report.packs() + " generated pack(s) of " + report.packFiles()
+                + " file(s) taken whole into " + packsDir + ", ")
+                + report.skipped() + " item(s) skipped"
                 + (report.problems().isEmpty() ? "" : ", " + report.problems().size() + " problem(s) above") + ".");
     }
 
@@ -534,7 +541,7 @@ public final class ContentPipeline {
             if (names.isEmpty() && previous.isEmpty()) {
                 return build;
             }
-            StableAllocator.Allocation allocation = EMOJI_CHARACTERS.allocate(previous, names);
+            StableAllocator.Allocation allocation = EMOJI_CHARACTERS.allocate(previous, names, fontCharactersInUse(), true);
             if (allocation.changed()) {
                 StableAllocator.write(emojiCharacterFile, allocation.assignments());
             }
@@ -567,7 +574,14 @@ public final class ContentPipeline {
             if (blockIds.isEmpty() && previous.isEmpty()) {
                 return build;
             }
-            NoteBlockAllocator.Allocation allocation = NoteBlockAllocator.allocate(previous, blockIds);
+            // The states a merged pack - an ItemsAdder pack - draws its own blocks with are left to it.
+            Set<Integer> reserved = new java.util.HashSet<>();
+            for (ExternalPack pack : mergedPacks()) {
+                try (PackSource source = PackSource.open(pack)) {
+                    reserved.addAll(com.arkcronist.content.core.pack.BlockStates.customNoteBlockStates(source));
+                }
+            }
+            NoteBlockAllocator.Allocation allocation = NoteBlockAllocator.allocate(previous, blockIds, reserved);
             if (allocation.changed()) {
                 NoteBlockAllocator.write(noteBlockStateFile, allocation.assignments());
             }
@@ -599,7 +613,14 @@ public final class ContentPipeline {
             }
             StableAllocator numbers = new StableAllocator(config.first(), config.first() + 999_999,
                     "custom_model_data number", "delete its line from " + modelDataFile.getFileName());
-            StableAllocator.Allocation allocation = numbers.allocate(previous, ids);
+            // A merged pack's own numbers - an ItemsAdder pack's, say - are never handed out again.
+            Set<Integer> reserved = new java.util.HashSet<>();
+            for (ExternalPack pack : mergedPacks()) {
+                try (PackSource source = PackSource.open(pack)) {
+                    reserved.addAll(ModelDataDispatch.numbersUsedBy(source));
+                }
+            }
+            StableAllocator.Allocation allocation = numbers.allocate(previous, ids, reserved, true);
             if (allocation.changed()) {
                 StableAllocator.write(modelDataFile, allocation.assignments());
             }
@@ -650,7 +671,7 @@ public final class ContentPipeline {
             if (keys.isEmpty() && previous.isEmpty()) {
                 return build;
             }
-            StableAllocator.Allocation allocation = HUD_CHARACTERS.allocate(previous, keys);
+            StableAllocator.Allocation allocation = HUD_CHARACTERS.allocate(previous, keys, fontCharactersInUse(), true);
             if (allocation.changed()) {
                 StableAllocator.write(hudCharacterFile, allocation.assignments());
             }
@@ -711,7 +732,7 @@ public final class ContentPipeline {
             PackCompiler.Result result = compiler.compile(packDir, new PackCompiler.Input(definitions, build.noteBlocks(),
                     build.emojis(), build.advancements().stream().map(AdvancementCompiler.Compiled::definition).toList(),
                     build.modelData(), build.liquids(), build.hudGlyphs(), settings.pack().negativeSpaces(),
-                    List.copyOf(externalPacks.values())));
+                    mergedPacks(), contentsDir));
             build.problems().addAll(result.problems());
             return build;
         } catch (IOException exception) {
@@ -906,6 +927,38 @@ public final class ContentPipeline {
                 + " - built in " + report.millis() + " ms"
                 + (report.problems().isEmpty() ? "" : ", " + report.problems().size() + " problem(s) above")
                 + ". Pack " + report.hosting() + (report.url() != null ? ": " + report.url() : "."));
+    }
+
+    /**
+     * The characters the merged packs' default fonts draw already - an ItemsAdder pack's emojis and
+     * icons - which no emoji or HUD icon of ours is put on.
+     */
+    private Set<Integer> fontCharactersInUse() throws IOException {
+        Set<Integer> characters = new java.util.HashSet<>();
+        for (ExternalPack pack : mergedPacks()) {
+            try (PackSource source = PackSource.open(pack)) {
+                characters.addAll(com.arkcronist.content.core.pack.FontCharacters.usedBy(source));
+            }
+        }
+        return characters;
+    }
+
+    /**
+     * Every pack merged into ours: those config.yml names, other plugins' and each folder or zip
+     * in packs/ - where /arkcontent import puts the ItemsAdder packs it absorbs. Read on every
+     * rebuild, so a pack dropped in or deleted there counts from the next one.
+     */
+    private List<ExternalPack> mergedPacks() throws IOException {
+        List<ExternalPack> packs = new ArrayList<>(externalPacks.values());
+        if (Files.isDirectory(packsDir)) {
+            try (Stream<Path> list = Files.list(packsDir)) {
+                list.filter(path -> !path.getFileName().toString().startsWith("."))
+                        .filter(path -> Files.isDirectory(path) || path.getFileName().toString().endsWith(".zip"))
+                        .sorted()
+                        .forEach(path -> packs.add(new ExternalPack("packs/" + path.getFileName(), path)));
+            }
+        }
+        return packs;
     }
 
     /**
