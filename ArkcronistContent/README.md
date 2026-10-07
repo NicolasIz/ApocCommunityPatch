@@ -1479,15 +1479,27 @@ configuración al arrancar, no segundos después.
       farming:
         group: second_row
         order: 1
-        key: demo:ruby_seeds          # cualquier ítem, como namespace:id (o namespace/id)
+        key: demo/ruby_seeds          # cualquier ítem, como namespace/id
 # AuraSkills/menus/stats.yml — una estadística
-      strength: {group: upper_left, order: 1, key: demo:ruby}
+      strength: {group: upper_left, order: 1, key: demo/ruby}
 ```
 
 Cada ítem se registra en el registro de ítems de AuraSkills con su propio namespace e id, así que
 sirve en sus menús (`/skills`, `/stats`...), recompensas y tablas de loot con `key:`. Tras
 `/arkcontent reload` el registro se actualiza (altas y bajas); un menú que use un ítem nuevo lo
 muestra después de `/skills reload`. Experiencia: ver «Experiencia de habilidades».
+
+Las claves se escriben `namespace/id`, que AuraSkills entiende en todas partes (`/skills item give
+<jugador> demo/ruby_block` incluido); `namespace:id` solo lo aceptan algunos de sus sitios.
+
+**Versiones.** AuraSkills abrió su registro de ítems a otros plugins en la 2.4.0
+(`ItemManager.register`). De la 2.0 a la 2.3 el registro ya existía —es el de `/skills item
+register`—, solo que fuera de la API: con esas versiones los ítems se meten directamente en él, la
+misma llamada que la API de la 2.4.0 hace por dentro (un `Map.put` en memoria, nada en disco). Si
+ninguna de las dos vías está, los ítems no se registran y se avisa en una línea; la experiencia por
+bloques y cultivos funciona con cualquier 2.x. Verificado con 2.3.12 (1608 ítems registrados,
+`/skills item give` entrega el ítem con su modelo, romper un bloque de rubí suma sus 15 de
+Minería) y con 2.4.0.
 
 ### mcMMO, SkillAPI / ProSkillAPI y Fabled
 
