@@ -2,6 +2,7 @@ package com.arkcronist.content.core.loader;
 
 import com.arkcronist.content.core.definition.AdvancementDefinition;
 import com.arkcronist.content.core.definition.EmojiDefinition;
+import com.arkcronist.content.core.definition.FontImageDefinition;
 import com.arkcronist.content.core.definition.ItemDefinition;
 import com.arkcronist.content.core.hud.HudDefinition;
 
@@ -15,14 +16,21 @@ import java.util.List;
  * there is one) so it can be fixed from the log alone.</p>
  */
 public record LoadReport(List<ItemDefinition> items, List<EmojiDefinition> emojis,
-                         List<AdvancementDefinition> advancements, List<HudDefinition> huds, List<String> problems) {
+                         List<AdvancementDefinition> advancements, List<HudDefinition> huds,
+                         List<FontImageDefinition> fontImages, List<String> problems) {
 
     public LoadReport {
         items = List.copyOf(items);
         emojis = List.copyOf(emojis);
         advancements = List.copyOf(advancements);
         huds = List.copyOf(huds);
+        fontImages = List.copyOf(fontImages);
         problems = List.copyOf(problems);
+    }
+
+    public LoadReport(List<ItemDefinition> items, List<EmojiDefinition> emojis,
+                      List<AdvancementDefinition> advancements, List<HudDefinition> huds, List<String> problems) {
+        this(items, emojis, advancements, huds, List.of(), problems);
     }
 
     public LoadReport(List<ItemDefinition> items, List<EmojiDefinition> emojis,

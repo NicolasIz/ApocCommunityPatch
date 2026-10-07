@@ -147,6 +147,17 @@ public final class HookManager {
                         plugin.itemFactory(), placeholders));
         if (placeholderApi != null) {
             this.placeholderText = placeholderApi::resolve;
+            if (plugin.settings().fontImages().placeholders()
+                    && plugin.getServer().getPluginManager().getPlugin("ItemsAdder") == null) {
+                try {
+                    if (placeholderApi.registerImages(plugin.getPluginMeta().getVersion(), plugin.fontImages()::current)) {
+                        logger.info("PlaceholderAPI: %img_<name>% and %img_offset_<n>% answered for menus written for"
+                                + " ItemsAdder.");
+                    }
+                } catch (RuntimeException | LinkageError error) {
+                    logger.log(Level.WARNING, "Could not register the %img_% placeholders", error);
+                }
+            }
         }
 
         // Loads after this plugin: the hook listens for the moment ShopGUI+ asks for item providers.

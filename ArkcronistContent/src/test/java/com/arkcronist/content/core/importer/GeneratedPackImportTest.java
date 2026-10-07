@@ -233,6 +233,103 @@ class GeneratedPackImportTest {
                 + " importer - left alone; move it away and import again to replace it"), third.problems().toString());
     }
 
+    /** A generate: true item whose model the generated pack already has uses that model, not a second one. */
+    @Test
+    void anItemGeneratedFromATextureUsesTheModelItemsAdderGeneratedForIt() throws IOException {
+        zipParts(generatedPack());
+        write(importDir(), "contents/darksteel/configs/weapons.yml", """
+                info:
+                  namespace: darksteel
+                items:
+                  katana:
+                    name: "&8Darksteel Katana"
+                    resource:
+                      material: IRON_SWORD
+                      generate: true
+                      textures: [item/katana]
+                """);
+
+        ImportReport report = new ItemsAdderImporter().run(importDir(), contents(), packs());
+
+        assertEquals(List.of(), report.problems());
+        LoadReport loaded = new ContentLoader().load(contents());
+        assertEquals(List.of(), loaded.problems());
+        ItemDefinition katana = loaded.items().stream().filter(item -> item.fullId().equals("darksteel:katana"))
+                .findFirst().orElseThrow();
+        assertEquals("<dark_gray>Darksteel Katana", katana.displayName());
+        assertEquals(new ModelSource.Provided(contents().resolve("darksteel"), new ResourceLocation("darksteel", "item/katana")),
+                katana.model(), "the pack's own model, as players saw it");
+        assertFalse(Files.exists(contents().resolve("darksteel/models/item/katana.json")), "not generated again");
+    }
+
+    /** A content pack with a pack.mcmeta in its resourcepack/ - as some ship - is not merged whole. */
+    @Test
+    void aContentPacksOwnResourceFolderIsNotTakenForAGeneratedPack() throws IOException {
+        Path ginko = importDir().resolve("ginko_fantasy_shop");
+        write(ginko, "configs/skin.yml", """
+                info:
+                  namespace: ginko_fantasy_shop
+                items:
+                  cat_blocks:
+                    display_name: " "
+                    resource: {material: PAPER, generate: true, textures: [gui/categories_blocks]}
+                font_images:
+                  fantasy_shop_main: {path: gui/shopmenu, y_position: 47, symbol: "\uea51"}
+                """);
+        write(ginko, "resourcepack/pack.mcmeta", "{\"pack\":{\"pack_format\":46,\"description\":\"Fantasy Shop\"}}");
+        Files.createDirectories(ginko.resolve("resourcepack/assets/ginko_fantasy_shop/textures/gui"));
+        Files.write(ginko.resolve("resourcepack/assets/ginko_fantasy_shop/textures/gui/categories_blocks.png"), png("b"));
+        Files.write(ginko.resolve("resourcepack/assets/ginko_fantasy_shop/textures/gui/shopmenu.png"), png("s"));
+
+        ImportReport report = new ItemsAdderImporter().run(importDir(), contents(), packs());
+
+        assertEquals(List.of(), report.problems());
+        assertEquals(0, report.packs(), "nothing merged whole");
+        assertFalse(Files.exists(packs().resolve("resourcepack")));
+        assertEquals(1, report.items());
+        assertTrue(Files.isRegularFile(contents().resolve("ginko_fantasy_shop/textures/gui/categories_blocks.png")));
+        assertTrue(Files.isRegularFile(contents().resolve("ginko_fantasy_shop/textures/gui/shopmenu.png")));
+        assertEquals(List.of(), new ContentLoader().load(contents()).problems());
+    }
+
+    /**
+     * The pack imported first, its configs later: a namespace whose every item the configs give now
+     * loses the file the first import made for it, which would define them a second time.
+     */
+    @Test
+    void configsImportedAfterThePackReplaceItsItemsWithoutDuplicates() throws IOException {
+        zipParts(generatedPack());
+        new ItemsAdderImporter().run(importDir(), contents(), packs());
+        Path imported = contents().resolve("medieval_rpg/imported");
+        List<Path> first;
+        try (java.util.stream.Stream<Path> files = Files.list(imported)) {
+            first = files.filter(file -> file.toString().endsWith("-pack.yml")).toList();
+        }
+        assertEquals(1, first.size(), "the pack's own item, crate_1");
+
+        write(importDir(), "contents/medieval_rpg/configs/props.yml", """
+                info:
+                  namespace: medieval_rpg
+                items:
+                  crate:
+                    name: "&6Old Crate"
+                    resource:
+                      material: PAPER
+                      model_id: 10001
+                      model_path: crate_1
+                """);
+        ImportReport again = new ItemsAdderImporter().run(importDir(), contents(), packs());
+
+        assertEquals(List.of(), again.problems());
+        assertFalse(Files.exists(first.get(0)));
+        assertTrue(again.notes().stream().anyMatch(note -> note.contains(first.get(0).getFileName() + " removed")),
+                again.notes().toString());
+        LoadReport loaded = new ContentLoader().load(contents());
+        assertEquals(List.of(), loaded.problems(), "no item defined twice");
+        assertEquals("<gold>Old Crate", loaded.items().stream().filter(item -> item.fullId().equals("medieval_rpg:crate"))
+                .findFirst().orElseThrow().displayName());
+    }
+
     @Test
     void aConfigsItemWinsOverTheSameItemFromThePackAndKeepsItsName() throws IOException {
         zipParts(generatedPack());

@@ -12,6 +12,7 @@ import com.arkcronist.content.core.allocation.StableAllocator;
 import com.arkcronist.content.core.block.NoteBlockAllocator;
 import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.definition.EmojiDefinition;
+import com.arkcronist.content.core.definition.FontImageDefinition;
 import com.arkcronist.content.core.definition.ItemDefinition;
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.furniture.DisplayFile;
@@ -28,6 +29,7 @@ import com.arkcronist.content.core.loader.ContentLoader;
 import com.arkcronist.content.core.loader.ExampleUpdates;
 import com.arkcronist.content.core.loader.LoadReport;
 import com.arkcronist.content.core.pack.ExternalPack;
+import com.arkcronist.content.core.pack.FontImages;
 import com.arkcronist.content.core.pack.ModelDataDispatch;
 import com.arkcronist.content.core.pack.PackArtifact;
 import com.arkcronist.content.core.pack.PackCompiler;
@@ -51,6 +53,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -224,47 +227,53 @@ public final class ContentPipeline {
                          List<EmojiDefinition> emojiDefinitions, Map<EmojiDefinition, Integer> emojis,
                          List<AdvancementCompiler.Compiled> advancements, Map<String, Integer> modelData,
                          List<HudDefinition> hudDefinitions, Map<String, Integer> liquids, List<HudLayout> huds,
-                         List<HudGlyph> hudGlyphs, List<String> problems, int files, PackArtifact artifact,
+                         List<HudGlyph> hudGlyphs, List<FontImageDefinition> fontImageDefinitions,
+                         FontImages fontImages, List<String> problems, int files, PackArtifact artifact,
                          Hosted hosted) {
 
         Build withNoteBlocks(Map<String, NoteBlockState> noteBlocks) {
             return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
-                    liquids, huds, hudGlyphs, problems, files, artifact, hosted);
+                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted);
         }
 
         Build withEmojis(Map<EmojiDefinition, Integer> emojis) {
             return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
-                    liquids, huds, hudGlyphs, problems, files, artifact, hosted);
+                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted);
         }
 
         Build withFiles(int files) {
             return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
-                    liquids, huds, hudGlyphs, problems, files, artifact, hosted);
+                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted);
         }
 
         Build withArtifact(PackArtifact artifact) {
             return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
-                    liquids, huds, hudGlyphs, problems, files, artifact, hosted);
+                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted);
         }
 
         Build withModelData(Map<String, Integer> modelData) {
             return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
-                    liquids, huds, hudGlyphs, problems, files, artifact, hosted);
+                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted);
         }
 
         Build withLiquids(Map<String, Integer> liquids) {
             return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
-                    liquids, huds, hudGlyphs, problems, files, artifact, hosted);
+                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted);
         }
 
         Build withHuds(List<HudLayout> huds, List<HudGlyph> hudGlyphs) {
             return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
-                    liquids, huds, hudGlyphs, problems, files, artifact, hosted);
+                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted);
+        }
+
+        Build withFontImages(FontImages fontImages) {
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
+                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted);
         }
 
         Build withHosted(Hosted hosted) {
             return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
-                    liquids, huds, hudGlyphs, problems, files, artifact, hosted);
+                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted);
         }
     }
 
@@ -523,7 +532,8 @@ public final class ContentPipeline {
                     ContentPipeline::textComponent);
             problems.addAll(advancements.problems());
             return new Build(items, Map.of(), report.emojis(), Map.of(), advancements.advancements(), Map.of(),
-                    report.huds(), Map.of(), List.of(), List.of(), problems, 0, null, null);
+                    report.huds(), Map.of(), List.of(), List.of(), report.fontImages(), FontImages.EMPTY, problems, 0,
+                    null, null);
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
@@ -694,15 +704,39 @@ public final class ContentPipeline {
      */
     private Build assignHudCharacters(Build build) {
         try {
+            // Font images first: those a merged pack draws already take its character; the rest
+            // get one here, from the same stable allocation as HUD icons.
+            List<FontImages.Image> provided = FontImages.provided(mergedFonts());
+            List<FontImages.Image> definedImages = new ArrayList<>();
+            List<FontImageDefinition> own = new ArrayList<>();
+            for (FontImageDefinition definition : build.fontImageDefinitions()) {
+                FontImages.match(definition, provided).ifPresentOrElse(definedImages::add, () -> own.add(definition));
+            }
+            Set<Integer> reserved = new java.util.HashSet<>(fontCharactersInUse());
             List<String> keys = new ArrayList<>();
             for (HudDefinition hud : build.hudDefinitions()) {
                 hud.icons().forEach(icon -> keys.add(hud.iconKey(icon.name())));
             }
-            Map<String, Integer> previous = StableAllocator.read(hudCharacterFile);
-            if (keys.isEmpty() && previous.isEmpty()) {
-                return build;
+            Map<Integer, FontImageDefinition> onSymbol = new LinkedHashMap<>();
+            for (FontImageDefinition definition : own) {
+                Integer symbol = definition.symbol();
+                if (symbol != null && !reserved.contains(symbol) && !onSymbol.containsKey(symbol)) {
+                    onSymbol.put(symbol, definition);
+                } else {
+                    if (symbol != null) {
+                        build.problems().add("font image " + definition.fullId() + ": symbol U+"
+                                + Integer.toHexString(symbol).toUpperCase(Locale.ROOT) + " is drawn by something else"
+                                + " already - it is given another character");
+                    }
+                    keys.add(fontImageKey(definition));
+                }
             }
-            StableAllocator.Allocation allocation = HUD_CHARACTERS.allocate(previous, keys, fontCharactersInUse(), true);
+            reserved.addAll(onSymbol.keySet());
+            Map<String, Integer> previous = StableAllocator.read(hudCharacterFile);
+            if (keys.isEmpty() && previous.isEmpty() && onSymbol.isEmpty()) {
+                return build.withFontImages(fontImageIndex(build, definedImages, provided));
+            }
+            StableAllocator.Allocation allocation = HUD_CHARACTERS.allocate(previous, keys, reserved, true);
             if (allocation.changed()) {
                 StableAllocator.write(hudCharacterFile, allocation.assignments());
             }
@@ -731,7 +765,25 @@ public final class ContentPipeline {
                 layouts.add(new HudLayout(hud, new HudRenderer.Glyphs((char) full[0], full[1], (char) half[0], half[1],
                         (char) empty[0], empty[1])));
             }
-            return build.withHuds(layouts, glyphs);
+            for (FontImageDefinition definition : own) {
+                Integer character = definition.symbol() != null && onSymbol.get(definition.symbol()) == definition
+                        ? definition.symbol() : allocation.active().get(fontImageKey(definition));
+                if (character == null) {
+                    continue;
+                }
+                Integer height = definition.height() != null ? definition.height()
+                        : FontImages.pngHeight(definition.sourceRoot().resolve("textures")
+                        .resolve(definition.texture().path() + ".png"));
+                int drawnHeight = height != null ? Math.min(height, 4096) : 8;
+                int ascent = definition.ascent() != null ? Math.min(definition.ascent(), drawnHeight)
+                        : Math.min(8, drawnHeight);
+                glyphs.add(new HudGlyph("font image " + definition.fullId(), definition.namespace(),
+                        definition.texture(), definition.sourceRoot(), drawnHeight, ascent, character));
+                definedImages.add(new FontImages.Image(definition.namespace(), definition.name(),
+                        FontImages.DEFAULT_FONT, new String(Character.toChars(character)), ascent, drawnHeight,
+                        definition.texture() + ".png"));
+            }
+            return build.withHuds(layouts, glyphs).withFontImages(fontImageIndex(build, definedImages, provided));
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
@@ -921,6 +973,7 @@ public final class ContentPipeline {
         }
         plugin.liquidRegistry().replace(liquids);
         plugin.hudRegistry().replace(build.huds());
+        plugin.fontImages().replace(build.fontImages());
         emojis.replace(build.emojis());
         int advancements = plugin.advancements() == null ? 0 : plugin.advancements().publish(build.advancements());
         if (plugin.hooks() != null) {
@@ -960,6 +1013,35 @@ public final class ContentPipeline {
                 + " - built in " + report.millis() + " ms"
                 + (report.problems().isEmpty() ? "" : ", " + report.problems().size() + " problem(s) above")
                 + ". Pack " + report.hosting() + (report.url() != null ? ": " + report.url() : "."));
+    }
+
+    private static String fontImageKey(FontImageDefinition definition) {
+        return "font_image:" + definition.fullId();
+    }
+
+    /** The font images by name, for titles and placeholders; how many there are goes in the log. */
+    private FontImages fontImageIndex(Build build, List<FontImages.Image> defined, List<FontImages.Image> provided) {
+        FontImages index = FontImages.of(defined, provided);
+        if (index.size() > 0) {
+            logger.info(index.size() + " font image(s) by name (" + index.defined() + " from font_images:, the rest"
+                    + " named after their picture in a merged pack): :<name>:, :offset_<n>: and %img_<name>% work in"
+                    + " menu titles and placeholders."
+                    + (index.ambiguous().isEmpty() ? "" : " Left out - one picture, several characters: "
+                    + String.join(", ", index.ambiguous().stream().limit(8).toList())
+                    + (index.ambiguous().size() > 8 ? " and " + (index.ambiguous().size() - 8) + " more" : "") + "."));
+        }
+        return index;
+    }
+
+    /** Every font file of the merged packs, for font images. */
+    private List<FontImages.Font> mergedFonts() throws IOException {
+        List<FontImages.Font> fonts = new ArrayList<>();
+        for (ExternalPack pack : mergedPacks()) {
+            try (PackSource source = PackSource.open(pack)) {
+                fonts.addAll(FontImages.fontsOf(source));
+            }
+        }
+        return fonts;
     }
 
     /**

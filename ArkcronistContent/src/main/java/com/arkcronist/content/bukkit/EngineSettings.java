@@ -28,12 +28,13 @@ import java.util.regex.PatternSyntaxException;
  * config.yml, read once and then immutable, so any thread may hold on to it.
  */
 public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nullable UploadSettings upload,
-                             Delivery delivery, Crops crops, Guns guns, Liquids liquids, Huds huds, Sanity sanity) {
+                             Delivery delivery, Crops crops, Guns guns, Liquids liquids, Huds huds, Sanity sanity,
+                             FontImageText fontImages) {
 
     public EngineSettings(boolean extractExamples, Pack pack, Http http, @Nullable UploadSettings upload,
                           Delivery delivery, Crops crops) {
         this(extractExamples, pack, http, upload, delivery, crops, Guns.DEFAULT, Liquids.DEFAULT, Huds.DEFAULT,
-                Sanity.DEFAULT);
+                Sanity.DEFAULT, FontImageText.DEFAULT);
     }
 
     /** Where players download the pack from. */
@@ -215,12 +216,26 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
         public static final Sanity DEFAULT = new Sanity(true, 120, 1.0);
     }
 
+    /**
+     * ItemsAdder's text syntax for font images, for menus written for it.
+     *
+     * @param titles       rewrite {@code :offset_<n>:}, {@code :<name>:} and {@code %img_<name>%} in
+     *                     menu titles as they open
+     * @param placeholders answer {@code %img_<name>%} and {@code %img_offset_<n>%} through
+     *                     PlaceholderAPI, when ItemsAdder is not installed
+     */
+    public record FontImageText(boolean titles, boolean placeholders) {
+
+        public static final FontImageText DEFAULT = new FontImageText(true, true);
+    }
+
     static EngineSettings read(FileConfiguration config, String serverIp, Logger logger) {
         UploadSettings upload = readUpload(section(config, "upload"), logger);
         ConfigurationSection guns = section(config, "guns");
         ConfigurationSection liquids = section(config, "liquids");
         ConfigurationSection huds = section(config, "huds");
         ConfigurationSection sanity = section(config, "sanity");
+        ConfigurationSection fontImages = section(config, "font-images");
         MiniMessage text = MiniMessage.miniMessage();
         return new EngineSettings(
                 config.getBoolean("extract-examples", true),
@@ -240,7 +255,8 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
                 new Sanity(sanity.getBoolean("enabled", Sanity.DEFAULT.enabled()),
                         Math.max(10, Math.min(86_400, sanity.getInt("interval-seconds", Sanity.DEFAULT.intervalSeconds()))),
                         Math.max(0.1, Math.min(20, sanity.getDouble("max-millis-per-tick",
-                                Sanity.DEFAULT.maxMillisPerTick())))));
+                                Sanity.DEFAULT.maxMillisPerTick())))),
+                new FontImageText(fontImages.getBoolean("titles", true), fontImages.getBoolean("placeholders", true)));
     }
 
     private static Pack readPack(ConfigurationSection section, Logger logger) {

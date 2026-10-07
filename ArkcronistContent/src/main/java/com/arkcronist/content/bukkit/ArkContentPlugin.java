@@ -43,6 +43,8 @@ import com.arkcronist.content.bukkit.pack.PackDelivery;
 import com.arkcronist.content.bukkit.pack.PackWebHost;
 import com.arkcronist.content.bukkit.protection.Protection;
 import com.arkcronist.content.bukkit.sanity.SanityChecker;
+import com.arkcronist.content.bukkit.text.FontImageRegistry;
+import com.arkcronist.content.bukkit.text.GlyphTitleListener;
 import com.arkcronist.content.core.crop.CropStore;
 import com.arkcronist.content.core.storage.DatabaseManager;
 import com.arkcronist.content.core.storage.FurnitureTransform;
@@ -119,6 +121,7 @@ public final class ArkContentPlugin extends JavaPlugin {
     private GunService guns;
     private final LiquidRegistry liquidRegistry = new LiquidRegistry();
     private final HudRegistry hudRegistry = new HudRegistry();
+    private final FontImageRegistry fontImages = new FontImageRegistry();
     private LiquidService liquids;
     private HudService huds;
     private SanityChecker sanity;
@@ -210,6 +213,9 @@ public final class ArkContentPlugin extends JavaPlugin {
                 getLogger()), this);
         plugins.registerEvents(new EditorListener(editor), this);
         plugins.registerEvents(webHost, this);
+        if (settings.fontImages().titles()) {
+            plugins.registerEvents(new GlyphTitleListener(fontImages), this);
+        }
         plugins.registerEvents(new ContentMenuListener(this), this);
         plugins.registerEvents(new AdvancementListener(this, advancements), this);
         plugins.registerEvents(new GunListener(this, guns), this);
@@ -417,6 +423,11 @@ public final class ArkContentPlugin extends JavaPlugin {
     /** The pieces of furniture given a look of their own in the editor. */
     public FurnitureTransformStore transforms() {
         return transforms;
+    }
+
+    /** Font images by name, from the live build: ItemsAdder's {@code :name:} and {@code %img_name%}. */
+    public FontImageRegistry fontImages() {
+        return fontImages;
     }
 
     /** The cyclic audit of loaded chunks. Null before enable. */

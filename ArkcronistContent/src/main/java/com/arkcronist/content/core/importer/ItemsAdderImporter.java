@@ -109,7 +109,7 @@ public final class ItemsAdderImporter {
             "template", "variant_of");
 
     /** Top-level sections of a config file that are read. */
-    private static final Set<String> FILE_SECTIONS = Set.of("info", "items", "dictionary");
+    private static final Set<String> FILE_SECTIONS = Set.of("info", "items", "dictionary", "font_images");
 
     /** Parents whose one texture variable is known, so a lone {@code texture} can be put in it. */
     private static final Map<String, String> SINGLE_VARIABLE = Map.of(
@@ -147,7 +147,8 @@ public final class ItemsAdderImporter {
     }
 
     /** One config file with items. */
-    private record Source(Path file, String where, Path pack, String namespace, Map<?, ?> items) {
+    private record Source(Path file, String where, Path pack, String namespace, Map<?, ?> items,
+                          Map<?, ?> fontImages) {
     }
 
     private static final class Run {
@@ -174,6 +175,7 @@ public final class ItemsAdderImporter {
         private int converted;
         private int items;
         private int skipped;
+        private int fontImagesImported;
         private int resources;
         private int packs;
         private int packFiles;
@@ -204,6 +206,10 @@ public final class ItemsAdderImporter {
                         source.close();
                     }
                 }
+            }
+            if (fontImagesImported > 0) {
+                notes.add(fontImagesImported + " font image(s) imported: menus written for ItemsAdder find them as"
+                        + " %img_<name>% and :<name>:");
             }
             return new ImportReport(files, converted, items, skipped, resources, packs, packFiles, written, problems,
                     notes);
@@ -319,13 +325,15 @@ public final class ItemsAdderImporter {
             }
 
             Object itemsNode = root.get("items");
-            if (itemsNode == null) {
+            Map<?, ?> fontImages = root.get("font_images") instanceof Map<?, ?> images ? images : Map.of();
+            if (itemsNode == null && fontImages.isEmpty()) {
                 return null;
             }
-            if (!(itemsNode instanceof Map<?, ?> itemSections)) {
+            if (itemsNode != null && !(itemsNode instanceof Map<?, ?>)) {
                 problems.add(where + ": 'items' is not a section - skipped");
                 return null;
             }
+            Map<?, ?> itemSections = itemsNode == null ? Map.of() : (Map<?, ?>) itemsNode;
             if (!ResourceLocation.isValidNamespace(namespace)) {
                 problems.add(where + ": namespace '" + namespace + "' is not valid (a-z 0-9 _ . -) - skipped");
                 return null;
@@ -334,7 +342,7 @@ public final class ItemsAdderImporter {
                 problems.add(where + ": items in the minecraft namespace would replace vanilla ones - skipped");
                 return null;
             }
-            return new Source(file, where, packFolder(file), namespace, itemSections);
+            return new Source(file, where, packFolder(file), namespace, itemSections, fontImages);
         }
 
         /** The pack a config belongs to: the folder holding its configs/ folder, or its own folder. */
@@ -389,7 +397,8 @@ public final class ItemsAdderImporter {
                     skipped++;
                 }
             }
-            if (converted.isEmpty()) {
+            Map<String, Object> images = convertFontImages(source);
+            if (converted.isEmpty() && images.isEmpty()) {
                 return;
             }
 
@@ -402,7 +411,12 @@ public final class ItemsAdderImporter {
             }
             Map<String, Object> document = new LinkedHashMap<>();
             document.put("namespace", source.namespace());
-            document.put("items", converted);
+            if (!converted.isEmpty()) {
+                document.put("items", converted);
+            }
+            if (!images.isEmpty()) {
+                document.put("font_images", images);
+            }
             String text = MARKER + "\n"
                     + "# Source: import/" + source.where() + "\n"
                     + "# Running the import again rewrites this file. To keep changes you make, move the\n"
@@ -500,7 +514,7 @@ public final class ItemsAdderImporter {
             String material = String.valueOf(item.getOrDefault("material", "PAPER"));
             Map<String, Object> look = graphics != null
                     ? fromGraphics(source, graphics, block, material, prefix)
-                    : fromResource(source, resource, block, material, prefix);
+                    : fromResource(source, id, resource, block, material, prefix);
             if (look == null) {
                 if (block || furniture) {
                     problems.add(prefix + "a " + (block ? "block" : "furniture")
@@ -606,7 +620,8 @@ public final class ItemsAdderImporter {
         }
 
         /** The classic {@code resource} section. */
-        private Map<String, Object> fromResource(Source source, Map<?, ?> resource, boolean block, String material, String prefix)
+        private Map<String, Object> fromResource(Source source, String id, Map<?, ?> resource, boolean block,
+                                                 String material, String prefix)
                 throws IOException {
             if (resource == null) {
                 return null;
@@ -635,6 +650,15 @@ public final class ItemsAdderImporter {
             }
             if (textures.isEmpty()) {
                 return null;
+            }
+            // ItemsAdder generated this very model into its pack, now in packs/: that file is the one
+            // players have seen, so it is used as it is rather than generated again beside it.
+            ResourceLocation generated = new ResourceLocation(namespace, "item/" + id);
+            if (generate && !block && absorbedHas(generated.assetPath("models", ".json"))) {
+                configModels.add(generated.toString());
+                Map<String, Object> model = new LinkedHashMap<>();
+                model.put("model", shown(generated, namespace));
+                return model;
             }
 
             Map<String, ResourceLocation> variables = new LinkedHashMap<>();
@@ -811,6 +835,37 @@ public final class ItemsAdderImporter {
         }
 
         // ------------------------------------------------------------ assets
+
+        /**
+         * {@code font_images} kept as ItemsAdder writes them - this plugin reads the same keys - with
+         * their pictures copied: what menus name as {@code %img_<name>%} and {@code :<name>:}.
+         */
+        private Map<String, Object> convertFontImages(Source source) throws IOException {
+            Map<String, Object> images = new LinkedHashMap<>();
+            for (Map.Entry<?, ?> entry : source.fontImages().entrySet()) {
+                String name = String.valueOf(entry.getKey()).toLowerCase(Locale.ROOT);
+                String prefix = source.where() + " > font image " + source.namespace() + ":" + name + ": ";
+                if (!(entry.getValue() instanceof Map<?, ?> section) || section.get("path") == null) {
+                    problems.add(prefix + "has no 'path' - skipped");
+                    continue;
+                }
+                ResourceLocation texture = location(section.get("path"), source.namespace(), prefix);
+                if (texture == null) {
+                    continue;
+                }
+                Map<String, Object> image = new LinkedHashMap<>();
+                image.put("path", texture.namespace().equals(source.namespace()) ? texture.path() : texture.toString());
+                for (String key : List.of("y_position", "scale_ratio", "symbol")) {
+                    if (section.get(key) != null) {
+                        image.put(key, section.get(key));
+                    }
+                }
+                copyTexture(source, texture, prefix);
+                images.put(name, image);
+                fontImagesImported++;
+            }
+            return images;
+        }
 
         private void copyTexture(Source source, ResourceLocation texture, String prefix) throws IOException {
             if (absorbedHas(texture.assetPath("textures", ".png"))) {
@@ -990,6 +1045,29 @@ public final class ItemsAdderImporter {
          * {@code item_model}: {@code contents/<ns>/items/<id>.json} is the pack's own entry for it, as
          * it is, unless the pack has an item definition of that name already, which is then used.
          */
+        /**
+         * A namespace whose items an earlier import took from this pack, and whose every item an
+         * ItemsAdder config gives now: its old file would define them a second time, ahead of the
+         * config's, so it goes - when the importer wrote it.
+         */
+        private void removeStalePackItems(GeneratedPacks.Found pack, Set<String> written, String where)
+                throws IOException {
+            if (!Files.isDirectory(contentsDir)) {
+                return;
+            }
+            try (Stream<Path> namespaces = Files.list(contentsDir)) {
+                for (Path folder : namespaces.filter(Files::isDirectory).sorted().toList()) {
+                    Path stale = folder.resolve("imported").resolve(pack.name() + "-pack.yml");
+                    if (!written.contains(folder.getFileName().toString()) && Files.isRegularFile(stale)
+                            && writtenByImporter(stale)) {
+                        Files.delete(stale);
+                        notes.add(where + ": " + unix(contentsDir.relativize(stale)) + " removed - every item it"
+                                + " listed is given by an ItemsAdder config under import/ now");
+                    }
+                }
+            }
+        }
+
         private void packItems(GeneratedPacks.Found pack, PackSource source) throws IOException {
             Map<String, Integer> left = new TreeMap<>();
             List<GeneratedPacks.Entry> entries = new ArrayList<>();
@@ -1090,6 +1168,7 @@ public final class ItemsAdderImporter {
                 converted++;
                 items += namespace.getValue().size();
             }
+            removeStalePackItems(pack, byNamespace.keySet(), where);
             int total = byNamespace.values().stream().mapToInt(Map::size).sum();
             notes.add(where + ": " + packFilesOf(source) + " file(s) merged as they are; " + total + " item(s) drawn by"
                     + " item_model instead of custom_model_data, in " + byNamespace.size() + " namespace(s)");

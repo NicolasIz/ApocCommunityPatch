@@ -191,6 +191,24 @@ huds:
   save-seconds: 30
 
 # ---------------------------------------------------------------------------
+#  Font images: menus written for ItemsAdder
+# ---------------------------------------------------------------------------
+#  ItemsAdder's text for pictures drawn as characters - a menu's background, an
+#  icon in a lore line - works without it:
+#    :offset_-20:  %img_offset_-20%    20 pixels back (positive: forward)
+#    :skills_menu_book:  %img_skills_menu_book%  :namespace:name:   a font image
+#  Names come from font_images: in the contents (what /arkcontent import keeps
+#  from ItemsAdder's configs) and, for packs merged without their configs, from
+#  the picture's file name. /arkcontent info says how many there are.
+# ---------------------------------------------------------------------------
+font-images:
+  # Rewrite them in menu titles as a menu opens, whichever plugin opens it.
+  titles: true
+  # Answer %img_<name>% and %img_offset_<n>% through PlaceholderAPI - not when
+  # ItemsAdder is installed, whose placeholders they are.
+  placeholders: true
+
+# ---------------------------------------------------------------------------
 #  Sanity checker
 # ---------------------------------------------------------------------------
 #  Rollbacks, /fill, world editors and crashes can change the world behind the

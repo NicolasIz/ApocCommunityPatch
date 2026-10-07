@@ -2172,6 +2172,77 @@ Con un pack generado de ItemsAdder de 22.127 archivos en dos zips (40 namespaces
   llevan `item_model` (`dragones_epicos:voltharion_yelmo`...) y su nombre. En el pack servido siguen
   sus 2231 sprites del atlas, sus 124 estados de note block y sus 36.384 entradas de CMD.
 
+### Font images: menús escritos para ItemsAdder (`:offset_N:`, `%img_nombre%`)
+
+Muchos menús de otros plugins —AuraSkills, UpgradeableSpawners, DeluxeMenus, tiendas— están escritos
+con la sintaxis de ItemsAdder para dibujar su fondo y sus iconos con imágenes de fuente:
+
+```yaml
+# AuraSkills/menus/skills.yml
+title: '<white>:offset_-20: %img_skills_menu_book%'
+bar_completed: '<#ffd556>%img_offset_-2%%img_xp_bar_white_lore% '
+```
+
+Sin ItemsAdder, eso salía como texto. Ahora se dibuja igual:
+
+| Escrito | Qué es | Dónde funciona |
+|---|---|---|
+| `:offset_-20:` / `%img_offset_-20%` | 20 píxeles atrás (positivo: adelante), con los mismos caracteres de espacio que ItemsAdder | títulos de menú / PlaceholderAPI |
+| `:skills_menu_book:` / `:namespace:nombre:` | la imagen de ese nombre | títulos de menú |
+| `%img_skills_menu_book%` | la imagen de ese nombre | PlaceholderAPI (lore, mensajes, hologramas…) y títulos de menú |
+
+- **Títulos.** Se reescriben al abrirse el menú (`InventoryOpenEvent#titleOverride` de Paper, sin NMS
+  ni ProtocolLib), lo abra el plugin que lo abra. Una imagen toma el color del texto que la rodea,
+  como en ItemsAdder; si el título no tiene color propio se dibuja en blanco, con sus colores, en vez
+  de teñida del gris oscuro por defecto. Negrita y demás decoraciones se quitan de los caracteres
+  insertados, porque la negrita ensancha cada uno un píxel y movería los desplazamientos.
+- **PlaceholderAPI.** `%img_<nombre>%` devuelve el carácter tal cual, sin color: el color escrito
+  antes lo tiñe, así que `<#ffd556>%img_xp_bar_white_lore%` pinta la barra blanca de amarillo, como
+  hacía ItemsAdder. Solo se registra si ItemsAdder no está instalado (el identificador es suyo).
+- **De dónde salen los nombres.**
+  1. `font_images:` del contenido, con el mismo formato que ItemsAdder (`path`, `y_position`,
+     `scale_ratio`, `symbol`; o `texture`, `ascent`, `height`). `/arkcontent import` lo conserva de
+     sus configs —antes lo descartaba—, también de un archivo que solo tiene `font_images`. Cada una se
+     empareja con el carácter con el que el pack generado de ItemsAdder ya dibuja esa imagen, a esa
+     altura y con ese `symbol`. Si ningún pack fusionado la dibuja, nuestro pack le da un carácter
+     estable.
+  2. Para los packs fusionados sin sus configs, el nombre del archivo de la imagen
+     (`spectra_aurelium_skills:skills_menu_book.png` → `skills_menu_book`), que es como ItemsAdder
+     suele nombrarlas. Un nombre que dibujan varios caracteres distintos se deja fuera y se lista en
+     consola.
+
+  Hay nombres que no coinciden con el archivo (`skill_book_sources` es `book_all_squares.png`,
+  `xp_bar_white_lore` es `xp_bar_white`): esos necesitan las configs. Copia la carpeta del pack de
+  ItemsAdder (`contents/<pack>/configs/` y `resourcepack/`) a `import/` y ejecuta
+  `/arkcontent import`.
+- `config.yml` → `font-images.titles` y `font-images.placeholders` las apagan. `/arkcontent info`
+  dice cuántas hay.
+
+#### Qué se ha verificado (con los menús de AuraSkills de un servidor real)
+
+Paper 1.21.8, AuraSkills 2.3.12 con su propia carpeta (`menus/`, `messages/`), y sus packs de
+ItemsAdder `spectra_aurelium_skills` y `ginko_fantasy_shop` importados junto al pack generado ya
+fusionado. Lo que recibe el cliente, leído por un bot:
+
+| Menú | Título enviado |
+|---|---|
+| `/skills` (`<white>:offset_-20: %img_skills_menu_book%`) | `U+F809 U+F804` (−20 px) y `U+EB10`, blanco |
+| `/stats` (`:offset_-18: %img_stats_menu%`) | −18 px y `U+EB13` |
+| DeluxeMenus `:offset_-44::scenes_spawner_small:` (como el título del spawner) | −44 px y `U+A412`, en blanco al no tener color el título |
+
+El lore de cada habilidad lleva sus 10 segmentos de barra `U+EB29` (`%img_xp_bar_white_lore%`), sin
+texto literal; `/papi parse` responde a `%img_...%` y deja como está un nombre que no existe. Las 24
+font images de esos dos packs se emparejaron todas con los caracteres del pack generado. Antes de
+importar las configs ya había 223 nombres sacados de los archivos.
+
+**Arreglado en la importación por el camino.** Importar las configs de un pack cuyo pack generado se
+había importado antes dejaba el archivo de ítems de ese pack generado, que volvía a definir los
+mismos ítems por delante de los de la config. Ahora se borra cuando la config los da todos. La
+carpeta `resourcepack/` de un pack de contenido con su propio `pack.mcmeta` ya no se fusiona entera
+como si fuera un pack generado. Y un ítem `generate: true` cuyo modelo ya trae el pack generado usa
+ese modelo, en vez de generar otro igual en la misma ruta. En la prueba los avisos del rebuild
+pasaron de 95 a 1, el informativo de los espacios.
+
 ## 7. Explorador de contenido
 
 `/arkcontent menu` (o `/arkcontent` a secas) abre un cofre de 6 filas con todo lo cargado, en tres
@@ -2303,6 +2374,11 @@ con `join-classpath: true` para ver sus clases.
   recoger la fuente primero. El flujo no sale de los chunks cargados alrededor de su fuente
   (`liquids.chunk-reach`), ni empuja a quien está dentro, ni apaga el fuego. Solo los jugadores
   reciben el efecto de contacto, no los mobs.
+- 1.8, font images: `:nombre:` y `:offset_N:` se reescriben en títulos de menú al abrirse; un
+  plugin que cambia el título de un menú ya abierto (`InventoryView#setTitle`) no pasa por ahí. En
+  chat, scoreboards y nombres de ítems sirve `%img_...%` a través de PlaceholderAPI, no la forma
+  `:nombre:`. Una imagen en una fuente que no es la por defecto no cabe en un texto de
+  PlaceholderAPI, así que ahí no se devuelve.
 - 1.8, editor: «solo esta pieza» no existe para muebles animados ni el editor para los de ModelEngine
   (ver sección 4). El YAML se edita línea a línea: un `display` escrito como mapa en varias líneas,
   o un ítem definido dos veces en el archivo, se rechaza sin escribir. Los valores escritos a mano

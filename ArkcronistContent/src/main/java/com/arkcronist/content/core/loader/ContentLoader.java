@@ -6,6 +6,7 @@ import com.arkcronist.content.core.ballistics.DamageFalloff;
 import com.arkcronist.content.core.definition.AdvancementDefinition;
 import com.arkcronist.content.core.definition.ContentType;
 import com.arkcronist.content.core.definition.EmojiDefinition;
+import com.arkcronist.content.core.definition.FontImageDefinition;
 import com.arkcronist.content.core.definition.Equipment;
 import com.arkcronist.content.core.definition.GunDefinition;
 import com.arkcronist.content.core.definition.ItemBehaviour;
@@ -76,6 +77,7 @@ public final class ContentLoader {
     private static final Pattern TEXTURE_VARIABLE = Pattern.compile("[a-z0-9_]+");
     /** Typed between two colons in chat, so no colon and nothing a sentence would run into. */
     private static final Pattern EMOJI_NAME = Pattern.compile("[a-z0-9_]+");
+    private static final Pattern FONT_IMAGE_NAME = Pattern.compile("[a-z0-9_.\\-]+");
     private static final Pattern AMOUNT_RANGE = Pattern.compile("(\\d+)\\s*-\\s*(\\d+)");
 
     /** Vanilla's own glyph size: a capital letter is 8 pixels high, 7 of them above the baseline. */
@@ -105,17 +107,20 @@ public final class ContentLoader {
         Map<String, EmojiDefinition> emojis = new LinkedHashMap<>();
         Map<String, AdvancementDefinition> advancements = new LinkedHashMap<>();
         Map<String, HudDefinition> huds = new LinkedHashMap<>();
+        Map<String, FontImageDefinition> fontImages = new LinkedHashMap<>();
         List<String> problems = new ArrayList<>();
         for (Path file : files) {
-            readFile(contentsDir, file, items, emojis, advancements, huds, problems);
+            readFile(contentsDir, file, items, emojis, advancements, huds, fontImages, problems);
         }
         return new LoadReport(new ArrayList<>(items.values()), new ArrayList<>(emojis.values()),
-                new ArrayList<>(advancements.values()), new ArrayList<>(huds.values()), problems);
+                new ArrayList<>(advancements.values()), new ArrayList<>(huds.values()),
+                new ArrayList<>(fontImages.values()), problems);
     }
 
     private void readFile(Path contentsDir, Path file, Map<String, ItemDefinition> items,
                           Map<String, EmojiDefinition> emojis, Map<String, AdvancementDefinition> advancements,
-                          Map<String, HudDefinition> huds, List<String> problems) {
+                          Map<String, HudDefinition> huds, Map<String, FontImageDefinition> fontImages,
+                          List<String> problems) {
         String where = unix(contentsDir.relativize(file));
 
         Object document;
@@ -149,6 +154,7 @@ public final class ContentLoader {
         readAdvancements(root.get("advancements"), namespace, sourceRoot, file, where, contentsDir, advancements,
                 problems);
         readHuds(root.get("huds"), namespace, sourceRoot, file, where, contentsDir, huds, problems);
+        readFontImages(root.get("font_images"), namespace, sourceRoot, file, where, contentsDir, fontImages, problems);
 
         // A file without items is not an error: it may hold only emojis, or another kind of
         // content this version does not read yet.
@@ -1191,6 +1197,86 @@ public final class ContentLoader {
                 problems.add(prefix + "already defined in " + unix(contentsDir.relativize(earlier.source()))
                         + " - this one is ignored");
             }
+        }
+    }
+
+    /**
+     * {@code font_images:} - pictures drawn as characters, by name, in ItemsAdder's own format (see
+     * {@link FontImageDefinition}): {@code path}, {@code y_position}, {@code scale_ratio} and
+     * {@code symbol}, or this plugin's words for the first three, {@code texture}, {@code ascent} and
+     * {@code height}.
+     */
+    private static void readFontImages(Object node, String namespace, Path sourceRoot, Path file, String where,
+                                       Path contentsDir, Map<String, FontImageDefinition> fontImages,
+                                       List<String> problems) {
+        if (node == null) {
+            return;
+        }
+        if (!(node instanceof Map<?, ?> section)) {
+            problems.add(where + ": 'font_images' should be a section of image names");
+            return;
+        }
+        for (Map.Entry<?, ?> entry : section.entrySet()) {
+            String name = String.valueOf(entry.getKey()).toLowerCase(Locale.ROOT);
+            String prefix = where + " > font image " + namespace + ":" + name + ": ";
+            if (!FONT_IMAGE_NAME.matcher(name).matches()) {
+                problems.add(prefix + "invalid name (allowed: a-z 0-9 _ - .)");
+                continue;
+            }
+            Map<?, ?> image = entry.getValue() instanceof Map<?, ?> map ? map
+                    : Map.of("path", String.valueOf(entry.getValue()));
+            String key = image.containsKey("texture") ? "texture" : "path";
+            ResourceLocation texture = location(image, key, namespace, prefix, problems);
+            if (texture == null) {
+                problems.add(prefix + "needs 'path' (or 'texture'), the picture under textures/");
+                continue;
+            }
+            Integer ascent = optionalInteger(image, image.containsKey("ascent") ? "ascent" : "y_position", prefix,
+                    problems);
+            Integer height = optionalInteger(image, image.containsKey("height") ? "height" : "scale_ratio", prefix,
+                    problems);
+            if (height != null && (height < 1 || height > 4096)) {
+                problems.add(prefix + "a height of " + height + " cannot be drawn - the picture's own is used");
+                height = null;
+            }
+            if (ascent != null && height != null && ascent > height) {
+                problems.add(prefix + "y_position " + ascent + " is more than the height " + height
+                        + ", which the client refuses - using " + height);
+                ascent = height;
+            }
+            Integer symbol = null;
+            Object rawSymbol = image.get("symbol");
+            if (rawSymbol != null) {
+                String text = String.valueOf(rawSymbol);
+                if (text.codePointCount(0, text.length()) == 1) {
+                    symbol = text.codePointAt(0);
+                } else {
+                    problems.add(prefix + "'symbol' should be one character - any free one is used");
+                }
+            }
+            FontImageDefinition definition = new FontImageDefinition(namespace, name, texture, ascent, height, symbol,
+                    sourceRoot, file);
+            FontImageDefinition earlier = fontImages.putIfAbsent(definition.fullId(), definition);
+            if (earlier != null) {
+                problems.add(prefix + "already defined in " + unix(contentsDir.relativize(earlier.source()))
+                        + " - this one is ignored");
+            }
+        }
+    }
+
+    private static Integer optionalInteger(Map<?, ?> section, String key, String prefix, List<String> problems) {
+        Object value = section.get(key);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        try {
+            return Integer.parseInt(String.valueOf(value).trim());
+        } catch (NumberFormatException exception) {
+            problems.add(prefix + "'" + key + "' should be a whole number - left out");
+            return null;
         }
     }
 

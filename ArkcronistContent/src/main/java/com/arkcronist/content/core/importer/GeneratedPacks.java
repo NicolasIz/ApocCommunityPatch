@@ -96,6 +96,7 @@ final class GeneratedPacks {
     static List<Found> find(Path importDir, List<String> notes) throws IOException {
         List<Path> zips = new ArrayList<>();
         List<Path> folders = new ArrayList<>();
+        List<Path> generatedFolders = new ArrayList<>();
         try (Stream<Path> walk = Files.walk(importDir)) {
             for (Path path : walk.sorted().toList()) {
                 Path relative = importDir.relativize(path);
@@ -108,7 +109,16 @@ final class GeneratedPacks {
                 } else if (Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)
                         && Files.isRegularFile(path.resolve("pack.mcmeta"), LinkOption.NOFOLLOW_LINKS)
                         && Files.isDirectory(path.resolve("assets"), LinkOption.NOFOLLOW_LINKS)) {
+                    if (contentPackAssets(path)) {
+                        // An ItemsAdder content pack's resourcepack/, beside its configs/: its files are
+                        // copied as the configs use them, not merged whole a second time.
+                        notes.add(unix(relative) + ": the resource folder of an ItemsAdder content pack - its"
+                                + " files are taken as its configs use them, not merged whole");
+                        folders.add(path);
+                        continue;
+                    }
                     folders.add(path);
+                    generatedFolders.add(path);
                 }
             }
         }
@@ -139,7 +149,7 @@ final class GeneratedPacks {
             parts.sort(Comparator.comparing((Path zip) -> partNumbers.get(zip)).thenComparing(Path::toString));
             found.add(new Found(group.getKey(), List.copyOf(parts)));
         }
-        for (Path folder : folders) {
+        for (Path folder : generatedFolders) {
             String name = folderName(folder.getFileName().toString());
             while (true) {
                 String taken = name;
@@ -154,6 +164,12 @@ final class GeneratedPacks {
     }
 
     /** Whether a zip holds a resource pack, or a part of one. */
+    /** {@code <pack>/resourcepack/} next to {@code <pack>/configs/}: an ItemsAdder content pack, not a generated one. */
+    static boolean contentPackAssets(Path folder) {
+        Path parent = folder.getParent();
+        return parent != null && Files.isDirectory(parent.resolve("configs"), LinkOption.NOFOLLOW_LINKS);
+    }
+
     private static boolean resourcePack(Path zip) throws IOException {
         try (ZipFile file = new ZipFile(zip.toFile())) {
             String prefix = PackSource.zipPrefix(file);

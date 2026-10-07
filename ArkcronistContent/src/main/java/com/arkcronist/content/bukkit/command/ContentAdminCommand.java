@@ -479,6 +479,10 @@ public final class ContentAdminCommand {
                 (System.currentTimeMillis() - audit.finishedAtMillis()) / 1000, audit.chunks(), audit.millis(),
                 audit.ticks(), audit.suspects(), audit.displaysRemoved(), audit.rowsPurged(), audit.liquidsPurged())),
                 NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("Font images by name: " + plugin.fontImages().current().size() + " ("
+                + plugin.fontImages().current().defined() + " from font_images:)"
+                + (plugin.settings().fontImages().titles() ? "; menu titles rewritten" : "")
+                + (plugin.settings().fontImages().placeholders() ? "; %img_% answered" : ""), NamedTextColor.GRAY));
         sender.sendMessage(Component.text("Furniture with a look of their own (editor): " + plugin.transforms().size()
                 + "; editors open: " + plugin.editor().open(), NamedTextColor.GRAY));
         return Command.SINGLE_SUCCESS;
