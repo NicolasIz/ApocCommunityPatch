@@ -70,9 +70,26 @@ http:
   # Must be reachable from players' machines: open or forward it like the game port.
   port: 8163
   # The address players' clients download from - your public IP or domain, NOT
-  # 0.0.0.0. Empty means server-ip from server.properties; if that is empty too,
-  # 127.0.0.1, which only works for a client on this same machine.
+  # 0.0.0.0. Empty: this server's public IP is found at start (see below); until
+  # then, and if it cannot be, server-ip from server.properties, or 127.0.0.1,
+  # which only works for a client on this same machine.
   public-address: ""
+  # With public-address empty, ask these services for this machine's public IP
+  # - one light HTTPS request at start, off the main thread - and send players
+  # that. A server-ip that is already a public address is kept instead. Nothing
+  # is written back to this file: an empty line follows a host that changes IP.
+  detect-public-address: true
+  address-services:
+    - "https://api.ipify.org"
+    - "https://checkip.amazonaws.com"
+    - "https://icanhazip.com"
+    - "https://ifconfig.me/ip"
+  # If 'port' cannot be opened (in use, or refused - below 1024 without root),
+  # the plugin starts anyway and tries: the same port twice more (a previous run
+  # may still hold it), then these ports, then 'port' again every 60 seconds.
+  # Empty: the three ports after 'port'. Players can only download from a port
+  # that is open to them, so list ports your host forwards. Admins are told.
+  fallback-ports: []
   # Downloads served at the same time. More players than this simply queue.
   threads: 4
   # Host the pack yourself instead: a CDN, a web host, a bucket. Players are sent
@@ -172,3 +189,23 @@ huds:
   # How often, in seconds, changed HUD values (thirst...) are written to SQLite.
   # They are written as a player leaves too.
   save-seconds: 30
+
+# ---------------------------------------------------------------------------
+#  Sanity checker
+# ---------------------------------------------------------------------------
+#  Rollbacks, /fill, world editors and crashes can change the world behind the
+#  plugin's back. Every interval, the loaded chunks are audited: a furniture
+#  display whose block is gone is removed, and a stored custom block, furniture
+#  or liquid source whose block is no longer it has its row purged (one SQLite
+#  transaction, only if the row is unchanged). Something is acted on only when
+#  two audits in a row find it the same way, so a rollback in progress is left
+#  to finish. Driven from the ArkContent-DB thread; the world is read on the
+#  server thread a slice per tick, and never a chunk loaded for it. Quiet: one
+#  console line when something was cleaned, nothing otherwise.
+# ---------------------------------------------------------------------------
+sanity:
+  enabled: true
+  interval-seconds: 120
+  # Server-thread time an audit may take per tick; a large world spreads over
+  # more ticks.
+  max-millis-per-tick: 1.0

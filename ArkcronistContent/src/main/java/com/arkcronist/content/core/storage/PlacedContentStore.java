@@ -2,6 +2,7 @@ package com.arkcronist.content.core.storage;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -85,6 +86,33 @@ public final class PlacedContentStore {
 
     public int size() {
         return index.size();
+    }
+
+    /** A live view of one world's placed content; safe to walk from any thread. */
+    public Collection<PlacedContent> entries(UUID world) {
+        return index.entries(world);
+    }
+
+    public Set<UUID> worlds() {
+        return index.worlds();
+    }
+
+    /** Whether the world's rows are still loading, so memory does not yet hold all of them. */
+    public boolean loading(UUID world) {
+        return index.loading(world);
+    }
+
+    /**
+     * Removes a row found stale - its block replaced behind the plugin's back - from memory and
+     * disk, each only if it still says what {@code stale} says.
+     *
+     * @return completes with whether the row was purged
+     */
+    public CompletableFuture<Boolean> purge(PlacedContent stale) {
+        if (!index.removeExact(stale)) {
+            return CompletableFuture.completedFuture(false);
+        }
+        return database.purgeIfUnchanged(stale);
     }
 
     private Void failed(String what, UUID world, int x, int y, int z, Throwable error) {

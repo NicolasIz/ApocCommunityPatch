@@ -252,7 +252,7 @@ permissions:
     description: Use /customgive, and take items out of the content browser.
     default: op
   arkcontent.admin:
-    description: Use /arkcontent reload, info, import, animate and npc.
+    description: Use /arkcontent reload, info, import, editor, animate, npc, hud and liquids; hear about web server problems on joining.
     default: op
   arkcontent.emojis:
     description: Use /emojis to list the chat emojis. Using an emoji needs nothing, unless it names its own permission.

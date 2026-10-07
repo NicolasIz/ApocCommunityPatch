@@ -1,6 +1,8 @@
 package com.arkcronist.content.core.storage;
 
 import com.arkcronist.content.core.crop.PlantedCrop;
+import com.arkcronist.content.core.definition.Placement;
+import com.arkcronist.content.core.furniture.DisplayTransform;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -25,6 +27,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -52,14 +55,15 @@ public final class DatabaseManager {
     public static final String UNLOCK_TABLE = "advancement_unlocks";
     public static final String LIQUID_TABLE = "liquid_sources";
     public static final String HUD_TABLE = "hud_values";
+    public static final String TRANSFORM_TABLE = "furniture_transforms";
 
     /**
      * Bumped with each change to the schema, so a later version knows what it opened.
      * 1: custom_blocks_world. 2: custom_crops added. 3: furniture_storage added. 4:
-     * advancement_unlocks added. 5: liquid_sources and hud_values added. An older file gains the
-     * tables it lacks on open; nothing existing is touched.
+     * advancement_unlocks added. 5: liquid_sources and hud_values added. 6: furniture_transforms
+     * added. An older file gains the tables it lacks on open; nothing existing is touched.
      */
-    public static final int SCHEMA_VERSION = 5;
+    public static final int SCHEMA_VERSION = 6;
 
     private static final String CREATE_TABLE = """
             CREATE TABLE IF NOT EXISTS custom_blocks_world (
@@ -139,6 +143,37 @@ public final class DatabaseManager {
                 value       REAL NOT NULL,
                 PRIMARY KEY (player_uuid, hud_id)
             ) WITHOUT ROWID""";
+
+    /**
+     * One piece of furniture drawn other than its type says: the in-game editor's "this piece only".
+     * Keyed by the furniture's anchor block; translation in blocks, scale per axis, rotation in
+     * degrees about x, y and z.
+     */
+    private static final String CREATE_TRANSFORM_TABLE = """
+            CREATE TABLE IF NOT EXISTS furniture_transforms (
+                world_uuid   TEXT    NOT NULL,
+                x            INTEGER NOT NULL,
+                y            INTEGER NOT NULL,
+                z            INTEGER NOT NULL,
+                furniture_id TEXT    NOT NULL,
+                tx REAL NOT NULL, ty REAL NOT NULL, tz REAL NOT NULL,
+                sx REAL NOT NULL, sy REAL NOT NULL, sz REAL NOT NULL,
+                rx REAL NOT NULL, ry REAL NOT NULL, rz REAL NOT NULL,
+                updated_at   INTEGER NOT NULL,
+                PRIMARY KEY (world_uuid, x, y, z)
+            ) WITHOUT ROWID""";
+
+    private static final String UPSERT_TRANSFORM = "INSERT OR REPLACE INTO " + TRANSFORM_TABLE
+            + " (world_uuid, x, y, z, furniture_id, tx, ty, tz, sx, sy, sz, rx, ry, rz, updated_at)"
+            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    private static final String DELETE_TRANSFORM = "DELETE FROM " + TRANSFORM_TABLE
+            + " WHERE world_uuid = ? AND x = ? AND y = ? AND z = ?";
+    private static final String SELECT_TRANSFORMS = "SELECT x, y, z, furniture_id, tx, ty, tz, sx, sy, sz, rx, ry, rz FROM "
+            + TRANSFORM_TABLE + " WHERE world_uuid = ?";
+    private static final String PURGE_ROW = "DELETE FROM " + "custom_blocks_world"
+            + " WHERE world_uuid = ? AND x = ? AND y = ? AND z = ? AND block_id = ? AND type = ?";
+    private static final String PURGE_LIQUID = "DELETE FROM " + "liquid_sources"
+            + " WHERE world_uuid = ? AND x = ? AND y = ? AND z = ? AND liquid_id = ?";
 
     private static final String UPSERT_LIQUID = "INSERT OR REPLACE INTO " + LIQUID_TABLE
             + " (world_uuid, x, y, z, liquid_id, owner_uuid) VALUES (?, ?, ?, ?, ?, ?)";
@@ -552,6 +587,137 @@ public final class DatabaseManager {
         }, false);
     }
 
+    // ---------------------------------------------------------------- furniture transforms
+
+    /** A piece of furniture's own display transform, as stored. */
+    public record StoredTransform(int x, int y, int z, String furnitureId, DisplayTransform transform) {
+    }
+
+    public CompletableFuture<Void> saveTransform(UUID world, StoredTransform stored) {
+        return submit(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(UPSERT_TRANSFORM)) {
+                statement.setString(1, world.toString());
+                statement.setInt(2, stored.x());
+                statement.setInt(3, stored.y());
+                statement.setInt(4, stored.z());
+                statement.setString(5, stored.furnitureId());
+                DisplayTransform transform = stored.transform();
+                float[] values = {transform.translation().x(), transform.translation().y(), transform.translation().z(),
+                    transform.scale().x(), transform.scale().y(), transform.scale().z(),
+                    transform.rotation().x(), transform.rotation().y(), transform.rotation().z()};
+                for (int i = 0; i < values.length; i++) {
+                    statement.setDouble(6 + i, values[i]);
+                }
+                statement.setLong(15, System.currentTimeMillis());
+                statement.executeUpdate();
+            }
+            return null;
+        }, false);
+    }
+
+    public CompletableFuture<Boolean> deleteTransform(UUID world, int x, int y, int z) {
+        return submit(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(DELETE_TRANSFORM)) {
+                statement.setString(1, world.toString());
+                statement.setInt(2, x);
+                statement.setInt(3, y);
+                statement.setInt(4, z);
+                return statement.executeUpdate() > 0;
+            }
+        }, false);
+    }
+
+    public CompletableFuture<List<StoredTransform>> loadTransforms(UUID world) {
+        return submit(connection -> {
+            List<StoredTransform> rows = new ArrayList<>();
+            try (PreparedStatement statement = connection.prepareStatement(SELECT_TRANSFORMS)) {
+                statement.setString(1, world.toString());
+                try (ResultSet result = statement.executeQuery()) {
+                    while (result.next()) {
+                        rows.add(new StoredTransform(result.getInt(1), result.getInt(2), result.getInt(3),
+                                result.getString(4), new DisplayTransform(
+                                vec(result, 5), vec(result, 8), vec(result, 11))));
+                    }
+                }
+            }
+            return rows;
+        }, false);
+    }
+
+    private static Placement.Vec3 vec(ResultSet result, int first) throws SQLException {
+        return new Placement.Vec3(result.getFloat(first), result.getFloat(first + 1), result.getFloat(first + 2));
+    }
+
+    // ---------------------------------------------------------------- sanity
+
+    /**
+     * Deletes a row of custom_blocks_world only if it still says what {@code stale} says - and,
+     * for furniture, the piece's own transform with it - in one transaction: a row written again
+     * since the check is never lost.
+     *
+     * @return whether the row was deleted
+     */
+    public CompletableFuture<Boolean> purgeIfUnchanged(PlacedContent stale) {
+        return submit(connection -> {
+            boolean auto = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+            try {
+                boolean deleted;
+                try (PreparedStatement statement = connection.prepareStatement(PURGE_ROW)) {
+                    statement.setString(1, stale.world().toString());
+                    statement.setInt(2, stale.x());
+                    statement.setInt(3, stale.y());
+                    statement.setInt(4, stale.z());
+                    statement.setString(5, stale.contentId());
+                    statement.setString(6, stale.kind().name());
+                    deleted = statement.executeUpdate() > 0;
+                }
+                if (deleted && stale.kind() == PlacedContent.Kind.FURNITURE) {
+                    try (PreparedStatement statement = connection.prepareStatement(DELETE_TRANSFORM)) {
+                        statement.setString(1, stale.world().toString());
+                        statement.setInt(2, stale.x());
+                        statement.setInt(3, stale.y());
+                        statement.setInt(4, stale.z());
+                        statement.executeUpdate();
+                    }
+                }
+                connection.commit();
+                return deleted;
+            } catch (SQLException exception) {
+                connection.rollback();
+                throw exception;
+            } finally {
+                connection.setAutoCommit(auto);
+            }
+        }, false);
+    }
+
+    /** Deletes a liquid source row only if it is still that liquid's. */
+    public CompletableFuture<Boolean> purgeLiquidIfUnchanged(UUID world, LiquidSource stale) {
+        return submit(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(PURGE_LIQUID)) {
+                statement.setString(1, world.toString());
+                statement.setInt(2, stale.x());
+                statement.setInt(3, stale.y());
+                statement.setInt(4, stale.z());
+                statement.setString(5, stale.liquid());
+                return statement.executeUpdate() > 0;
+            }
+        }, false);
+    }
+
+    /**
+     * Runs work that needs no connection on the database's thread - the sanity checker's judging,
+     * kept off the server thread and in line with the writes it leads to.
+     */
+    public <T> CompletableFuture<T> onThread(Supplier<T> work) {
+        try {
+            return CompletableFuture.supplyAsync(work, thread);
+        } catch (RejectedExecutionException exception) {
+            return CompletableFuture.failedFuture(new SQLException("the database is closed", exception));
+        }
+    }
+
     /**
      * Lets every queued statement finish, then closes the file. Blocks for at most ten seconds;
      * called once, from the plugin's shutdown.
@@ -619,6 +785,7 @@ public final class DatabaseManager {
             statement.execute(CREATE_UNLOCK_TABLE);
             statement.execute(CREATE_LIQUID_TABLE);
             statement.execute(CREATE_HUD_TABLE);
+            statement.execute(CREATE_TRANSFORM_TABLE);
             int version;
             try (ResultSet result = statement.executeQuery("PRAGMA user_version")) {
                 version = result.next() ? result.getInt(1) : 0;

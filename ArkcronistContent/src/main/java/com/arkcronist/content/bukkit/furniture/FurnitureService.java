@@ -10,7 +10,10 @@ import com.arkcronist.content.core.animation.Animator;
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.definition.ResourceLocation;
 import com.arkcronist.content.core.furniture.BedLayout;
+import com.arkcronist.content.core.furniture.DisplayTransform;
 import com.arkcronist.content.core.storage.BlockKey;
+import com.arkcronist.content.core.storage.FurnitureTransform;
+import com.arkcronist.content.core.storage.FurnitureTransformStore;
 import com.arkcronist.content.core.storage.PlacedContent;
 import com.arkcronist.content.core.storage.PlacedContentStore;
 import org.bukkit.Location;
@@ -118,6 +121,8 @@ public final class FurnitureService {
     private final NamespacedKey rootTag;
     /** Something else living in an invisible block, which a punch at furniture must not pass through. */
     private Predicate<Block> obstacle = block -> false;
+    /** Pieces drawn with a transform of their own (the editor's "this piece only"); null until storage is up. */
+    private @Nullable FurnitureTransformStore transforms;
 
     public FurnitureService(Plugin plugin, ItemRegistry registry, ItemFactory items, PlacedContentStore store,
                             HookManager hooks, AnimationPlayer animations) {
@@ -133,6 +138,11 @@ public final class FurnitureService {
         this.bonesTag = new NamespacedKey(plugin, "furniture_bones");
         this.boneTag = new NamespacedKey(plugin, "furniture_bone");
         this.rootTag = new NamespacedKey(plugin, "furniture_root");
+    }
+
+    /** Where pieces with a transform of their own are kept. */
+    public void useTransforms(FurnitureTransformStore transforms) {
+        this.transforms = transforms;
     }
 
     /** Crops live in light blocks too: a ray looking for furniture stops at one, instead of reaching past it. */
@@ -298,7 +308,11 @@ public final class FurnitureService {
      * the floor, so its model stays on the floor and grows over the vanilla bed's top and sides.
      */
     static Placement.Display drawn(Placement.Furniture furniture) {
-        Placement.Display settings = furniture.display();
+        return drawn(furniture, furniture.display());
+    }
+
+    /** {@link #drawn(Placement.Furniture)} for display settings other than the type's own. */
+    static Placement.Display drawn(Placement.Furniture furniture, Placement.Display settings) {
         if (furniture.support() != Placement.Support.BED) {
             return settings;
         }
@@ -442,6 +456,164 @@ public final class FurnitureService {
         if (modelEngine != null && furniture.modelEngineId() != null && !modelEngine.isAttached(entity)) {
             attachModelEngine(entity, furniture);
         }
+        // Drawn as its type says now - or as the piece's own transform says - whatever it was saved with.
+        apply(root, furniture, effectiveDisplay(root, furniture));
+    }
+
+    // ---------------------------------------------------------------- editing
+
+    /**
+     * How a piece is to be drawn: its own transform when the editor gave it one (for this furniture,
+     * not one that stood here before), its type's otherwise.
+     */
+    public Placement.Display effectiveDisplay(Entity root, Placement.Furniture furniture) {
+        FurnitureTransformStore store = transforms;
+        String id = furnitureId(root);
+        if (store != null && id != null && furniture.animated() == null) {
+            Block anchor = anchor(root);
+            FurnitureTransform own = store.at(anchor.getWorld().getUID(), anchor.getX(), anchor.getY(), anchor.getZ());
+            if (own != null && own.furnitureId().equals(id)) {
+                return own.transform().applyTo(furniture.display());
+            }
+        }
+        return furniture.display();
+    }
+
+    /**
+     * Draws a piece with {@code settings} - its single display's transformation, or an animated
+     * model's bones at rest - at once, in this tick: what the editor shows while a value changes.
+     */
+    public void apply(ItemDisplay root, Placement.Furniture furniture, Placement.Display settings) {
+        Placement.Display drawn = drawn(furniture, settings);
+        if (furniture.animated() != null) {
+            List<ItemDisplay> bones = bones(root, furniture.animated().model());
+            if (bones != null) {
+                AnimationPlayer.pose(bones, Animator.rest(furniture.animated().model()), drawn);
+            }
+            return;
+        }
+        Transformation wanted = new Transformation(vector(drawn.translation()), rotation(drawn.rotation()),
+                vector(drawn.scale()), new Quaternionf());
+        if (!wanted.equals(root.getTransformation())) {
+            root.setTransformation(wanted);
+        }
+        ItemDisplay.ItemDisplayTransform transform = ItemDisplay.ItemDisplayTransform.valueOf(drawn.transform());
+        if (root.getItemDisplayTransform() != transform) {
+            root.setItemDisplayTransform(transform);
+        }
+    }
+
+    /**
+     * Every loaded piece of one furniture drawn again as its type and its own transform say - after
+     * the editor saved the type. Main thread.
+     *
+     * @return how many pieces were drawn again
+     */
+    public int refresh(String id) {
+        Optional<CustomItem> item = registry.get(id);
+        if (item.isEmpty() || !(item.get().placement() instanceof Placement.Furniture furniture)) {
+            return 0;
+        }
+        int refreshed = 0;
+        for (World world : plugin.getServer().getWorlds()) {
+            for (ItemDisplay display : world.getEntitiesByClass(ItemDisplay.class)) {
+                PersistentDataContainer data = display.getPersistentDataContainer();
+                if (id.equals(data.get(furnitureTag, PersistentDataType.STRING)) && !data.has(rootTag)) {
+                    apply(display, furniture, effectiveDisplay(display, furniture));
+                    refreshed++;
+                }
+            }
+        }
+        return refreshed;
+    }
+
+    /** The (root) display of the furniture standing on {@code block}, if it is loaded. */
+    public @Nullable ItemDisplay display(Block block) {
+        Entity root = root(block);
+        if (root == null) {
+            root = findRoot(block);
+        }
+        return root instanceof ItemDisplay display && display.isValid() ? display : null;
+    }
+
+    /** Stops whatever animation the piece is playing, leaving its bones where they are. */
+    public void stopAnimation(Entity root) {
+        animations.stop(root.getUniqueId());
+    }
+
+    /** Whether ModelEngine draws this piece - then its display's transformation is not what players see. */
+    public boolean drawnByModelEngine(Placement.Furniture furniture) {
+        return furniture.modelEngineId() != null && hooks.modelEngine() != null;
+    }
+
+    /** One of this plugin's furniture displays that is a piece's root, not one of its bones. */
+    public boolean isPieceRoot(Entity entity) {
+        PersistentDataContainer data = entity.getPersistentDataContainer();
+        return entity instanceof ItemDisplay && data.has(furnitureTag) && !data.has(rootTag);
+    }
+
+    /**
+     * Draws the piece anchored at a position again, if it is loaded - once its own transform has
+     * come from the database, which can be after the piece itself loaded. Main thread.
+     */
+    public void redraw(World world, int x, int y, int z) {
+        if (!world.isChunkLoaded(x >> 4, z >> 4)) {
+            return;
+        }
+        ItemDisplay display = display(world.getBlockAt(x, y, z));
+        String id = display == null ? null : furnitureId(display);
+        Optional<CustomItem> item = id == null ? Optional.empty() : registry.get(id);
+        if (item.isPresent() && item.get().placement() instanceof Placement.Furniture furniture
+                && furniture.animated() == null) {
+            apply(display, furniture, effectiveDisplay(display, furniture));
+        }
+    }
+
+    /** The furniture id a display of this plugin carries, or null for any other entity. */
+    public @Nullable String furnitureId(Entity entity) {
+        return entity.getPersistentDataContainer().get(furnitureTag, PersistentDataType.STRING);
+    }
+
+    /** The block a furniture display is anchored to: its support, a bed's foot. */
+    public Block anchorOf(Entity display) {
+        return anchor(display);
+    }
+
+    /**
+     * {@link #isOrphan}, and also a bone whose root is gone - what a rollback or a kill command can
+     * leave of an animated piece. For the sanity checker; main thread.
+     */
+    public boolean isLeftOver(Entity entity) {
+        if (isOrphan(entity)) {
+            return true;
+        }
+        String root = entity.getPersistentDataContainer().get(rootTag, PersistentDataType.STRING);
+        if (root == null) {
+            return false;
+        }
+        try {
+            Entity found = plugin.getServer().getEntity(UUID.fromString(root));
+            return found == null || !found.isValid();
+        } catch (IllegalArgumentException exception) {
+            return true;
+        }
+    }
+
+    /**
+     * Forgets the chunk link of a support position whose block is gone - found so by the sanity
+     * checker, twice. The row itself is the checker's to purge.
+     */
+    public void forgetStale(Block block) {
+        unlink(block);
+    }
+
+    /** Removes a left-over display, and the bones of one that is a root. */
+    public void removeLeftOver(Entity entity) {
+        if (entity.getPersistentDataContainer().has(bonesTag)) {
+            bones(entity).forEach(Entity::remove);
+        }
+        animations.stop(entity.getUniqueId());
+        entity.remove();
     }
 
     /**
@@ -543,9 +715,13 @@ public final class FurnitureService {
             }
             root.remove();
         }
+        FurnitureTransformStore own = transforms;
         for (Block part : parts) {
             unlink(part);
             store.remove(part.getWorld().getUID(), part.getX(), part.getY(), part.getZ());
+            if (own != null && own.at(part.getWorld().getUID(), part.getX(), part.getY(), part.getZ()) != null) {
+                own.remove(part.getWorld().getUID(), part.getX(), part.getY(), part.getZ());
+            }
             if (!part.equals(block) && isSupport(part.getType())) {
                 // No physics: the other half of a bed would otherwise break with a drop of its own.
                 part.setType(Material.AIR, false);

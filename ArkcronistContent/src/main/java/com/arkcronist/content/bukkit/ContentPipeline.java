@@ -14,6 +14,8 @@ import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.definition.EmojiDefinition;
 import com.arkcronist.content.core.definition.ItemDefinition;
 import com.arkcronist.content.core.definition.Placement;
+import com.arkcronist.content.core.furniture.DisplayFile;
+import com.arkcronist.content.core.furniture.DisplayTransform;
 import com.arkcronist.content.core.hud.GlyphMetrics;
 import com.arkcronist.content.core.hud.HudDefinition;
 import com.arkcronist.content.core.hud.HudGlyph;
@@ -44,6 +46,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -182,7 +185,15 @@ public final class ContentPipeline {
      * @param keepPrevious the upload failed and nothing else serves this build: the live pack stays
      *                     as it was, since its link still works
      */
-    private record Hosted(@Nullable String url, String note, boolean keepPrevious) {
+    /**
+     * @param builtin served by the built-in web server: the link is made when the pack goes live,
+     *                from the address as it is then - a port or public IP found meanwhile included
+     */
+    private record Hosted(@Nullable String url, String note, boolean keepPrevious, boolean builtin) {
+
+        Hosted(@Nullable String url, String note, boolean keepPrevious) {
+            this(url, note, keepPrevious, false);
+        }
     }
 
     /**
@@ -281,6 +292,8 @@ public final class ContentPipeline {
     private final Path examplesOfferedFile;
     /** What 1.4.0 wrote instead: the one set it knew, 1.4.0. */
     private final Path legacyExamplesFile;
+    /** Content files as they were before the furniture editor last wrote them. */
+    private final Path editorBackupsDir;
 
     private final ExecutorService worker;
     private final Executor mainThread;
@@ -329,6 +342,7 @@ public final class ContentPipeline {
         this.hudCharacterFile = data.resolve("data").resolve("hud_characters.json");
         this.examplesOfferedFile = data.resolve("data").resolve("examples_offered.txt");
         this.legacyExamplesFile = data.resolve("data").resolve("examples_version.txt");
+        this.editorBackupsDir = data.resolve("data").resolve("editor-backups");
 
         this.worker = Executors.newSingleThreadExecutor(runnable -> {
             Thread thread = new Thread(runnable, "ArkContent-Worker");
@@ -390,6 +404,23 @@ public final class ContentPipeline {
             logImport(report);
             return report;
         });
+    }
+
+    /**
+     * Writes the furniture editor's values into the content file {@code item} came from - see
+     * {@link DisplayFile} - on the worker, in line with rebuilds: never while one is reading
+     * contents/. It does not rebuild; the caller does, once this has completed. Main thread.
+     *
+     * @return completes on the worker with what was written
+     */
+    public CompletableFuture<DisplayFile.Saved> saveDisplay(ItemDefinition item, DisplayTransform transform) {
+        return exclusive(() -> DisplayFile.save(contentsDir, editorBackupsDir, item.source(), item.id(), transform,
+                Instant.now()));
+    }
+
+    /** The folder content files live in. */
+    public Path contentsDir() {
+        return contentsDir;
     }
 
     /**
@@ -758,7 +789,7 @@ public final class ContentPipeline {
         String sha1 = build.artifact().sha1Hex();
         return switch (settings.hosting()) {
             case BUILTIN -> CompletableFuture.completedFuture(build.withHosted(settings.http().enabled()
-                    ? new Hosted(settings.http().packUrl(sha1), "served by the built-in web server", false)
+                    ? new Hosted(null, "served by the built-in web server", false, true)
                     : new Hosted(null, "the built-in web server is off and no other hosting is set; host "
                     + zipFile + " yourself", false)));
             case EXTERNAL -> CompletableFuture.completedFuture(build.withHosted(new Hosted(
@@ -784,8 +815,8 @@ public final class ContentPipeline {
             String reason = "Upload failed: " + cause.getMessage();
             if (plugin.httpRunning()) {
                 build.problems().add(reason + ". Players are sent the built-in web server's link instead.");
-                return build.withHosted(new Hosted(settings.http().packUrl(pack.sha1Hex()),
-                        "served by the built-in web server, the upload having failed", false));
+                return build.withHosted(new Hosted(null,
+                        "served by the built-in web server, the upload having failed", false, true));
             }
             build.problems().add(reason + ". Players keep the pack they have; the new items have no textures until"
                     + " an upload succeeds (/arkcontent reload tries again).");
@@ -899,9 +930,10 @@ public final class ContentPipeline {
             plugin.menus().refreshOpen();
         }
         Hosted hosted = build.hosted();
+        String url = hosted.builtin() ? plugin.webHost().address().packUrl(build.artifact().sha1Hex()) : hosted.url();
         // A failed upload leaves the live pack alone: its link still works, the new one would not.
         boolean changed = !(hosted.keepPrevious() && delivery.live() != null)
-                && delivery.publish(build.artifact(), hosted.url());
+                && delivery.publish(build.artifact(), url);
         if (changed) {
             delivery.sendAll(plugin.getServer().getOnlinePlayers());
         }
@@ -910,7 +942,7 @@ public final class ContentPipeline {
         Report report = new Report(build.items().size(), customBlocks.size(), build.emojis().size(), advancements,
                 pack.entries(),
                 pack.sha1Hex(), pack.size(),
-                changed, hosted.url(), hosted.note(), List.copyOf(build.problems()),
+                changed, url, hosted.note(), List.copyOf(build.problems()),
                 TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started));
         log(report);
         return report;

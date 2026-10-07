@@ -9,6 +9,7 @@ import com.arkcronist.content.bukkit.liquid.LiquidRegistry;
 import com.arkcronist.content.bukkit.liquid.LiquidService;
 import com.arkcronist.content.bukkit.menu.ContentMenu;
 import com.arkcronist.content.bukkit.menu.Shop;
+import com.arkcronist.content.bukkit.sanity.SanityChecker;
 import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.hud.HudDefinition;
@@ -42,8 +43,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 
 /**
- * {@code /arkcontent}: {@code reload}, {@code info}, {@code import}, {@code animate}, {@code hud}
- * and {@code liquids} for admins,
+ * {@code /arkcontent}: {@code reload}, {@code info}, {@code import}, {@code editor},
+ * {@code animate}, {@code hud} and {@code liquids} for admins,
  * {@code menu} for anyone allowed to browse, {@code shop} for buyers when Vault is installed, and
  * {@code npc} for admins when Citizens is. On its own, run by a player who may browse, it opens the
  * menu.
@@ -108,6 +109,18 @@ public final class ContentAdminCommand {
                                                                 StringArgumentType.getString(context, "change"),
                                                                 DoubleArgumentType.getDouble(context, "amount"))))))))
                 .then(Commands.literal("liquids").requires(ContentAdminCommand::admin).executes(this::liquids))
+                .then(Commands.literal("editor").requires(ContentAdminCommand::admin)
+                        .executes(context -> editor(context, null))
+                        .then(Commands.argument("furniture", StringArgumentType.greedyString())
+                                .suggests((context, builder) -> {
+                                    String typed = builder.getRemainingLowerCase();
+                                    plugin.items().all().stream()
+                                            .filter(item -> item.placement() instanceof Placement.Furniture)
+                                            .map(CustomItem::id).filter(id -> id.startsWith(typed)).sorted()
+                                            .forEach(builder::suggest);
+                                    return builder.buildFuture();
+                                })
+                                .executes(context -> editor(context, StringArgumentType.getString(context, "furniture")))))
                 .then(Commands.literal("menu")
                         .requires(source -> source.getSender().hasPermission(ContentMenu.BROWSE_PERMISSION))
                         .executes(this::menu))
@@ -203,7 +216,8 @@ public final class ContentAdminCommand {
             return menu(context);
         }
         CommandSender sender = context.getSource().getSender();
-        sender.sendMessage(Component.text("/arkcontent reload | info | import | animate <animation> | menu | shop"
+        sender.sendMessage(Component.text("/arkcontent reload | info | import | editor [furniture] | animate <animation>"
+                + " | menu | shop"
                 + (plugin.hooks().npcs() != null ? " | npc" : ""), NamedTextColor.GOLD));
         return Command.SINGLE_SUCCESS;
     }
@@ -240,6 +254,25 @@ public final class ContentAdminCommand {
             return 0;
         }
         sender.sendMessage(Component.text("Playing '" + name + "'.", NamedTextColor.GREEN));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    /**
+     * {@code /arkcontent editor [furniture]}: the furniture editor on the piece the player is looking
+     * at, or the nearest piece of the furniture named.
+     */
+    private int editor(CommandContext<CommandSourceStack> context, @Nullable String furniture) {
+        CommandSender sender = context.getSource().getSender();
+        Player player = viewer(context.getSource());
+        if (player == null) {
+            sender.sendMessage(Component.text("Only a player can aim at furniture.", NamedTextColor.RED));
+            return 0;
+        }
+        String problem = plugin.editor().open(player, furniture);
+        if (problem != null) {
+            sender.sendMessage(Component.text(problem, NamedTextColor.RED));
+            return 0;
+        }
         return Command.SINGLE_SUCCESS;
     }
 
@@ -430,10 +463,24 @@ public final class ContentAdminCommand {
         List<String> hooks = plugin.hooks().active();
         sender.sendMessage(Component.text("Hooks: " + (hooks.isEmpty() ? "none" : String.join(", ", hooks)),
                 NamedTextColor.GRAY));
-        sender.sendMessage(Component.text("Web server: " + (plugin.httpRunning() ? "running" : "off")
+        sender.sendMessage(Component.text("Web server: " + plugin.webHost().status()
                 + "; hosting: " + plugin.settings().hosting().name().toLowerCase(Locale.ROOT)
                 + "; players are sent: " + (url != null ? url : pack == null ? "nothing yet" : "nothing"),
                 NamedTextColor.GRAY));
+        String problem = plugin.webHost().problem();
+        if (problem != null) {
+            sender.sendMessage(Component.text(problem, NamedTextColor.YELLOW));
+        }
+        SanityChecker.Status audit = plugin.sanity().last();
+        sender.sendMessage(Component.text("Sanity check: " + (!plugin.sanity().enabled() ? "off"
+                : audit == null ? "first audit pending (every " + plugin.settings().sanity().intervalSeconds() + " s)"
+                : String.format(Locale.ROOT, "last audit %d s ago, %d chunk(s) in %.1f ms over %d tick(s), %d finding(s)"
+                        + " waiting for a second look; removed so far: %d display(s), %d row(s), %d liquid source(s)",
+                (System.currentTimeMillis() - audit.finishedAtMillis()) / 1000, audit.chunks(), audit.millis(),
+                audit.ticks(), audit.suspects(), audit.displaysRemoved(), audit.rowsPurged(), audit.liquidsPurged())),
+                NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("Furniture with a look of their own (editor): " + plugin.transforms().size()
+                + "; editors open: " + plugin.editor().open(), NamedTextColor.GRAY));
         return Command.SINGLE_SUCCESS;
     }
 

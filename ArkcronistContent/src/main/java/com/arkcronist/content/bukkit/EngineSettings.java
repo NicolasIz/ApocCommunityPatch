@@ -1,6 +1,7 @@
 package com.arkcronist.content.bukkit;
 
 import com.arkcronist.content.core.http.PackHttpServer;
+import com.arkcronist.content.core.net.PublicAddress;
 import com.arkcronist.content.core.pack.PackSettings;
 import com.arkcronist.content.core.upload.UploadSettings;
 import net.kyori.adventure.text.Component;
@@ -14,6 +15,7 @@ import org.jetbrains.annotations.Nullable;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -26,11 +28,12 @@ import java.util.regex.PatternSyntaxException;
  * config.yml, read once and then immutable, so any thread may hold on to it.
  */
 public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nullable UploadSettings upload,
-                             Delivery delivery, Crops crops, Guns guns, Liquids liquids, Huds huds) {
+                             Delivery delivery, Crops crops, Guns guns, Liquids liquids, Huds huds, Sanity sanity) {
 
     public EngineSettings(boolean extractExamples, Pack pack, Http http, @Nullable UploadSettings upload,
                           Delivery delivery, Crops crops) {
-        this(extractExamples, pack, http, upload, delivery, crops, Guns.DEFAULT, Liquids.DEFAULT, Huds.DEFAULT);
+        this(extractExamples, pack, http, upload, delivery, crops, Guns.DEFAULT, Liquids.DEFAULT, Huds.DEFAULT,
+                Sanity.DEFAULT);
     }
 
     /** Where players download the pack from. */
@@ -100,7 +103,13 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
      *                      empty when not used. {@code {sha1}} in it becomes the pack's hash
      */
     public record Http(boolean enabled, String bindAddress, int port, String publicAddress, int threads,
-                       String externalUrl) {
+                       String externalUrl, boolean addressConfigured, boolean detectAddress,
+                       List<String> addressServices, List<Integer> fallbackPorts) {
+
+        public Http {
+            addressServices = List.copyOf(addressServices);
+            fallbackPorts = List.copyOf(fallbackPorts);
+        }
 
         /** The external link for this build of the pack. */
         public String externalUrl(String sha1Hex) {
@@ -194,11 +203,24 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
         public static final Huds DEFAULT = new Huds(20, 30);
     }
 
+    /**
+     * The sanity checker: a cyclic audit of loaded chunks for furniture displays left without their
+     * block and stored rows whose block is gone.
+     *
+     * @param intervalSeconds  time between audits; a finding is acted on when two in a row agree
+     * @param maxMillisPerTick server-thread time an audit may take in one tick; it spreads over ticks
+     */
+    public record Sanity(boolean enabled, int intervalSeconds, double maxMillisPerTick) {
+
+        public static final Sanity DEFAULT = new Sanity(true, 120, 1.0);
+    }
+
     static EngineSettings read(FileConfiguration config, String serverIp, Logger logger) {
         UploadSettings upload = readUpload(section(config, "upload"), logger);
         ConfigurationSection guns = section(config, "guns");
         ConfigurationSection liquids = section(config, "liquids");
         ConfigurationSection huds = section(config, "huds");
+        ConfigurationSection sanity = section(config, "sanity");
         MiniMessage text = MiniMessage.miniMessage();
         return new EngineSettings(
                 config.getBoolean("extract-examples", true),
@@ -214,7 +236,11 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
                         Math.max(1, Math.min(200, liquids.getInt("contact-ticks", 10))),
                         Math.max(1, Math.min(4, liquids.getInt("chunk-reach", 1)))),
                 new Huds(Math.max(2, Math.min(60, huds.getInt("action-bar-ticks", 20))),
-                        Math.max(5, Math.min(3600, huds.getInt("save-seconds", 30)))));
+                        Math.max(5, Math.min(3600, huds.getInt("save-seconds", 30)))),
+                new Sanity(sanity.getBoolean("enabled", Sanity.DEFAULT.enabled()),
+                        Math.max(10, Math.min(86_400, sanity.getInt("interval-seconds", Sanity.DEFAULT.intervalSeconds()))),
+                        Math.max(0.1, Math.min(20, sanity.getDouble("max-millis-per-tick",
+                                Sanity.DEFAULT.maxMillisPerTick())))));
     }
 
     private static Pack readPack(ConfigurationSection section, Logger logger) {
@@ -262,16 +288,32 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
         }
 
         String publicAddress = section.getString("public-address", "").trim();
+        boolean configured = !publicAddress.isEmpty();
+        boolean detect = section.getBoolean("detect-public-address", true);
         if (publicAddress.isEmpty() && serverIp != null && !serverIp.isBlank() && !serverIp.equals("0.0.0.0")) {
             publicAddress = serverIp.trim();
         }
         boolean enabled = section.getBoolean("enabled", true);
         if (publicAddress.isEmpty()) {
             publicAddress = "127.0.0.1";
-            if (enabled && externalUrl.isEmpty() && !uploading) {
+            if (enabled && externalUrl.isEmpty() && !uploading && !detect) {
                 logger.warning("http.public-address is not set and server.properties has no server-ip:"
                         + " the pack URL points at 127.0.0.1, which only a client on this same machine"
                         + " can reach. Set http.public-address to your server's public IP or domain.");
+            }
+        }
+        List<String> services = section.getStringList("address-services").stream().map(String::trim)
+                .filter(EngineSettings::isHttpUrl).toList();
+        if (services.isEmpty()) {
+            services = PublicAddress.SERVICES;
+        }
+        List<Integer> fallbackPorts = new ArrayList<>();
+        for (Object raw : section.getList("fallback-ports", List.of())) {
+            int fallback = raw instanceof Number number ? number.intValue() : parsePort(String.valueOf(raw));
+            if (fallback >= 1 && fallback <= 65535 && fallback != port && !fallbackPorts.contains(fallback)) {
+                fallbackPorts.add(fallback);
+            } else {
+                logger.warning("http.fallback-ports: " + raw + " is not a usable port - skipped.");
             }
         }
 
@@ -280,7 +322,19 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
                 port,
                 publicAddress,
                 Math.max(1, section.getInt("threads", 4)),
-                externalUrl);
+                externalUrl,
+                configured,
+                detect,
+                services,
+                fallbackPorts);
+    }
+
+    private static int parsePort(String text) {
+        try {
+            return Integer.parseInt(text.trim());
+        } catch (NumberFormatException exception) {
+            return -1;
+        }
     }
 
     /**

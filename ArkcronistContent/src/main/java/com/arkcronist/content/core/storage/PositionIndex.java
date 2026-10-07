@@ -127,10 +127,41 @@ public class PositionIndex<T extends PositionIndex.Positioned> {
         }
     }
 
+    /**
+     * Removes {@code expected} only if it is still what stands there: a purge decided on another
+     * thread never takes away an entry that was replaced in the meantime.
+     *
+     * @return whether it was removed
+     */
+    public boolean removeExact(T expected) {
+        WorldEntries<T> entries = worlds.get(expected.world());
+        if (entries == null) {
+            return false;
+        }
+        synchronized (entries) {
+            boolean removed = entries.entries.remove(expected.key(), expected);
+            if (removed && entries.removedDuringLoad != null) {
+                entries.removedDuringLoad.add(expected.key());
+            }
+            return removed;
+        }
+    }
+
     /** A live view of one world's entries; safe to walk from any thread. */
     public Collection<T> entries(UUID world) {
         WorldEntries<T> entries = worlds.get(world);
         return entries == null ? List.of() : Collections.unmodifiableCollection(entries.entries.values());
+    }
+
+    /** Whether a world's stored rows are still on their way: until they are, memory is not the whole truth. */
+    public boolean loading(UUID world) {
+        WorldEntries<T> entries = worlds.get(world);
+        if (entries == null) {
+            return false;
+        }
+        synchronized (entries) {
+            return entries.loadsRunning > 0;
+        }
     }
 
     /** The worlds with entries in memory. */

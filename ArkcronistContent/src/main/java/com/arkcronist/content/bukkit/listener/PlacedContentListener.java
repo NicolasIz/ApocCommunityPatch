@@ -1,7 +1,9 @@
 package com.arkcronist.content.bukkit.listener;
 
+import com.arkcronist.content.bukkit.ArkContentPlugin;
 import com.arkcronist.content.bukkit.block.CustomBlockService;
 import com.arkcronist.content.bukkit.furniture.FurnitureService;
+import com.arkcronist.content.core.storage.FurnitureTransformStore;
 import com.arkcronist.content.core.storage.PlacedContentStore;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -25,14 +27,18 @@ import java.util.logging.Logger;
  */
 public final class PlacedContentListener implements Listener {
 
+    private final ArkContentPlugin plugin;
     private final PlacedContentStore store;
+    private final FurnitureTransformStore transforms;
     private final CustomBlockService blocks;
     private final FurnitureService furniture;
     private final Logger logger;
 
-    public PlacedContentListener(PlacedContentStore store, CustomBlockService blocks, FurnitureService furniture,
-                                 Logger logger) {
+    public PlacedContentListener(ArkContentPlugin plugin, PlacedContentStore store, FurnitureTransformStore transforms,
+                                 CustomBlockService blocks, FurnitureService furniture, Logger logger) {
+        this.plugin = plugin;
         this.store = store;
+        this.transforms = transforms;
         this.blocks = blocks;
         this.furniture = furniture;
         this.logger = logger;
@@ -48,11 +54,13 @@ public final class PlacedContentListener implements Listener {
                 logger.info("World " + name + ": " + rows + " custom block(s) and furniture loaded.");
             }
         });
+        plugin.loadTransforms(event.getWorld().getUID());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onWorldUnload(WorldUnloadEvent event) {
         store.unloadWorld(event.getWorld().getUID());
+        transforms.unloadWorld(event.getWorld().getUID());
     }
 
     /**

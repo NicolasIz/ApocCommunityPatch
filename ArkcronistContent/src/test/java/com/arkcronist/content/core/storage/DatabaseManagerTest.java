@@ -189,8 +189,74 @@ class DatabaseManagerTest {
         try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
              Statement statement = connection.createStatement();
              ResultSet version = statement.executeQuery("PRAGMA user_version")) {
-            assertEquals(5, version.getInt(1));
+            assertEquals(DatabaseManager.SCHEMA_VERSION, version.getInt(1));
         }
+    }
+
+    /** Schema 6: a 1.7 file (schema 5) gains the editor's furniture_transforms, untouched otherwise. */
+    @Test
+    void furnitureTransformsRoundTripInAnOlderFile() throws Exception {
+        Path file = temp.resolve("content.db");
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+             Statement statement = connection.createStatement()) {
+            statement.execute("PRAGMA user_version=5");
+        }
+        database = open();
+        com.arkcronist.content.core.furniture.DisplayTransform turned =
+                new com.arkcronist.content.core.furniture.DisplayTransform(
+                        new com.arkcronist.content.core.definition.Placement.Vec3(0, 0.45f, -0.1f),
+                        new com.arkcronist.content.core.definition.Placement.Vec3(0.5f, 0.5f, 0.5f),
+                        new com.arkcronist.content.core.definition.Placement.Vec3(0, 90, 0));
+        DatabaseManager.StoredTransform stool = new DatabaseManager.StoredTransform(4, 70, -4, "demo:ruby_stool", turned);
+        get(database.saveTransform(OVERWORLD, stool));
+        get(database.saveTransform(NETHER, new DatabaseManager.StoredTransform(4, 70, -4, "demo:lamp",
+                com.arkcronist.content.core.furniture.DisplayTransform.IDENTITY)));
+        // Saved again for the same block: one row, the newer one.
+        DatabaseManager.StoredTransform again = new DatabaseManager.StoredTransform(4, 70, -4, "demo:ruby_stool",
+                turned.adjust(com.arkcronist.content.core.furniture.DisplayTransform.Part.SCALE,
+                        com.arkcronist.content.core.furniture.DisplayTransform.Axis.Y, 0.25));
+        get(database.saveTransform(OVERWORLD, again));
+        assertEquals(List.of(again), get(database.loadTransforms(OVERWORLD)));
+        assertTrue(get(database.deleteTransform(NETHER, 4, 70, -4)));
+        assertFalse(get(database.deleteTransform(NETHER, 4, 70, -4)));
+        assertTrue(get(database.loadTransforms(NETHER)).isEmpty());
+
+        database.close();
+        database = null;
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+             Statement statement = connection.createStatement();
+             ResultSet version = statement.executeQuery("PRAGMA user_version")) {
+            assertEquals(6, version.getInt(1));
+        }
+    }
+
+    /** The sanity checker's purge: only a row that still says what it said, and its transform with it. */
+    @Test
+    void aPurgeDeletesOnlyAnUnchangedRowAndItsTransformInOneGo() throws Exception {
+        database = open();
+        PlacedContent stool = new PlacedContent(OVERWORLD, 1, 64, 1, "demo:ruby_stool", PlacedContent.Kind.FURNITURE);
+        PlacedContent block = new PlacedContent(OVERWORLD, 2, 64, 1, "demo:ruby_block", PlacedContent.Kind.BLOCK);
+        database.save(stool);
+        database.save(block);
+        get(database.saveTransform(OVERWORLD, new DatabaseManager.StoredTransform(1, 64, 1, "demo:ruby_stool",
+                com.arkcronist.content.core.furniture.DisplayTransform.IDENTITY)));
+
+        // Replaced since it was found stale: another block placed there. The row stays.
+        database.save(new PlacedContent(OVERWORLD, 2, 64, 1, "demo:sapphire_block", PlacedContent.Kind.BLOCK));
+        assertFalse(get(database.purgeIfUnchanged(block)));
+        assertTrue(get(database.purgeIfUnchanged(stool)));
+        assertFalse(get(database.purgeIfUnchanged(stool)), "gone already");
+        assertEquals(List.of(new PlacedContent(OVERWORLD, 2, 64, 1, "demo:sapphire_block", PlacedContent.Kind.BLOCK)),
+                get(database.loadWorld(OVERWORLD)));
+        assertTrue(get(database.loadTransforms(OVERWORLD)).isEmpty(), "the stool's transform went with it");
+
+        DatabaseManager.LiquidSource acid = new DatabaseManager.LiquidSource(5, 60, 5, "demo:acid", null);
+        get(database.saveLiquid(OVERWORLD, acid));
+        assertFalse(get(database.purgeLiquidIfUnchanged(OVERWORLD, new DatabaseManager.LiquidSource(5, 60, 5,
+                "demo:frost", null))), "another liquid's row is not this one's");
+        assertTrue(get(database.purgeLiquidIfUnchanged(OVERWORLD, acid)));
+        assertTrue(get(database.loadLiquids(OVERWORLD)).isEmpty());
+        assertEquals("ArkContent-DB", get(database.onThread(() -> Thread.currentThread().getName())));
     }
 
     private DatabaseManager open() throws Exception {

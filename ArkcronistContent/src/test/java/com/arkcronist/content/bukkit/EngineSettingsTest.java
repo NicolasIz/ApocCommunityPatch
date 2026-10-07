@@ -49,7 +49,40 @@ class EngineSettingsTest {
         assertEquals(EngineSettings.Hosting.BUILTIN, settings.hosting());
         assertNull(settings.upload());
         assertEquals("", settings.http().externalUrl());
+        // The public address is looked up at start; the warning waits for that to fail.
+        assertTrue(settings.http().detectAddress());
+        assertFalse(settings.http().addressConfigured());
+        assertEquals("127.0.0.1", settings.http().publicAddress(), "until the lookup answers");
+        assertTrue(warnings.stream().noneMatch(w -> w.contains("http.public-address is not set")));
+
+        warnings.clear();
+        read("http:\n  detect-public-address: false\n");
         assertTrue(warnings.stream().anyMatch(w -> w.contains("http.public-address is not set")));
+    }
+
+    @Test
+    void fallbackPortsAndTheSanityCheckAreRead() throws Exception {
+        EngineSettings defaults = read("");
+        assertEquals(List.of(), defaults.http().fallbackPorts(), "none: the three after http.port");
+        assertEquals(com.arkcronist.content.core.net.PublicAddress.SERVICES, defaults.http().addressServices());
+        assertEquals(EngineSettings.Sanity.DEFAULT, defaults.sanity());
+
+        EngineSettings set = read("""
+                http:
+                  port: 8163
+                  public-address: "play.example.net"
+                  fallback-ports: [8200, "8201", 8163, 70000, nope]
+                  address-services: ["https://ip.example.org", "not a link"]
+                sanity:
+                  enabled: false
+                  interval-seconds: 2
+                  max-millis-per-tick: 50
+                """);
+        assertEquals(List.of(8200, 8201), set.http().fallbackPorts(), "its own port, and what is not a port, skipped");
+        assertTrue(set.http().addressConfigured());
+        assertEquals(List.of("https://ip.example.org"), set.http().addressServices());
+        assertEquals(new EngineSettings.Sanity(false, 10, 20), set.sanity(), "kept within bounds");
+        assertEquals(3, warnings.stream().filter(w -> w.startsWith("http.fallback-ports")).count());
     }
 
     @Test

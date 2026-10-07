@@ -17,6 +17,7 @@ concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer
 /arkcontent import                         convierte los packs de ItemsAdder de import/ (sección 6)
 /arkcontent menu                           explorador de todo el contenido cargado (sección 7)
 /arkcontent animate <animación>            reproduce una animación del mueble que miras (sección 4)
+/arkcontent editor [mueble]                mueve, escala y gira en vivo el mueble que miras (sección 4)
 /arkcontent shop                           tienda: los ítems con `price`, pagados con Vault (sección 5)
 /arkcontent npc equip <hueco> <item> | sit NPC de Citizens con un ítem o sentado (sección 5)
 /arkcontent hud <jugador> <hud> [set|add|take <n>]  ver o cambiar el valor de una barra (sección 4)
@@ -27,7 +28,7 @@ concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer
 | Permiso | Por defecto | Para |
 |---|---|---|
 | `arkcontent.give` | op | `/customgive`, y sacar ítems del explorador |
-| `arkcontent.admin` | op | `reload`, `info`, `import`, `animate`, `npc`, `hud`, `liquids` |
+| `arkcontent.admin` | op | `reload`, `info`, `import`, `editor`, `animate`, `npc`, `hud`, `liquids`; avisos del servidor web al entrar |
 | `arkcontent.menu` | op | abrir el explorador (solo mirar, si no tiene `arkcontent.give`) |
 | `arkcontent.emojis` | todos | `/emojis`. Usar un emoji no necesita permiso, salvo que el emoji declare el suyo |
 | `arkcontent.shop` | todos | `/arkcontent shop` (necesita Vault y un plugin de economía) |
@@ -407,7 +408,8 @@ El soporte y el display se vinculan en tres sitios, cada uno para quien lo lee:
   contradice a los bloques que describe.
 - **PDC del display**: id del mueble y posición del soporte. Un display que carga sin su soporte
   (caída del servidor, rollback, soporte quitado con `/fill`) se reconoce huérfano y se elimina en
-  `EntitiesLoadEvent`.
+  `EntitiesLoadEvent`; uno que se queda huérfano con su chunk ya cargado lo retira el verificador
+  de cordura (más abajo).
 - **Caché + SQLite**: para responder "¿hay un mueble aquí?" desde memoria.
 
 Romperlo: en supervivencia ningún soporte se puede minar (el barrier es irrompible y el light ni se
@@ -430,6 +432,100 @@ cofre y los cultivos de la demo se veían magenta en un cliente real.
 **Las entidades no se pueden crear fuera del hilo principal** (Paper rechaza un *entity add*
 asíncrono), así que el display se crea en el hilo principal en el mismo tick que su bloque, ya
 configurado antes de entrar al mundo; lo que sale del hilo principal es la escritura en disco.
+
+### Editor visual de muebles (`/arkcontent editor`)
+
+Para calibrar un mueble —sobre todo uno importado, cuyo modelo flota o se hunde— sin tocar el YAML a
+mano ni reiniciar: mira el mueble y escribe `/arkcontent editor` (o `/arkcontent editor <id>` para el
+más cercano de ese tipo a 8 bloques). Se abre un cofre de 5 filas:
+
+```
+fila 0   [Traslación] [Escala] [Rotación]  ·  [la pieza]  ·  [guardar en]  ·  [ayuda]
+fila 1 X   ·  [-1] [-0.1] [-0.01]  [valor X]  [+0.01] [+0.1] [+1]  ·
+fila 2 Y   ·  [-1] [-0.1] [-0.01]  [valor Y]  [+0.01] [+0.1] [+1]  ·
+fila 3 Z   ·  [-1] [-0.1] [-0.01]  [valor Z]  [+0.01] [+0.1] [+1]  ·
+fila 4   [parte por defecto]  ·  [revertir]  ·  [Guardar]  ·  [Cancelar]
+```
+
+Arriba se elige qué se edita; los paneles de cristal de cada fila mueven un eje (X rojo, Y verde,
+Z azul; el tono oscuro resta, el claro suma) en 0.01, 0.1 o 1 —bloques, factor o grados—, y con
+mayúsculas diez veces más (10° con el «1» de la rotación). Cada valor se redondea a 4 decimales, así
+que cien clics de 0.01 son exactamente 1; la traslación se limita a ±16 bloques, la escala a 0.01–64
+y el ángulo a [-180, 180).
+
+**Hilos.** Cada clic cambia la `Transformation` del `ItemDisplay` en el hilo principal, en ese mismo
+tick: el mueble se mueve detrás del menú mientras se pulsa. No se escribe nada al pulsar. Al
+**Guardar** —o al cerrar el menú con algo cambiado (Escape, desconexión, apagado)— la escritura se
+entrega al hilo `ArkContent-Worker` y el clic vuelve al instante:
+
+- **Para todas las piezas** (por defecto): el worker escribe `translation`, `scale` y `rotation` en
+  `items.<id>.furniture.display` del YAML del que salió el ítem, en fila con las recompilaciones
+  (nunca mientras una lee `contents/`). Antes copia el archivo a `data/editor-backups/` (las 10
+  últimas copias por archivo) y lo sustituye entero de una vez (archivo temporal + movimiento
+  atómico): una caída deja el viejo o el nuevo, nunca medio. Luego se recompila y se redibujan las
+  piezas cargadas. Mientras eso no termina, ninguna pieza de ese tipo se puede abrir.
+- **Solo esta pieza** (botón «guardar en»): una fila en la tabla `furniture_transforms` de SQLite para
+  el bloque de la pieza; la memoria la tiene al instante y el worker entrega la fila al hilo
+  `ArkContent-DB`, el único que escribe en la base de datos. Se aplica al cargar la pieza y tras
+  cada reinicio, y se borra con la pieza. Guardar después «para todas» la quita.
+
+**El YAML se edita, no se reescribe.** Solo cambian esas tres líneas (o se añaden con la sangría del
+archivo); comentarios —en su columna—, líneas en blanco, orden y comillas quedan como estaban, y una
+sección escrita en una línea (`display: {transform: HEAD}`) sigue en una. Antes de escribir, el texto
+nuevo se vuelve a leer y se compara con el viejo: deben dar los tres valores pedidos y todo lo demás
+idéntico. Si no —una clave repetida, un mapa en varias líneas, un archivo que no es UTF-8— no se
+escribe nada, la pieza vuelve a como estaba y se dice por qué.
+
+**Cancelar** devuelve la pieza a como estaba al abrir; **revertir** hace lo mismo sin cerrar. Un
+administrador edita una pieza a la vez y dos no pueden editar la misma. Los muebles animados se
+editan para todas sus piezas (sus huesos se posan con los valores del tipo); los dibujados por
+ModelEngine no se editan aquí (su modelo es el blueprint).
+
+### Verificador de cordura (`sanity`)
+
+Un rollback (CoreProtect…), `/fill`, WorldEdit o una caída pueden cambiar el mundo a espaldas del
+plugin: el bloque de un mueble desaparece y su display sigue flotando, o un bloque personalizado se
+convierte en piedra y su fila sigue en SQLite. Cada `sanity.interval-seconds` (120 por defecto) se
+auditan los chunks cargados:
+
+- un display del plugin cuyo soporte ya no está —o un hueso de un mueble animado cuya raíz ya no
+  existe— se elimina (con sus huesos);
+- una fila de bloque cuyo note block ya no tiene el estado de ese bloque, una de mueble cuyo soporte
+  ya no está y una fuente de líquido cuyo tripwire ya no es el de ese líquido se purgan: cada una en
+  una transacción que solo borra si la fila sigue diciendo lo mismo que cuando se encontró (y, si es
+  un mueble, su transformación propia con ella).
+
+**Dos auditorías seguidas.** Un hallazgo solo se toca cuando dos auditorías consecutivas lo encuentran
+igual (la misma fila y el mismo bloque encontrado en su sitio): un rollback a medias o un `/fill`
+que va por chunks parecen un fallo un momento y están bien al siguiente. Antes de borrar se mira una
+vez más en el hilo principal. El contenido que ya no está definido no se toca (puede volver con el
+siguiente `reload`), y nunca se carga un chunk para auditarlo.
+
+**Hilos.** El ciclo se programa y se juzga en `ArkContent-DB`: allí se planifica (qué filas de qué
+mundos, por chunk, desde memoria) y se decide. Leer el mundo solo se puede en el hilo principal, así
+que se mira allí por trozos, sin pasar de `sanity.max-millis-per-tick` (1 ms) por tick —en la prueba,
+288 chunks en 2 ticks y 2–3 ms en total—, y los borrados de filas vuelven a `ArkContent-DB`.
+
+**Silencioso.** Una línea en consola cuando se limpió algo, nada si no; un fallo se avisa una vez y
+la siguiente auditoría se hace igual. `/arkcontent info` muestra la última auditoría y el total
+retirado.
+
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (v1.8)
+
+Con un bot (mineflayer) y la consola, en el servidor de pruebas con 1608 ítems y 31 plugins:
+
+| | Resultado |
+|---|---|
+| Abrir el editor | mirando un `demo:ruby_pedestal` colocado, `/arkcontent editor` abre un cofre de 5 filas «Editing demo:ruby_pedestal» con los botones de la tabla de arriba |
+| En vivo | 3 clics en Y +0.1 → `data get` del `ItemDisplay`, con el menú aún abierto: `translation [0, 0.3, 0]`; 9 mayúsculas+clic en rotación Y +1 → `left_rotation [0, 0.7071, 0, 0.7071]` (90°) |
+| Guardar para todas | `contents/demo/blocks.yml` con las tres líneas nuevas y los comentarios en su sitio, copia en `data/editor-backups/demo/`, recompilación y «2 loaded piece(s) redrawn»; un pedestal nuevo sale con los valores nuevos |
+| Solo esta pieza | fila en `furniture_transforms`; tras reiniciar el servidor la pieza vuelve con `translation [-0.05, 0, 0]`; guardar luego «para todas» borra la fila |
+| Cancelar | la pieza vuelve a los valores de antes de abrir |
+| Apagar con el editor abierto | `stop` con la escala cambiada: el YAML queda con `scale: [1, 1.02, 1]` (escrito por el worker antes de pararlo) |
+| Reabrir durante la recompilación | rechazado («still being saved and rebuilt»); después abre con los valores nuevos |
+| Verificador | `/setblock` quita el soporte de un pedestal y cambia un bloque de rubí por piedra: a los ~16 s (dos auditorías de 10 s) se elimina el display y se purgan las 2 filas; el pedestal editado sigue; un arranque limpio no retira nada. En el mundo de pruebas purgó además 5 filas viejas de pruebas anteriores —dentro de la zona que los guiones vacían con `/fill`—; las 10 que quedaron se comprobaron una a una contra el mundo |
+| IP pública | con `public-address` vacío, un servicio que responde `192.168.1.20` y otro caído se saltan; ipify da la IP de salida y el enlace del pack la lleva |
+| Puertos | 8163–8166 ocupados: tres intentos en 8163, luego 8164–8166, aviso en consola y al administrador al entrar, el plugin arranca; al liberar 8163, «up now» en ≤60 s y el pack se reenvía. Solo 8163 ocupado: sirve en 8164 y el enlace se publica de nuevo con `:8164` |
 
 ### Persistencia (SQLite asíncrona)
 
@@ -456,7 +552,8 @@ configurado antes de entrar al mundo; lo que sale del hilo principal es la escri
 - **Apagado.** Es la única espera: `onDisable` deja terminar las escrituras encoladas (máx. 10 s).
 - **Esquema.** `PRAGMA user_version` lleva la versión: 1 (`custom_blocks_world`), 2 (+ `custom_crops`),
   3 (+ `furniture_storage`, ver *Muebles con almacenamiento*), 4 (+ `advancement_unlocks`, ver
-  *Logros*) y 5 (+ `liquid_sources` y `hud_values`, ver *Líquidos* y *HUDs*). Un archivo de una versión anterior
+  *Logros*), 5 (+ `liquid_sources` y `hud_values`, ver *Líquidos* y *HUDs*) y 6 (+ `furniture_transforms`,
+  ver *Editor visual de muebles*). Un archivo de una versión anterior
   gana al abrirse las tablas que le faltan; no se toca nada de lo que ya hay.
 
 El driver es el `org.xerial` SQLite que Paper/Spigot traen en el servidor; si faltara, se avisa en
@@ -476,9 +573,30 @@ apilar otro.
 Para que funcione desde fuera:
 
 1. Abre o redirige el puerto `http.port` (8163 por defecto), igual que el del juego.
-2. Pon en `http.public-address` la IP pública o el dominio del servidor. Si lo dejas vacío se usa
-   `server-ip` de `server.properties`, y si también está vacío, `127.0.0.1`, que solo sirve en la
-   misma máquina.
+2. Pon en `http.public-address` la IP pública o el dominio del servidor, o déjalo vacío para que se
+   descubra sola (abajo).
+
+**IP pública automática.** Con `http.public-address` vacío, al arrancar se pregunta la IP pública de
+la máquina a unos servicios ligeros (`http.address-services`: ipify, checkip de Amazon, icanhazip,
+ifconfig.me) con el `HttpClient` de Java, de forma asíncrona y uno tras otro hasta que uno responda.
+Solo se acepta una dirección IP escrita como tal y pública: una privada, de bucle local, de
+documentación o una página de portal cautivo se descarta y se pregunta al siguiente. La IP encontrada
+se inyecta en tiempo de ejecución en el enlace del pack; si el pack ya se había publicado, se vuelve
+a publicar con el enlace nuevo y se reenvía a quien esté conectado. **No se escribe en `config.yml`**:
+dejarlo vacío hace que se descubra en cada arranque, así un hosting que cambia la IP no deja un valor
+viejo pegado. Si `server-ip` ya es una IP pública, se usa esa (es donde escucha el juego). Si ningún
+servicio responde, se avisa y se usa `server-ip` o `127.0.0.1`. `http.detect-public-address: false`
+lo apaga.
+
+**Puerto ocupado o denegado.** Si `http.port` no se puede abrir, el plugin arranca igual y aplica una
+regla de contingencia: el mismo puerto dos veces más (2 s y 4 s: el arranque anterior aún puede
+tenerlo), luego cada puerto de `http.fallback-ports` (vacío: los tres siguientes; para un puerto
+privilegiado <1024 sin root, 8080, 8163 y 8164), y si ninguno sirve, el puerto configurado cada 60 s
+hasta que quede libre. Una `bind-address` que no es de la máquina se cambia por `0.0.0.0`. Si acaba en
+otro puerto, el enlace del pack lo lleva y se avisa en consola y a los administradores al entrar
+(los jugadores solo descargan de un puerto abierto para ellos: pon en `fallback-ports` puertos que tu
+hosting redirija). Cuando el servidor web vuelve, el pack se reenvía a quien lo pidió mientras no
+había nadie escuchando.
 
 Con `http.enabled: false` el pack se sigue compilando en `output/resource_pack.zip` para alojarlo en
 otro sitio, y el plugin no envía nada salvo que se use una de las dos opciones siguientes.
@@ -2173,6 +2291,17 @@ con `join-classpath: true` para ver sus clases.
   recoger la fuente primero. El flujo no sale de los chunks cargados alrededor de su fuente
   (`liquids.chunk-reach`), ni empuja a quien está dentro, ni apaga el fuego. Solo los jugadores
   reciben el efecto de contacto, no los mobs.
+- 1.8, editor: «solo esta pieza» no existe para muebles animados ni el editor para los de ModelEngine
+  (ver sección 4). El YAML se edita línea a línea: un `display` escrito como mapa en varias líneas,
+  o un ítem definido dos veces en el archivo, se rechaza sin escribir. Los valores escritos a mano
+  como un solo número (`scale: 0.5`) pasan a lista (`[0.5, 0.5, 0.5]`). Ver el modelo moverse
+  detrás del menú depende del cliente: el menú de cofre oscurece el fondo pero no lo tapa.
+- 1.8, verificador: solo audita chunks cargados, y tarda dos intervalos en actuar. Al purgar un
+  mueble de almacenamiento, el contenido guardado en `furniture_storage` no se borra. Los cultivos no
+  se auditan (tienen su propio ciclo).
+- 1.8, red: la IP descubierta es por la que la máquina **sale** a internet; en un nodo con varias IPs
+  puede no ser por la que **entran** los jugadores. Ahí, `http.public-address` (o un `server-ip`
+  público) manda. Un puerto de respaldo solo sirve si el hosting lo redirige.
 - 1.7, HUDs: la posición en pantalla depende de `ascent` y `offset`, y la escala de interfaz del
   jugador no cambia nada (es todo en píxeles de fuente), pero otros mods de cliente que muevan la
   barra de acción sí. AuraSkills tapa la barra de acción con la suya (ver sección 4). El dibujo en

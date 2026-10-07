@@ -230,6 +230,28 @@ public final class LiquidService {
         return removed != null ? removed.liquid() : state.liquid().id();
     }
 
+    /**
+     * Forgets a source whose block is no longer the liquid's - replaced behind the plugin's back, by
+     * a rollback or a fill command - so its flow drains. Memory only: the sanity checker purges the
+     * row. Main thread.
+     *
+     * @return whether the source was there, as {@code liquid}, and is forgotten now
+     */
+    public boolean forgetStale(Block block, String liquid) {
+        UUID world = block.getWorld().getUID();
+        long key = BlockKey.pack(block.getX(), block.getY(), block.getZ());
+        Map<Long, Source> inWorld = sources.get(world);
+        Source source = inWorld == null ? null : inWorld.get(key);
+        if (source == null || !source.liquid().equals(liquid)) {
+            return false;
+        }
+        inWorld.remove(key);
+        countChunk(world, key, -1);
+        flows(world).remove(key);
+        markDirty(world, key);
+        return true;
+    }
+
     /** Every source in a world, for commands. */
     public Map<Long, Source> sources(World world) {
         return Map.copyOf(sources.getOrDefault(world.getUID(), Map.of()));

@@ -10,6 +10,8 @@ import com.arkcronist.content.bukkit.command.EmojiCommand;
 import com.arkcronist.content.bukkit.crop.CropListener;
 import com.arkcronist.content.bukkit.crop.CropService;
 import com.arkcronist.content.bukkit.crop.CropTicker;
+import com.arkcronist.content.bukkit.editor.EditorListener;
+import com.arkcronist.content.bukkit.editor.FurnitureEditor;
 import com.arkcronist.content.bukkit.emoji.ChatEmojiListener;
 import com.arkcronist.content.bukkit.emoji.EmojiRegistry;
 import com.arkcronist.content.bukkit.furniture.AnimationPlayer;
@@ -38,10 +40,13 @@ import com.arkcronist.content.bukkit.listener.WorldInterceptionListener;
 import com.arkcronist.content.bukkit.menu.ContentMenuListener;
 import com.arkcronist.content.bukkit.menu.ContentMenus;
 import com.arkcronist.content.bukkit.pack.PackDelivery;
+import com.arkcronist.content.bukkit.pack.PackWebHost;
 import com.arkcronist.content.bukkit.protection.Protection;
+import com.arkcronist.content.bukkit.sanity.SanityChecker;
 import com.arkcronist.content.core.crop.CropStore;
-import com.arkcronist.content.core.http.PackHttpServer;
 import com.arkcronist.content.core.storage.DatabaseManager;
+import com.arkcronist.content.core.storage.FurnitureTransform;
+import com.arkcronist.content.core.storage.FurnitureTransformStore;
 import com.arkcronist.content.core.storage.PlacedContentStore;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
@@ -50,9 +55,7 @@ import org.bukkit.block.Block;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.net.InetSocketAddress;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -77,7 +80,10 @@ import java.util.concurrent.CompletableFuture;
  *   <li>{@link ContentMenus} - the in-game browser of everything loaded;</li>
  *   <li>{@link PlacedContentStore} / {@link DatabaseManager} - where blocks and furniture stand,
  *       in memory and in SQLite;</li>
- *   <li>{@link PackDelivery} / {@link PackHttpServer} - the live pack, and the web server for it;</li>
+ *   <li>{@link PackDelivery} / {@link PackWebHost} - the live pack, and the web server for it: its
+ *       port, with fallbacks, and the public address players download from;</li>
+ *   <li>{@link FurnitureEditor} - {@code /arkcontent editor}, furniture moved, scaled and turned live;</li>
+ *   <li>{@link SanityChecker} - the cyclic audit that cleans up after rollbacks and fill commands;</li>
  *   <li>the listeners and commands - how players meet all of the above.</li>
  * </ul>
  *
@@ -94,6 +100,8 @@ public final class ArkContentPlugin extends JavaPlugin {
     private EmojiRegistry emojis;
     private DatabaseManager database;
     private PlacedContentStore placed;
+    private FurnitureTransformStore transforms;
+    private FurnitureEditor editor;
     private CropStore cropStore;
     private CropService crops;
     private CropTicker cropTicker;
@@ -113,8 +121,8 @@ public final class ArkContentPlugin extends JavaPlugin {
     private final HudRegistry hudRegistry = new HudRegistry();
     private LiquidService liquids;
     private HudService huds;
-    /** Set by the worker once the port is bound; read from the main thread. */
-    private volatile PackHttpServer http;
+    private SanityChecker sanity;
+    private PackWebHost webHost;
     private ContentPipeline pipeline;
 
     /**
@@ -139,9 +147,11 @@ public final class ArkContentPlugin extends JavaPlugin {
         this.database = new DatabaseManager(getDataFolder().toPath().resolve("data").resolve("world_content.db"),
                 getLogger());
         this.placed = new PlacedContentStore(database, getLogger());
+        this.transforms = new FurnitureTransformStore(database, getLogger());
         this.cropStore = new CropStore(database, getLogger());
         this.delivery = new PackDelivery(settings);
         this.pipeline = new ContentPipeline(this, settings, items, blocks, emojis, delivery);
+        this.webHost = new PackWebHost(this, settings, delivery, getServer().getIp());
         this.protection = new Protection(getLogger());
 
         // The items are live before any hook starts, and before other plugins read their configs.
@@ -158,6 +168,8 @@ public final class ArkContentPlugin extends JavaPlugin {
         this.animations = new AnimationPlayer(this);
         FurnitureService furniture = new FurnitureService(this, items, itemFactory, placed, hooks, animations);
         this.furniture = furniture;
+        furniture.useTransforms(transforms);
+        this.editor = new FurnitureEditor(this, furniture, transforms);
         this.seats = new SeatService(this);
         this.storage = new StorageService(this, database, new StorageService.Lid() {
             @Override
@@ -182,6 +194,8 @@ public final class ArkContentPlugin extends JavaPlugin {
         this.liquids = new LiquidService(this, liquidRegistry, protection, database, settings.liquids());
         this.huds = new HudService(this, hudRegistry, database, actionBars, settings.huds(), hooks::placeholders);
         hooks.addPlaceholders(huds::placeholder);
+        this.sanity = new SanityChecker(this, settings.sanity(), database, placed, transforms, furniture, blockService,
+                liquids, liquidRegistry);
 
         PluginManager plugins = getServer().getPluginManager();
         plugins.registerEvents(new PackDeliveryListener(delivery, settings, getLogger()), this);
@@ -192,7 +206,10 @@ public final class ArkContentPlugin extends JavaPlugin {
         plugins.registerEvents(new FurnitureListener(this, furniture, seats, storage, protection, itemFactory), this);
         plugins.registerEvents(new CropListener(this, crops, itemFactory, protection, hooks), this);
         plugins.registerEvents(new ChatEmojiListener(emojis), this);
-        plugins.registerEvents(new PlacedContentListener(placed, blockService, furniture, getLogger()), this);
+        plugins.registerEvents(new PlacedContentListener(this, placed, transforms, blockService, furniture,
+                getLogger()), this);
+        plugins.registerEvents(new EditorListener(editor), this);
+        plugins.registerEvents(webHost, this);
         plugins.registerEvents(new ContentMenuListener(this), this);
         plugins.registerEvents(new AdvancementListener(this, advancements), this);
         plugins.registerEvents(new GunListener(this, guns), this);
@@ -212,9 +229,8 @@ public final class ArkContentPlugin extends JavaPlugin {
             commands.register(new EmojiCommand(emojis).build(), "List the chat emojis", List.of("emoji"));
         });
 
-        if (settings.http().enabled()) {
-            startHttp();
-        }
+        // Queued on the worker ahead of the first rebuild; a port that will not open never stops the start.
+        webHost.start();
         // Everything from here happens off the main thread; onEnable returns straight away.
         pipeline.rebuild();
         cropTicker.start();
@@ -222,6 +238,8 @@ public final class ArkContentPlugin extends JavaPlugin {
         // Queued behind the database opening, like the rest of storage.
         liquids.start(getServer().getWorlds());
         huds.start();
+        // The first audit an interval from now, driven from the database's thread.
+        sanity.start();
     }
 
     /**
@@ -250,6 +268,9 @@ public final class ArkContentPlugin extends JavaPlugin {
                         + ". Blocks are still recognised by their state and furniture by its chunk link.");
             }
         });
+        for (UUID world : worlds) {
+            loadTransforms(world);
+        }
         CompletableFuture.allOf(worlds.stream().map(world -> cropStore.loadWorld(world).exceptionally(error -> {
             getLogger().warning("Could not read the crops of world " + world + ": " + error.getMessage());
             return 0;
@@ -258,34 +279,43 @@ public final class ArkContentPlugin extends JavaPlugin {
     }
 
     /**
-     * Opens the web server on the worker. Binding, and resolving the bind address if it is a host
-     * name, are I/O like any other; queued ahead of the first rebuild, so the port is open by the
-     * time there is a pack to serve.
+     * Reads the pieces of furniture of one world that the editor gave a look of their own, and
+     * redraws those already loaded - their displays may have loaded before the rows did.
      */
-    private void startHttp() {
-        EngineSettings.Http config = settings.http();
-        CompletableFuture.runAsync(() -> {
-            try {
-                PackHttpServer server = new PackHttpServer(new InetSocketAddress(config.bindAddress(), config.port()),
-                        config.threads(), delivery::current, getLogger());
-                server.start();
-                this.http = server;
-                getLogger().info("Resource pack web server listening on " + config.bindAddress() + ":"
-                        + server.port() + "; players download from " + config.publicAddress() + ":" + config.port());
-            } catch (IOException exception) {
-                throw new UncheckedIOException(exception);
+    public void loadTransforms(UUID world) {
+        transforms.loadWorld(world).whenCompleteAsync((loaded, error) -> {
+            if (error != null) {
+                Throwable cause = error.getCause() != null ? error.getCause() : error;
+                getLogger().warning("Could not read the furniture transforms of world " + world + ": "
+                        + cause.getMessage() + ". Those pieces are drawn as their type says until the next start.");
+                return;
             }
-        }, pipeline.worker()).exceptionally(error -> {
-            Throwable cause = error.getCause() != null ? error.getCause() : error;
-            getLogger().severe("Could not open the resource pack web server on " + config.bindAddress() + ":"
-                    + config.port() + " - " + cause.getMessage() + ". Players will not be sent the pack."
-                    + " Free the port or change http.port, then restart.");
+            World loadedWorld = getServer().getWorld(world);
+            if (loadedWorld != null) {
+                redraw(loadedWorld, loaded);
+            }
+        }, pipeline.mainThread()).exceptionally(error -> {
+            getLogger().log(java.util.logging.Level.WARNING, "Could not redraw the furniture transforms of world "
+                    + world, error);
             return null;
         });
     }
 
+    private void redraw(World world, Collection<FurnitureTransform> loaded) {
+        for (FurnitureTransform transform : List.copyOf(loaded)) {
+            furniture.redraw(world, transform.x(), transform.y(), transform.z());
+        }
+    }
+
     @Override
     public void onDisable() {
+        // First, while the worker and the database still run: open editors are saved, saves in flight waited for.
+        if (editor != null) {
+            editor.shutdown();
+        }
+        if (sanity != null) {
+            sanity.stop();
+        }
         if (menus != null) {
             menus.closeAll();
         }
@@ -327,9 +357,8 @@ public final class ArkContentPlugin extends JavaPlugin {
         if (database != null) {
             database.close();
         }
-        PackHttpServer server = http;
-        if (server != null) {
-            server.stop();
+        if (webHost != null) {
+            webHost.stop();
         }
     }
 
@@ -383,6 +412,21 @@ public final class ArkContentPlugin extends JavaPlugin {
     /** Placed furniture: its displays and animations. */
     public FurnitureService furniture() {
         return furniture;
+    }
+
+    /** The pieces of furniture given a look of their own in the editor. */
+    public FurnitureTransformStore transforms() {
+        return transforms;
+    }
+
+    /** The cyclic audit of loaded chunks. Null before enable. */
+    public SanityChecker sanity() {
+        return sanity;
+    }
+
+    /** {@code /arkcontent editor}. Null before enable. */
+    public FurnitureEditor editor() {
+        return editor;
     }
 
     /** Every loaded chat emoji. */
@@ -440,7 +484,11 @@ public final class ArkContentPlugin extends JavaPlugin {
     }
 
     public boolean httpRunning() {
-        PackHttpServer server = http;
-        return server != null && server.isRunning();
+        return webHost != null && webHost.running();
+    }
+
+    /** The built-in web server: its port, and the address players download from. */
+    public PackWebHost webHost() {
+        return webHost;
     }
 }
