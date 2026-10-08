@@ -1713,6 +1713,17 @@ Antes nuestro proveedor solo miraba `arkcontent:`; ShopGUI+ caía entonces a `ma
 encontraba (`Invalid or no material name specified`) y, como un botón que no carga es un error fatal
 para él, se deshabilitaba entero. Con ItemsAdder instalado la clave sigue siendo suya y no se toca.
 
+Verificado sin el ShopGUI+ real (es de pago): en Paper 1.21.8, un plugin de prueba llamado
+`ShopGUIPlus` con las mismas clases de API (`ItemProvider`, `ShopGuiPlusApi.registerItemProvider`,
+`ShopGUIPlusPostEnableEvent`) lanza el evento y luego carga cada `item:` del `config.yml` real de un
+servidor, primero con los proveedores registrados y después con `material:`. Resultado: 46 de 46
+cargados, 0 fallos; los 30 con `itemsAdder:` (`transparent`, `btn_1`, `btn_64`, `btn_m1`, `btn_p1`,
+`btn_m10`, `btn_p10`, `cat_blocks`… `cat_potions`) salen como PAPER con su `item_model`
+(`ginko_fantasy_shop:btn_1`…), `isValidItem` y `compare` responden `true`. Lo que esa prueba no
+puede confirmar es el orden interno del ShopGUI+ real (que consulte los proveedores antes de dar el
+material por inválido); su propio log —«Enabled item provider for ArkcronistContent» antes de los
+errores de botones— indica que el proveedor ya estaba registrado cuando los cargaba.
+
 ### Iris
 
 Registra un proveedor de datos en Iris, así que un pack de Iris puede nombrar un bloque
@@ -2258,6 +2269,13 @@ El lore de cada habilidad lleva sus 10 segmentos de barra `U+EB29` (`%img_xp_bar
 texto literal; `/papi parse` responde a `%img_...%` y deja como está un nombre que no existe. Las 24
 font images de esos dos packs se emparejaron todas con los caracteres del pack generado. Antes de
 importar las configs ya había 223 nombres sacados de los archivos.
+
+**Sin importar las configs (leídas de `plugins/ItemsAdder`).** Mismo servidor, quitando del
+contenido importado la sección `font_images:` de `spectra_aurelium_skills` y poniendo su config tal
+cual en `plugins/ItemsAdder/contents/spectra_aurelium_skills/configs/`: el rebuild leyó 16 nombres de
+ahí; `/papi parse --null %img_xp_bar_white_lore%` y `%img_skill_book_sources%` devuelven su carácter
+(antes salían literales: no coinciden con el nombre del archivo), y el bot vio la lore de `/skills` y
+la del menú Levels de una habilidad con sus 10 segmentos de barra, sin ningún `%img_...%` literal.
 
 **Arreglado en la importación por el camino.** Importar las configs de un pack cuyo pack generado se
 había importado antes dejaba el archivo de ítems de ese pack generado, que volvía a definir los
