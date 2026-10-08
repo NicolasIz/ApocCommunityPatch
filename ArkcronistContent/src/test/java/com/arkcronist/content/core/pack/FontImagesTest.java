@@ -147,6 +147,46 @@ class FontImagesTest {
     }
 
     @Test
+    void namesAreReadStraightFromItemsAddersFolderWhenItsConfigsWereNotImported() throws IOException {
+        Path itemsAdder = temp.resolve("plugins/ItemsAdder");
+        // ItemsAdder 4: contents/<pack>/configs/, as the server's spectra_aurelium_skills is.
+        write(itemsAdder, "contents/spectra_aurelium_skills/configs/spectra_aurelium_skills.yml", """
+                info:
+                  namespace: spectra_aurelium_skills
+                font_images:
+                  xp_bar_white_lore: {path: xp_bar_white, scale_ratio: 7, y_position: 6}
+                  skill_book_sources: {path: book_all_squares.png, y_position: 48, scale_ratio: 256}
+                  xp_bar_white_lore: {path: xp_bar_white, scale_ratio: 7, y_position: 6, show_in_gui: false}
+                  not_drawn: {path: nowhere, y_position: 1}
+                """);
+        // ItemsAdder 3: data/items_packs/<pack>/.
+        write(itemsAdder, "data/items_packs/ginko_fantasy_shop/skin.yml", """
+                info: {namespace: ginko_fantasy_shop}
+                font_images:
+                  fantasy_shop_main: {path: gui/shopmenu, y_position: 47, symbol: "\\uea51"}
+                """);
+        write(itemsAdder, "contents/broken/configs/broken.yml", "font_images: [unclosed");
+        write(itemsAdder, "contents/no_info/configs/a.yml", "font_images: {x: {path: x}}");
+        write(itemsAdder, "contents/spectra_aurelium_skills/configs/items.yml", "info: {namespace: other}\nitems: {}");
+
+        List<FontImageDefinition> definitions = new ContentLoader().itemsAdderFontImages(itemsAdder);
+        assertEquals(List.of("ginko_fantasy_shop:fantasy_shop_main", "spectra_aurelium_skills:not_drawn",
+                        "spectra_aurelium_skills:skill_book_sources", "spectra_aurelium_skills:xp_bar_white_lore"),
+                definitions.stream().map(FontImageDefinition::fullId).sorted().toList());
+
+        List<FontImages.Image> provided = FontImages.provided(generatedPack());
+        List<FontImages.Image> defined = definitions.stream()
+                .flatMap(definition -> FontImages.match(definition, provided).stream()).toList();
+        assertEquals(3, defined.size(), "the one no pack draws is left out");
+        FontImages images = FontImages.of(defined, provided);
+        // The lore bar of AuraSkills' Levels menu, as its menus write it.
+        assertEquals("<#ffd556>" + Spaces.of(-2) + "\uEB29 ",
+                GlyphText.replace("<#ffd556>%img_offset_-2%%img_xp_bar_white_lore% ", images));
+        assertEquals("\uEA51", glyph(images, "fantasy_shop_main"));
+        assertTrue(new ContentLoader().itemsAdderFontImages(temp.resolve("plugins/nothing")).isEmpty());
+    }
+
+    @Test
     void ascentAndHeightPickTheRightCharacterOfAPictureDrawnSeveralTimes() {
         List<FontImages.Image> provided = FontImages.provided(generatedPack());
         FontImageDefinition shadeLow = definition("hmccosmetics", "shade_2", "hmccosmetics:icons/shade", -23, null, null);

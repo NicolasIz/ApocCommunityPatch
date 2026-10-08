@@ -1695,6 +1695,24 @@ registra en `ShopGUIPlusPostEnableEvent`, el momento que pide la API de ShopGUI+
 tiendas aún sin cargar). Compilado contra `shopgui-api` 3.2.0 (ShopGUI+ 1.111.0 o posterior);
 ShopGUI+ es de pago y no se ha podido ejecutar aquí.
 
+**Tiendas y botones escritos para ItemsAdder.** Sin ItemsAdder instalado, `item:` con
+`itemsAdder: <namespace:id>` (también `itemsadder`) se lee como `arkcontent:`: los ítems importados
+conservan el namespace y el id de ItemsAdder, así que una configuración como esta funciona sin tocarla:
+
+```yaml
+# ShopGUIPlus/config.yml
+buttons:
+  goBack:
+    item:
+      itemsAdder: ginko_fantasy_shop:transparent
+      name: '&c&lBack'
+    slot: 49
+```
+
+Antes nuestro proveedor solo miraba `arkcontent:`; ShopGUI+ caía entonces a `material:`, no lo
+encontraba (`Invalid or no material name specified`) y, como un botón que no carga es un error fatal
+para él, se deshabilitaba entero. Con ItemsAdder instalado la clave sigue siendo suya y no se toca.
+
 ### Iris
 
 Registra un proveedor de datos en Iris, así que un pack de Iris puede nombrar un bloque
@@ -2211,10 +2229,16 @@ Sin ItemsAdder, eso salía como texto. Ahora se dibuja igual:
      suele nombrarlas. Un nombre que dibujan varios caracteres distintos se deja fuera y se lista en
      consola.
 
+  3. Las configs de la propia carpeta de ItemsAdder, si sigue en el servidor
+     (`plugins/ItemsAdder/contents/<pack>/configs/`, o `data/items_packs/` de ItemsAdder 3): sus
+     `font_images:` se leen en cada rebuild, sin importarlas, y se usan las que dibuja algún pack
+     fusionado. Las del contenido propio ganan si se repite el id. En consola:
+     `N font image name(s) read from the configs in plugins/ItemsAdder`.
+
   Hay nombres que no coinciden con el archivo (`skill_book_sources` es `book_all_squares.png`,
-  `xp_bar_white_lore` es `xp_bar_white`): esos necesitan las configs. Copia la carpeta del pack de
-  ItemsAdder (`contents/<pack>/configs/` y `resourcepack/`) a `import/` y ejecuta
-  `/arkcontent import`.
+  `xp_bar_white_lore` es `xp_bar_white`): esos necesitan las configs, de la carpeta de ItemsAdder
+  (punto 3) o importadas. Para no depender de esa carpeta, copia el pack de ItemsAdder
+  (`contents/<pack>/configs/` y `resourcepack/`) a `import/` y ejecuta `/arkcontent import`.
 - `config.yml` → `font-images.titles` y `font-images.placeholders` las apagan. `/arkcontent info`
   dice cuántas hay.
 

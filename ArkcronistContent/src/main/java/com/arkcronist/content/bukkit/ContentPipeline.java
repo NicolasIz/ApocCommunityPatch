@@ -303,6 +303,8 @@ public final class ContentPipeline {
     private final Path legacyExamplesFile;
     /** Content files as they were before the furniture editor last wrote them. */
     private final Path editorBackupsDir;
+    /** ItemsAdder's folder, whose configs name font images when they were not imported. */
+    private final Path itemsAdderFolder;
 
     private final ExecutorService worker;
     private final Executor mainThread;
@@ -352,6 +354,7 @@ public final class ContentPipeline {
         this.examplesOfferedFile = data.resolve("data").resolve("examples_offered.txt");
         this.legacyExamplesFile = data.resolve("data").resolve("examples_version.txt");
         this.editorBackupsDir = data.resolve("data").resolve("editor-backups");
+        this.itemsAdderFolder = data.toAbsolutePath().getParent().resolve("ItemsAdder");
 
         this.worker = Executors.newSingleThreadExecutor(runnable -> {
             Thread thread = new Thread(runnable, "ArkContent-Worker");
@@ -712,6 +715,7 @@ public final class ContentPipeline {
             for (FontImageDefinition definition : build.fontImageDefinitions()) {
                 FontImages.match(definition, provided).ifPresentOrElse(definedImages::add, () -> own.add(definition));
             }
+            definedImages.addAll(itemsAdderFontImages(build, provided));
             Set<Integer> reserved = new java.util.HashSet<>(fontCharactersInUse());
             List<String> keys = new ArrayList<>();
             for (HudDefinition hud : build.hudDefinitions()) {
@@ -1017,6 +1021,39 @@ public final class ContentPipeline {
 
     private static String fontImageKey(FontImageDefinition definition) {
         return "font_image:" + definition.fullId();
+    }
+
+    /**
+     * Font images named in ItemsAdder's own configs, when its folder is still on the server and they
+     * were not imported: those a merged pack draws - ItemsAdder's generated one - by the names menus
+     * written for it use. A content file's own {@code font_images:} entry of the same id wins.
+     */
+    private List<FontImages.Image> itemsAdderFontImages(Build build, List<FontImages.Image> provided)
+            throws IOException {
+        if (!Files.isDirectory(itemsAdderFolder)) {
+            return List.of();
+        }
+        Set<String> defined = new java.util.HashSet<>();
+        build.fontImageDefinitions().forEach(definition -> defined.add(definition.fullId()));
+        List<FontImages.Image> images = new ArrayList<>();
+        int undrawn = 0;
+        for (FontImageDefinition definition : new ContentLoader().itemsAdderFontImages(itemsAdderFolder)) {
+            if (defined.contains(definition.fullId())) {
+                continue;
+            }
+            java.util.Optional<FontImages.Image> image = FontImages.match(definition, provided);
+            if (image.isPresent()) {
+                images.add(image.get());
+            } else {
+                undrawn++;
+            }
+        }
+        if (!images.isEmpty() || undrawn > 0) {
+            logger.info(images.size() + " font image name(s) read from the configs in plugins/ItemsAdder"
+                    + (undrawn > 0 ? " (" + undrawn + " more no merged pack draws, left out)" : "")
+                    + ". To keep them once that folder is gone, import those configs: /arkcontent import.");
+        }
+        return images;
     }
 
     /** The font images by name, for titles and placeholders; how many there are goes in the log. */

@@ -117,6 +117,67 @@ public final class ContentLoader {
                 new ArrayList<>(fontImages.values()), problems);
     }
 
+    /**
+     * The {@code font_images:} ItemsAdder's own configs define, read where ItemsAdder keeps them -
+     * {@code contents/<pack>/configs/} (ItemsAdder 4) or {@code data/items_packs/} (3.x): the names
+     * menus written for it use ({@code %img_xp_bar_white_lore%}), for a server that still has the
+     * folder but did not import those configs. A file's namespace is its {@code info: namespace:}.
+     *
+     * <p>These are ItemsAdder's files, not this plugin's content: one that cannot be read, or an
+     * entry this plugin would report, is skipped quietly, and a repeated key is read the way
+     * ItemsAdder reads it - the last one wins.</p>
+     *
+     * @param itemsAdderFolder {@code plugins/ItemsAdder}
+     */
+    public List<FontImageDefinition> itemsAdderFontImages(Path itemsAdderFolder) throws IOException {
+        Map<String, FontImageDefinition> fontImages = new LinkedHashMap<>();
+        for (Path base : List.of(itemsAdderFolder.resolve("contents"), itemsAdderFolder.resolve("data")
+                .resolve("items_packs"))) {
+            if (!Files.isDirectory(base)) {
+                continue;
+            }
+            List<Path> files;
+            try (Stream<Path> walk = Files.walk(base)) {
+                files = walk.filter(Files::isRegularFile)
+                        .filter(ContentLoader::isYaml)
+                        .sorted(Comparator.comparing(file -> unix(base.relativize(file))))
+                        .toList();
+            }
+            for (Path file : files) {
+                readItemsAdderFontImages(itemsAdderFolder, file, fontImages);
+            }
+        }
+        return new ArrayList<>(fontImages.values());
+    }
+
+    private static void readItemsAdderFontImages(Path itemsAdderFolder, Path file,
+                                                 Map<String, FontImageDefinition> fontImages) {
+        Object document;
+        try {
+            String text = Files.readString(file, StandardCharsets.UTF_8);
+            if (!text.contains("font_images")) {
+                return;
+            }
+            LoaderOptions options = new LoaderOptions();
+            options.setAllowDuplicateKeys(true);
+            document = new Yaml(new SafeConstructor(options)).load(text);
+        } catch (IOException | YAMLException | IllegalArgumentException unreadable) {
+            return;
+        }
+        if (!(document instanceof Map<?, ?> root) || !(root.get("info") instanceof Map<?, ?> info)
+                || info.get("namespace") == null) {
+            return;
+        }
+        String namespace = String.valueOf(info.get("namespace")).trim().toLowerCase(Locale.ROOT);
+        if (!ITEM_ID.matcher(namespace).matches()) {
+            return;
+        }
+        Map<String, FontImageDefinition> found = new LinkedHashMap<>();
+        readFontImages(root.get("font_images"), namespace, file.getParent(), file,
+                unix(itemsAdderFolder.relativize(file)), itemsAdderFolder, found, new ArrayList<>());
+        found.forEach(fontImages::putIfAbsent);
+    }
+
     private void readFile(Path contentsDir, Path file, Map<String, ItemDefinition> items,
                           Map<String, EmojiDefinition> emojis, Map<String, AdvancementDefinition> advancements,
                           Map<String, HudDefinition> huds, Map<String, FontImageDefinition> fontImages,

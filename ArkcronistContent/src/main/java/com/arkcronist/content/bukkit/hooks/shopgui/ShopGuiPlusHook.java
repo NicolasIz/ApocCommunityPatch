@@ -6,6 +6,7 @@ import com.arkcronist.content.bukkit.item.ItemRegistry;
 import net.brcdev.shopgui.ShopGuiPlusApi;
 import net.brcdev.shopgui.event.ShopGUIPlusPostEnableEvent;
 import net.brcdev.shopgui.provider.item.ItemProvider;
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -31,26 +32,32 @@ import java.util.logging.Logger;
  * <p>The shop shows - and a buyer receives - the same stack {@code /customgive} makes, item model
  * and all; selling recognises it by this plugin's own tag, not by its name or lore. Registered on
  * ShopGUI+'s post-enable event, which is the moment its API asks for: started, shops not loaded.</p>
+ *
+ * <p>Shops and buttons written for ItemsAdder ({@code itemsAdder: ginko_fantasy_shop:btn_1}) work
+ * as they are when ItemsAdder is not installed: imported items keep its namespace and id. Without
+ * this, a button naming one fails to load, and ShopGUI+ disables itself.</p>
  */
 public final class ShopGuiPlusHook implements Listener {
-
-    /** The key under a shop item's {@code item:} section. */
-    static final String KEY = "arkcontent";
 
     private final ItemRegistry items;
     private final ItemFactory factory;
     private final Logger logger;
 
+    private final boolean itemsAdderInstalled;
+
     public ShopGuiPlusHook(ItemRegistry items, ItemFactory factory, Logger logger) {
         this.items = items;
         this.factory = factory;
         this.logger = logger;
+        this.itemsAdderInstalled = Bukkit.getPluginManager().getPlugin("ItemsAdder") != null;
     }
 
     @EventHandler
     public void onShopGuiPlusEnabled(ShopGUIPlusPostEnableEvent event) {
         ShopGuiPlusApi.registerItemProvider(new Provider());
-        logger.info("ShopGUI+: shop items can now be 'arkcontent: <namespace:id>'.");
+        logger.info("ShopGUI+: shop items can now be 'arkcontent: <namespace:id>'"
+                + (itemsAdderInstalled ? "." : ", and shops and buttons written for ItemsAdder"
+                + " ('itemsAdder: <namespace:id>') find the imported items."));
     }
 
     private final class Provider extends ItemProvider {
@@ -66,7 +73,7 @@ public final class ShopGuiPlusHook implements Listener {
 
         @Override
         public ItemStack loadItem(ConfigurationSection section) {
-            String id = section.getString(KEY);
+            String id = ShopItemKeys.id(section, itemsAdderInstalled);
             if (id == null) {
                 return null;
             }
