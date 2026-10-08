@@ -30,10 +30,13 @@ import java.util.stream.Stream;
  * - arkcontent{item=demo:ruby_sword} HAND
  * Drops:
  * - arkcontent{item=demo:ruby} 1-3 0.5
+ * - dragones_epicos:escama_umbraxis 6-12     # as packs written for ItemsAdder have them
  * </pre>
  *
- * <p>The id goes inside the braces. A bare {@code demo:ruby} cannot work: MythicMobs reads a colon in
- * a drop name as the old {@code MATERIAL:data} form before any plugin is asked.</p>
+ * <p>The bare {@code namespace:id} works when ItemsAdder is not installed: MythicMobs reads the
+ * colon as the old {@code MATERIAL:data} form and asks for a drop type named after the namespace,
+ * with the line attached ({@link NamespacedDropLine}); a namespace of this plugin's items is
+ * answered with the item the line names. With ItemsAdder installed those lines are its own.</p>
  *
  * <p>MythicMobs reads its mobs as it enables, and a drop type it does not know by then is reported
  * as missing. This plugin cannot load before it: AuraSkills and BetonQuest load after MythicMobs
@@ -50,18 +53,32 @@ public final class MythicMobsHook implements Listener, ContentHook {
     private final ItemFactory factory;
     private final Logger logger;
     private final Set<String> suppliedNamespaces = new HashSet<>();
+    private final boolean itemsAdderInstalled;
 
     public MythicMobsHook(ItemRegistry items, ItemFactory factory, Logger logger) {
         this.items = items;
         this.factory = factory;
         this.logger = logger;
+        this.itemsAdderInstalled = Bukkit.getPluginManager().getPlugin("ItemsAdder") != null;
     }
 
     @EventHandler
     public void onDropLoad(MythicDropLoadEvent event) {
+        String line = event.getContainer().getLine();
         if (event.getDropName().equalsIgnoreCase(DROP_NAME)) {
-            event.register(new ArkContentDrop(event.getContainer().getLine(), event.getConfig(), items, factory, logger));
+            event.register(new ArkContentDrop(line, event.getConfig(), items, factory, logger));
+            return;
         }
+        String id = itemsAdderInstalled ? null : NamespacedDropLine.itemId(event.getDropName(), line);
+        if (id != null && hasNamespace(id.substring(0, id.indexOf(':')))) {
+            event.register(new ArkContentDrop(line, event.getConfig(), id, items, factory, logger));
+        }
+    }
+
+    /** Whether any loaded item is in {@code namespace}. */
+    private boolean hasNamespace(String namespace) {
+        String prefix = namespace + ":";
+        return items.ids().stream().anyMatch(id -> id.startsWith(prefix));
     }
 
     @EventHandler

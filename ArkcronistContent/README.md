@@ -1579,9 +1579,28 @@ PDC, así que el resto del plugin lo reconoce. El id se resuelve en cada drop, d
 `/arkcontent reload` se refleja sin recargar MythicMobs. Un id que no existe se avisa una vez en
 consola y no suelta nada.
 
-`demo:ruby` a secas **no** funciona: MythicMobs interpreta cualquier `:` en el nombre de un drop
-como el formato antiguo `MATERIAL:data` antes de preguntar a ningún plugin. Por eso el id va entre
-llaves.
+**Packs escritos para ItemsAdder: `namespace:id` a secas.** Sin ItemsAdder instalado, una línea
+como las de esos packs también funciona, en `Drops` y en `Equipment`:
+
+```yaml
+  Drops:
+  - dragones_epicos:escama_umbraxis 6-12
+  - dragones_epicos:umbraxis_botas 1 0.05
+```
+
+MythicMobs lee el `:` como el formato antiguo `MATERIAL:data`: se queda con lo de delante
+(`dragones_epicos`) como tipo de drop y pregunta a los plugins por ese tipo, con la línea entera.
+Si es el namespace de ítems de este plugin, se responde con el ítem que nombra la línea; antes solo
+se respondía a `arkcontent` y MythicMobs avisaba `Drop type not found.` en cada línea. Los ítems
+importados conservan el namespace y el id de ItemsAdder. Con ItemsAdder instalado esas líneas son
+suyas y no se tocan.
+
+Verificado en Paper 1.21.8 con MythicMobs 5.13.0 y el pack `DragonesEpicos` de un servidor real
+(unas 300 líneas `dragones_epicos:...`): 0 avisos `Drop type not found` al arrancar (antes, uno por
+línea). `/mm mobs spawn DE_Umbraxis` y matarlo dejó 6 `dragones_epicos:escama_umbraxis` y 3
+`dragones_epicos:hueso_umbraxis` en el suelo: PAPER con su `item_model`, nombre y la etiqueta
+`arkcronistcontent:item`. MythicMobs pide estos tipos un tick después de leer los mobs, cuando este
+plugin ya escucha, así que no hace falta recargarlo para ellos.
 
 Además, cada namespace se registra como `ItemSupplier` en el `ItemManager` de MythicMobs, para
 código que pida ítems a MythicMobs por namespace. MythicMobs 5.13 no consulta esos suppliers al leer
@@ -1977,6 +1996,23 @@ y, si algún menú usa `arkcontent-`, DeluxeMenus se recarga (su propio `/dm rel
 ambos) un tick después de que todo haya arrancado. El aviso del primer intento queda en la consola;
 tras la recarga el menú carga. DeluxeMenus no publica su API: se compila contra firmas copiadas
 de 1.14.1, como Iris o MMOItems.
+
+**Menús escritos para ItemsAdder.** Sin ItemsAdder instalado, `material: itemsadder-<namespace:id>`
+también se resuelve con este plugin: el mismo gancho toma el prefijo `itemsadder-`, que el gancho
+de ItemsAdder propio de DeluxeMenus solo ocupa cuando ItemsAdder está. Así un menú como este sirve
+tal cual con los ítems importados:
+
+```yaml
+  pico_segador_vacio:
+    material: itemsadder-arkpicos:pico_segador_vacio
+    slot: 10
+```
+
+Igual que con `arkcontent-`, el primer pase de DeluxeMenus avisa `Material for item: ... is not
+valid!` (aún no conoce el gancho) y la recarga automática de un tick después los carga. Verificado con
+los menús `ark_menu_picos` y `ark_menu_picos_raros` de un servidor real: tras la recarga no queda
+ningún aviso, y `/picos` muestra los 8 picos con su modelo (`arkpicos:pico_segador_vacio`…), leído
+por un bot desde la ventana que recibe el cliente.
 
 ### BetonQuest
 

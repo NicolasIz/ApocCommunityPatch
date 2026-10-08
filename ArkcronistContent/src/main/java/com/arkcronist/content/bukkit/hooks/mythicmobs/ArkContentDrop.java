@@ -19,7 +19,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 /**
- * {@code arkcontent{item=demo:ruby}} - one of this plugin's items, as a MythicMobs drop.
+ * {@code arkcontent{item=demo:ruby}} - one of this plugin's items, as a MythicMobs drop - or
+ * {@code demo:ruby}, as a line written for ItemsAdder names it.
  *
  * <p>MythicMobs reads a mob's {@code Equipment} through the same drop parser as its {@code Drops},
  * so this one class serves both. It is the pattern MythicMobs' own MMOItems support uses: a drop
@@ -40,8 +41,13 @@ final class ArkContentDrop extends ItemDrop implements IItemDrop {
     private final Logger logger;
 
     ArkContentDrop(String line, MythicLineConfig config, ItemRegistry items, ItemFactory factory, Logger logger) {
+        this(line, config, config.getString(new String[] {"item", "i", "id"}, "").trim(), items, factory, logger);
+    }
+
+    ArkContentDrop(String line, MythicLineConfig config, String itemId, ItemRegistry items, ItemFactory factory,
+                   Logger logger) {
         super(line, config);
-        this.itemId = config.getString(new String[] {"item", "i", "id"}, "").trim();
+        this.itemId = itemId;
         this.items = items;
         this.factory = factory;
         this.logger = logger;
@@ -53,7 +59,8 @@ final class ArkContentDrop extends ItemDrop implements IItemDrop {
         if (item.isEmpty()) {
             if (REPORTED.add(itemId)) {
                 logger.warning("A MythicMobs drop or equipment line asks for custom item '" + itemId
-                        + "', which is not loaded - it drops nothing. Write it as arkcontent{item=namespace:id}.");
+                        + "', which is not loaded - it drops nothing. Check the id: namespace:id, or"
+                        + " arkcontent{item=namespace:id}.");
             }
             return BukkitAdapter.adapt(new ItemStack(Material.AIR));
         }
