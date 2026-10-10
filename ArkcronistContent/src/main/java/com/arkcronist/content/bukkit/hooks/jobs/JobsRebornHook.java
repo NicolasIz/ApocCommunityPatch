@@ -1,6 +1,7 @@
 package com.arkcronist.content.bukkit.hooks.jobs;
 
 import com.arkcronist.content.bukkit.hooks.JobsHook;
+import com.arkcronist.content.bukkit.hooks.LevelSource;
 import com.arkcronist.content.core.definition.JobReward;
 import com.gamingmesh.jobs.Jobs;
 import com.gamingmesh.jobs.actions.BlockActionInfo;
@@ -15,6 +16,7 @@ import org.bukkit.entity.Player;
 import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.logging.Logger;
 
@@ -25,13 +27,28 @@ import java.util.logging.Logger;
  * experience can level the player up - with its messages and level-up commands - and the action is
  * in its logs, as a block broken.
  */
-public final class JobsRebornHook implements JobsHook {
+public final class JobsRebornHook implements JobsHook, LevelSource {
 
     private final Logger logger;
     private final Set<String> unknown = new HashSet<>();
 
     public JobsRebornHook(Logger logger) {
         this.logger = logger;
+    }
+
+    /** A job by its name in Jobs Reborn; 0 for a player not in it. */
+    @Override
+    public OptionalInt jobLevel(Player player, String job) {
+        Job found = Jobs.getJob(job);
+        if (found == null) {
+            return OptionalInt.empty();
+        }
+        JobsPlayer jobsPlayer = Jobs.getPlayerManager().getJobsPlayer(player);
+        if (jobsPlayer == null || !jobsPlayer.isInJob(found)) {
+            return OptionalInt.of(0);
+        }
+        com.gamingmesh.jobs.container.JobProgression progression = jobsPlayer.getJobProgression(found);
+        return OptionalInt.of(progression == null ? 0 : progression.getLevel());
     }
 
     @Override

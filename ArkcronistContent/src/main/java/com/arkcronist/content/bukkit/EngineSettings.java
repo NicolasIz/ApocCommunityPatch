@@ -29,12 +29,51 @@ import java.util.regex.PatternSyntaxException;
  */
 public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nullable UploadSettings upload,
                              Delivery delivery, Crops crops, Guns guns, Liquids liquids, Huds huds, Sanity sanity,
-                             FontImageText fontImages) {
+                             FontImageText fontImages, Menus menus, DoubleChests doubleChests, QuestBoards questBoards) {
+
+    public EngineSettings(boolean extractExamples, Pack pack, Http http, @Nullable UploadSettings upload,
+                          Delivery delivery, Crops crops, Guns guns, Liquids liquids, Huds huds, Sanity sanity,
+                          FontImageText fontImages) {
+        this(extractExamples, pack, http, upload, delivery, crops, guns, liquids, huds, sanity, fontImages,
+                Menus.DEFAULT, DoubleChests.DEFAULT, QuestBoards.DEFAULT);
+    }
 
     public EngineSettings(boolean extractExamples, Pack pack, Http http, @Nullable UploadSettings upload,
                           Delivery delivery, Crops crops) {
         this(extractExamples, pack, http, upload, delivery, crops, Guns.DEFAULT, Liquids.DEFAULT, Huds.DEFAULT,
                 Sanity.DEFAULT, FontImageText.DEFAULT);
+    }
+
+    /**
+     * The content browser: whether it is drawn over a picture of its own, which picture - any font
+     * image by name - and how wide that picture is drawn.
+     *
+     * @param folders show the contents/ folders as the menu's first level; false for one flat list
+     */
+    public record Menus(boolean textured, String background, int backgroundWidth, boolean folders) {
+
+        public static final Menus DEFAULT = new Menus(true, "arkcontent:content_browser", 176, true);
+    }
+
+    /**
+     * Double chests of furniture.
+     *
+     * @param animationDelayMillis how long after the click the lid starts to open or shut - on the
+     *                             first server tick at or after it, ticks being 50 ms apart
+     */
+    public record DoubleChests(int animationDelayMillis) {
+
+        public static final DoubleChests DEFAULT = new DoubleChests(63);
+    }
+
+    /**
+     * Quest boards.
+     *
+     * @param maxActive how many notices a player can have under way at once
+     */
+    public record QuestBoards(String background, int backgroundWidth, int maxActive, int saveSeconds) {
+
+        public static final QuestBoards DEFAULT = new QuestBoards("arkcontent:quest_board", 176, 5, 10);
     }
 
     /** Where players download the pack from. */
@@ -236,6 +275,9 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
         ConfigurationSection huds = section(config, "huds");
         ConfigurationSection sanity = section(config, "sanity");
         ConfigurationSection fontImages = section(config, "font-images");
+        ConfigurationSection menus = section(config, "menus");
+        ConfigurationSection furniture = section(config, "furniture");
+        ConfigurationSection boards = section(config, "quest-boards");
         MiniMessage text = MiniMessage.miniMessage();
         return new EngineSettings(
                 config.getBoolean("extract-examples", true),
@@ -256,7 +298,17 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
                         Math.max(10, Math.min(86_400, sanity.getInt("interval-seconds", Sanity.DEFAULT.intervalSeconds()))),
                         Math.max(0.1, Math.min(20, sanity.getDouble("max-millis-per-tick",
                                 Sanity.DEFAULT.maxMillisPerTick())))),
-                new FontImageText(fontImages.getBoolean("titles", true), fontImages.getBoolean("placeholders", true)));
+                new FontImageText(fontImages.getBoolean("titles", true), fontImages.getBoolean("placeholders", true)),
+                new Menus(menus.getBoolean("textured", Menus.DEFAULT.textured()),
+                        menus.getString("background", Menus.DEFAULT.background()).trim(),
+                        Math.max(1, Math.min(512, menus.getInt("background-width", Menus.DEFAULT.backgroundWidth()))),
+                        menus.getBoolean("folders", Menus.DEFAULT.folders())),
+                new DoubleChests(Math.max(0, Math.min(2000, furniture.getInt("double-chest-animation-delay-ms",
+                        DoubleChests.DEFAULT.animationDelayMillis())))),
+                new QuestBoards(boards.getString("background", QuestBoards.DEFAULT.background()).trim(),
+                        Math.max(1, Math.min(512, boards.getInt("background-width", QuestBoards.DEFAULT.backgroundWidth()))),
+                        Math.max(1, Math.min(45, boards.getInt("max-active", QuestBoards.DEFAULT.maxActive()))),
+                        Math.max(2, Math.min(600, boards.getInt("save-seconds", QuestBoards.DEFAULT.saveSeconds())))));
     }
 
     private static Pack readPack(ConfigurationSection section, Logger logger) {

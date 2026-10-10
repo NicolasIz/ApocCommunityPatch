@@ -14,6 +14,7 @@ import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.definition.EmojiDefinition;
 import com.arkcronist.content.core.definition.FontImageDefinition;
 import com.arkcronist.content.core.definition.ItemDefinition;
+import com.arkcronist.content.core.definition.ResourceLocation;
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.furniture.DisplayFile;
 import com.arkcronist.content.core.furniture.DisplayTransform;
@@ -26,6 +27,7 @@ import com.arkcronist.content.core.importer.ImportReport;
 import com.arkcronist.content.core.importer.ItemsAdderImporter;
 import com.arkcronist.content.core.liquid.TripwireState;
 import com.arkcronist.content.core.loader.ContentLoader;
+import com.arkcronist.content.core.quest.QuestDefinition;
 import com.arkcronist.content.core.loader.ExampleUpdates;
 import com.arkcronist.content.core.loader.LoadReport;
 import com.arkcronist.content.core.pack.ExternalPack;
@@ -163,7 +165,12 @@ public final class ContentPipeline {
                     "contents/demo/textures/hud/thirst_empty.png",
                     "contents/demo/textures/hud/mana_full.png",
                     "contents/demo/textures/hud/mana_half.png",
-                    "contents/demo/textures/hud/mana_empty.png"));
+                    "contents/demo/textures/hud/mana_empty.png"),
+            "1.9.0", List.of(
+                    "contents/demo/models/furniture/ruby_chest_double.bbmodel",
+                    "contents/demo/quest_board.yml",
+                    "contents/demo/models/furniture/medieval_bulletin_board.json",
+                    "contents/demo/textures/furniture/medieval_bulletin_board.png"));
 
     /** Copied into contents/ the first time the plugin starts. */
     private static final List<String> EXAMPLES = Stream.concat(FIRST_EXAMPLES.stream(),
@@ -311,6 +318,9 @@ public final class ContentPipeline {
     /** Null unless upload: is on. */
     private final @Nullable PackUploader uploader;
 
+    /** The quest notice templates of the last load, by id: what {@code /arkcontent board post} can copy in. */
+    private volatile Map<String, QuestDefinition> questTemplates = Map.of();
+
     /** Other plugins' packs to merge into ours, by name. Set from the main thread, read by the worker. */
     private final Map<String, ExternalPack> externalPacks = new ConcurrentHashMap<>();
 
@@ -431,6 +441,11 @@ public final class ContentPipeline {
     }
 
     /** The folder content files live in. */
+    /** The quest notice templates in contents/, by id, as of the last load. */
+    public Map<String, QuestDefinition> questTemplates() {
+        return questTemplates;
+    }
+
     public Path contentsDir() {
         return contentsDir;
     }
@@ -519,6 +534,9 @@ public final class ContentPipeline {
         try {
             extractExamples();
             LoadReport report = new ContentLoader().load(contentsDir);
+            Map<String, QuestDefinition> templates = new LinkedHashMap<>();
+            report.quests().forEach(quest -> templates.put(quest.id(), quest));
+            questTemplates = Map.copyOf(templates);
 
             List<String> problems = new ArrayList<>(report.problems());
             Map<String, CustomItem> items = new LinkedHashMap<>();
@@ -712,7 +730,9 @@ public final class ContentPipeline {
             List<FontImages.Image> provided = FontImages.provided(mergedFonts());
             List<FontImages.Image> definedImages = new ArrayList<>();
             List<FontImageDefinition> own = new ArrayList<>();
-            for (FontImageDefinition definition : build.fontImageDefinitions()) {
+            List<FontImageDefinition> definitions = new ArrayList<>(build.fontImageDefinitions());
+            definitions.addAll(builtinFontImages());
+            for (FontImageDefinition definition : definitions) {
                 FontImages.match(definition, provided).ifPresentOrElse(definedImages::add, () -> own.add(definition));
             }
             definedImages.addAll(itemsAdderFontImages(build, provided));
@@ -1021,6 +1041,37 @@ public final class ContentPipeline {
 
     private static String fontImageKey(FontImageDefinition definition) {
         return "font_image:" + definition.fullId();
+    }
+
+    /** The pictures this plugin draws its own menus over, as font images of namespace {@code arkcontent}. */
+    static final List<String> BUILTIN_GUIS = List.of("content_browser", "quest_board");
+
+    /**
+     * The plugin's own font images - the content browser's and the quest board's pictures - copied
+     * out of the jar into {@code data/builtin/textures/gui/} when missing or changed, so the pack
+     * draws them like any other. Each covers a chest inventory: 176 by 222, ascent 13.
+     */
+    private List<FontImageDefinition> builtinFontImages() throws IOException {
+        Path root = hudCharacterFile.getParent().resolve("builtin");
+        List<FontImageDefinition> images = new ArrayList<>();
+        for (String name : BUILTIN_GUIS) {
+            String resource = "builtin/textures/gui/" + name + ".png";
+            byte[] bytes;
+            try (java.io.InputStream in = plugin.getResource(resource)) {
+                if (in == null) {
+                    continue;
+                }
+                bytes = in.readAllBytes();
+            }
+            Path file = root.resolve("textures").resolve("gui").resolve(name + ".png");
+            if (!Files.isRegularFile(file) || !java.util.Arrays.equals(Files.readAllBytes(file), bytes)) {
+                Files.createDirectories(file.getParent());
+                Files.write(file, bytes);
+            }
+            images.add(new FontImageDefinition("arkcontent", name, new ResourceLocation("arkcontent", "gui/" + name),
+                    com.arkcronist.content.core.menu.MenuTitle.FULL_ASCENT, 222, null, root, file));
+        }
+        return images;
     }
 
     /**

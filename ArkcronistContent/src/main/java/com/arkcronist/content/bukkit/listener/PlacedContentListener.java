@@ -55,12 +55,14 @@ public final class PlacedContentListener implements Listener {
             }
         });
         plugin.loadTransforms(event.getWorld().getUID());
+        plugin.loadPairs(event.getWorld().getUID());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onWorldUnload(WorldUnloadEvent event) {
         store.unloadWorld(event.getWorld().getUID());
         transforms.unloadWorld(event.getWorld().getUID());
+        plugin.pairs().unloadWorld(event.getWorld().getUID());
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.arkcronist.content.bukkit.hooks.auraskills;
 
 import com.arkcronist.content.bukkit.hooks.ContentHook;
+import com.arkcronist.content.bukkit.hooks.LevelSource;
 import com.arkcronist.content.bukkit.hooks.SkillXpHook;
 import com.arkcronist.content.bukkit.item.CustomItem;
 import com.arkcronist.content.bukkit.item.ItemFactory;
@@ -20,6 +21,7 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashSet;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -50,7 +52,7 @@ import java.util.logging.Logger;
  * <p>Breaking a custom block earns Mining experience, harvesting a ripe custom crop Farming
  * experience, as their {@code skill-xp} says - with any AuraSkills 2.x.</p>
  */
-public final class AuraSkillsHook implements ContentHook, SkillXpHook {
+public final class AuraSkillsHook implements ContentHook, SkillXpHook, LevelSource {
 
     /** AuraSkills' item registry, however this version of it is reached. */
     interface Registration {
@@ -177,6 +179,20 @@ public final class AuraSkillsHook implements ContentHook, SkillXpHook {
         String full = item.id();
         int colon = full.indexOf(':');
         return NamespacedId.of(full.substring(0, colon), full.substring(colon + 1));
+    }
+
+    /** A skill by its AuraSkills id - {@code mining}, or {@code namespace/skill} for one of another plugin's. */
+    @Override
+    public OptionalInt skillLevel(Player player, String skill) {
+        AuraSkillsApi api = AuraSkillsApi.get();
+        SkillsUser user = api.getUser(player.getUniqueId());
+        if (user == null || !user.isLoaded()) {
+            return OptionalInt.empty();
+        }
+        String name = skill.trim().toLowerCase(java.util.Locale.ROOT);
+        NamespacedId id = name.contains("/") ? NamespacedId.fromString(name) : NamespacedId.of("auraskills", name);
+        dev.aurelium.auraskills.api.skill.Skill found = api.getGlobalRegistry().getSkill(id);
+        return found == null ? OptionalInt.empty() : OptionalInt.of(user.getSkillLevel(found));
     }
 
     @Override

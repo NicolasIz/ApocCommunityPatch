@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
@@ -85,12 +86,15 @@ public final class HookManager {
     private final Map<String, SkillXpHook> skillHooks = new HashMap<>();
     /** Jobs plugins, by hook name. */
     private final Map<String, JobsHook> jobHooks = new HashMap<>();
+    /** Plugins that know players' skill and job levels, by hook name: the quest boards' requirements. */
+    private final Map<String, LevelSource> levelSources = new java.util.LinkedHashMap<>();
     private final List<AutoCloseable> closing = new ArrayList<>();
     private ModelEngineBridge modelEngine;
     private Shop shop;
     private NpcBridge npcs;
     private Predicate<Block> foreignBlocks = block -> false;
     private Predicate<Entity> mythicMobs = entity -> false;
+    private java.util.function.Function<Entity, String> mythicTypes = entity -> null;
     /** Answered by parts of the plugin made after the hooks; read by the expansion on any thread. */
     private final List<PlaceholderSource> placeholders = new CopyOnWriteArrayList<>();
     /** Fills in other plugins' placeholders; leaves the text as it is without PlaceholderAPI. */
@@ -128,6 +132,13 @@ public final class HookManager {
                     return mythicMobs.isMythicMob(entity);
                 } catch (RuntimeException | LinkageError error) {
                     return false;
+                }
+            };
+            this.mythicTypes = entity -> {
+                try {
+                    return mythicMobs.mythicType(entity);
+                } catch (RuntimeException | LinkageError error) {
+                    return null;
                 }
             };
         }
@@ -190,6 +201,7 @@ public final class HookManager {
         if (auraSkills != null) {
             contentHooks.add(auraSkills);
             skillHooks.put("AuraSkills", auraSkills);
+            levelSources.put("AuraSkills", auraSkills);
         }
         skill("mcMMO", "com.gmail.nossr50.api.ExperienceAPI", McMMOHook::new);
         // SkillAPI and its fork ProSkillAPI share one API; Fabled is the renamed successor.
@@ -294,7 +306,49 @@ public final class HookManager {
         JobsHook hook = create(name, probeClass, factory);
         if (hook != null) {
             jobHooks.put(name, hook);
+            if (hook instanceof LevelSource source) {
+                levelSources.put(name, source);
+            }
         }
+    }
+
+    /**
+     * A player's level in a skill, as the skills plugins installed say - the highest, should two
+     * know it; empty when none of them has that skill. Main thread.
+     */
+    public OptionalInt skillLevel(Player player, String skill) {
+        return level(player, skill, LevelSource::skillLevel);
+    }
+
+    /** A player's level in a job, as the jobs plugins installed say; empty when none has it. Main thread. */
+    public OptionalInt jobLevel(Player player, String job) {
+        return level(player, job, LevelSource::jobLevel);
+    }
+
+    private interface LevelQuery {
+        OptionalInt ask(LevelSource source, Player player, String name);
+    }
+
+    private OptionalInt level(Player player, String name, LevelQuery query) {
+        OptionalInt best = OptionalInt.empty();
+        for (Map.Entry<String, LevelSource> entry : List.copyOf(levelSources.entrySet())) {
+            try {
+                OptionalInt level = query.ask(entry.getValue(), player, name);
+                if (level.isPresent() && (best.isEmpty() || level.getAsInt() > best.getAsInt())) {
+                    best = level;
+                }
+            } catch (RuntimeException | LinkageError error) {
+                levelSources.remove(entry.getKey());
+                logger.log(Level.WARNING, entry.getKey() + " failed to say a player's level; quest board requirements"
+                        + " do not ask it again until a restart.", error);
+            }
+        }
+        return best;
+    }
+
+    /** The plugins answering skill and job levels, for messages. */
+    public List<String> levelSources() {
+        return List.copyOf(levelSources.keySet());
     }
 
     /**
@@ -372,6 +426,11 @@ public final class HookManager {
     /** Whether an entity is one of MythicMobs' mobs; always false without MythicMobs. Main thread. */
     public boolean isMythicMob(Entity entity) {
         return mythicMobs.test(entity);
+    }
+
+    /** The MythicMobs type of an entity - {@code DE_Umbraxis} - or null for any other. Main thread. */
+    public @Nullable String mythicType(Entity entity) {
+        return mythicTypes.apply(entity);
     }
 
     /** On disable: hooks that leave things in the world - temporary holograms - clear them. */

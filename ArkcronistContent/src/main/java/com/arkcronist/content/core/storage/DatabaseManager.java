@@ -56,14 +56,70 @@ public final class DatabaseManager {
     public static final String LIQUID_TABLE = "liquid_sources";
     public static final String HUD_TABLE = "hud_values";
     public static final String TRANSFORM_TABLE = "furniture_transforms";
+    public static final String PAIR_TABLE = "furniture_pairs";
+    public static final String NOTICE_TABLE = "quest_notices";
+    public static final String PROGRESS_TABLE = "quest_progress";
 
     /**
      * Bumped with each change to the schema, so a later version knows what it opened.
      * 1: custom_blocks_world. 2: custom_crops added. 3: furniture_storage added. 4:
      * advancement_unlocks added. 5: liquid_sources and hud_values added. 6: furniture_transforms
-     * added. An older file gains the tables it lacks on open; nothing existing is touched.
+     * added. 7: furniture_pairs, quest_notices and quest_progress added. An older file gains the
+     * tables it lacks on open; nothing existing is touched.
      */
-    public static final int SCHEMA_VERSION = 6;
+    public static final int SCHEMA_VERSION = 7;
+
+    /**
+     * Two chests of furniture joined into a double chest: the first half - vanilla's RIGHT, rows
+     * 1-3 of the double inventory - and its partner. A position is in one pair at most, either way
+     * round; each half keeps its own {@code furniture_storage} row, so joining and parting move no
+     * items.
+     */
+    private static final String CREATE_PAIR_TABLE = """
+            CREATE TABLE IF NOT EXISTS furniture_pairs (
+                world_uuid   TEXT    NOT NULL,
+                x            INTEGER NOT NULL,
+                y            INTEGER NOT NULL,
+                z            INTEGER NOT NULL,
+                px           INTEGER NOT NULL,
+                py           INTEGER NOT NULL,
+                pz           INTEGER NOT NULL,
+                furniture_id TEXT    NOT NULL,
+                paired_at    INTEGER NOT NULL,
+                PRIMARY KEY (world_uuid, x, y, z),
+                UNIQUE (world_uuid, px, py, pz)
+            ) WITHOUT ROWID""";
+
+    /** Quest board notices, as {@link com.arkcronist.content.core.quest.QuestJson} JSON. */
+    private static final String CREATE_NOTICE_TABLE = """
+            CREATE TABLE IF NOT EXISTS quest_notices (
+                id          TEXT    NOT NULL PRIMARY KEY,
+                definition  TEXT    NOT NULL,
+                posted      INTEGER NOT NULL DEFAULT 0,
+                author      TEXT,
+                created_at  INTEGER NOT NULL,
+                updated_at  INTEGER NOT NULL
+            )""";
+
+    /** Each player's notices: taken or done, and how far along. */
+    private static final String CREATE_PROGRESS_TABLE = """
+            CREATE TABLE IF NOT EXISTS quest_progress (
+                player_uuid  TEXT    NOT NULL,
+                quest_id     TEXT    NOT NULL,
+                state        TEXT    NOT NULL CHECK (state IN ('ACCEPTED', 'COMPLETED')),
+                progress     TEXT    NOT NULL,
+                accepted_at  INTEGER NOT NULL,
+                completed_at INTEGER NOT NULL DEFAULT 0,
+                completions  INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (player_uuid, quest_id)
+            ) WITHOUT ROWID""";
+
+    private static final String DELETE_PAIRS_AT = "DELETE FROM " + PAIR_TABLE
+            + " WHERE world_uuid = ? AND ((x = ? AND y = ? AND z = ?) OR (px = ? AND py = ? AND pz = ?))";
+    private static final String INSERT_PAIR = "INSERT INTO " + PAIR_TABLE
+            + " (world_uuid, x, y, z, px, py, pz, furniture_id, paired_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    private static final String SELECT_PAIRS = "SELECT x, y, z, px, py, pz, furniture_id FROM " + PAIR_TABLE
+            + " WHERE world_uuid = ?";
 
     private static final String CREATE_TABLE = """
             CREATE TABLE IF NOT EXISTS custom_blocks_world (
@@ -208,9 +264,14 @@ public final class DatabaseManager {
     private static final String DELETE = "DELETE FROM " + TABLE + " WHERE world_uuid = ? AND x = ? AND y = ? AND z = ?";
     private static final String SELECT_WORLD = "SELECT x, y, z, block_id, type FROM " + TABLE + " WHERE world_uuid = ?";
 
+    /** Statements to run on the database's thread, with its one connection. */
     @FunctionalInterface
-    private interface Work<T> {
+    public interface Work<T> {
         T run(Connection connection) throws SQLException;
+    }
+
+    /** A stored pair of chests, read back: the first half's position, its partner's, and the furniture. */
+    public record StoredPair(int x, int y, int z, int px, int py, int pz, String furnitureId) {
     }
 
     private final Path file;
@@ -442,6 +503,147 @@ public final class DatabaseManager {
                 connection.setAutoCommit(autoCommit);
             }
         }, false);
+    }
+
+    /**
+     * Records what several storage furniture hold in one transaction: both halves of a double chest,
+     * so the file never holds one half saved and the other not.
+     */
+    public CompletableFuture<Void> saveInventories(List<StoredInventory> inventories) {
+        return submit(connection -> inTransaction(connection, () -> {
+            try (PreparedStatement statement = connection.prepareStatement(UPSERT_STORAGE)) {
+                long now = System.currentTimeMillis();
+                for (StoredInventory inventory : inventories) {
+                    statement.setString(1, inventory.world().toString());
+                    statement.setInt(2, inventory.x());
+                    statement.setInt(3, inventory.y());
+                    statement.setInt(4, inventory.z());
+                    statement.setString(5, inventory.furnitureId());
+                    statement.setInt(6, inventory.slots());
+                    statement.setBytes(7, inventory.contents());
+                    statement.setLong(8, now);
+                    statement.addBatch();
+                }
+                statement.executeBatch();
+            }
+            return null;
+        }), false);
+    }
+
+    /**
+     * What two storage furniture hold, read in one go - the two halves of a double chest, as they
+     * stood at the same moment. Either may be empty.
+     */
+    public CompletableFuture<List<Optional<StoredInventory>>> loadInventories(UUID world, int[] first, int[] second) {
+        return submit(connection -> {
+            List<Optional<StoredInventory>> found = new ArrayList<>();
+            for (int[] at : List.of(first, second)) {
+                try (PreparedStatement statement = connection.prepareStatement(SELECT_STORAGE)) {
+                    statement.setString(1, world.toString());
+                    statement.setInt(2, at[0]);
+                    statement.setInt(3, at[1]);
+                    statement.setInt(4, at[2]);
+                    try (ResultSet result = statement.executeQuery()) {
+                        found.add(result.next()
+                                ? Optional.of(new StoredInventory(world, at[0], at[1], at[2], result.getString(1),
+                                result.getInt(2), result.getBytes(3)))
+                                : Optional.empty());
+                    }
+                }
+            }
+            return found;
+        }, false);
+    }
+
+    // ---------------------------------------------------------------- double chests
+
+    /**
+     * Joins two chests, in one transaction: any pair either position was in before is gone, and
+     * this one is in, or - on failure - nothing changed at all.
+     */
+    public CompletableFuture<Void> savePair(UUID world, StoredPair pair) {
+        return submit(connection -> inTransaction(connection, () -> {
+            for (int[] at : List.of(new int[] {pair.x(), pair.y(), pair.z()}, new int[] {pair.px(), pair.py(), pair.pz()})) {
+                deletePairsAt(connection, world, at[0], at[1], at[2]);
+            }
+            try (PreparedStatement insert = connection.prepareStatement(INSERT_PAIR)) {
+                insert.setString(1, world.toString());
+                insert.setInt(2, pair.x());
+                insert.setInt(3, pair.y());
+                insert.setInt(4, pair.z());
+                insert.setInt(5, pair.px());
+                insert.setInt(6, pair.py());
+                insert.setInt(7, pair.pz());
+                insert.setString(8, pair.furnitureId());
+                insert.setLong(9, System.currentTimeMillis());
+                insert.executeUpdate();
+            }
+            return null;
+        }), false);
+    }
+
+    /** Parts the pair one of whose halves is at the position. @return whether there was one */
+    public CompletableFuture<Boolean> deletePair(UUID world, int x, int y, int z) {
+        return submit(connection -> deletePairsAt(connection, world, x, y, z) > 0, false);
+    }
+
+    public CompletableFuture<List<StoredPair>> loadPairs(UUID world) {
+        return submit(connection -> {
+            List<StoredPair> pairs = new ArrayList<>();
+            try (PreparedStatement statement = connection.prepareStatement(SELECT_PAIRS)) {
+                statement.setString(1, world.toString());
+                try (ResultSet result = statement.executeQuery()) {
+                    while (result.next()) {
+                        pairs.add(new StoredPair(result.getInt(1), result.getInt(2), result.getInt(3), result.getInt(4),
+                                result.getInt(5), result.getInt(6), result.getString(7)));
+                    }
+                }
+            }
+            return pairs;
+        }, false);
+    }
+
+    private static int deletePairsAt(Connection connection, UUID world, int x, int y, int z) throws SQLException {
+        try (PreparedStatement delete = connection.prepareStatement(DELETE_PAIRS_AT)) {
+            delete.setString(1, world.toString());
+            delete.setInt(2, x);
+            delete.setInt(3, y);
+            delete.setInt(4, z);
+            delete.setInt(5, x);
+            delete.setInt(6, y);
+            delete.setInt(7, z);
+            return delete.executeUpdate();
+        }
+    }
+
+    /** Runs {@code body} as one transaction on {@code connection}: all of it is written, or none. */
+    public static <T> T inTransaction(Connection connection, SqlBody<T> body) throws SQLException {
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try {
+            T result = body.run();
+            connection.commit();
+            return result;
+        } catch (SQLException | RuntimeException exception) {
+            connection.rollback();
+            throw exception;
+        } finally {
+            connection.setAutoCommit(autoCommit);
+        }
+    }
+
+    /** The statements of one transaction. */
+    @FunctionalInterface
+    public interface SqlBody<T> {
+        T run() throws SQLException;
+    }
+
+    /**
+     * Runs {@code work} on the database's thread, with its connection, in order with every other
+     * statement: what the quest board's store is built on.
+     */
+    public <T> CompletableFuture<T> run(Work<T> work) {
+        return submit(work, false);
     }
 
     /** @return whether there was an inventory to delete */
@@ -786,6 +988,9 @@ public final class DatabaseManager {
             statement.execute(CREATE_LIQUID_TABLE);
             statement.execute(CREATE_HUD_TABLE);
             statement.execute(CREATE_TRANSFORM_TABLE);
+            statement.execute(CREATE_PAIR_TABLE);
+            statement.execute(CREATE_NOTICE_TABLE);
+            statement.execute(CREATE_PROGRESS_TABLE);
             int version;
             try (ResultSet result = statement.executeQuery("PRAGMA user_version")) {
                 version = result.next() ? result.getInt(1) : 0;

@@ -209,6 +209,47 @@ font-images:
   placeholders: true
 
 # ---------------------------------------------------------------------------
+#  Menus: /arkcontent menu and /arkcontent shop
+# ---------------------------------------------------------------------------
+menus:
+  # The contents/ folders as the first level - one per content pack, as
+  # dragones_epicos/ or arkespadas/ - each opening onto its items and its own
+  # sub-folders. false: one flat list, as before 1.9.
+  folders: true
+  # Draw the menu over a picture of its own: a font image, by name, behind
+  # the whole chest - a custom GUI. The plugin ships one; any font image of
+  # your packs works, e.g. one of ItemsAdder's GUIs.
+  textured: true
+  background: "arkcontent:content_browser"
+  # How wide the picture is drawn, up to its last column with a pixel in it:
+  # 176 for one that covers a chest inventory.
+  background-width: 176
+
+# ---------------------------------------------------------------------------
+#  Furniture
+# ---------------------------------------------------------------------------
+furniture:
+  # Two chests of furniture with a double: section, placed side by side,
+  # join into a double chest. Its lid starts to open, or to shut, this long
+  # after the click: on the first server tick at or after it. Ticks are 50 ms
+  # apart, so with 63 the lid moves 63 to 113 ms after the click; 0 moves it
+  # at once.
+  double-chest-animation-delay-ms: 63
+
+# ---------------------------------------------------------------------------
+#  Quest boards: furniture with interactable: medieval_bulletin_board
+# ---------------------------------------------------------------------------
+quest-boards:
+  # The picture behind the notices: parchment, shipped with the plugin.
+  background: "arkcontent:quest_board"
+  background-width: 176
+  # Notices a player can have under way at once.
+  max-active: 5
+  # Kills and broken blocks are counted in memory and written this often -
+  # and when a player leaves or completes a notice.
+  save-seconds: 10
+
+# ---------------------------------------------------------------------------
 #  Sanity checker
 # ---------------------------------------------------------------------------
 #  Rollbacks, /fill, world editors and crashes can change the world behind the

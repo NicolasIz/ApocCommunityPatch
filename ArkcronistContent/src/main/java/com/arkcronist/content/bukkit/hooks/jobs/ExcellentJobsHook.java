@@ -1,6 +1,7 @@
 package com.arkcronist.content.bukkit.hooks.jobs;
 
 import com.arkcronist.content.bukkit.hooks.JobsHook;
+import com.arkcronist.content.bukkit.hooks.LevelSource;
 import com.arkcronist.content.core.definition.JobReward;
 import org.bukkit.Server;
 import org.bukkit.block.Block;
@@ -12,6 +13,7 @@ import su.nightexpress.excellentjobs.job.model.Job;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.logging.Logger;
@@ -22,7 +24,7 @@ import java.util.logging.Logger;
  * no public call for paying money outside an objective, so the money goes to the player through
  * Vault - the economy ExcellentJobs pays with too.
  */
-public final class ExcellentJobsHook implements JobsHook {
+public final class ExcellentJobsHook implements JobsHook, LevelSource {
 
     private final Server server;
     /** Vault: deposits, and says whether it could. */
@@ -34,6 +36,28 @@ public final class ExcellentJobsHook implements JobsHook {
         this.server = server;
         this.deposit = deposit;
         this.logger = logger;
+    }
+
+    /** A job by its id - the file name in plugins/ExcellentJobs/jobs/; 0 for a player not employed in it. */
+    @Override
+    public OptionalInt jobLevel(Player player, String job) {
+        JobsAPIProvider api = server.getServicesManager().load(JobsAPIProvider.class);
+        if (api == null) {
+            return OptionalInt.empty();
+        }
+        JobManager jobs = api.getJobManager();
+        Job found = jobs.getJobById(job);
+        if (found == null) {
+            found = jobs.getJobById(job.toLowerCase(Locale.ROOT));
+        }
+        if (found == null) {
+            return OptionalInt.empty();
+        }
+        if (!jobs.isEmployed(player, found)) {
+            return OptionalInt.of(0);
+        }
+        su.nightexpress.excellentjobs.job.data.JobData data = jobs.getData(player, found);
+        return OptionalInt.of(data == null ? 0 : data.getLevel());
     }
 
     @Override

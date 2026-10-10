@@ -126,7 +126,9 @@ public final class ContentAdminCommand {
                         .executes(this::menu))
                 .then(Commands.literal("shop")
                         .requires(source -> source.getSender().hasPermission(Shop.PERMISSION))
-                        .executes(this::shop));
+                        .executes(this::shop))
+                .then(new QuestBoardCommand(plugin, plugin.questStore(), plugin.questBoards(),
+                        () -> plugin.pipeline().questTemplates()).build());
         NpcBridge npcs = plugin.hooks().npcs();
         if (npcs != null) {
             root.then(Commands.literal("npc").requires(ContentAdminCommand::admin)

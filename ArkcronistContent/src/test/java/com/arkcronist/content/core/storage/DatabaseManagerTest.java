@@ -226,8 +226,87 @@ class DatabaseManagerTest {
         try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
              Statement statement = connection.createStatement();
              ResultSet version = statement.executeQuery("PRAGMA user_version")) {
-            assertEquals(6, version.getInt(1));
+            assertEquals(DatabaseManager.SCHEMA_VERSION, version.getInt(1));
         }
+    }
+
+    /** 1.9: a version 6 file gains the double chest and quest board tables, and says 7. */
+    @Test
+    void aVersionSixFileGainsTheNewTablesAndNothingElseChanges() throws Exception {
+        Path file = temp.resolve("content.db");
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+             Statement statement = connection.createStatement()) {
+            statement.execute("PRAGMA user_version=6");
+            statement.execute("CREATE TABLE furniture_storage (world_uuid TEXT NOT NULL, x INTEGER NOT NULL,"
+                    + " y INTEGER NOT NULL, z INTEGER NOT NULL, furniture_id TEXT NOT NULL, slots INTEGER NOT NULL"
+                    + " CHECK (slots > 0), contents BLOB NOT NULL, updated_at INTEGER NOT NULL,"
+                    + " PRIMARY KEY (world_uuid, x, y, z))");
+            statement.execute("INSERT INTO furniture_storage VALUES ('" + OVERWORLD + "', 1, 64, 1, 'demo:ruby_chest',"
+                    + " 27, X'0102', 5)");
+        }
+        database = open();
+        assertEquals(List.of(1, 2), toList(get(database.loadInventory(OVERWORLD, 1, 64, 1)).orElseThrow().contents()));
+        database.close();
+        database = null;
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+             Statement statement = connection.createStatement()) {
+            try (ResultSet version = statement.executeQuery("PRAGMA user_version")) {
+                assertEquals(7, version.getInt(1));
+            }
+            List<String> tables = new ArrayList<>();
+            try (ResultSet result = statement.executeQuery("SELECT name FROM sqlite_master WHERE type = 'table'")) {
+                while (result.next()) {
+                    tables.add(result.getString(1));
+                }
+            }
+            assertTrue(tables.containsAll(List.of(DatabaseManager.PAIR_TABLE, DatabaseManager.NOTICE_TABLE,
+                    DatabaseManager.PROGRESS_TABLE)), tables.toString());
+        }
+    }
+
+    /** Joining two chests replaces any pair either was in, in one transaction; parting works from either half. */
+    @Test
+    void pairsAreSavedWholeAndPartedFromEitherHalf() throws Exception {
+        database = open();
+        DatabaseManager.StoredPair west = new DatabaseManager.StoredPair(0, 64, 0, 1, 64, 0, "demo:ruby_chest");
+        get(database.savePair(OVERWORLD, west));
+        assertEquals(List.of(west), get(database.loadPairs(OVERWORLD)));
+        // The second chest joins a third instead: the first pair is gone, not left half-written.
+        DatabaseManager.StoredPair east = new DatabaseManager.StoredPair(2, 64, 0, 1, 64, 0, "demo:ruby_chest");
+        get(database.savePair(OVERWORLD, east));
+        assertEquals(List.of(east), get(database.loadPairs(OVERWORLD)));
+        assertTrue(get(database.loadPairs(NETHER)).isEmpty());
+        assertTrue(get(database.deletePair(OVERWORLD, 1, 64, 0)), "parted from its second half");
+        assertFalse(get(database.deletePair(OVERWORLD, 2, 64, 0)));
+        assertTrue(get(database.loadPairs(OVERWORLD)).isEmpty());
+    }
+
+    /** A double chest's two halves: written in one go, read in one go, each its own row. */
+    @Test
+    void bothHalvesOfADoubleChestAreWrittenAndReadTogether() throws Exception {
+        database = open();
+        StoredInventory first = new StoredInventory(OVERWORLD, 0, 64, 0, "demo:ruby_chest", 27, new byte[] {1});
+        StoredInventory second = new StoredInventory(OVERWORLD, 1, 64, 0, "demo:ruby_chest", 27, new byte[] {2, 2});
+        get(database.saveInventories(List.of(first, second)));
+        List<java.util.Optional<StoredInventory>> read = get(database.loadInventories(OVERWORLD, new int[] {0, 64, 0},
+                new int[] {1, 64, 0}));
+        assertEquals(List.of(1), toList(read.get(0).orElseThrow().contents()));
+        assertEquals(List.of(2, 2), toList(read.get(1).orElseThrow().contents()));
+        List<java.util.Optional<StoredInventory>> none = get(database.loadInventories(OVERWORLD, new int[] {5, 64, 0},
+                new int[] {0, 64, 0}));
+        assertTrue(none.get(0).isEmpty());
+        assertTrue(none.get(1).isPresent());
+        // Each half is still its own row: breaking one takes only its contents.
+        assertTrue(get(database.takeInventory(OVERWORLD, 1, 64, 0)).isPresent());
+        assertTrue(get(database.loadInventory(OVERWORLD, 0, 64, 0)).isPresent());
+    }
+
+    private static List<Integer> toList(byte[] bytes) {
+        List<Integer> values = new ArrayList<>();
+        for (byte b : bytes) {
+            values.add((int) b);
+        }
+        return values;
     }
 
     /** The sanity checker's purge: only a row that still says what it said, and its transform with it. */

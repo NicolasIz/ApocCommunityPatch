@@ -362,7 +362,20 @@ public final class PackCompiler {
                 stages(item, crop, origin);
             }
             if (item.placement() instanceof Placement.Furniture furniture && furniture.animated() != null) {
-                bones(item, furniture.animated().model(), origin);
+                bones(item.itemModel(), furniture.animated().model(), origin);
+            }
+            if (item.placement() instanceof Placement.Furniture furniture && furniture.doubleChest() != null) {
+                Placement.DoubleChest pair = furniture.doubleChest();
+                ResourceLocation key = Placement.DoubleChest.itemModel(item.itemModel());
+                String pairOrigin = origin + " double";
+                if (pair.animated() != null) {
+                    bones(key, pair.animated().model(), pairOrigin);
+                } else if (pair.model() != null) {
+                    look(item.namespace(), pair.model(), pairOrigin);
+                    if (place(key.assetPath("items", ".json"), itemDefinition(pair.model().location()), pairOrigin)) {
+                        itemDefinitions++;
+                    }
+                }
             }
         }
 
@@ -371,7 +384,7 @@ public final class PackCompiler {
          * item definition of the same name for its display, and the model's textures at
          * {@code <namespace>:<id>/tex_<n>}.
          */
-        private void bones(ItemDefinition item, AnimatedModel model, String origin) throws IOException {
+        private void bones(ResourceLocation itemModel, AnimatedModel model, String origin) throws IOException {
             for (AnimatedModel.Texture texture : model.textures()) {
                 drawnByModel(texture.location());
                 if (texture.png().length > 0
@@ -383,7 +396,7 @@ public final class PackCompiler {
                 if (bone.model() == null) {
                     continue;
                 }
-                ResourceLocation key = AnimatedModel.boneItemModel(item.itemModel(), bone.name());
+                ResourceLocation key = AnimatedModel.boneItemModel(itemModel, bone.name());
                 String boneOrigin = origin + " bone " + bone.name();
                 if (place(key.assetPath("models", ".json"), bone.model().getBytes(StandardCharsets.UTF_8), boneOrigin)) {
                     models++;

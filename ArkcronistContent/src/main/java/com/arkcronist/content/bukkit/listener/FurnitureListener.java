@@ -8,12 +8,15 @@ import com.arkcronist.content.bukkit.item.ItemFactory;
 import com.arkcronist.content.bukkit.protection.Interaction;
 import com.arkcronist.content.bukkit.protection.Protection;
 import com.arkcronist.content.core.definition.Placement;
+import com.arkcronist.content.core.storage.ChestPair;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Tag;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.entity.Entity;
@@ -75,6 +78,18 @@ public final class FurnitureListener implements Listener {
     private final StorageService storage;
     private final Protection protection;
     private final ItemFactory items;
+    /** Opens quest boards; null until it is set. */
+    private @Nullable QuestBoardOpener boards;
+
+    /** What a right click on a quest board does. */
+    public interface QuestBoardOpener {
+        void open(Player player, Block support, CustomItem board, Placement.QuestBoard spec);
+    }
+
+    /** Who opens quest boards. */
+    public void useBoards(QuestBoardOpener boards) {
+        this.boards = boards;
+    }
 
     public FurnitureListener(Plugin plugin, FurnitureService furniture, SeatService seats, StorageService storage,
                              Protection protection, ItemFactory items) {
@@ -95,6 +110,34 @@ public final class FurnitureListener implements Listener {
         }
     }
 
+    /**
+     * A piece more than one block big needs every block it covers free - air, or something a block
+     * replaces, like grass - claimed by nothing else, and the placer allowed to build on each.
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void checkRoom(BlockPlaceEvent event) {
+        Optional<CustomItem> item = items.identify(event.getItemInHand());
+        if (item.isEmpty() || !(item.get().placement() instanceof Placement.Furniture spec) || spec.footprint().single()) {
+            return;
+        }
+        Player player = event.getPlayer();
+        List<Block> blocks = FurnitureService.footprint(event.getBlockPlaced(), spec,
+                FurnitureService.placementYaw(player, spec));
+        for (Block part : blocks.subList(1, blocks.size())) {
+            boolean free = (part.isEmpty() || part.isReplaceable()) && !part.isLiquid() && !furniture.claims(part);
+            if (!free) {
+                event.setCancelled(true);
+                player.sendActionBar(Component.text("Not enough room: this needs " + spec.footprint().width() + " x "
+                        + spec.footprint().height() + " free blocks", NamedTextColor.RED));
+                return;
+            }
+            if (!protection.check(player, part, Interaction.PLACE)) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+    }
+
     /** A bed is placed as a {@code BlockMultiPlaceEvent}, which reaches this too, its block the foot. */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent event) {
@@ -110,6 +153,11 @@ public final class FurnitureListener implements Listener {
         if (FurnitureService.matches(block, spec)
                 && furniture.place(block, event.getPlayer(), item.get(), spec) && spec.storage() != null) {
             storage.placed(block);
+            // Beside a chest of the same furniture, as vanilla chests do: one double chest - if the
+            // placer may open that one too, or the join would be a way into someone else's chest.
+            furniture.partnerFor(block, item.get(), spec, event.getPlayer())
+                    .filter(partner -> protection.check(event.getPlayer(), partner, Interaction.CONTAINER))
+                    .ifPresent(partner -> furniture.join(block, partner, item.get(), spec));
         }
     }
 
@@ -134,14 +182,15 @@ public final class FurnitureListener implements Listener {
         }
         Block clicked = event.getClickedBlock();
         boolean clickedFurniture = clicked != null && furniture.identify(clicked).isPresent();
-        Optional<Block> support = clickedFurniture ? Optional.of(clicked) : furniture.target(event.getPlayer());
+        Optional<Block> support = clickedFurniture ? Optional.of(clicked) : furniture.clickedThrough(event.getPlayer(), clicked);
         if (support.isPresent() && Tag.BEDS.isTagged(support.get().getType())) {
             return;
         }
         Optional<CustomItem> item = support.flatMap(furniture::item);
         Placement.Furniture definition = item.map(CustomItem::placement).filter(Placement.Furniture.class::isInstance)
                 .map(Placement.Furniture.class::cast).orElse(null);
-        boolean interactive = definition != null && (definition.seat() != null || definition.storage() != null);
+        boolean interactive = definition != null
+                && (definition.seat() != null || definition.storage() != null || definition.board() != null);
         Player player = event.getPlayer();
         boolean chest = support.isPresent() && support.get().getType() == Material.CHEST;
         boolean sneakingThrough = player.isSneaking()
@@ -157,14 +206,33 @@ public final class FurnitureListener implements Listener {
                 float yaw = furniture.facing(support.get()).orElse(player.getLocation().getYaw());
                 seats.sit(player, support.get(), definition.seat(), yaw);
             } else if (definition.storage() != null && protection.check(player, support.get(), Interaction.CONTAINER)) {
-                storage.open(player, support.get(), item.get().id(), definition.storage(),
-                        title(item.get(), definition.storage()));
+                Optional<ChestPair> pair = furniture.pairAt(support.get());
+                if (pair.isPresent() && definition.doubleChest() != null) {
+                    World world = support.get().getWorld();
+                    Block first = world.getBlockAt(pair.get().x(), pair.get().y(), pair.get().z());
+                    Block second = world.getBlockAt(pair.get().px(), pair.get().py(), pair.get().pz());
+                    Block other = first.equals(support.get()) ? second : first;
+                    if (protection.check(player, other, Interaction.CONTAINER)) {
+                        storage.openPair(player, first, second, item.get().id(), doubleTitle(item.get(), definition));
+                    }
+                } else {
+                    storage.open(player, support.get(), item.get().id(), definition.storage(),
+                            title(item.get(), definition.storage()));
+                }
+            } else if (definition.board() != null && boards != null) {
+                boards.open(player, support.get(), item.get(), definition.board());
             }
             return;
         }
         if (action == Action.RIGHT_CLICK_BLOCK && clickedFurniture) {
             event.setUseInteractedBlock(Event.Result.DENY);
         }
+    }
+
+    /** A double chest's title: its own, or the single's. */
+    private static Component doubleTitle(CustomItem item, Placement.Furniture definition) {
+        String own = definition.doubleChest().title();
+        return own != null ? MiniMessage.miniMessage().deserialize(own) : title(item, definition.storage());
     }
 
     private static Component title(CustomItem item, Placement.Storage spec) {
@@ -260,7 +328,7 @@ public final class FurnitureListener implements Listener {
         Block clicked = event.getClickedBlock();
         Optional<Block> target = clicked != null && furniture.identify(clicked).isPresent()
                 ? Optional.of(clicked)
-                : furniture.target(event.getPlayer());
+                : furniture.clickedThrough(event.getPlayer(), clicked);
         if (target.isEmpty() || FurnitureService.isVanillaBlock(target.get().getType())) {
             // Nothing here, or a chest or bed: mined like the vanilla block it is.
             return;

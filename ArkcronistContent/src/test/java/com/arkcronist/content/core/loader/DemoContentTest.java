@@ -81,6 +81,50 @@ class DemoContentTest {
         }
     }
 
+    /** 1.9: the ruby chest's double, the quest board and its notice templates. */
+    @Test
+    void theDoubleChestAndTheQuestBoardLoadAndCompile() throws IOException {
+        LoadReport report = new ContentLoader().load(SHIPPED);
+        assertEquals(java.util.List.of(), report.problems());
+        Map<String, ItemDefinition> items = report.items().stream()
+                .collect(Collectors.toMap(ItemDefinition::fullId, Function.identity()));
+
+        Placement.Furniture chest = (Placement.Furniture) items.get("demo:ruby_chest").placement();
+        assertNotNull(chest.doubleChest());
+        assertEquals("open_double", chest.doubleChest().animated().open());
+        assertEquals("close_double", chest.doubleChest().animated().close());
+        assertTrue(chest.doubleChest().animated().model().clips().keySet()
+                .containsAll(java.util.List.of("open_double", "close_double")));
+        assertEquals(27, chest.storage().slots());
+        assertEquals("<dark_red>Large Ruby Chest", chest.doubleChest().title());
+
+        Placement.Furniture board = (Placement.Furniture) items.get("demo:medieval_bulletin_board").placement();
+        assertNotNull(board.board());
+        assertEquals("Quest Board", board.board().title());
+        assertEquals(new com.arkcronist.content.core.furniture.Footprint(3, 2), board.footprint());
+        assertEquals(Placement.Support.BARRIER, board.support());
+        assertNull(board.storage());
+
+        assertEquals(java.util.List.of("ruby_delivery", "zombie_hunt", "miners_errand"),
+                report.quests().stream().map(com.arkcronist.content.core.quest.QuestDefinition::id).toList());
+
+        Path pack = temp.resolve("pack");
+        PackCompiler.Result result = new PackCompiler(new PackSettings(new JsonPrimitive("demo"), 46, 46, 99))
+                .compile(pack, report.items(), Map.of());
+        assertEquals(java.util.List.of(), result.problems());
+        for (String bone : java.util.List.of("body", "lid")) {
+            assertTrue(Files.isRegularFile(pack.resolve("assets/demo/items/ruby_chest/double/bone_" + bone + ".json")), bone);
+            assertTrue(Files.isRegularFile(pack.resolve("assets/demo/models/ruby_chest/double/bone_" + bone + ".json")), bone);
+        }
+        assertTrue(Files.isRegularFile(pack.resolve("assets/demo/textures/ruby_chest/double/tex_0.png")));
+        assertTrue(Files.isRegularFile(pack.resolve("assets/demo/models/furniture/medieval_bulletin_board.json")));
+        assertTrue(Files.isRegularFile(pack.resolve("assets/demo/textures/furniture/medieval_bulletin_board.png")));
+        String atlas = Files.readString(pack.resolve("assets/minecraft/atlases/blocks.json"));
+        for (String sprite : java.util.List.of("demo:ruby_chest/double/tex_0", "demo:furniture/medieval_bulletin_board")) {
+            assertTrue(atlas.contains("\"" + sprite + "\""), sprite + " in " + atlas);
+        }
+    }
+
     @Test
     void theBloodRubySetIsNetheriteWornAsRubyArmour() throws IOException {
         LoadReport report = new ContentLoader().load(SHIPPED);

@@ -15,7 +15,10 @@ import com.arkcronist.content.core.definition.JobReward;
 import com.arkcronist.content.core.definition.ModelSource;
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.definition.ResourceLocation;
+import com.arkcronist.content.core.furniture.Footprint;
 import com.arkcronist.content.core.hud.HudDefinition;
+import com.arkcronist.content.core.quest.QuestDefinition;
+import com.arkcronist.content.core.quest.QuestReader;
 import com.arkcronist.content.core.liquid.LiquidModels;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
@@ -108,13 +111,14 @@ public final class ContentLoader {
         Map<String, AdvancementDefinition> advancements = new LinkedHashMap<>();
         Map<String, HudDefinition> huds = new LinkedHashMap<>();
         Map<String, FontImageDefinition> fontImages = new LinkedHashMap<>();
+        Map<String, QuestDefinition> quests = new LinkedHashMap<>();
         List<String> problems = new ArrayList<>();
         for (Path file : files) {
-            readFile(contentsDir, file, items, emojis, advancements, huds, fontImages, problems);
+            readFile(contentsDir, file, items, emojis, advancements, huds, fontImages, quests, problems);
         }
         return new LoadReport(new ArrayList<>(items.values()), new ArrayList<>(emojis.values()),
                 new ArrayList<>(advancements.values()), new ArrayList<>(huds.values()),
-                new ArrayList<>(fontImages.values()), problems);
+                new ArrayList<>(fontImages.values()), new ArrayList<>(quests.values()), problems);
     }
 
     /**
@@ -181,7 +185,7 @@ public final class ContentLoader {
     private void readFile(Path contentsDir, Path file, Map<String, ItemDefinition> items,
                           Map<String, EmojiDefinition> emojis, Map<String, AdvancementDefinition> advancements,
                           Map<String, HudDefinition> huds, Map<String, FontImageDefinition> fontImages,
-                          List<String> problems) {
+                          Map<String, QuestDefinition> quests, List<String> problems) {
         String where = unix(contentsDir.relativize(file));
 
         Object document;
@@ -216,6 +220,11 @@ public final class ContentLoader {
                 problems);
         readHuds(root.get("huds"), namespace, sourceRoot, file, where, contentsDir, huds, problems);
         readFontImages(root.get("font_images"), namespace, sourceRoot, file, where, contentsDir, fontImages, problems);
+        for (QuestDefinition quest : QuestReader.read(root.get("quests"), where, problems)) {
+            if (quests.putIfAbsent(quest.id(), quest) != null) {
+                problems.add(where + " > quest " + quest.id() + ": already defined in another file - this one is ignored");
+            }
+        }
 
         // A file without items is not an error: it may hold only emojis, or another kind of
         // content this version does not read yet.
@@ -796,21 +805,112 @@ public final class ContentLoader {
             problems.add(prefix + "'face-player' is ignored: a " + support + " faces the way vanilla placed it");
         }
 
-        Placement.Animated animated = animated(namespace, id, section, sourceRoot, interactable.equals("storage"),
-                prefix, problems);
+        Placement.Animated animated = animated(namespace, new ResourceLocation(namespace, id), section, sourceRoot,
+                "open", "close", interactable.equals("storage"), prefix, problems);
         String modelEngineId = modelEngineId(section, prefix, problems);
         if (animated != null && modelEngineId != null) {
             problems.add(prefix + "both 'animated-model' and 'modelengine-id' are set; the animated model is used");
             modelEngineId = null;
         }
+        Placement.Storage storage = interactable.equals("storage") ? storage(section, prefix, problems) : null;
+        Placement.DoubleChest doubleChest = null;
+        if (section.containsKey("double")) {
+            if (support != Placement.Support.CHEST) {
+                problems.add(prefix + "'double' joins two chests: it needs support: CHEST");
+            } else {
+                doubleChest = doubleChest(namespace, id, section(section, "double", prefix, problems), sourceRoot,
+                        prefix + "double: ", problems);
+                if (doubleChest != null && storage != null && storage.slots() > Placement.DoubleChest.HALF_SLOTS) {
+                    problems.add(prefix + "a chest that joins into a double chest holds "
+                            + Placement.DoubleChest.HALF_SLOTS + " slots, not " + storage.slots() + "; using "
+                            + Placement.DoubleChest.HALF_SLOTS);
+                    storage = new Placement.Storage(Placement.DoubleChest.HALF_SLOTS, storage.title());
+                }
+            }
+        }
+        Footprint footprint = footprint(section, support, prefix, problems);
         return new Placement.Furniture(support, light,
                 flag(section, "face-player", true, prefix, problems),
                 display(section(section, "display", prefix, problems), prefix, problems),
                 modelEngineId,
                 interactable.equals("seat") ? seat(section, prefix, problems) : null,
-                interactable.equals("storage") ? storage(section, prefix, problems) : null,
+                storage,
                 animated,
-                support == Placement.Support.BED ? bed(section, prefix, problems) : null);
+                support == Placement.Support.BED ? bed(section, prefix, problems) : null,
+                doubleChest,
+                footprint,
+                interactable.equals("board") ? board(section, prefix, problems) : null);
+    }
+
+    /**
+     * {@code double:} what two chests of this furniture become side by side - a Blockbench model two
+     * chests wide with its {@code open_double} and {@code close_double} animations, or a plain
+     * {@code model}, either centred between the two.
+     */
+    private static Placement.DoubleChest doubleChest(String namespace, String id, Map<?, ?> section, Path sourceRoot,
+                                                     String prefix, List<String> problems) {
+        if (section == null) {
+            return null;
+        }
+        ResourceLocation key = Placement.DoubleChest.itemModel(new ResourceLocation(namespace, id));
+        Placement.Animated animated = animated(namespace, key, section, sourceRoot, "open_double", "close_double",
+                true, prefix, problems);
+        ResourceLocation model = location(section, "model", namespace, prefix, problems);
+        if (animated != null && model != null) {
+            problems.add(prefix + "both 'animated-model' and 'model' are set; the animated model is used");
+            model = null;
+        }
+        if (animated == null && model == null) {
+            problems.add(prefix + "needs 'animated-model' (a .bbmodel two chests wide) or 'model' - the chests stay"
+                    + " single");
+            return null;
+        }
+        String title = text(section, "storage-title", prefix, problems);
+        return new Placement.DoubleChest(animated, model == null ? null : new ModelSource.Provided(sourceRoot, model),
+                title == null || title.isBlank() ? null : title);
+    }
+
+    /**
+     * {@code size:} the blocks a piece stands on - {@code {width: 3, height: 2}}, or {@code 3x2} -
+     * one invisible support each. Only barrier and light supports can be more than one block.
+     */
+    private static Footprint footprint(Map<?, ?> section, Placement.Support support, String prefix,
+                                       List<String> problems) {
+        Object raw = section.get("size");
+        if (raw == null) {
+            return Footprint.SINGLE;
+        }
+        int width;
+        int height;
+        if (raw instanceof Map<?, ?> size) {
+            width = size.get("width") instanceof Number number ? number.intValue() : 1;
+            height = size.get("height") instanceof Number number ? number.intValue() : 1;
+        } else {
+            String[] parts = String.valueOf(raw).trim().toLowerCase(Locale.ROOT).split("x");
+            try {
+                width = Integer.parseInt(parts[0].trim());
+                height = parts.length > 1 ? Integer.parseInt(parts[1].trim()) : 1;
+            } catch (NumberFormatException exception) {
+                problems.add(prefix + "'size' should be {width: <n>, height: <n>} or <width>x<height>, not '" + raw + "'");
+                return Footprint.SINGLE;
+            }
+        }
+        if (width < 1 || height < 1 || width > Footprint.MAX || height > Footprint.MAX) {
+            problems.add(prefix + "'size' is 1 to " + Footprint.MAX + " blocks each way, not " + width + "x" + height
+                    + "; using 1x1");
+            return Footprint.SINGLE;
+        }
+        if ((width > 1 || height > 1) && support != Placement.Support.BARRIER && support != Placement.Support.LIGHT) {
+            problems.add(prefix + "only a BARRIER or LIGHT support can be more than one block; 'size' is ignored");
+            return Footprint.SINGLE;
+        }
+        return new Footprint(width, height);
+    }
+
+    /** {@code interactable: medieval_bulletin_board}: the title over its notices, {@code board-title}. */
+    private static Placement.QuestBoard board(Map<?, ?> section, String prefix, List<String> problems) {
+        String title = text(section, "board-title", prefix, problems);
+        return title == null || title.isBlank() ? Placement.QuestBoard.DEFAULT : new Placement.QuestBoard(title);
     }
 
     /** {@code bed-color:} the vanilla bed underneath, white unless said otherwise. */
@@ -836,7 +936,8 @@ public final class ContentLoader {
      * {@code animated-model}, and which of its animations open and close it. Only storage opens and
      * closes, so only storage is told when one of the two is missing.
      */
-    private static Placement.Animated animated(String namespace, String id, Map<?, ?> section, Path sourceRoot,
+    private static Placement.Animated animated(String namespace, ResourceLocation key, Map<?, ?> section,
+                                               Path sourceRoot, String defaultOpen, String defaultClose,
                                                boolean storage, String prefix, List<String> problems) {
         Map<?, ?> names = section(section, "animations", prefix, problems);
         String raw = text(section, "animated-model", prefix, problems);
@@ -859,12 +960,14 @@ public final class ContentLoader {
             problems.add(prefix + "'animated-model' " + path + ".bbmodel is not in " + sourceRoot.getFileName() + "/models/");
             return null;
         }
-        AnimatedModel model = BbModelReader.read(file, sourceRoot, new ResourceLocation(namespace, id), prefix, problems);
+        AnimatedModel model = BbModelReader.read(file, sourceRoot, key, prefix, problems);
         if (model == null) {
             return null;
         }
-        String open = names == null ? "open" : Objects.requireNonNullElse(text(names, "open", prefix, problems), "open");
-        String close = names == null ? "close" : Objects.requireNonNullElse(text(names, "close", prefix, problems), "close");
+        String open = names == null ? defaultOpen
+                : Objects.requireNonNullElse(text(names, "open", prefix, problems), defaultOpen);
+        String close = names == null ? defaultClose
+                : Objects.requireNonNullElse(text(names, "close", prefix, problems), defaultClose);
         for (String animation : List.of(open, close)) {
             if (!model.clips().containsKey(animation) && (names != null || (storage && !model.clips().isEmpty()))) {
                 problems.add(prefix + path + ".bbmodel has no animation '" + animation + "' (it has: "
@@ -885,9 +988,16 @@ public final class ContentLoader {
         if (kind.isEmpty() && support == Placement.Support.CHEST) {
             kind = "storage";
         }
-        if (!kind.isEmpty() && !kind.equals("seat") && !kind.equals("storage")) {
-            problems.add(prefix + "'interactable' can only be 'seat' or 'storage', not '" + raw.trim() + "'");
+        if (kind.equals("medieval_bulletin_board") || kind.equals("quest_board")) {
+            kind = "board";
+        }
+        if (!kind.isEmpty() && !kind.equals("seat") && !kind.equals("storage") && !kind.equals("board")) {
+            problems.add(prefix + "'interactable' can only be 'seat', 'storage' or 'medieval_bulletin_board', not '"
+                    + raw.trim() + "'");
             kind = "";
+        }
+        if (!kind.equals("board") && section.containsKey("board-title")) {
+            problems.add(prefix + "'board-title' is only read with interactable: medieval_bulletin_board");
         }
         if (!kind.equals("seat") && section.containsKey("seat-height")) {
             problems.add(prefix + "'seat-height' is only read with interactable: seat");

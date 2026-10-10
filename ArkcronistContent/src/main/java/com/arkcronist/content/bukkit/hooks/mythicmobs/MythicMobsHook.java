@@ -123,6 +123,17 @@ public final class MythicMobsHook implements Listener, ContentHook {
         }
     }
 
+    /** The MythicMobs type of an entity, or null when MythicMobs does not run it. */
+    public String mythicType(Entity entity) {
+        MythicBukkit mythic = MythicBukkit.inst();
+        if (mythic == null) {
+            return null;
+        }
+        return mythic.getMobManager().getActiveMob(entity.getUniqueId())
+                .map(active -> active.getMobType())
+                .orElse(null);
+    }
+
     /** Whether MythicMobs runs this entity; false while MythicMobs is not enabled. */
     public boolean isMythicMob(Entity entity) {
         MythicBukkit mythic = MythicBukkit.inst();

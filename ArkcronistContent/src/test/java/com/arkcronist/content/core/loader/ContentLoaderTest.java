@@ -30,6 +30,83 @@ class ContentLoaderTest {
     @TempDir
     Path contents;
 
+    /** 1.9: what a double chest, a wide piece and a quest board accept, and what they turn down. */
+    @Test
+    void doubleChestsFootprintsAndBoardsAreCheckedAsTheyAreRead() throws IOException {
+        Files.createDirectories(contents.resolve("pack/models/furniture"));
+        Files.copy(Path.of("src/main/resources/contents/demo/models/furniture/ruby_chest_double.bbmodel"),
+                contents.resolve("pack/models/furniture/big.bbmodel"));
+        write("pack/furniture.yml", """
+                items:
+                  wide_chest:
+                    type: custom_furniture
+                    resource: {model: furniture/x}
+                    furniture:
+                      support: CHEST
+                      slots: 54
+                      double:
+                        animated-model: furniture/big
+                  plain_double:
+                    type: custom_furniture
+                    resource: {model: furniture/x}
+                    furniture:
+                      support: CHEST
+                      double: {model: furniture/x_double}
+                  no_look:
+                    type: custom_furniture
+                    resource: {model: furniture/x}
+                    furniture:
+                      support: CHEST
+                      double: {storage-title: nothing}
+                  barrier_double:
+                    type: custom_furniture
+                    resource: {model: furniture/x}
+                    furniture:
+                      double: {model: furniture/x_double}
+                  board:
+                    type: custom_furniture
+                    resource: {model: furniture/x}
+                    furniture:
+                      interactable: quest_board
+                      size: 3x2
+                      board-title: "<gold>Notices"
+                  tall_chest:
+                    type: custom_furniture
+                    resource: {model: furniture/x}
+                    furniture:
+                      support: CHEST
+                      size: {width: 1, height: 2}
+                  huge:
+                    type: custom_furniture
+                    resource: {model: furniture/x}
+                    furniture:
+                      size: 9x9
+                      board-title: "nope"
+                """);
+        LoadReport report = new ContentLoader().load(contents);
+        Map<String, ItemDefinition> items = new java.util.LinkedHashMap<>();
+        report.items().forEach(item -> items.put(item.id(), item));
+        Placement.Furniture wide = (Placement.Furniture) items.get("wide_chest").placement();
+        assertEquals(27, wide.storage().slots(), "half a double chest at most");
+        assertEquals("open_double", wide.doubleChest().animated().open());
+        Placement.Furniture plain = (Placement.Furniture) items.get("plain_double").placement();
+        assertEquals("pack:furniture/x_double", plain.doubleChest().model().location().toString());
+        assertEquals(null, ((Placement.Furniture) items.get("no_look").placement()).doubleChest());
+        assertEquals(null, ((Placement.Furniture) items.get("barrier_double").placement()).doubleChest());
+        Placement.Furniture board = (Placement.Furniture) items.get("board").placement();
+        assertEquals("<gold>Notices", board.board().title());
+        assertEquals(new com.arkcronist.content.core.furniture.Footprint(3, 2), board.footprint());
+        assertTrue(((Placement.Furniture) items.get("tall_chest").placement()).footprint().single());
+        assertTrue(((Placement.Furniture) items.get("huge").placement()).footprint().single());
+        List<String> problems = report.problems();
+        assertTrue(problems.stream().anyMatch(p -> p.contains("wide_chest") && p.contains("27")), problems.toString());
+        assertTrue(problems.stream().anyMatch(p -> p.contains("no_look") && p.contains("chests stay single")), problems.toString());
+        assertTrue(problems.stream().anyMatch(p -> p.contains("barrier_double") && p.contains("support: CHEST")), problems.toString());
+        assertTrue(problems.stream().anyMatch(p -> p.contains("tall_chest") && p.contains("BARRIER or LIGHT")), problems.toString());
+        assertTrue(problems.stream().anyMatch(p -> p.contains("huge") && p.contains("1 to 5")), problems.toString());
+        assertTrue(problems.stream().anyMatch(p -> p.contains("huge") && p.contains("board-title")), problems.toString());
+    }
+
     @Test
     void readsEveryAttributeOfAnItem() throws IOException {
         write("demo/items.yml", """

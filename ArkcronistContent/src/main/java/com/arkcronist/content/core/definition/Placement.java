@@ -1,6 +1,7 @@
 package com.arkcronist.content.core.definition;
 
 import com.arkcronist.content.core.animation.AnimatedModel;
+import com.arkcronist.content.core.furniture.Footprint;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -61,9 +62,25 @@ public sealed interface Placement {
      *                      animated; null for the single display of {@code resource}
      * @param bed           the colour of the vanilla bed underneath a {@link Support#BED}; null for
      *                      other supports
+     * @param doubleChest   how two of a {@link Support#CHEST} look and open once joined side by
+     *                      side; null when they stay single
+     * @param footprint     the blocks it stands on, {@link Footprint#SINGLE} for one; more only on a
+     *                      barrier or light support
+     * @param board         a right click opens the quest board; null for anything else
      */
     record Furniture(Support support, int light, boolean facePlayer, Display display, String modelEngineId,
-                     Seat seat, Storage storage, Animated animated, Bed bed) implements Placement {
+                     Seat seat, Storage storage, Animated animated, Bed bed, DoubleChest doubleChest,
+                     Footprint footprint, QuestBoard board) implements Placement {
+
+        public Furniture {
+            footprint = footprint == null ? Footprint.SINGLE : footprint;
+        }
+
+        public Furniture(Support support, int light, boolean facePlayer, Display display, String modelEngineId,
+                         Seat seat, Storage storage, Animated animated, Bed bed) {
+            this(support, light, facePlayer, display, modelEngineId, seat, storage, animated, bed, null,
+                    Footprint.SINGLE, null);
+        }
 
         public Furniture(Support support, int light, boolean facePlayer, Display display, String modelEngineId,
                          Seat seat, Storage storage) {
@@ -74,6 +91,39 @@ public sealed interface Placement {
         public ContentType type() {
             return ContentType.CUSTOM_FURNITURE;
         }
+    }
+
+    /**
+     * What two chests of the same furniture become when placed side by side, facing the same way, as
+     * vanilla chests do: one double chest of 54 slots - each half keeps its own 27 - drawn by one
+     * model, its {@code animated} one or its plain {@code model}.
+     *
+     * @param animated a Blockbench model two chests wide, centred between them, with its open and
+     *                 close animations ({@code open_double}, {@code close_double}); null for a plain
+     *                 model
+     * @param model    a plain item model two chests wide, centred between them, drawn by one item
+     *                 display; null with an animated model
+     * @param title    MiniMessage shown at the top of the double inventory; null for the single's
+     */
+    record DoubleChest(Animated animated, ModelSource model, String title) {
+
+        /** Each half's slots: a double chest is two of these. */
+        public static final int HALF_SLOTS = 27;
+
+        /** The item definition drawing the double model: {@code <namespace>:<id>/double}. */
+        public static ResourceLocation itemModel(ResourceLocation single) {
+            return new ResourceLocation(single.namespace(), single.path() + "/double");
+        }
+    }
+
+    /**
+     * A quest board: a right click opens its notices.
+     *
+     * @param title MiniMessage shown over the notices; null for the item's name
+     */
+    record QuestBoard(String title) {
+
+        public static final QuestBoard DEFAULT = new QuestBoard(null);
     }
 
     /**

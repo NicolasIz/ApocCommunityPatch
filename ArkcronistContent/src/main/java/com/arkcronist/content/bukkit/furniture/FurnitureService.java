@@ -10,8 +10,11 @@ import com.arkcronist.content.core.animation.Animator;
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.definition.ResourceLocation;
 import com.arkcronist.content.core.furniture.BedLayout;
+import com.arkcronist.content.core.furniture.ChestPairing;
 import com.arkcronist.content.core.furniture.DisplayTransform;
 import com.arkcronist.content.core.storage.BlockKey;
+import com.arkcronist.content.core.storage.ChestPair;
+import com.arkcronist.content.core.storage.ChestPairStore;
 import com.arkcronist.content.core.storage.FurnitureTransform;
 import com.arkcronist.content.core.storage.FurnitureTransformStore;
 import com.arkcronist.content.core.storage.PlacedContent;
@@ -50,6 +53,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 
@@ -119,6 +124,14 @@ public final class FurnitureService {
     private final NamespacedKey boneTag;
     /** On a bone: its root's UUID. */
     private final NamespacedKey rootTag;
+    /** On the root of a double chest: drawn by the double's model, standing on two chests. */
+    private final NamespacedKey doubleTag;
+    /** Double chests, by either half; null until storage is up. */
+    private @Nullable ChestPairStore pairs;
+    /** Ticks between the click and a double chest's lid starting to move. */
+    private long doubleDelayNanos = TimeUnit.MILLISECONDS.toNanos(63);
+    /** Told before two chests join or a double chest parts, so an open inventory of either is saved and shut. */
+    private Consumer<Block> releaseStorage = block -> { };
     /** Something else living in an invisible block, which a punch at furniture must not pass through. */
     private Predicate<Block> obstacle = block -> false;
     /** Pieces drawn with a transform of their own (the editor's "this piece only"); null until storage is up. */
@@ -138,6 +151,17 @@ public final class FurnitureService {
         this.bonesTag = new NamespacedKey(plugin, "furniture_bones");
         this.boneTag = new NamespacedKey(plugin, "furniture_bone");
         this.rootTag = new NamespacedKey(plugin, "furniture_root");
+        this.doubleTag = new NamespacedKey(plugin, "furniture_double");
+    }
+
+    /**
+     * Where double chests are kept, how long after a click their lid moves, and who to tell before
+     * two chests join or a double chest parts.
+     */
+    public void usePairs(ChestPairStore pairs, int delayMillis, Consumer<Block> releaseStorage) {
+        this.pairs = pairs;
+        this.doubleDelayNanos = TimeUnit.MILLISECONDS.toNanos(Math.max(0, delayMillis));
+        this.releaseStorage = releaseStorage;
     }
 
     /** Where pieces with a transform of their own are kept. */
@@ -186,7 +210,7 @@ public final class FurnitureService {
     public boolean place(Block block, Player player, CustomItem item, Placement.Furniture furniture) {
         List<Block> parts = List.of(block);
         Location at = centre(block);
-        float yaw = furniture.facePlayer() ? facing(player) : 0f;
+        float yaw = placementYaw(player, furniture);
         switch (furniture.support()) {
             case LIGHT -> {
                 if (block.getBlockData() instanceof Light light) {
@@ -215,6 +239,19 @@ public final class FurnitureService {
             default -> {
             }
         }
+        if (!furniture.footprint().single()) {
+            // The rest of a wide or tall piece: a support of the same kind on every block it covers.
+            parts = footprint(block, furniture, yaw);
+            for (Block part : parts.subList(1, parts.size())) {
+                part.setType(block.getType(), false);
+                if (part.getBlockData() instanceof Light light) {
+                    light.setLevel(furniture.light());
+                    part.setBlockData(light, false);
+                }
+            }
+            double[] shift = furniture.footprint().centreShift(yaw);
+            at.add(shift[0], 0, shift[1]);
+        }
         if (furniture.animated() != null) {
             // A Blockbench model's origin is the bottom of its block, not the centre.
             at.subtract(0, 0.5, 0);
@@ -223,7 +260,7 @@ public final class FurnitureService {
         at.setPitch(0f);
 
         Block anchor = parts.get(0);
-        ItemDisplay root = spawn(at, item, furniture, anchor, parts);
+        ItemDisplay root = spawn(at, item, furniture, anchor, parts, false);
         for (Block part : parts) {
             link(part, root.getUniqueId());
             store.add(new PlacedContent(part.getWorld().getUID(), part.getX(), part.getY(), part.getZ(),
@@ -235,29 +272,81 @@ public final class FurnitureService {
         return true;
     }
 
-    /** The root display, and for an animated model its bones. Everything is set before it joins the world. */
-    private ItemDisplay spawn(Location at, CustomItem item, Placement.Furniture furniture, Block anchor, List<Block> parts) {
+    /** The way a piece placed by {@code player} will face: towards them, or south. */
+    public static float placementYaw(Player player, Placement.Furniture furniture) {
+        return furniture.facePlayer() ? facing(player) : 0f;
+    }
+
+    /**
+     * Every block a piece placed on {@code anchor}, turned to {@code yaw}, covers: {@code anchor}
+     * first, then the rest of its {@link Placement.Furniture#footprint() footprint}.
+     */
+    public static List<Block> footprint(Block anchor, Placement.Furniture furniture, float yaw) {
+        List<Block> blocks = new ArrayList<>();
+        for (int[] offset : furniture.footprint().offsets(yaw)) {
+            blocks.add(anchor.getRelative(offset[0], offset[1], offset[2]));
+        }
+        return blocks;
+    }
+
+    /**
+     * The root display, and for an animated model its bones. Everything is set before it joins the
+     * world.
+     *
+     * @param doubled the root of a double chest: drawn by the double's model
+     */
+    private ItemDisplay spawn(Location at, CustomItem item, Placement.Furniture furniture, Block anchor, List<Block> parts,
+                              boolean doubled) {
         Placement.Display settings = drawn(furniture);
+        Placement.Animated animated = doubled ? furniture.doubleChest().animated() : furniture.animated();
         ItemDisplay root = at.getWorld().spawn(at, ItemDisplay.class, display -> {
             tag(display, item.id(), anchor);
             display.getPersistentDataContainer().set(partsTag, PersistentDataType.LONG_ARRAY,
                     parts.stream().mapToLong(part -> BlockKey.pack(part.getX(), part.getY(), part.getZ())).toArray());
-            if (furniture.animated() == null) {
-                display.setItemStack(items.create(item, 1));
+            if (doubled) {
+                display.getPersistentDataContainer().set(doubleTag, PersistentDataType.BYTE, (byte) 1);
+            }
+            if (animated == null) {
+                display.setItemStack(doubled ? doubleItem(item) : items.create(item, 1));
                 display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.valueOf(settings.transform()));
                 display.setTransformation(new Transformation(vector(settings.translation()),
                         rotation(settings.rotation()), vector(settings.scale()), new Quaternionf()));
             }
         });
-        if (furniture.animated() != null) {
+        if (animated != null) {
             spawnBones(root, item, furniture);
         }
         return root;
     }
 
+    /** A double chest's plain model: an item drawn by {@code <namespace>:<id>/double}. */
+    private static ItemStack doubleItem(CustomItem item) {
+        ResourceLocation key = Placement.DoubleChest.itemModel(item.definition().itemModel());
+        ItemStack stack = ItemStack.of(Material.PAPER);
+        stack.editMeta(meta -> meta.setItemModel(new NamespacedKey(key.namespace(), key.path())));
+        return stack;
+    }
+
+    /** Whether a root draws a double chest. */
+    private boolean doubled(Entity root) {
+        return root.getPersistentDataContainer().has(doubleTag);
+    }
+
+    /**
+     * The Blockbench model drawing a piece: a double chest's root draws the double's, any other the
+     * furniture's own; null for an item model.
+     */
+    private @Nullable Placement.Animated animatedOf(@Nullable Entity root, Placement.Furniture furniture) {
+        if (root != null && doubled(root) && furniture.doubleChest() != null) {
+            return furniture.doubleChest().animated();
+        }
+        return furniture.animated();
+    }
+
     /** One display per bone with cubes, at rest, listed on the root. */
     private List<ItemDisplay> spawnBones(ItemDisplay root, CustomItem item, Placement.Furniture furniture) {
-        AnimatedModel model = furniture.animated().model();
+        boolean doubled = doubled(root);
+        AnimatedModel model = animatedOf(root, furniture).model();
         Placement.Display settings = drawn(furniture);
         List<Animator.Transform> rest = Animator.rest(model);
         Block anchor = anchor(root);
@@ -275,7 +364,7 @@ public final class FurnitureService {
                 PersistentDataContainer data = entity.getPersistentDataContainer();
                 data.set(boneTag, PersistentDataType.STRING, bone.name());
                 data.set(rootTag, PersistentDataType.STRING, root.getUniqueId().toString());
-                entity.setItemStack(boneItem(item, bone.name()));
+                entity.setItemStack(boneItem(item, bone.name(), doubled));
                 entity.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
                 entity.setTransformation(pose);
             });
@@ -295,9 +384,14 @@ public final class FurnitureService {
         data.set(anchorTag, PersistentDataType.LONG, BlockKey.pack(anchor.getX(), anchor.getY(), anchor.getZ()));
     }
 
-    /** A bone's look: a plain item carrying the bone's item model, {@code <namespace>:<id>/bone_<name>}. */
-    private static ItemStack boneItem(CustomItem item, String bone) {
-        ResourceLocation key = AnimatedModel.boneItemModel(item.definition().itemModel(), bone);
+    /**
+     * A bone's look: a plain item carrying the bone's item model, {@code <namespace>:<id>/bone_<name>}
+     * - or {@code <namespace>:<id>/double/bone_<name>} for a double chest's.
+     */
+    private static ItemStack boneItem(CustomItem item, String bone, boolean doubled) {
+        ResourceLocation base = doubled ? Placement.DoubleChest.itemModel(item.definition().itemModel())
+                : item.definition().itemModel();
+        ResourceLocation key = AnimatedModel.boneItemModel(base, bone);
         ItemStack stack = ItemStack.of(Material.PAPER);
         stack.editMeta(meta -> meta.setItemModel(new NamespacedKey(key.namespace(), key.path())));
         return stack;
@@ -338,6 +432,10 @@ public final class FurnitureService {
     /** @param ours whether {@code chest} is furniture already, before it is recorded as such */
     private void keepSingle(Block chest, boolean ours) {
         if (!(chest.getBlockData() instanceof Chest data) || data.getType() == Chest.Type.SINGLE) {
+            return;
+        }
+        if (!ours && pairAt(chest).isPresent()) {
+            // A double chest of furniture: joined on purpose.
             return;
         }
         Block partner = chest.getRelative(joined(data));
@@ -400,6 +498,217 @@ public final class FurnitureService {
         return facing == null ? 0f : facing.yaw;
     }
 
+    // ---------------------------------------------------------------- double chests
+
+    /** The double chest one of whose halves stands on {@code block}, if it is one. Memory only. */
+    public Optional<ChestPair> pairAt(Block block) {
+        ChestPairStore store = pairs;
+        return store == null ? Optional.empty()
+                : Optional.ofNullable(store.at(block.getWorld().getUID(), block.getX(), block.getY(), block.getZ()));
+    }
+
+    /**
+     * The chest a chest of furniture just placed on {@code placed} joins, as vanilla would join two
+     * chests: one of the same furniture, beside it - to its left or right, not behind or in front -
+     * facing the same way, still single. Never when the placer sneaks, as in vanilla, nor for
+     * furniture without a {@code double:} look.
+     */
+    public Optional<Block> partnerFor(Block placed, CustomItem item, Placement.Furniture furniture, Player player) {
+        if (furniture.doubleChest() == null || pairs == null || player.isSneaking()
+                || !(placed.getBlockData() instanceof Chest chest)) {
+            return Optional.empty();
+        }
+        BedLayout.Facing facing = facing(chest.getFacing());
+        if (facing == null) {
+            return Optional.empty();
+        }
+        for (BedLayout.Facing side : ChestPairing.sides(facing)) {
+            Block neighbour = placed.getRelative(side.dx, 0, side.dz);
+            if (neighbour.getBlockData() instanceof Chest other && other.getFacing() == chest.getFacing()
+                    && other.getType() == Chest.Type.SINGLE
+                    && identify(neighbour).filter(item.id()::equals).isPresent()
+                    && pairAt(neighbour).isEmpty()) {
+                return Optional.of(neighbour);
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Joins two single chests of the same furniture into a double chest: their own displays go, the
+     * vanilla chests underneath become the two halves of a vanilla double chest - its hitbox, its
+     * shape for hoppers and pistons - and one display, centred between them, draws the double's
+     * model. The pair is in memory at once and written to the database in one transaction; each half
+     * keeps its own storage row, so no item moves.
+     *
+     * <p>Open inventories of either chest are saved and shut first.</p>
+     */
+    public void join(Block a, Block b, CustomItem item, Placement.Furniture furniture) {
+        if (!(a.getBlockData() instanceof Chest chest) || pairs == null) {
+            return;
+        }
+        BedLayout.Facing facing = facing(chest.getFacing());
+        BedLayout.Facing towards = towards(a, b);
+        if (facing == null || towards == null) {
+            return;
+        }
+        releaseStorage.accept(a);
+        releaseStorage.accept(b);
+        boolean aFirst = ChestPairing.firstIs(facing, towards);
+        Block first = aFirst ? a : b;
+        Block second = aFirst ? b : a;
+        for (Block half : List.of(first, second)) {
+            removeDisplays(half);
+        }
+        half(first, Chest.Type.RIGHT);
+        half(second, Chest.Type.LEFT);
+        ItemDisplay root = spawnDouble(item, furniture, first, second);
+        link(first, root.getUniqueId());
+        link(second, root.getUniqueId());
+        pairs.put(new ChestPair(first.getWorld().getUID(), first.getX(), first.getY(), first.getZ(), second.getX(),
+                second.getY(), second.getZ(), item.id()));
+    }
+
+    /** The double chest's root, centred between its halves, facing the way they do. */
+    private ItemDisplay spawnDouble(CustomItem item, Placement.Furniture furniture, Block first, Block second) {
+        Location at = new Location(first.getWorld(), (first.getX() + second.getX()) / 2.0 + 0.5, first.getY() + 0.5,
+                (first.getZ() + second.getZ()) / 2.0 + 0.5);
+        if (furniture.doubleChest().animated() != null) {
+            at.subtract(0, 0.5, 0);
+        }
+        at.setYaw(first.getBlockData() instanceof Chest chest ? yaw(chest.getFacing()) : 0f);
+        at.setPitch(0f);
+        return spawn(at, item, furniture, first, List.of(first, second), true);
+    }
+
+    /**
+     * Parts the double chest one of whose halves is {@code block}: the double display goes, the
+     * vanilla chests go back to single, and each half that stays gets its own display again.
+     *
+     * @param leaving a half that is being taken away and gets no display of its own; null to keep both
+     */
+    public void part(Block block, @Nullable Block leaving) {
+        Optional<ChestPair> pair = pairAt(block);
+        Entity root = root(block);
+        List<Block> halves = new ArrayList<>();
+        if (pair.isPresent()) {
+            ChestPair p = pair.get();
+            halves.add(block.getWorld().getBlockAt(p.x(), p.y(), p.z()));
+            halves.add(block.getWorld().getBlockAt(p.px(), p.py(), p.pz()));
+        } else if (root != null) {
+            halves.addAll(parts(block, root));
+        } else {
+            halves.add(block);
+        }
+        releaseStorage.accept(halves.get(0));
+        if (root != null && doubled(root)) {
+            animations.stop(root.getUniqueId());
+            bones(root).forEach(Entity::remove);
+            root.remove();
+        }
+        if (pairs != null) {
+            pairs.remove(block.getWorld().getUID(), block.getX(), block.getY(), block.getZ());
+        }
+        for (Block half : halves) {
+            unlink(half);
+            if (half.getBlockData() instanceof Chest chest && chest.getType() != Chest.Type.SINGLE) {
+                chest.setType(Chest.Type.SINGLE);
+                half.setBlockData(chest, false);
+            }
+        }
+        for (Block half : halves) {
+            if (half.equals(leaving)) {
+                continue;
+            }
+            Optional<CustomItem> item = recorded(half).flatMap(registry::get);
+            if (item.isPresent() && item.get().placement() instanceof Placement.Furniture furniture
+                    && half.getType() == Material.CHEST) {
+                Location at = centre(half);
+                if (furniture.animated() != null) {
+                    at.subtract(0, 0.5, 0);
+                }
+                at.setYaw(half.getBlockData() instanceof Chest chest ? yaw(chest.getFacing()) : 0f);
+                at.setPitch(0f);
+                ItemDisplay single = spawn(at, item.get(), furniture, half, List.of(half), false);
+                link(half, single.getUniqueId());
+            }
+        }
+    }
+
+    /**
+     * A double chest's root that has just loaded is checked against the database, and a single
+     * chest's against it too - the two are written at different moments, and a crash between them
+     * leaves them disagreeing. What players see wins: a double drawn on two chests that still join is
+     * recorded again; one whose chests no longer join is parted; a pair recorded for a chest drawn
+     * single is forgotten.
+     *
+     * @return false when the root was replaced and there is nothing more to restore
+     */
+    private boolean pairStillStands(ItemDisplay root, CustomItem item, Placement.Furniture furniture) {
+        ChestPairStore store = pairs;
+        if (store == null || !store.loaded(root.getWorld().getUID())) {
+            return true;
+        }
+        Block anchor = anchor(root);
+        Optional<ChestPair> pair = pairAt(anchor);
+        if (!doubled(root)) {
+            if (pair.isPresent() && furniture.support() == Placement.Support.CHEST) {
+                store.remove(anchor.getWorld().getUID(), anchor.getX(), anchor.getY(), anchor.getZ());
+            }
+            return true;
+        }
+        List<Block> halves = parts(anchor, root);
+        boolean joined = furniture.doubleChest() != null && halves.size() == 2
+                && halves.stream().allMatch(half -> half.getBlockData() instanceof Chest chest
+                && chest.getType() != Chest.Type.SINGLE && recorded(half).filter(item.id()::equals).isPresent());
+        if (!joined) {
+            part(anchor, null);
+            return false;
+        }
+        if (pair.isEmpty()) {
+            Block first = halves.get(0);
+            Block second = halves.get(1);
+            store.put(new ChestPair(first.getWorld().getUID(), first.getX(), first.getY(), first.getZ(), second.getX(),
+                    second.getY(), second.getZ(), item.id()));
+        }
+        return true;
+    }
+
+    /** Takes away a piece's displays, keeping its records and links to be replaced. */
+    private void removeDisplays(Block block) {
+        Entity root = root(block);
+        if (root == null) {
+            root = findRoot(block);
+        }
+        if (root != null) {
+            animations.stop(root.getUniqueId());
+            bones(root).forEach(Entity::remove);
+            root.remove();
+        }
+    }
+
+    private static void half(Block block, Chest.Type type) {
+        if (block.getBlockData() instanceof Chest chest) {
+            chest.setType(type);
+            block.setBlockData(chest, false);
+        }
+    }
+
+    /** Which way {@code b} is from {@code a}, if it is right beside it. */
+    private static @Nullable BedLayout.Facing towards(Block a, Block b) {
+        int dx = b.getX() - a.getX();
+        int dz = b.getZ() - a.getZ();
+        if (b.getY() != a.getY()) {
+            return null;
+        }
+        for (BedLayout.Facing facing : BedLayout.Facing.values()) {
+            if (facing.dx == dx && facing.dz == dz) {
+                return facing;
+            }
+        }
+        return null;
+    }
+
     // ---------------------------------------------------------------- ModelEngine
 
     /**
@@ -438,18 +747,22 @@ public final class FurnitureService {
         if (item.isEmpty() || !(item.get().placement() instanceof Placement.Furniture furniture)) {
             return;
         }
+        if (!pairStillStands(root, item.get(), furniture)) {
+            return;
+        }
+        Placement.Animated animated = animatedOf(root, furniture);
         boolean wasAnimated = data.has(bonesTag);
-        if (wasAnimated != (furniture.animated() != null)) {
+        if (wasAnimated != (animated != null)) {
             respawn(root, item.get(), furniture, wasAnimated);
             return;
         }
-        if (furniture.animated() != null) {
-            List<ItemDisplay> bones = bones(root, furniture.animated().model());
+        if (animated != null) {
+            List<ItemDisplay> bones = bones(root, animated.model());
             if (bones == null) {
                 bones(root).forEach(Entity::remove);
                 bones = spawnBones(root, item.get(), furniture);
             }
-            AnimationPlayer.pose(bones, Animator.rest(furniture.animated().model()), drawn(furniture));
+            AnimationPlayer.pose(bones, Animator.rest(animated.model()), drawn(furniture));
             return;
         }
         ModelEngineBridge modelEngine = hooks.modelEngine();
@@ -469,7 +782,7 @@ public final class FurnitureService {
     public Placement.Display effectiveDisplay(Entity root, Placement.Furniture furniture) {
         FurnitureTransformStore store = transforms;
         String id = furnitureId(root);
-        if (store != null && id != null && furniture.animated() == null) {
+        if (store != null && id != null && furniture.animated() == null && !doubled(root)) {
             Block anchor = anchor(root);
             FurnitureTransform own = store.at(anchor.getWorld().getUID(), anchor.getX(), anchor.getY(), anchor.getZ());
             if (own != null && own.furnitureId().equals(id)) {
@@ -485,10 +798,11 @@ public final class FurnitureService {
      */
     public void apply(ItemDisplay root, Placement.Furniture furniture, Placement.Display settings) {
         Placement.Display drawn = drawn(furniture, settings);
-        if (furniture.animated() != null) {
-            List<ItemDisplay> bones = bones(root, furniture.animated().model());
+        Placement.Animated animated = animatedOf(root, furniture);
+        if (animated != null) {
+            List<ItemDisplay> bones = bones(root, animated.model());
             if (bones != null) {
-                AnimationPlayer.pose(bones, Animator.rest(furniture.animated().model()), drawn);
+                AnimationPlayer.pose(bones, Animator.rest(animated.model()), drawn);
             }
             return;
         }
@@ -564,7 +878,7 @@ public final class FurnitureService {
         String id = display == null ? null : furnitureId(display);
         Optional<CustomItem> item = id == null ? Optional.empty() : registry.get(id);
         if (item.isPresent() && item.get().placement() instanceof Placement.Furniture furniture
-                && furniture.animated() == null) {
+                && animatedOf(display, furniture) == null) {
             apply(display, furniture, effectiveDisplay(display, furniture));
         }
     }
@@ -626,11 +940,12 @@ public final class FurnitureService {
         at.add(0, wasAnimated ? 0.5 : -0.5, 0);
         Block anchor = anchor(root);
         List<Block> parts = parts(anchor, root);
+        boolean doubled = doubled(root);
         bones(root).forEach(Entity::remove);
         root.remove();
-        ItemDisplay replacement = spawn(at, item, furniture, anchor, parts);
+        ItemDisplay replacement = spawn(at, item, furniture, anchor, parts, doubled);
         parts.forEach(part -> link(part, replacement.getUniqueId()));
-        if (furniture.animated() == null) {
+        if (furniture.animated() == null && !doubled) {
             attachModelEngine(replacement, furniture);
         }
     }
@@ -695,6 +1010,10 @@ public final class FurnitureService {
      * item left to drop.</p>
      */
     public void remove(Block block, String id, boolean dropItem) {
+        if (pairAt(block).isPresent() || (root(block) instanceof ItemDisplay display && doubled(display))) {
+            // Half of a double chest: the other half goes back to being a chest of its own first.
+            part(block, block);
+        }
         Entity root = root(block);
         if (root == null) {
             root = findRoot(block);
@@ -788,6 +1107,35 @@ public final class FurnitureService {
     }
 
     /**
+     * The furniture a click the client sent elsewhere was meant for - only furniture on a light
+     * block, which a client cannot target, so a click at it lands on the block behind it, or on the
+     * air. A barrier, a chest or a bed the client clicks itself: a click that landed elsewhere was not
+     * for it, wherever the server's copy of the player's look - which can be a tick behind the
+     * client's - points.
+     *
+     * @param clicked the block the click landed on, which is not furniture; null for a click at the air
+     */
+    public Optional<Block> clickedThrough(Player player, @Nullable Block clicked) {
+        Location eye = player.getEyeLocation();
+        double behind = clicked == null ? Double.MAX_VALUE : eye.distanceSquared(centre(clicked));
+        BlockIterator ray = new BlockIterator(player, REACH);
+        while (ray.hasNext()) {
+            Block block = ray.next();
+            if (block.equals(clicked)) {
+                return Optional.empty();
+            }
+            if (identify(block).isPresent()) {
+                return block.getType() == Material.LIGHT && eye.distanceSquared(centre(block)) < behind
+                        ? Optional.of(block) : Optional.empty();
+            }
+            if (!block.isPassable() || obstacle.test(block)) {
+                return Optional.empty();
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
      * True for one of this plugin's displays whose support block is gone or belongs to other
      * displays - left behind by a crash, a rollback, or a support removed while its displays were
      * not loaded. A bone is judged by its root's link.
@@ -820,10 +1168,11 @@ public final class FurnitureService {
     public boolean animate(Block block, String clipName) {
         Optional<Placement.Furniture> furniture = definition(block);
         Entity root = root(block);
-        if (furniture.isEmpty() || furniture.get().animated() == null || !(root instanceof ItemDisplay display)) {
+        Placement.Animated animated = furniture.isEmpty() ? null : animatedOf(root, furniture.get());
+        if (animated == null || !(root instanceof ItemDisplay display)) {
             return false;
         }
-        AnimatedModel model = furniture.get().animated().model();
+        AnimatedModel model = animated.model();
         AnimatedModel.Clip clip = model.clips().get(clipName);
         if (clip == null) {
             return false;
@@ -838,20 +1187,30 @@ public final class FurnitureService {
 
     /** The names of the animations the furniture on this block can play. */
     public List<String> clips(Block block) {
-        return definition(block).map(Placement.Furniture::animated)
+        Entity root = root(block);
+        return definition(block).map(furniture -> animatedOf(root, furniture))
                 .map(animated -> List.copyOf(animated.model().clips().keySet())).orElse(List.of());
     }
 
     /**
      * Storage furniture was opened - by the first viewer, in the same tick as their click: its
-     * {@code open} animation plays, and a chest's or a barrel's sound.
+     * {@code open} animation plays, and a chest's or a barrel's sound. A double chest's lid waits for
+     * the configured delay, and so does its {@code close}.
      */
     public void storageOpened(Block block) {
         Optional<Placement.Furniture> furniture = definition(block);
         if (furniture.isEmpty()) {
             return;
         }
-        Placement.Animated animated = furniture.get().animated();
+        Entity root = root(block);
+        Placement.Animated animated = animatedOf(root, furniture.get());
+        if (root != null && doubled(root)) {
+            if (animated != null && animated.open() != null) {
+                afterLidDelay(root.getUniqueId(), () -> animate(block, animated.open()));
+            }
+            sound(block, Sound.BLOCK_CHEST_OPEN);
+            return;
+        }
         if (animated != null && animated.open() != null) {
             animate(block, animated.open());
         }
@@ -869,11 +1228,14 @@ public final class FurnitureService {
         if (furniture.isEmpty()) {
             return;
         }
-        Placement.Animated animated = furniture.get().animated();
+        Entity current = root(block);
+        Placement.Animated animated = animatedOf(current, furniture.get());
         if (animated != null) {
-            if (animate && animated.close() != null && animate(block, animated.close())) {
+            if (animate && animated.close() != null && current != null && doubled(current)) {
+                afterLidDelay(current.getUniqueId(), () -> animate(block, animated.close()));
+            } else if (animate && animated.close() != null && animate(block, animated.close())) {
                 // Playing.
-            } else if (root(block) instanceof ItemDisplay root) {
+            } else if (current instanceof ItemDisplay root) {
                 animations.stop(root.getUniqueId());
                 List<ItemDisplay> bones = bones(root, animated.model());
                 if (bones != null) {
@@ -885,6 +1247,33 @@ public final class FurnitureService {
             sound(block, furniture.get().support() == Placement.Support.CHEST
                     ? Sound.BLOCK_CHEST_CLOSE : Sound.BLOCK_BARREL_CLOSE);
         }
+    }
+
+    /**
+     * Runs a double chest's lid animation on the main thread, on the first tick at least the
+     * configured time after now - the click that opened or shut it. Ticks are 50 ms apart and a click
+     * is handled between two of them, so a count of ticks alone would land anywhere from one tick
+     * after the click to two: the clock decides instead. Opening and shutting keep their order, the
+     * earlier one's task being the older.
+     */
+    private void afterLidDelay(UUID root, Runnable lid) {
+        Runnable onTheDisplay = () -> {
+            Entity still = plugin.getServer().getEntity(root);
+            if (still != null && still.isValid()) {
+                lid.run();
+            }
+        };
+        if (doubleDelayNanos <= 0) {
+            onTheDisplay.run();
+            return;
+        }
+        long due = System.nanoTime() + doubleDelayNanos;
+        plugin.getServer().getScheduler().runTaskTimer(plugin, task -> {
+            if (System.nanoTime() - due >= 0) {
+                task.cancel();
+                onTheDisplay.run();
+            }
+        }, 1L, 1L);
     }
 
     private static void sound(Block block, Sound sound) {

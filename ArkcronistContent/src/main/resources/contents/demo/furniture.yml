@@ -18,8 +18,11 @@ items:
   # chest's storage - kept in the database, like any storage furniture - and
   # in that same tick the lid swings open on every client nearby; when the
   # last player closes it, it swings shut. The vanilla chest's own inventory
-  # is never used, hoppers cannot reach it, and it never joins a neighbouring
-  # chest into a double chest.
+  # is never used, and hoppers cannot reach it.
+  #
+  # Two of them side by side, facing the same way, join as vanilla chests do:
+  # one double chest of 54 slots, drawn by double: below. Sneak while placing
+  # to keep them apart. Break either half to part them again.
   #
   # Try the other animation on it with /arkcontent animate shake.
   ruby_chest:
@@ -38,6 +41,16 @@ items:
         close: close
       slots: 27
       storage-title: "<dark_red>Ruby Chest"
+      # Two chests joined: a Blockbench model two chests wide, centred
+      # between them, whose lid opens with open_double and shuts with
+      # close_double. Each chest keeps its own 27 slots in the database;
+      # the double inventory shows the left one's first.
+      double:
+        animated-model: furniture/ruby_chest_double
+        animations:
+          open: open_double
+          close: close_double
+        storage-title: "<dark_red>Large Ruby Chest"
 
   # A bed: two real bed blocks, so sleeping, setting the spawn point and
   # skipping the night all work as in vanilla - and so does blowing up in the

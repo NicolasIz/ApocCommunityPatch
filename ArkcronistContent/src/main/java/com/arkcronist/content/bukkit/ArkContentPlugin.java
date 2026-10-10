@@ -48,6 +48,11 @@ import com.arkcronist.content.bukkit.text.GlyphTitleListener;
 import com.arkcronist.content.core.crop.CropStore;
 import com.arkcronist.content.core.storage.DatabaseManager;
 import com.arkcronist.content.core.storage.FurnitureTransform;
+import com.arkcronist.content.bukkit.quest.QuestBoardListener;
+import com.arkcronist.content.bukkit.quest.QuestBoardService;
+import com.arkcronist.content.core.quest.QuestBoardStore;
+import com.arkcronist.content.core.storage.ChestPairStore;
+import com.arkcronist.content.core.storage.PlacedContent;
 import com.arkcronist.content.core.storage.FurnitureTransformStore;
 import com.arkcronist.content.core.storage.PlacedContentStore;
 import io.papermc.paper.command.brigadier.Commands;
@@ -59,6 +64,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -103,6 +109,9 @@ public final class ArkContentPlugin extends JavaPlugin {
     private DatabaseManager database;
     private PlacedContentStore placed;
     private FurnitureTransformStore transforms;
+    private ChestPairStore pairs;
+    private QuestBoardStore questStore;
+    private QuestBoardService questBoards;
     private FurnitureEditor editor;
     private CropStore cropStore;
     private CropService crops;
@@ -151,6 +160,7 @@ public final class ArkContentPlugin extends JavaPlugin {
                 getLogger());
         this.placed = new PlacedContentStore(database, getLogger());
         this.transforms = new FurnitureTransformStore(database, getLogger());
+        this.pairs = new ChestPairStore(database, getLogger());
         this.cropStore = new CropStore(database, getLogger());
         this.delivery = new PackDelivery(settings);
         this.pipeline = new ContentPipeline(this, settings, items, blocks, emojis, delivery);
@@ -187,9 +197,11 @@ public final class ArkContentPlugin extends JavaPlugin {
         });
         this.crops = new CropService(this, items, itemFactory, cropStore);
         this.cropTicker = new CropTicker(this, crops, settings.crops().tickSeconds());
+        furniture.usePairs(pairs, settings.doubleChests().animationDelayMillis(), storage::release);
         furniture.stopAt(block -> crops.at(block).isPresent());
         crops.stopAt(block -> furniture.identify(block).isPresent());
-        this.menus = new ContentMenus(getServer(), items, itemFactory);
+        this.menus = new ContentMenus(getServer(), items, itemFactory, settings.menus(), fontImages,
+                pipeline.contentsDir());
         this.advancements = new AdvancementService(this, items, itemFactory, database);
         this.actionBars = new ActionBars(() -> getServer().getCurrentTick());
         this.guns = new GunService(this, items, itemFactory, hooks, actionBars, settings.guns());
@@ -206,7 +218,17 @@ public final class ArkContentPlugin extends JavaPlugin {
         plugins.registerEvents(new ItemCombatListener(itemFactory), this);
         plugins.registerEvents(new WorldInterceptionListener(itemFactory), this);
         plugins.registerEvents(new CustomBlockListener(blockService, itemFactory, protection, hooks), this);
-        plugins.registerEvents(new FurnitureListener(this, furniture, seats, storage, protection, itemFactory), this);
+        this.questStore = new QuestBoardStore(database);
+        this.questBoards = new QuestBoardService(this, questStore, items, itemFactory, hooks, settings.questBoards(),
+                fontImages);
+        FurnitureListener furnitureListener = new FurnitureListener(this, furniture, seats, storage, protection,
+                itemFactory);
+        furnitureListener.useBoards(questBoards::open);
+        plugins.registerEvents(furnitureListener, this);
+        plugins.registerEvents(new QuestBoardListener(this, questBoards, block -> {
+            PlacedContent at = placed.at(block.getWorld().getUID(), block.getX(), block.getY(), block.getZ());
+            return at != null && at.kind() == PlacedContent.Kind.BLOCK ? Optional.of(at.contentId()) : Optional.empty();
+        }), this);
         plugins.registerEvents(new CropListener(this, crops, itemFactory, protection, hooks), this);
         plugins.registerEvents(new ChatEmojiListener(emojis), this);
         plugins.registerEvents(new PlacedContentListener(this, placed, transforms, blockService, furniture,
@@ -223,6 +245,8 @@ public final class ArkContentPlugin extends JavaPlugin {
         plugins.registerEvents(new HudListener(huds, itemFactory), this);
 
         openStorage();
+        // Queued behind the database opening: notices and online players' progress.
+        questBoards.start();
 
         // A Paper plugin has no commands: section in its yml; commands are Brigadier trees
         // registered here, and re-registered by the server whenever it reloads its command tree.
@@ -276,6 +300,7 @@ public final class ArkContentPlugin extends JavaPlugin {
         });
         for (UUID world : worlds) {
             loadTransforms(world);
+            loadPairs(world);
         }
         CompletableFuture.allOf(worlds.stream().map(world -> cropStore.loadWorld(world).exceptionally(error -> {
             getLogger().warning("Could not read the crops of world " + world + ": " + error.getMessage());
@@ -307,6 +332,30 @@ public final class ArkContentPlugin extends JavaPlugin {
         });
     }
 
+    /** Reads the double chests of one world. */
+    public void loadPairs(UUID world) {
+        pairs.loadWorld(world).whenComplete((loaded, error) -> {
+            if (error != null) {
+                Throwable cause = error.getCause() != null ? error.getCause() : error;
+                getLogger().warning("Could not read the double chests of world " + world + ": " + cause.getMessage()
+                        + ". They open as two chests until the next start.");
+            }
+        });
+    }
+
+    public QuestBoardStore questStore() {
+        return questStore;
+    }
+
+    public QuestBoardService questBoards() {
+        return questBoards;
+    }
+
+    /** The double chests of furniture. */
+    public ChestPairStore pairs() {
+        return pairs;
+    }
+
     private void redraw(World world, Collection<FurnitureTransform> loaded) {
         for (FurnitureTransform transform : List.copyOf(loaded)) {
             furniture.redraw(world, transform.x(), transform.y(), transform.z());
@@ -324,6 +373,11 @@ public final class ArkContentPlugin extends JavaPlugin {
         }
         if (menus != null) {
             menus.closeAll();
+        }
+        // Counted progress is queued for writing ahead of the database closing; open boards shut.
+        if (questBoards != null) {
+            questBoards.stop();
+            questBoards.closeAll();
         }
         if (seats != null) {
             seats.releaseAll();

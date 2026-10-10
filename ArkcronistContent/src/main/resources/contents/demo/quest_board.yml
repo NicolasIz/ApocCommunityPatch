@@ -1,0 +1,84 @@
+# ---------------------------------------------------------------------------
+#  Demo: a medieval quest board, and notices to hang on it
+# ---------------------------------------------------------------------------
+#     /customgive <player> demo:medieval_bulletin_board
+#
+#  The board stands on 3 x 2 invisible blocks - solid, and a click anywhere on
+#  it reaches it. A right click shows the notices posted on the boards, over a
+#  parchment background: what each asks, of whom, and what it pays. A player
+#  takes a notice with a click, and once it is done, hands it in with another.
+#  Everything - the notices, who took which, how far along they are - is kept
+#  in the plugin's database, read and written away from the server thread.
+#
+#  Notices are posted by admins, in game:
+#     /arkcontent board create bounty <title...>
+#     /arkcontent board desc bounty <a line of description...>
+#     /arkcontent board require bounty skill fighting 5
+#     /arkcontent board objective bounty kill zombie 10
+#     /arkcontent board reward bounty money 250
+#     /arkcontent board post bounty
+#  or written below as templates and posted with /arkcontent board post <id>.
+# ---------------------------------------------------------------------------
+
+items:
+
+  medieval_bulletin_board:
+    type: custom_furniture
+    display-name: "<#c8a165>Quest Board"
+    lore:
+      - "<gray>Notices, bounties and odd jobs."
+    resource:
+      model: furniture/medieval_bulletin_board
+    furniture:
+      support: BARRIER
+      interactable: medieval_bulletin_board
+      # Three blocks across its front, two high, centred on where it is placed.
+      size: {width: 3, height: 2}
+      board-title: "Quest Board"
+
+# Templates: not on any board until posted. Objectives are deliver (items,
+# taken when handed in), kill (a creature type, or mythicmobs:<type>) and
+# break (a block, vanilla or custom); requirements are AuraSkills skill
+# levels, ExcellentJobs / Jobs Reborn job levels and permissions; rewards are
+# money (Vault), items and console commands.
+quests:
+
+  ruby_delivery:
+    title: "<red>Rubies for the Smith"
+    description:
+      - "<gray>The smith needs rubies for a"
+      - "<gray>knight's new sword."
+    icon: demo:ruby
+    repeatable: true
+    objectives:
+      - {deliver: demo:ruby, amount: 8}
+    rewards:
+      money: 150
+      items: ["demo:ruby_sword 1"]
+
+  zombie_hunt:
+    title: "<dark_green>Zombie Hunt"
+    description:
+      - "<gray>The village has had enough."
+    icon: ROTTEN_FLESH
+    requirements:
+      skills: {fighting: 2}
+    objectives:
+      - {kill: zombie, amount: 10}
+    rewards:
+      money: 250
+
+  miners_errand:
+    title: "<gold>The Miner's Errand"
+    description:
+      - "<gray>Coal for the forge, and stone"
+      - "<gray>for the new wall."
+    icon: IRON_PICKAXE
+    requirements:
+      jobs: {miner: 1}
+    objectives:
+      - {break: coal_ore, amount: 16}
+      - {deliver: cobblestone, amount: 64}
+    rewards:
+      money: 100
+      items: ["demo:ruby 2"]

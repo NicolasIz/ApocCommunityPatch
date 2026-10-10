@@ -13,3 +13,4 @@ contents/demo/models/furniture/ruby_bed.json a3f8ed8e13bd7f185f72369df55eaece28c
 contents/demo/models/furniture/ruby_chest.bbmodel 9e42399de1101ef5fda6e199014ab508d2c527d0
 contents/demo/models/furniture/ruby_chest.bbmodel 4dedb93e3a0a4c17fea7eeadb7d998d8e373fc04
 contents/demo/textures/furniture/ruby_bed.png e86bd5e65d07b0fc72c283d176a0661dccb5fdb7
+contents/demo/furniture.yml e478f96e092baa59633c1a427533374f026cb37e

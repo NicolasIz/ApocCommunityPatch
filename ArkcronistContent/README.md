@@ -1,8 +1,8 @@
 # ArkcronistContent
 
 Motor de contenido personalizado para **Paper 1.21.8+**, Java 21: define ítems, bloques, muebles
-(también asientos, muebles con inventario, cofres con animaciones de Blockbench y camas de dos
-bloques), armaduras (con cascos 3D), cultivos, emojis de chat, logros, armas de fuego, líquidos que
+(también asientos, muebles con inventario, cofres con animaciones de Blockbench que se unen en cofres
+dobles, camas de dos bloques, muebles de varios bloques y tablones de misiones), armaduras (con cascos 3D), cultivos, emojis de chat, logros, armas de fuego, líquidos que
 fluyen y barras de HUD en YAML y el plugin compila
 su propio resource pack, lo empaqueta en ZIP, calcula su SHA-1, lo sirve con un servidor HTTP
 integrado —o lo sube solo a un servicio de almacenamiento— y se lo envía a cada jugador. Los bloques
@@ -15,7 +15,8 @@ concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer
 /arkcontent info                           ítems y bloques cargados, colocados, hash del pack, URL
 /arkcontent cmd <item>                     material y número custom_model_data del ítem (sección 4)
 /arkcontent import                         convierte los packs de ItemsAdder de import/ (sección 6)
-/arkcontent menu                           explorador de todo el contenido cargado (sección 7)
+/arkcontent menu                           explorador del contenido, por carpetas de contents/ (sección 7)
+/arkcontent board <subcomando>             avisos de los tablones de misiones: crear, publicar... (sección 4)
 /arkcontent animate <animación>            reproduce una animación del mueble que miras (sección 4)
 /arkcontent editor [mueble]                mueve, escala y gira en vivo el mueble que miras (sección 4)
 /arkcontent shop                           tienda: los ítems con `price`, pagados con Vault (sección 5)
@@ -32,6 +33,8 @@ concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer
 | `arkcontent.menu` | op | abrir el explorador (solo mirar, si no tiene `arkcontent.give`) |
 | `arkcontent.emojis` | todos | `/emojis`. Usar un emoji no necesita permiso, salvo que el emoji declare el suyo |
 | `arkcontent.shop` | todos | `/arkcontent shop` (necesita Vault y un plugin de economía) |
+| `arkcontent.board` | todos | usar los tablones de misiones: aceptar, entregar y abandonar avisos |
+| `arkcontent.board.admin` | op | `/arkcontent board` (también lo permite `arkcontent.admin`) |
 
 Con MythicMobs, ModelEngine, MythicArmor, MMOItems, PlaceholderAPI (y a través de él TAB y
 DeluxeMenus), ShopGUI+, Iris, WorldGuard, GriefPrevention, AuraSkills, mcMMO, SkillAPI/ProSkillAPI,
@@ -127,7 +130,16 @@ ArkcronistContent/
         │   │   ├── AnimatedModel          huesos, clips, texturas e icono, ya en el marco del display
         │   │   ├── Animator               poses (jerarquía, interpolación) y fotogramas para el cliente
         │   │   └── Playback               qué fotogramas salen en cada tick; bucle, mantener, una vez
-        │   ├── furniture/BedLayout        las dos mitades de una cama, el display y dónde va la almohada
+        │   ├── furniture/
+        │   │   ├── BedLayout              las dos mitades de una cama, el display y dónde va la almohada
+        │   │   ├── ChestPairing           qué mitad es cada cofre de un cofre doble, como en vanilla
+        │   │   └── Footprint              los bloques de un mueble de varios bloques, según hacia dónde mira
+        │   ├── quest/                     ── tablones de misiones (1.9) ──
+        │   │   ├── QuestDefinition        un aviso: requisitos, objetivos, recompensas
+        │   │   ├── QuestReader · QuestJson el aviso desde el YAML de contents/, y como se guarda en SQLite
+        │   │   ├── QuestProgress          cómo va un jugador con un aviso; las cuentas de muertes y bloques
+        │   │   ├── QuestBoardStore        avisos y progreso en SQLite, en el hilo ArkContent-DB
+        │   │   └── Counted                «nombre número» tal como se escribe al final de un comando
         │   ├── advancement/
         │   │   ├── AdvancementCompiler    logros del YAML -> el JSON de logro de vanilla, padres antes
         │   │   └── WornSet                si lo que lleva puesto un jugador es el set entero
@@ -150,6 +162,7 @@ ArkcronistContent/
         │   │   ├── PlacedContentIndex     caché en memoria: ConcurrentHashMap por mundo y posición
         │   │   ├── PlacedContentStore     fachada: memoria al instante + escritura asíncrona
         │   │   ├── PlacedContent          una fila de custom_blocks_world
+        │   │   ├── ChestPair · ChestPairStore los cofres dobles: memoria + furniture_pairs
         │   │   └── BlockKey               posición empaquetada en un long
         │   ├── loader/
         │   │   ├── ContentLoader          escanea contents/ y parsea los .yml (SnakeYAML seguro)
@@ -161,7 +174,10 @@ ArkcronistContent/
         │   │   ├── AssetIndex             modelos, texturas y sonidos en las 5 estructuras de ItemsAdder
         │   │   ├── LegacyText             &c, &#rrggbb... -> MiniMessage
         │   │   └── Rotations              cuaterniones / eje-ángulo -> grados x, y, z
-        │   ├── menu/Page                  paginación del explorador
+        │   ├── menu/
+        │   │   ├── Page                   paginación del explorador
+        │   │   ├── ContentTree            las carpetas de contents/ como árbol de paquetes
+        │   │   └── MenuTitle              el título de un menú con una imagen detrás (espacios negativos)
         │   ├── pack/
         │   │   ├── PackCompiler           assets/<ns>/{items,models,textures}, pack.mcmeta y el
         │   │   │                          blockstate de minecraft:note_block
@@ -209,8 +225,10 @@ ArkcronistContent/
             ├── hud/                       HudService, HudRegistry, ActionBars (barra de acción
             │                              compartida), HudListener
             ├── pack/PackDelivery          pack vivo + envío con setResourcePack
-            ├── menu/                      ContentMenu (inventario paginado), ContentMenus,
-            │                              ContentMenuListener (bloquea todo movimiento)
+            ├── menu/                      ContentMenu (carpetas, páginas, filtro), ContentMenus (título
+            │                              con textura), ContentMenuListener (bloquea todo movimiento)
+            ├── quest/                     QuestBoardService (abrir, aceptar, entregar, contar),
+            │                              QuestBoardMenu (el pergamino), QuestItems, QuestBoardListener
             ├── hooks/                     integraciones opcionales, una por paquete (también
             │                              placeholderapi/, shopgui/, iris/, mmoitems/, worldguard/,
             │                              griefprevention/):
@@ -235,7 +253,8 @@ ArkcronistContent/
             │   ├── deluxemenus/           material: arkcontent-<id> en sus menús
             │   ├── betonquest/            tipo de ítem, condición y acción de bloque
             │   └── authme/                el pack tras iniciar sesión
-            ├── command/                   CustomGiveCommand, ContentAdminCommand (Brigadier)
+            ├── command/                   CustomGiveCommand, ContentAdminCommand, QuestBoardCommand
+            │                              (Brigadier)
             ├── listener/                  uso, combate, mundo, bloques, muebles, almacenamiento,
             │                              entrega del pack
             └── event/                     CustomItemEvent y sus subclases
@@ -552,9 +571,12 @@ Con un bot (mineflayer) y la consola, en el servidor de pruebas con 1608 ítems 
 - **Apagado.** Es la única espera: `onDisable` deja terminar las escrituras encoladas (máx. 10 s).
 - **Esquema.** `PRAGMA user_version` lleva la versión: 1 (`custom_blocks_world`), 2 (+ `custom_crops`),
   3 (+ `furniture_storage`, ver *Muebles con almacenamiento*), 4 (+ `advancement_unlocks`, ver
-  *Logros*), 5 (+ `liquid_sources` y `hud_values`, ver *Líquidos* y *HUDs*) y 6 (+ `furniture_transforms`,
-  ver *Editor visual de muebles*). Un archivo de una versión anterior
-  gana al abrirse las tablas que le faltan; no se toca nada de lo que ya hay.
+  *Logros*), 5 (+ `liquid_sources` y `hud_values`, ver *Líquidos* y *HUDs*), 6 (+ `furniture_transforms`,
+  ver *Editor visual de muebles*) y 7 (+ `furniture_pairs`, `quest_notices` y `quest_progress`, ver
+  *Cofres dobles* y *Tablón de misiones*). Un archivo de una versión anterior
+  gana al abrirse las tablas que le faltan; no se toca nada de lo que ya hay. Verificado al pasar de
+  1.8.0 a 1.9.0: el archivo del servidor de prueba, con `user_version` 6, abre como 7 con las tres
+  tablas nuevas y todo lo anterior intacto.
 
 El driver es el `org.xerial` SQLite que Paper/Spigot traen en el servidor; si faltara, se avisa en
 consola y bloques y muebles siguen funcionando (reconocidos por su estado y su vínculo), solo que
@@ -808,8 +830,9 @@ anterior; el inventario propio del cofre no se usa nunca:
   agachado con las dos manos vacías. En **ese mismo tick** —antes de que conteste la base de datos—
   arranca la animación `open` en todos los clientes cercanos y suena el cofre; cuando lo cierra el
   último jugador, `close`.
-- El cofre **nunca se une** a otro en un cofre doble (ni al colocarlo ni si después se pone otro
-  cofre al lado, que se queda simple sin romper un cofre doble vanilla vecino). Las **tolvas**,
+- Un cofre sin sección `double:` **nunca se une** a otro en un cofre doble (ni al colocarlo ni si
+  después se pone otro cofre al lado, que se queda simple sin romper un cofre doble vanilla vecino).
+  Con `double:`, dos del mismo mueble uno al lado del otro sí se unen (ver *Cofres dobles*). Las **tolvas**,
   vagonetas tolva y soltadores no lo llenan ni lo vacían, y cualquier apertura de su inventario real
   (otro plugin, un comando) se cancela.
 - **Romperlo** (con hacha, a mano, en creativo o por una explosión que las protecciones permitan)
@@ -848,6 +871,80 @@ BetterModel (Blockbench 5 y anteriores, formatos *Generic* y *Java Block*):
   servidor una tapa abierta se cierra antes de guardarse. Si el modelo cambia de huesos, los
   displays del mueble ya colocado se regeneran al cargar su chunk.
 
+### Cofres dobles (`double:`)
+
+```yaml
+  ruby_chest:
+    type: custom_furniture
+    furniture:
+      support: CHEST
+      animated-model: furniture/ruby_chest
+      slots: 27                                # cada mitad: 27 como máximo
+      double:
+        animated-model: furniture/ruby_chest_double   # un .bbmodel de dos cofres de ancho
+        animations:
+          open: open_double                    # los nombres por defecto
+          close: close_double
+        storage-title: "<dark_red>Large Ruby Chest"
+        # o, sin animación: model: furniture/ruby_chest_double (un modelo JSON)
+```
+
+Como en vanilla: un cofre colocado **al lado** de otro del mismo mueble (a su izquierda o a su
+derecha, no delante ni detrás), mirando hacia el mismo lado y todavía simple, se une a él en un
+cofre doble. Agachado no se une. Solo se une si quien lo coloca podría abrir también el otro
+(comprobación de contenedor de WorldGuard/GriefPrevention): unirse no es una forma de entrar en el
+cofre de otro.
+
+- **La unión.** Los dos cofres vanilla de debajo pasan a ser las dos mitades de un cofre doble
+  vanilla (`type=right` y `type=left`, sin física): su hitbox, su forma para tolvas y pistones. Se
+  quitan los dos modelos simples y aparece **uno** centrado entre las dos mitades, con el modelo
+  doble. El par se guarda en memoria al instante y en la tabla `furniture_pairs` (esquema 7) en
+  **una transacción** —borrar los pares que tocaran cualquiera de las dos posiciones e insertar el
+  nuevo—, en el hilo `ArkContent-DB`. Si alguien tenía abierto uno de los dos, se guarda y se cierra
+  antes.
+- **El modelo.** Con `animated-model`, el `.bbmodel` doble se convierte como el simple (un display
+  por hueso, ver arriba) con sus propios modelos (`<ns>:<id>/double/bone_<hueso>`), y un display raíz
+  ancla el conjunto. Con `model`, un único `ItemDisplay` con el ítem `<ns>:<id>/double`. El modelo
+  doble mide 32 px de ancho: x de -15 a 15 alrededor del centro entre los dos bloques (el de la demo,
+  47 cubos, va de -15,5 a 15,5).
+- **54 huecos, cada mitad en su fila.** El inventario doble tiene 54 huecos: las filas 1-3 son la
+  mitad derecha de vanilla (la de la **izquierda** de quien mira el frente) y las 4-6 la otra. Cada
+  mitad sigue guardando sus 27 huecos en su propia fila de `furniture_storage`, así que unir o separar
+  no mueve ningún ítem. Al guardar se escriben las dos filas en una transacción, y al abrir se leen
+  las dos en una sola tarea. Abrirlo desde cualquiera de las dos mitades es el mismo inventario; se
+  comprueban las protecciones de las dos.
+- **La tapa, a los 63 ms.** `open_double` y `close_double` se reproducen en el hilo principal en el
+  **primer tick que empiece al menos `furniture.double-chest-animation-delay-ms` (63) después del
+  clic**. El reloj lo decide, no un número de ticks: un clic llega entre dos ticks, así que contar 2
+  ticks caería entre 50 y 100 ms después. Con ticks de 50 ms, la tapa se mueve entre 63 y 113 ms
+  después del clic; 0 la mueve al instante. Abrir y cerrar conservan su orden. El cofre simple sigue
+  moviéndose en el mismo tick del clic.
+- **Separar.** Romper una mitad la separa: se va el modelo doble, la otra vuelve a ser un cofre
+  simple con su modelo simple y sus 27 huecos, y la mitad rota suelta su ítem y **su** contenido (las
+  filas que le tocaban). Se borra el par de `furniture_pairs`.
+- **Tras un reinicio o un crash**, al cargarse el chunk se compara lo que se ve con la base de
+  datos, que se escribieron en momentos distintos: un modelo doble sobre dos cofres que siguen unidos
+  se vuelve a registrar; uno cuyos cofres ya no se unen se separa; un par registrado para un cofre que
+  se dibuja simple se olvida.
+
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (v1.9, cofres dobles)
+
+Con un bot de mineflayer (cliente 1.21.8) contra el servidor de prueba:
+
+| Prueba | Resultado |
+|---|---|
+| Unión | Dos `demo:ruby_chest` mirando al sur, en x=104 y x=105: `execute if block` confirma `type=right` en 104 y `type=left` en 105; una fila en `furniture_pairs` (104 → 105) |
+| Caras distintas | Un primer cofre que quedó mirando al norte (el bot giró tarde) no se unió al de al lado, que miraba al sur: correcto |
+| Agachado | Un tercer cofre colocado agachado junto al par queda `type=single` y el par sigue `type=left` |
+| Inventario | El cliente recibe una ventana `generic_9x6` (54 + 36 del jugador) titulada «Large Ruby Chest»; 10 diamantes al hueco 0 y 5 esmeraldas al 40 dejan dos filas en `furniture_storage`, una por mitad |
+| Desde la otra mitad | Abrir el cofre de x=105 muestra lo mismo: diamantes en 0, esmeraldas en 40 |
+| Reinicio | Tras parar y arrancar el servidor, el par y los dos contenidos siguen; abre con 54 huecos |
+| Tapa | Primer movimiento de un display del cofre doble, medido en el cliente desde que sale el paquete del clic: ~100 ms al abrir y ~100-130 al cerrar (189 ms en la primera prueba, con el servidor aún construyendo el pack); nunca por debajo de 63 |
+| Romper una mitad | Romper x=104 suelta el cofre y sus 10 diamantes; x=105 vuelve a `type=single`, abre «Ruby Chest» con 27 huecos y las esmeraldas en el hueco 13 (40 − 27); el par y la fila de 104 desaparecen; su tapa se mueve en el mismo tick (28 ms) |
+
+Lo que no se ha podido ver es el dibujo en un cliente real: lo verificado son los bloques, la base
+de datos, los paquetes y que los displays del cofre doble se animan; el aspecto del modelo, no.
+
 ### Camas (soporte `BED`)
 
 ```yaml
@@ -880,6 +977,114 @@ y una tapa abombada en tres escalones con flejes de oro y un rubí tallado encim
 —cúpula, flejes y rubí— se abre de una pieza. La cama tiene 24: colchón, manta que cae por un
 lado, sábana doblada, dos almohadas, un cabecero con dos postes rematados en rubí y un panel
 tallado con cresta en arco, y un piecero más bajo. Ambos siguen dentro de las medidas de arriba.
+
+### Muebles de varios bloques (`size:`)
+
+```yaml
+    furniture:
+      support: BARRIER                # o LIGHT
+      size: {width: 3, height: 2}     # o size: 3x2; de 1 a 5 en cada sentido
+```
+
+El mueble ocupa `width` bloques a lo largo de su frente, centrados en donde se coloca (con un ancho
+par, sobra uno a la derecha de quien lo mira), y `height` hacia arriba. Cada bloque lleva su soporte
+invisible, sólido con `BARRIER`, y todos quedan registrados y vinculados al mismo display: clicar o
+golpear cualquiera de ellos es clicar el mueble, y romper uno lo rompe entero. Antes de colocarlo
+(`BlockPlaceEvent`, prioridad `HIGH`) se comprueba que todos esos bloques estén libres y que las
+protecciones dejen construir en cada uno; si no, no se coloca (sin sitio, se avisa en la barra de
+acción).
+Solo para soportes `BARRIER` y `LIGHT`: un cofre o una cama son bloques vanilla con su propia forma.
+
+### Tablón de misiones (`medieval_bulletin_board`)
+
+```yaml
+  medieval_bulletin_board:
+    type: custom_furniture
+    resource:
+      model: furniture/medieval_bulletin_board
+    furniture:
+      support: BARRIER
+      interactable: medieval_bulletin_board   # también vale: quest_board
+      size: {width: 3, height: 2}
+      board-title: "Quest Board"
+```
+
+Clic derecho en cualquiera de sus 6 bloques abre los **avisos** publicados, 45 por página, sobre una
+textura de pergamino (una imagen PNG completa detrás del cofre, como en *Explorador de contenido*):
+qué pide cada uno, a quién y qué paga, y cómo va el jugador. Clic en un aviso lo acepta; clic en uno
+aceptado lo entrega cuando está hecho; mayúsculas+clic en uno aceptado lo abandona. «My notices»
+muestra los que el jugador tiene en curso, de cualquier tablón.
+
+```
+filas 1-5   los avisos: título, descripción, requisitos ✔/✘, objetivos con su cuenta, recompensas
+fila 6      [Previous] [The board (n)] [My notices (n)] [ ] [Page n of m] [ ] [ ] [Close] [Next]
+```
+
+**Qué puede pedir un aviso.**
+
+| | Cómo se escribe | |
+|---|---|---|
+| Requisito: nivel de habilidad | `skills: {fighting: 5}` · `require <id> skill fighting 5` | AuraSkills; `auraskills/mining` o `mi_plugin/habilidad` para habilidades con espacio de nombres |
+| Requisito: nivel de trabajo | `jobs: {miner: 10}` · `require <id> job miner 10` | ExcellentJobs o Jobs Reborn (el mayor de los que respondan); sin el trabajo, nivel 0 |
+| Requisito: permiso | `permission: vip.quests` · `require <id> permission vip.quests` | |
+| Objetivo: entregar | `{deliver: demo:ruby, amount: 8}` · `objective <id> deliver demo:ruby 8` | un ítem propio o vanilla (`cobblestone`); un ítem propio nunca cuenta como su material; se quita del inventario al entregar |
+| Objetivo: matar | `{kill: zombie, amount: 10}` · `objective <id> kill mythicmobs:SkeletonKing 1` | un tipo de criatura, o un mob de MythicMobs; solo cuenta lo que mata el jugador |
+| Objetivo: romper | `{break: coal_ore, amount: 16}` · `objective <id> break demo:ruby_block 4` | un bloque vanilla o propio; solo en supervivencia o aventura |
+| Recompensa: dinero | `money: 150` · `reward <id> money 150` | Vault |
+| Recompensa: ítems | `items: ["demo:ruby_sword 1"]` · `reward <id> item demo:ruby_sword 1` | lo que no cabe se suelta a los pies |
+| Recompensa: el ítem de la mano | `reward <id> hand` | la pila exacta, con todos sus datos |
+| Recompensa: comando | `commands: ["give %player% diamond 1"]` · `reward <id> command ...` | por consola |
+
+Hasta 8 objetivos por aviso; los requisitos se comprueban al aceptarlo. Un aviso `repeatable` se
+puede volver a aceptar después de entregarlo. Los avisos se escriben en el juego:
+
+```
+/arkcontent board create bounty <red>Zombie Bounty        un borrador, sin publicar
+/arkcontent board desc bounty <gray>Two zombies, quickly.  una línea de descripción (cleardesc las borra)
+/arkcontent board objective bounty kill zombie 2
+/arkcontent board reward bounty money 50
+/arkcontent board reward bounty item demo:ruby 3
+/arkcontent board post bounty                              publicarlo (unpost lo retira)
+/arkcontent board list | info <id> | title | icon | repeatable | clear <id> requirements|objectives|rewards
+/arkcontent board boards <id> demo:medieval_bulletin_board   en qué tablones sale (all: en todos)
+/arkcontent board delete <id> | reset <jugador> <id>
+```
+
+o como plantillas en el YAML de `contents/`, bajo `quests:` (ver `contents/demo/quest_board.yml`), que
+`/arkcontent board post <id>` copia a la base de datos y publica. Un tablón se identifica por el id
+de su mueble; un aviso sin `boards` sale en todos.
+
+- **Nada de disco en el hilo principal.** Los avisos (tabla `quest_notices`, el aviso en JSON con
+  su versión de formato) y el progreso de cada jugador (`quest_progress`) se leen y escriben en el
+  hilo `ArkContent-DB`. Abrir un tablón lee de forma asíncrona y abre el menú cuando llega la
+  respuesta. Muertes y bloques se cuentan en memoria y se escriben cada `quest-boards.save-seconds`
+  (10), al salir el jugador y al entregar.
+- **Una sola vez.** Aceptar y entregar son una sentencia cada una cuya condición comprueba SQLite
+  (`... WHERE state = 'ACCEPTED'`), así que un doble clic o dos clics a la vez solo cuentan una vez.
+  Los ítems de un objetivo de entrega se quitan antes de completarlo en la base de datos y se
+  devuelven si eso falla; el dinero y las recompensas se dan solo cuando la base de datos confirma.
+- **Cambios de los administradores en orden.** Cada cambio a un aviso (leerlo, cambiarlo,
+  escribirlo) es una sola tarea en el hilo de la base de datos, así que una tanda de comandos
+  enviada de golpe (un guion, la consola) se aplica entera y en orden. Un ítem que no existe o un
+  número fuera de rango se rechazan antes de enviar nada.
+- `quest-boards.max-active` (5) avisos en curso a la vez por jugador. `background` y
+  `background-width` eligen la imagen del fondo (por defecto, el pergamino que trae el plugin).
+
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (v1.9, tablón)
+
+Con un bot de mineflayer, AuraSkills 2.3.12, ExcellentJobs, Vault y EssentialsX:
+
+| Prueba | Resultado |
+|---|---|
+| Colocar | 6 barreras (x 99-101, y -60 y -59) y 6 filas en `custom_blocks_world`; los bloques de los lados siguen vacíos |
+| Sin sitio | Un segundo tablón cuyo frente pisaría x=101 no se coloca; el bot conserva el ítem |
+| Comandos | 15 comandos enviados de golpe por consola (crear, descripción, objetivos, recompensas, requisito, publicar, en dos avisos) se aplican todos y en orden; `deliver demo:nope 2` y `item nothing_at_all 1` se rechazan («is no item»), `kill zombie 0` también («1 to 100000») |
+| Plantillas | `post ruby_delivery`, `zombie_hunt` y `miners_errand` copian las plantillas de `quest_board.yml` y las publican |
+| Abrir | Título `U+F808 U+F007 U+F80C U+F80A U+F808 U+F801` en blanco + «Quest Board» en #404040; 5 avisos con su lore: «✘ Fighting level 2 (you: 0)» (AuraSkills da 0, igual que `%auraskills_fighting%`), «✘ Miner (job) level 1 (you: 0)» (sin el trabajo), «✔ Permission arkcontent.board» |
+| Requisito no cumplido | Clic en «Zombie Hunt» no lo acepta |
+| Entrega | Aceptar «Rubies for the Smith» con 8 `demo:ruby`: «Bring 8 Ruby (you have 8)», «Click to hand it in!»; dos clics seguidos al entregar pagan **una vez**: saldo de $1,000 a $1,150, una Ruby Sword, los rubíes quitados, `completions` 1, y «click to take it again» (repetible) |
+| Matar y romper | Un zombi muerto por el bot y un mineral de carbón roto: «Kill 2 Zombie: 1/2», «Break 2 Coal ore: 1/2»; al salir el bot, `progress` 1 en las dos filas |
+| Reinicio | Tras reiniciar el servidor, el tablón muestra 1/2 en los dos; el segundo zombi y el segundo carbón dan 2/2, «Click to hand it in!»; entregar ambos da $50 + $10 (saldo $1,150 → $1,210) y 3 rubíes; los dos quedan `COMPLETED` y el no repetible pone «Done» |
 
 ### Tienda (`price`)
 
@@ -984,7 +1189,8 @@ no está en `models/`.
 **Actualizar desde una versión anterior.** El pack de ejemplo se copia entero solo cuando
 `contents/` no existe. Para que lo nuevo llegue también a un servidor que ya lo tenía, cada versión
 agrupa los ejemplos que añadió (1.1: cultivos y emojis; 1.3: `furniture.yml` con el cofre y la cama;
-1.4: la armadura; 1.5: `advancements.yml` y el fondo de su pestaña) y el plugin recuerda en
+1.4: la armadura; 1.5: `advancements.yml` y el fondo de su pestaña; 1.9: `quest_board.yml` con el
+tablón y su modelo y textura, y el modelo del cofre doble) y el plugin recuerda en
 `data/examples_offered.txt` qué grupos ofreció. Al
 reiniciar con un jar nuevo copia en `contents/demo/` los grupos que falten y lo dice en consola. Nunca
 sobrescribe nada; no recrea `contents/demo/` si se borró; un grupo del que ya hay algún archivo se
@@ -2323,19 +2529,53 @@ pasaron de 95 a 1, el informativo de los espacios.
 
 ## 7. Explorador de contenido
 
-`/arkcontent menu` (o `/arkcontent` a secas) abre un cofre de 6 filas con todo lo cargado, en tres
-pestañas —Items, Blocks, Furniture; los textos del juego están en inglés, como el resto de mensajes
-del plugin— de 45 por página, ordenado por id:
+`/arkcontent menu` (o `/arkcontent` a secas) abre un cofre de 6 filas con todo lo cargado,
+**organizado como `contents/`**: el primer nivel son los paquetes —una carpeta por pack de
+contenido, `dragones_epicos/`, `arkespadas/`, `demo/`…— y cada uno abre sus subcarpetas y después sus
+ítems, 45 por página, ordenados por id. Los textos del juego están en inglés, como el resto de
+mensajes del plugin.
 
 ```
-filas 1-5   los ítems: el ItemStack real de ItemFactory, con su item_model, nombre y lore
-fila 6      [Previous] [Items] [Blocks] [Furniture] [Page n of m] [Close] [Next]
+filas 1-5   subcarpetas (su primer ítem como icono, en dorado, con cuántos ítems y carpetas tiene)
+            y después los ítems: el ItemStack real de ItemFactory, con su item_model, nombre y lore
+fila 6      [Previous] [Back] [Showing: ...] [All packs] [<carpeta> - page n of m] [ ] [ ] [Close] [Next]
+```
+
+- **Carpetas.** El árbol sale de la carpeta del archivo de cada ítem relativa a `contents/`. Una
+  cadena de carpetas con una sola subcarpeta y ningún ítem se pliega en una (un paquete importado
+  como `dragones_epicos/configs/items/` es un solo clic). «Back» sube un nivel, «All packs» vuelve a
+  la raíz; tras una recompilación el menú abierto vuelve a buscar la carpeta en la que estaba.
+- **Filtro.** «Showing» alterna entre todo, solo ítems, bloques, muebles, cultivos o líquidos; una
+  carpeta se lista mientras tenga alguno de ellos.
+- **Título con textura (Custom GUI).** Detrás del cofre se dibuja una imagen PNG completa, una font
+  image, con espacios negativos: el título empieza a 8 px del borde del inventario, así que va
+  `espacio(-8)`, el carácter de la imagen (que avanza su ancho + 1), `espacio(8 - (ancho + 1))` y
+  después el texto. El carácter va en blanco, para que el color del título no la tiña, y el texto en
+  el gris de vanilla (#404040). La imagen tiene 176 × 222 px y se declara con `ascent` 13 y `height`
+  222, de modo que tapa entero un cofre de 6 filas. El plugin trae dos (`arkcontent:content_browser`
+  y `arkcontent:quest_board`, en `textures/gui/` del pack); sirve cualquier font image de los packs,
+  también las de ItemsAdder.
+
+```yaml
+menus:
+  folders: true                        # false: una sola lista, como antes de 1.9
+  textured: true
+  background: "arkcontent:content_browser"
+  background-width: 176                # hasta su última columna con algún píxel
 ```
 
 Cada casilla muestra el ítem tal como es —el cliente dibuja su modelo 3D en la casilla— con su id
 debajo del lore. Con `arkcontent.give`, clic toma uno y mayúsculas+clic una pila, siempre al
 inventario principal (si no cabe, se dice; nunca se tira al suelo). Sin ese permiso el menú es solo
 para mirar.
+
+**Verificado (v1.9)** con un bot contra el servidor de prueba, con los 1609 ítems cargados: el título
+llega como `U+F808 U+F006 U+F80C U+F80A U+F808 U+F801` en blanco + «Custom content» en #404040, y el
+pack lleva `assets/arkcontent/textures/gui/content_browser.png` con su proveedor de fuente (ascent 13,
+height 222, U+F006). La raíz lista 41 carpetas; `dragones_epicos` abre sus ítems («dragones_epicos -
+page 1 of 13»), «Next» pasa a la página 2 de 13, «Back» vuelve a la raíz, y el filtro de muebles deja
+solo `demo`. La imagen detrás del cofre no se ha podido ver en un cliente real: lo verificado es el
+texto exacto del título y la fuente del pack.
 
 Nada sale del menú de otra forma. Se cancela **todo** clic y arrastre mientras está abierto, en el
 menú y en el inventario del jugador debajo (mayúsculas+clic, teclas numéricas, Q, doble clic para
@@ -2405,8 +2645,9 @@ con `join-classpath: true` para ver sus clases.
 - Importar desde ItemsAdder convierte configuración y recursos, no mundos: los bloques y muebles
   que ItemsAdder ya colocó siguen siendo suyos. Recetas, loot, eventos y demás se listan como no
   importados.
-- Muebles de un solo bloque de hitbox. Sujetar un ítem de mueble muestra las partículas de
-  barrier/light que el cliente dibuja al sostener esos materiales.
+- Muebles de varios bloques (`size:`) solo con soporte barrera o luz, hasta 5 × 5, y siempre en un
+  plano vertical a lo ancho de su frente (sin fondo). Sujetar un ítem de mueble muestra las
+  partículas de barrier/light que el cliente dibuja al sostener esos materiales.
 - La caché guarda en memoria todo lo colocado en los mundos cargados (~100 bytes por entrada).
 - MythicMobs: los ítems se referencian como `arkcontent{item=ns:id}`, no como `ns:id` (ver
   sección 5).
@@ -2465,6 +2706,19 @@ con `join-classpath: true` para ver sus clases.
 - 1.8, verificador: solo audita chunks cargados, y tarda dos intervalos en actuar. Al purgar un
   mueble de almacenamiento, el contenido guardado en `furniture_storage` no se borra. Los cultivos no
   se auditan (tienen su propio ciclo).
+- 1.9, cofres dobles: la tapa no puede moverse a los 63 ms justos, porque el servidor trabaja en
+  ticks de 50 ms: se mueve en el primer tick a partir de los 63 ms (entre 63 y 113 ms). Un cofre doble
+  con `animated-model` es un display por hueso más su raíz, no un solo `ItemDisplay`: así es como se
+  animan los huesos por separado; un solo `ItemDisplay` gigante es lo que se obtiene con `model:` (sin
+  animación). Dos cofres solo se unen al colocar el segundo, como en vanilla: dos que ya estaban uno al
+  lado del otro antes de 1.9, o antes de añadir `double:`, siguen simples hasta que se vuelva a
+  colocar uno. Cada mitad tiene como mucho 27 huecos.
+- 1.9, tablón: los objetivos son entregar, matar y romper (no hay "hablar con", "viajar a" ni
+  "pescar"); los requisitos se miran al aceptar, no al entregar. Las muertes y bloques contados en
+  los últimos `save-seconds` antes de un crash se pierden (al salir el jugador o al apagar se
+  guardan). La recompensa en dinero necesita Vault con un plugin de economía; sin él, el aviso se
+  entrega igual, y se avisa en consola y al jugador de que no se pudo pagar. El aspecto del pergamino y del tablón en un
+  cliente real no se ha podido ver aquí.
 - 1.8, red: la IP descubierta es por la que la máquina **sale** a internet; en un nodo con varias IPs
   puede no ser por la que **entran** los jugadores. Ahí, `http.public-address` (o un `server-ip`
   público) manda. Un puerto de respaldo solo sirve si el hosting lo redirige.
