@@ -52,7 +52,8 @@ final class QuestBoardMenu implements InventoryHolder {
     static final int CLOSE = 52;
     static final int NEXT = 53;
 
-    private static final TextColor INK = TextColor.color(0x4a3420);
+    /** A notice title's colour when its MiniMessage gives none: parchment, readable on the dark tooltip. */
+    private static final TextColor PARCHMENT = TextColor.color(0xE6CB98);
 
     enum Outcome { NOTHING, CLOSE }
 
@@ -229,7 +230,7 @@ final class QuestBoardMenu implements InventoryHolder {
             lore.add(line(row != null ? "Done " + row.completions() + " time(s) - click to take it again"
                     : "Click to take it", NamedTextColor.AQUA));
         }
-        Component name = text(MiniMessage.miniMessage().deserialize(quest.title())).colorIfAbsent(INK);
+        Component name = text(MiniMessage.miniMessage().deserialize(quest.title())).colorIfAbsent(PARCHMENT);
         stack.editMeta(meta -> {
             meta.customName(name);
             meta.lore(lore);

@@ -1085,6 +1085,7 @@ Con un bot de mineflayer, AuraSkills 2.3.12, ExcellentJobs, Vault y EssentialsX:
 | Entrega | Aceptar «Rubies for the Smith» con 8 `demo:ruby`: «Bring 8 Ruby (you have 8)», «Click to hand it in!»; dos clics seguidos al entregar pagan **una vez**: saldo de $1,000 a $1,150, una Ruby Sword, los rubíes quitados, `completions` 1, y «click to take it again» (repetible) |
 | Matar y romper | Un zombi muerto por el bot y un mineral de carbón roto: «Kill 2 Zombie: 1/2», «Break 2 Coal ore: 1/2»; al salir el bot, `progress` 1 en las dos filas |
 | Reinicio | Tras reiniciar el servidor, el tablón muestra 1/2 en los dos; el segundo zombi y el segundo carbón dan 2/2, «Click to hand it in!»; entregar ambos da $50 + $10 (saldo $1,150 → $1,210) y 3 rubíes; los dos quedan `COMPLETED` y el no repetible pone «Done» |
+| 1.9.1 | Un aviso cuyo título no trae color llega con `#E6CB98` (antes `#4a3420`, casi invisible sobre el fondo oscuro del tooltip); el pergamino ya no tiene el sello rojo de la esquina izquierda debajo del título, y al arrancar se vuelve a extraer y entra en el pack (mismo SHA-1 en `data/builtin/` y en el ZIP) |
 
 ### Tienda (`price`)
 
