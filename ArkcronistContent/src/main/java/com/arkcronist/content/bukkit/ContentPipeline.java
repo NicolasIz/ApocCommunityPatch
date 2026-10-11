@@ -115,6 +115,19 @@ public final class ContentPipeline {
             "contents/demo/models/furniture/ruby_crate.json",
             "contents/demo/textures/furniture/ruby_crate.png");
 
+    /** The medieval props of 1.9.5, each a Java model of its own under contents/medieval_props/models/furniture/. */
+    private static final List<String> MEDIEVAL_PROPS = List.of(
+            "abrevadero", "alambique", "armero", "banco_iglesia", "banco_largo", "banqueta_cuero", "barril_almacen",
+            "barril_cerveza", "baul_viaje", "botella_licor", "brasero", "buzon", "caja_madera", "caldero_bruja",
+            "caldero_estofado", "caldero_pociones", "campana_plaza", "candelabro_mesa", "carro_heno",
+            "cartel_alquimista", "cartel_banco", "cartel_establo", "cartel_herreria", "cartel_mercado",
+            "cartel_posada", "cartel_taberna", "cepo_plaza", "copa_vino", "estandarte_azul", "estandarte_rojo",
+            "estanteria_botellas", "fardo_heno_asiento", "farol_hierro", "fogata_asador", "forja", "horno_pan",
+            "jarra_cerveza", "jarra_hidromiel", "lampara_aceite", "maniqui_armadura", "mapa_mural", "mesa_banquete",
+            "mesa_redonda", "mesa_taberna", "piedra_afilar", "pila_lena", "pozo_deseos", "puesto_mercado",
+            "saco_grano", "silla_herrero", "silla_taberna_oscura", "silla_taberna_roble", "sillon_cuero",
+            "taburete_alto", "taburete_taberna", "tocon_asiento", "tonel_vino", "trono_real", "yunque_herrero");
+
     /**
      * The examples each later version added. A server that already has a contents/ folder gets
      * these on upgrade (see {@link ExampleUpdates}); a new one gets them with the rest.
@@ -171,7 +184,13 @@ public final class ContentPipeline {
                     "contents/demo/models/furniture/ruby_chest_double.bbmodel",
                     "contents/demo/quest_board.yml",
                     "contents/demo/models/furniture/medieval_bulletin_board.json",
-                    "contents/demo/textures/furniture/medieval_bulletin_board.png"));
+                    "contents/demo/textures/furniture/medieval_bulletin_board.png"),
+            "1.9.5", Stream.concat(Stream.of(
+                            "contents/medieval_props/furniture.yml",
+                            "contents/medieval_props/textures/furniture/medieval_atlas.png",
+                            "contents/medieval_props/models/furniture/guillotina_plaza.bbmodel",
+                            "contents/medieval_props/models/furniture/guillotina_plaza_icon.json"),
+                    MEDIEVAL_PROPS.stream().map(id -> "contents/medieval_props/models/furniture/" + id + ".json")).toList());
 
     /** Copied into contents/ the first time the plugin starts. */
     private static final List<String> EXAMPLES = Stream.concat(FIRST_EXAMPLES.stream(),
@@ -925,7 +944,8 @@ public final class ContentPipeline {
         Set<String> offered = ExampleUpdates.parse(lines);
         if (!offered.containsAll(ADDED_EXAMPLES.keySet())) {
             if (settings.extractExamples()) {
-                List<String> copy = ExampleUpdates.toCopy(ADDED_EXAMPLES, offered, plugin.getDataFolder().toPath());
+                List<String> copy = ExampleUpdates.toCopy(FIRST_EXAMPLES, ADDED_EXAMPLES, offered,
+                        plugin.getDataFolder().toPath());
                 for (String example : copy) {
                     plugin.saveResource(example, false);
                 }

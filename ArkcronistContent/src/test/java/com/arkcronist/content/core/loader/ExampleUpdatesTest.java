@@ -48,6 +48,24 @@ class ExampleUpdatesTest {
         assertEquals(List.of(), ExampleUpdates.toCopy(SETS, Set.of(), plugin), "no demo folder, no demo");
     }
 
+    /** 1.9.5: a version that brings a pack of its own creates its folder - once. */
+    @Test
+    void aSetThatBringsANewPackCreatesItsFolder() throws IOException {
+        write("contents/gems/items.yml");    // the demo was deleted: it stays deleted
+        List<String> first = List.of("contents/demo/items.yml");
+        Map<String, List<String>> sets = new java.util.HashMap<>(SETS);
+        sets.put("1.9.5", List.of("contents/medieval_props/furniture.yml",
+                "contents/medieval_props/textures/furniture/medieval_atlas.png"));
+        assertEquals(List.of("contents/medieval_props/furniture.yml",
+                        "contents/medieval_props/textures/furniture/medieval_atlas.png"),
+                ExampleUpdates.toCopy(first, sets, Set.of("1.1.0"), plugin));
+        // Offered once: deleted afterwards, it does not come back.
+        assertEquals(List.of(), ExampleUpdates.toCopy(first, sets, Set.of("1.1.0", "1.3.0", "1.4.0", "1.9.5"), plugin));
+        // And a later set adding to it, once it is gone, adds nothing.
+        sets.put("1.9.6", List.of("contents/medieval_props/more.yml"));
+        assertEquals(List.of(), ExampleUpdates.toCopy(first, sets, Set.of("1.1.0", "1.3.0", "1.4.0", "1.9.5"), plugin));
+    }
+
     @Test
     void anExampleIsUpdatedOnlyWhileItIsAsShipped() throws IOException {
         write("contents/demo/blocks.yml");                       // "owner's": not a shipped version

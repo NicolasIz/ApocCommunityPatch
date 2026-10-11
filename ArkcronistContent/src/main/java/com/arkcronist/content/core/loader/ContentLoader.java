@@ -829,6 +829,13 @@ public final class ContentLoader {
             }
         }
         Footprint footprint = footprint(section, support, prefix, problems);
+        Placement.Ambience ambience = interactable.equals("effect")
+                ? InteractionReader.ambience(section(section, "effect", prefix, problems), prefix, problems) : null;
+        Placement.Commands commands = interactable.equals("command")
+                ? InteractionReader.commands(section(section, "command", prefix, problems), prefix, problems) : null;
+        Placement.Guillotine guillotine = interactable.equals("guillotine")
+                ? InteractionReader.guillotine(section(section, "guillotine", prefix, problems), animated, footprint,
+                prefix, problems) : null;
         return new Placement.Furniture(support, light,
                 flag(section, "face-player", true, prefix, problems),
                 display(section(section, "display", prefix, problems), prefix, problems),
@@ -839,7 +846,8 @@ public final class ContentLoader {
                 support == Placement.Support.BED ? bed(section, prefix, problems) : null,
                 doubleChest,
                 footprint,
-                interactable.equals("board") ? board(section, prefix, problems) : null);
+                interactable.equals("board") ? board(section, prefix, problems) : null,
+                ambience, commands, guillotine);
     }
 
     /**
@@ -991,10 +999,18 @@ public final class ContentLoader {
         if (kind.equals("medieval_bulletin_board") || kind.equals("quest_board")) {
             kind = "board";
         }
-        if (!kind.isEmpty() && !kind.equals("seat") && !kind.equals("storage") && !kind.equals("board")) {
-            problems.add(prefix + "'interactable' can only be 'seat', 'storage' or 'medieval_bulletin_board', not '"
-                    + raw.trim() + "'");
+        if (kind.equals("effects") || kind.equals("commands")) {
+            kind = kind.substring(0, kind.length() - 1);
+        }
+        if (!kind.isEmpty() && !List.of("seat", "storage", "board", "effect", "command", "guillotine").contains(kind)) {
+            problems.add(prefix + "'interactable' can only be 'seat', 'storage', 'medieval_bulletin_board', 'effect',"
+                    + " 'command' or 'guillotine', not '" + raw.trim() + "'");
             kind = "";
+        }
+        for (String key : List.of("effect", "command", "guillotine")) {
+            if (!kind.equals(key) && section.containsKey(key)) {
+                problems.add(prefix + "'" + key + ":' is only read with interactable: " + key);
+            }
         }
         if (!kind.equals("board") && section.containsKey("board-title")) {
             problems.add(prefix + "'board-title' is only read with interactable: medieval_bulletin_board");

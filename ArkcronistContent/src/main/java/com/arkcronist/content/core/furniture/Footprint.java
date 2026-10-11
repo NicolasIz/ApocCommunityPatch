@@ -71,7 +71,7 @@ public record Footprint(int width, int height) {
      * The right hand of someone looking at the front of a piece turned to {@code yaw}, {dx, dz}:
      * facing south, they look north, and their right is east.
      */
-    static int[] right(float yaw) {
+    public static int[] right(float yaw) {
         int quarter = Math.floorMod(Math.round(yaw / 90f), 4);
         return switch (quarter) {
             case 0 -> new int[] {1, 0};    // facing south

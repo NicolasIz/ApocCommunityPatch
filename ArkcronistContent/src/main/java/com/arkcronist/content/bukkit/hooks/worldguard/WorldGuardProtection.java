@@ -63,6 +63,7 @@ public final class WorldGuardProtection implements ProtectionProvider {
             // What WorldGuard itself tests when anything is mounted - so a refused sitter gets no seat at all.
             case SIT -> query.testBuild(at, local, Flags.RIDE, Flags.INTERACT);
             case CONTAINER -> query.testBuild(at, local, Flags.INTERACT, Flags.CHEST_ACCESS);
+            case USE -> query.testBuild(at, local, Flags.INTERACT, Flags.USE);
         };
     }
 

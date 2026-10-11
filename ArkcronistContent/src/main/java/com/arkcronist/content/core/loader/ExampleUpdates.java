@@ -19,7 +19,8 @@ import java.util.Set;
  * <ul>
  *   <li>a file that is already there is never overwritten;</li>
  *   <li>nothing goes into a pack folder that is gone: deleting {@code contents/demo/} means no
- *       demo;</li>
+ *       demo - unless the set is the one that brings that pack: the 1.9.5 medieval props are a pack
+ *       of their own, {@code contents/medieval_props/}, which no server can have yet;</li>
  *   <li>a set some of whose files are there came with a version from before sets were
  *       remembered, and its missing files were deleted by the owner: it is left as it is.</li>
  * </ul>
@@ -38,21 +39,57 @@ public final class ExampleUpdates {
      * @param dataFolder the plugin's folder, which holds {@code contents/}
      */
     public static List<String> toCopy(Map<String, List<String>> sets, Set<String> offered, Path dataFolder) {
+        // Every pack counts as known: only folders that are there are added to.
+        Set<String> all = new java.util.HashSet<>();
+        sets.values().forEach(set -> set.forEach(example -> all.add(pack(example))));
+        return copy(all, sets, offered, dataFolder);
+    }
+
+    /**
+     * As {@link #toCopy(Map, Set, Path)}, knowing which examples a first start writes: a set whose
+     * examples are in a pack folder neither those nor any earlier set uses brings that pack, and
+     * its folder is created for it - once, as a set is offered once.
+     *
+     * @param first the examples a first start writes
+     */
+    public static List<String> toCopy(List<String> first, Map<String, List<String>> sets, Set<String> offered,
+                                      Path dataFolder) {
+        Set<String> known = new java.util.HashSet<>();
+        first.forEach(example -> known.add(pack(example)));
+        return copy(known, sets, offered, dataFolder);
+    }
+
+    private static List<String> copy(Set<String> knownPacks, Map<String, List<String>> sets, Set<String> offered,
+                                     Path dataFolder) {
+        Set<String> known = new java.util.HashSet<>(knownPacks);
         List<String> copy = new ArrayList<>();
         sets.entrySet().stream()
-                .filter(set -> !offered.contains(set.getKey()))
                 .sorted(Map.Entry.comparingByKey())
                 .forEach(set -> {
-                    if (set.getValue().stream().anyMatch(example -> Files.exists(dataFolder.resolve(example)))) {
+                    Set<String> brought = new java.util.HashSet<>();
+                    for (String example : set.getValue()) {
+                        if (!known.contains(pack(example))) {
+                            brought.add(pack(example));
+                        }
+                    }
+                    set.getValue().forEach(example -> known.add(pack(example)));
+                    if (offered.contains(set.getKey())
+                            || set.getValue().stream().anyMatch(example -> Files.exists(dataFolder.resolve(example)))) {
                         return;
                     }
                     for (String example : set.getValue()) {
-                        if (Files.isDirectory(packFolder(dataFolder, example))) {
+                        if (brought.contains(pack(example)) || Files.isDirectory(packFolder(dataFolder, example))) {
                             copy.add(example);
                         }
                     }
                 });
         return copy;
+    }
+
+    /** {@code contents/<pack>} for an example at {@code contents/<pack>/...}, as text. */
+    private static String pack(String example) {
+        String[] parts = example.split("/");
+        return parts.length < 3 ? example : parts[0] + "/" + parts[1];
     }
 
     /** The remembered sets, one per line; blank lines ignored. */

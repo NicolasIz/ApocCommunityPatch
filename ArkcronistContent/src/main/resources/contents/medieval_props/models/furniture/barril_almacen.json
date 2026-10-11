@@ -1,0 +1,359 @@
+{
+ "textures": {
+  "atlas": "medieval_props:furniture/medieval_atlas",
+  "particle": "medieval_props:furniture/medieval_atlas"
+ },
+ "elements": [
+  {
+   "from": [
+    2,
+    0,
+    2
+   ],
+   "to": [
+    14,
+    15,
+    14
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      0,
+      0,
+      1.5,
+      1.875
+     ],
+     "texture": "#atlas"
+    },
+    "south": {
+     "uv": [
+      0,
+      0,
+      1.5,
+      1.875
+     ],
+     "texture": "#atlas"
+    },
+    "east": {
+     "uv": [
+      0,
+      0,
+      1.5,
+      1.875
+     ],
+     "texture": "#atlas"
+    },
+    "west": {
+     "uv": [
+      0,
+      0,
+      1.5,
+      1.875
+     ],
+     "texture": "#atlas"
+    },
+    "up": {
+     "uv": [
+      10,
+      0,
+      11.5,
+      1.5
+     ],
+     "texture": "#atlas"
+    },
+    "down": {
+     "uv": [
+      10,
+      0,
+      11.5,
+      1.5
+     ],
+     "texture": "#atlas"
+    }
+   }
+  },
+  {
+   "from": [
+    1.75,
+    2,
+    1.75
+   ],
+   "to": [
+    14.25,
+    3,
+    14.25
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      12,
+      0,
+      13.5625,
+      0.125
+     ],
+     "texture": "#atlas"
+    },
+    "south": {
+     "uv": [
+      12,
+      0,
+      13.5625,
+      0.125
+     ],
+     "texture": "#atlas"
+    },
+    "east": {
+     "uv": [
+      12,
+      0,
+      13.5625,
+      0.125
+     ],
+     "texture": "#atlas"
+    },
+    "west": {
+     "uv": [
+      12,
+      0,
+      13.5625,
+      0.125
+     ],
+     "texture": "#atlas"
+    },
+    "up": {
+     "uv": [
+      12,
+      0,
+      13.5625,
+      1.5625
+     ],
+     "texture": "#atlas"
+    },
+    "down": {
+     "uv": [
+      12,
+      0,
+      13.5625,
+      1.5625
+     ],
+     "texture": "#atlas"
+    }
+   }
+  },
+  {
+   "from": [
+    1.75,
+    7,
+    1.75
+   ],
+   "to": [
+    14.25,
+    8,
+    14.25
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      12,
+      0,
+      13.5625,
+      0.125
+     ],
+     "texture": "#atlas"
+    },
+    "south": {
+     "uv": [
+      12,
+      0,
+      13.5625,
+      0.125
+     ],
+     "texture": "#atlas"
+    },
+    "east": {
+     "uv": [
+      12,
+      0,
+      13.5625,
+      0.125
+     ],
+     "texture": "#atlas"
+    },
+    "west": {
+     "uv": [
+      12,
+      0,
+      13.5625,
+      0.125
+     ],
+     "texture": "#atlas"
+    },
+    "up": {
+     "uv": [
+      12,
+      0,
+      13.5625,
+      1.5625
+     ],
+     "texture": "#atlas"
+    },
+    "down": {
+     "uv": [
+      12,
+      0,
+      13.5625,
+      1.5625
+     ],
+     "texture": "#atlas"
+    }
+   }
+  },
+  {
+   "from": [
+    1.75,
+    12,
+    1.75
+   ],
+   "to": [
+    14.25,
+    13,
+    14.25
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      12,
+      0,
+      13.5625,
+      0.125
+     ],
+     "texture": "#atlas"
+    },
+    "south": {
+     "uv": [
+      12,
+      0,
+      13.5625,
+      0.125
+     ],
+     "texture": "#atlas"
+    },
+    "east": {
+     "uv": [
+      12,
+      0,
+      13.5625,
+      0.125
+     ],
+     "texture": "#atlas"
+    },
+    "west": {
+     "uv": [
+      12,
+      0,
+      13.5625,
+      0.125
+     ],
+     "texture": "#atlas"
+    },
+    "up": {
+     "uv": [
+      12,
+      0,
+      13.5625,
+      1.5625
+     ],
+     "texture": "#atlas"
+    },
+    "down": {
+     "uv": [
+      12,
+      0,
+      13.5625,
+      1.5625
+     ],
+     "texture": "#atlas"
+    }
+   }
+  }
+ ],
+ "display": {
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    0,
+    0.28,
+    0
+   ],
+   "scale": [
+    0.625,
+    0.625,
+    0.625
+   ]
+  },
+  "ground": {
+   "translation": [
+    0,
+    2,
+    0
+   ],
+   "scale": [
+    0.25,
+    0.25,
+    0.25
+   ]
+  },
+  "fixed": {
+   "scale": [
+    0.5,
+    0.5,
+    0.5
+   ]
+  },
+  "thirdperson_righthand": {
+   "rotation": [
+    75,
+    45,
+    0
+   ],
+   "translation": [
+    0,
+    2.5,
+    0
+   ],
+   "scale": [
+    0.375,
+    0.375,
+    0.375
+   ]
+  },
+  "firstperson_righthand": {
+   "rotation": [
+    0,
+    45,
+    0
+   ],
+   "scale": [
+    0.375,
+    0.375,
+    0.375
+   ]
+  },
+  "firstperson_lefthand": {
+   "rotation": [
+    0,
+    225,
+    0
+   ],
+   "scale": [
+    0.375,
+    0.375,
+    0.375
+   ]
+  }
+ }
+}

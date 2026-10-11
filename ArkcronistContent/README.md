@@ -2,7 +2,9 @@
 
 Motor de contenido personalizado para **Paper 1.21.8+**, Java 21: define ítems, bloques, muebles
 (también asientos, muebles con inventario, cofres con animaciones de Blockbench que se unen en cofres
-dobles, camas de dos bloques, muebles de varios bloques y tablones de misiones), armaduras (con cascos 3D), cultivos, emojis de chat, logros, armas de fuego, líquidos que
+dobles, camas de dos bloques, muebles de varios bloques, tablones de misiones y muebles interactivos:
+bebidas y calderos con partículas, carteles que ejecutan comandos y una guillotina animada; se incluyen
+60 muebles medievales listos para decorar un spawn), armaduras (con cascos 3D), cultivos, emojis de chat, logros, armas de fuego, líquidos que
 fluyen y barras de HUD en YAML y el plugin compila
 su propio resource pack, lo empaqueta en ZIP, calcula su SHA-1, lo sirve con un servidor HTTP
 integrado —o lo sube solo a un servicio de almacenamiento— y se lo envía a cada jugador. Los bloques
@@ -19,6 +21,7 @@ concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer
 /arkcontent board <subcomando>             avisos de los tablones de misiones: crear, publicar... (sección 4)
 /arkcontent animate <animación>            reproduce una animación del mueble que miras (sección 4)
 /arkcontent editor [mueble]                mueve, escala y gira en vivo el mueble que miras (sección 4)
+/arkcontent showcase <pack>                coloca todos los muebles de un pack en filas delante de ti (sección 4)
 /arkcontent shop                           tienda: los ítems con `price`, pagados con Vault (sección 5)
 /arkcontent npc equip <hueco> <item> | sit NPC de Citizens con un ítem o sentado (sección 5)
 /arkcontent hud <jugador> <hud> [set|add|take <n>]  ver o cambiar el valor de una barra (sección 4)
@@ -29,7 +32,7 @@ concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer
 | Permiso | Por defecto | Para |
 |---|---|---|
 | `arkcontent.give` | op | `/customgive`, y sacar ítems del explorador |
-| `arkcontent.admin` | op | `reload`, `info`, `import`, `editor`, `animate`, `npc`, `hud`, `liquids`; avisos del servidor web al entrar |
+| `arkcontent.admin` | op | `reload`, `info`, `import`, `editor`, `animate`, `showcase`, `npc`, `hud`, `liquids`; avisos del servidor web al entrar |
 | `arkcontent.menu` | op | abrir el explorador (solo mirar, si no tiene `arkcontent.give`) |
 | `arkcontent.emojis` | todos | `/emojis`. Usar un emoji no necesita permiso, salvo que el emoji declare el suyo |
 | `arkcontent.shop` | todos | `/arkcontent shop` (necesita Vault y un plugin de economía) |
@@ -568,6 +571,12 @@ Con un bot (mineflayer) y la consola, en el servidor de pruebas con 1608 ítems 
 - **Cambios.** Colocar o romper actualiza la caché al instante y encola la escritura. Romper borra
   la fila aunque la caché aún no tuviera el mundo cargado; y un bloque roto *mientras* su mundo se
   carga no "resucita" cuando llegan las filas.
+- **Un mueble, una transacción (1.9.5).** Las filas de todos los bloques que ocupa un mueble —las seis
+  de la guillotina, las seis del puesto de mercado— se escriben en **una sola tarea** del hilo
+  `ArkContent-DB` y en **una transacción** (`saveAll`), y se borran igual al romperlo (`deleteAll`):
+  el archivo nunca tiene medio mueble. Si una fila falla, no queda ninguna (probado con una fila
+  inválida: `rollback`, y la conexión sigue en autocommit para lo siguiente). El autoguardado de los
+  inventarios abiertos (cada pocos segundos) también va junto, en una transacción para todos.
 - **Apagado.** Es la única espera: `onDisable` deja terminar las escrituras encoladas (máx. 10 s).
 - **Esquema.** `PRAGMA user_version` lleva la versión: 1 (`custom_blocks_world`), 2 (+ `custom_crops`),
   3 (+ `furniture_storage`, ver *Muebles con almacenamiento*), 4 (+ `advancement_unlocks`, ver
@@ -769,6 +778,12 @@ lo monta con la postura vanilla de ir sentado, mirando hacia donde mira el muebl
 levanta: el asiento desaparece y el jugador queda de pie sobre el mueble, no dentro de su barrera.
 Si ya hay alguien sentado se avisa. El asiento nunca se guarda con el chunk; romper el mueble,
 desconectarse o apagar el plugin también lo retiran.
+
+En un mueble más alto que su asiento (un trono de 1×2, el cepo de la guillotina) la cabeza del que
+se sienta queda dentro de la barrera de arriba: el daño por asfixia de quien está sentado en uno de
+estos asientos se cancela (la barrera es invisible, no se ve nada raro). Al levantarse de uno así se
+le deja delante del mueble, hacia donde mira, si hay sitio, y si no encima de todo él. Un clic en el
+bloque de arriba de un trono sienta en el de abajo; un banco de 2×1 sienta a uno en cada bloque.
 
 ### Muebles con almacenamiento
 
@@ -1086,6 +1101,145 @@ Con un bot de mineflayer, AuraSkills 2.3.12, ExcellentJobs, Vault y EssentialsX:
 | Matar y romper | Un zombi muerto por el bot y un mineral de carbón roto: «Kill 2 Zombie: 1/2», «Break 2 Coal ore: 1/2»; al salir el bot, `progress` 1 en las dos filas |
 | Reinicio | Tras reiniciar el servidor, el tablón muestra 1/2 en los dos; el segundo zombi y el segundo carbón dan 2/2, «Click to hand it in!»; entregar ambos da $50 + $10 (saldo $1,150 → $1,210) y 3 rubíes; los dos quedan `COMPLETED` y el no repetible pone «Done» |
 | 1.9.1 | Un aviso cuyo título no trae color llega con `#E6CB98` (antes `#4a3420`, casi invisible sobre el fondo oscuro del tooltip); el pergamino ya no tiene el sello rojo de la esquina izquierda debajo del título, y al arrancar se vuelve a extraer y entra en el pack (mismo SHA-1 en `data/builtin/` y en el ZIP) |
+
+### Muebles medievales interactivos (1.9.5)
+
+`contents/medieval_props/` trae **60 muebles** para la plaza de un spawn: un solo atlas de texturas
+(`textures/furniture/medieval_atlas.png`, 128×128), 59 modelos Java y la guillotina, de Blockbench.
+En un servidor que ya tenía `contents/` se copia la primera vez que arranca la 1.9.5 (una carpeta
+de pack nueva sí se crea en una actualización; una que ya se ofreció y se borró no vuelve).
+
+| Tipo | Muebles | Clic derecho |
+|---|---|---|
+| `seat` (13) | sillas de taberna, taburetes, banco largo y de iglesia (2×1), trono (1×2), tocón, fardo, sillón… | sentarse |
+| `effect` (15) | jarras de cerveza e hidromiel, copa, licor, barril con grifo, calderos (estofado, pociones, bruja), fogata, brasero, candelabro, pozo, alambique, forja, horno | partículas siempre; los que se beben dan efectos de poción |
+| `command` (10) | carteles de banco, taberna, herrería, mercado, establo, alquimista y posada, campana, buzón, mapa | ejecuta sus comandos |
+| `storage` (6) | barril, caja, baúl, estantería de botellas, tonel de vino (54 huecos), saco | abre su inventario |
+| `guillotine` (1) | `guillotina_plaza`, 2×3 | cepo: arrodillarse · palanca: dejar caer la hoja |
+| decoración (15) | mesas, armero, yunque, piedra de afilar, maniquí, estandartes, carro, puesto de mercado (3×2), abrevadero, faroles (`LIGHT` 15), leña… | — |
+
+Para verlos todos de golpe: `/arkcontent showcase medieval_props` los coloca en filas delante de quien
+lo ejecuta, mirándole —cuatro por tick, para no frenar el servidor—, y dice cuánto tardó el tick más
+lento.
+
+#### `interactable: effect`
+
+```yaml
+  caldero_estofado:
+    type: custom_furniture
+    furniture:
+      interactable: effect
+      effect:
+        interval: 8          # ticks entre ráfagas (1-1200)
+        range: 24            # bloques: quién las ve
+        particles:           # solo partículas sin datos (flame, smoke, witch, bubble_pop...)
+          - {particle: campfire_cosy_smoke, offset: [0, 0.9, 0], count: 1, spread: 0.15, speed: 0.01}
+        on-click:            # opcional: lo que da al beberlo
+          potions: ["saturation 2 3", {effect: speed, seconds: 30, amplifier: 0}]
+          sound: minecraft:entity.generic.eat
+          cooldown: 30       # segundos, por jugador y mueble
+          message: "<gold>Estofado caliente."
+```
+
+`offset` es `[a lo ancho, arriba, adelante]` en bloques, desde el centro del mueble a ras de suelo,
+y gira con él. **Bucle asíncrono:** cada tick el hilo principal solo elige qué muebles tocan este
+tick y anota dónde está cada jugador; dónde cae cada partícula, quién está a menos de `range` y el
+envío de los paquetes van en el hilo `ArkContent-Effects` (el `ParticleBuilder` de Paper puede
+usarse fuera del hilo principal). Una partícula que no existe o que necesita datos (un color, un
+bloque) se avisa una vez en consola y se omite. Un mueble solo con partículas no se queda con el
+clic: se puede colocar un bloque contra él.
+
+#### `interactable: command`
+
+```yaml
+  cartel_banco:
+    type: custom_furniture
+    furniture:
+      interactable: command
+      command:
+        run:                 # uno o varios; la barra inicial sobra
+          - 'minecraft:tellraw %player% {"text":"Bienvenido al banco"}'
+          - 'dm open banco %player%'
+        as: console          # o player: como si lo escribiera el jugador
+        cooldown: 2          # segundos
+        permission: plaza.banco    # opcional
+        message: "<gold>..." # opcional
+        sound: minecraft:block.chain.place
+```
+
+Marcadores: `%player%`, `%uuid%`, `%world%`, `%dimension%` (`minecraft:overworld`, para `execute in`),
+`%x% %y% %z%` (el bloque del mueble). Los rellena el servidor, nunca el jugador, y cada valor se
+comprueba antes de entrar en un comando de consola: un nombre solo puede ser `[A-Za-z0-9_]` (con el
+`.`/`*` de Floodgate delante), así que no puede añadir un selector, un argumento ni un segundo
+comando; un comando es una línea. Los de los carteles incluidos solo saludan: cámbialos por tu menú,
+tu warp o tu tienda. Cada comando ejecutado queda en la consola, con quién y dónde.
+
+#### `interactable: guillotine`
+
+```yaml
+  guillotina_plaza:
+    type: custom_furniture
+    furniture:
+      size: {width: 2, height: 3}
+      animated-model: furniture/guillotina_plaza   # huesos frame, blade, lever
+      interactable: guillotine
+      guillotine:
+        drop: drop_blade      # animación de la caída (hold: se queda abajo)
+        reset: reset_blade    # la que la sube
+        delay-ms: 63          # desde el clic hasta que empieza a caer
+        impact-ms: 250        # desde ahí hasta que llega abajo (por defecto, lo que dura drop)
+        reset-after: 3        # segundos abajo antes de subirla
+        lever: {across: 1, up: 0}   # el bloque de la palanca (por defecto, el de abajo a la derecha)
+        kneel-height: 0.2
+        victim: occupant      # o user: cae sobre quien tira de la palanca
+        respect-pvp: true
+        impact-sound: minecraft:block.anvil.land
+        impact-particles: [{particle: crit, offset: [0, 1.4, 0], count: 18, spread: 0.3, speed: 0.4}]
+        commands: ['minecraft:tellraw @a {"text":"La guillotina ha caído sobre %player%"}']
+```
+
+Clic derecho en el armazón: el jugador se arrodilla en el cepo (un asiento, un poco detrás del
+armazón, mirando hacia fuera; agacharse lo levanta). Clic derecho en el bloque de la palanca:
+
+1. en el **primer tick que llega al menos `delay-ms` después del clic** empieza `drop_blade`: las nuevas
+   transformaciones de los huesos salen como datos de entidad a todos los que lo ven. Con 63 ms y
+   ticks de 50 ms es el segundo tick tras el clic, entre 63 y 113 ms después; el reloj decide, no un
+   número de ticks, así que el tick en que llegó el clic no lo mueve;
+2. `impact-ms` después cae: partículas y sonido del impacto, y quien siga en el cepo recibe un golpe
+   letal en el hilo principal —`minecraft:generic_kill`, el daño de `/kill`, que no paran armaduras,
+   efectos ni tótems—. Con `respect-pvp` el golpe es del que tiró de la palanca, así que si un plugin
+   de protección no deja hacer PvP ahí (WorldGuard, GriefPrevention, EssentialsX tras un
+   teletransporte…) no pasa nada y se avisa al que tiró. Luego sus `commands`, desde la consola
+   (`%player%` el que muere, `%killer%` el que tiró). Con el cepo vacío la hoja cae sin más;
+3. `reset-after` después, `reset_blade` la sube; hasta entonces la palanca no hace nada.
+
+Quien se levanta del cepo antes de que llegue la hoja se salva.
+
+**Luz.** Los faroles, la lámpara, el candelabro, la fogata y el brasero están sobre bloques `LIGHT`
+con su nivel (`light:`), que se pone al colocarlos, en el mismo tick, en cada bloque que ocupan. Ese
+nivel es parte del bloque y lo guarda el propio mundo con su chunk; no cambia mientras el mueble
+existe (un clic con un bloque de luz en la mano no lo altera), así que no se duplica en SQLite: lo
+que sí va al hilo `ArkContent-DB`, en una transacción por mueble, son sus posiciones.
+
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (v1.9.5)
+
+Con bots (mineflayer) y una sonda de pruebas que mide cada tick; los scripts están en el scratchpad
+de la sesión (`bot/medieval195.js`, `guillo195.js`, `deaths195.js`).
+
+| Prueba | Resultado |
+|---|---|
+| Actualización desde 1.9.2 | «Added 63 example file(s)»: `contents/medieval_props/` creado; 1669 ítems (60 más) |
+| `showcase medieval_props` | 60 muebles, 97 filas en la base de datos (6 de la guillotina, 6 del puesto); 15 ticks, el más lento 4,7-14,9 ms (antes de repartirlo por ticks: 59 ms en uno) |
+| Asientos | silla: sentado a 0,55 + 0,6; trono: clic en el bloque de arriba sienta abajo, 3 s sentado con salud 20 (sin asfixia), se levanta delante |
+| Bebida | jarra de cerveza: `white_ash` a 0,45 bloques, 4 paquetes en 4,2 s (cada 20 ticks); al beber, Speed 600 ticks y «¡Salud!»; otro clic: «Not yet: 9s» |
+| Caldero | `campfire_cosy_smoke` + `bubble_pop`, 14-16 paquetes en 3 s (cada 8 ticks) |
+| Carteles | banco, taberna, herrería, mapa: su mensaje en el chat y la línea en consola `medieval_props:cartel_banco at world 131,-60,97 (Tester): console: /minecraft:tellraw Tester ...`; campana: `block.bell.use`; buzón (como jugador): «You do not have any mail.» |
+| Guillotina vacía | primer paquete de huesos 91-98 ms tras el clic; partículas de impacto (`crit`, `electric_spark`, `enchanted_hit`) a 328-345 ms, a 1,40 bloques; otro tirón: «The blade is not back up yet» |
+| Guillotina con víctima | arrodillada 4,5 s con salud 20; primer paquete de huesos 94-99 ms; «Victim was killed» y «[Plaza] La guillotina ha caído sobre Victim.» para los dos |
+| PvP denegado (WorldGuard) | «Hey! Sorry, but you can't PvP here.», la víctima sigue con 20; el evento lo cancela WorldGuard |
+| Romperla con alguien dentro | se le levanta delante; filas de la guillotina 6 → 0 |
+| Barril | inventario de 27 + el del jugador; al cerrarlo, una fila en `furniture_storage` |
+| TPS | con los 60 muebles y sus bucles de partículas y el jugador en medio: 20.0 / 20.0 / 20.0, MSPT media 1,7-1,9 ms, máx. 5,3-6,4 ms en 5-10 s; 67 paquetes de partículas por segundo al jugador |
 
 ### Tienda (`price`)
 
@@ -2768,6 +2922,20 @@ con `join-classpath: true` para ver sus clases.
   se ven como un modelo que falta. Entrar en una carpeta reabre el inventario (es como Paper deja
   cambiar un título con imagen). Mientras el worker está ocupado con una recompilación, la página
   pedida espera a que termine.
+- 1.9.5, muebles medievales: los 60 modelos se generaron por programa y se comprobó que compilan,
+  que todos usan el atlas y que caben en los límites de un modelo Java, pero su aspecto en un cliente
+  real no se ha podido ver aquí (los bots no dibujan), ni tampoco dónde queda exactamente la cabeza
+  del que se arrodilla en el cepo respecto al agujero. Las partículas `effect:` solo pueden ser de
+  las que no llevan datos (nada de `dust` con color). Los marcadores de los comandos son los de la
+  tabla; `%player%` de PlaceholderAPI u otros se dejan como están, para el plugin del comando.
+- 1.9.5, guillotina: el golpe es el ataque de quien tira de la palanca, así que todo lo que impide
+  atacar lo impide: con EssentialsX, quien acaba de teletransportarse o de entrar no puede atacar en
+  `teleport-invulnerability` / `login-attack-delay` segundos (4 y 5 en el servidor de prueba), y la
+  víctima recién teletransportada tampoco puede ser dañada. `respect-pvp: false` lo quita, pero
+  entonces tampoco lo para una región sin PvP. En el servidor de prueba, la **primera** muerte por
+  PvP tras arrancar tardó un tick de 196 ms: 70,7 ms en los listeners de daño y 92,2 ms en los de
+  muerte, de otros plugins, la primera vez que corren; la segunda muerte ya no pasó de 20 ms de tick
+  (un `/kill` normal, la primera vez, 51 ms).
 - 1.8, red: la IP descubierta es por la que la máquina **sale** a internet; en un nodo con varias IPs
   puede no ser por la que **entran** los jugadores. Ahí, `http.public-address` (o un `server-ip`
   público) manda. Un puerto de respaldo solo sirve si el hosting lo redirige.

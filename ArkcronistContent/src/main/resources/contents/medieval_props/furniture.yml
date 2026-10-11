@@ -1,0 +1,1019 @@
+# ---------------------------------------------------------------------------
+#  Medieval props (1.9.5): 60 pieces for a spawn's square
+# ---------------------------------------------------------------------------
+#  Give one:   /customgive <player> medieval_props:<id>
+#  All 60, laid out in rows in front of you:   /arkcontent showcase medieval_props
+#
+#  What a right click does:
+#    seat     - sit down (sneak to get up)
+#    effect   - particles on a loop, seen by players within 'range' blocks,
+#               and on-click: potion effects, a sound, a line of text
+#    command  - runs commands: from the console, or 'as: player'. Filled in:
+#               %player% %uuid% %world% %dimension% %x% %y% %z%
+#               The signs only greet the player; replace 'run' with your own
+#               commands (a menu, a warp, a shop): dm open banco %player% ...
+#    storage  - an inventory kept in the plugin's database
+#    guillotine - kneel in the stocks with a right click on the frame; a right
+#               click on the lever drops the blade on whoever kneels there
+#
+#  Every piece draws from one texture, textures/furniture/medieval_atlas.png,
+#  and is a Java model under models/furniture/; the guillotine is a Blockbench
+#  model with the animations drop_blade and reset_blade.
+# ---------------------------------------------------------------------------
+
+items:
+  silla_taberna_roble:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Silla de taberna de roble'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/silla_taberna_roble'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'seat'
+      seat-height: 0.55
+
+  silla_taberna_oscura:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Silla de taberna oscura'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/silla_taberna_oscura'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'seat'
+      seat-height: 0.6
+
+  taburete_taberna:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Taburete de taberna'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/taburete_taberna'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'seat'
+      seat-height: 0.6
+
+  taburete_alto:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Taburete de barra'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/taburete_alto'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'seat'
+      seat-height: 0.85
+
+  banco_largo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Banco largo'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/banco_largo'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 1
+      interactable: 'seat'
+      seat-height: 0.5
+
+  banco_iglesia:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Banco de capilla'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/banco_iglesia'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 1
+      interactable: 'seat'
+      seat-height: 0.5
+
+  trono_real:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Trono real'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/trono_real'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'seat'
+      seat-height: 0.45
+
+  tocon_asiento:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Tocón para sentarse'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/tocon_asiento'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'seat'
+      seat-height: 0.5
+
+  fardo_heno_asiento:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Fardo de heno'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/fardo_heno_asiento'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'seat'
+      seat-height: 0.56
+
+  silla_herrero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Silla del herrero'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/silla_herrero'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'seat'
+      seat-height: 0.55
+
+  banqueta_cuero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Banqueta de cuero'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/banqueta_cuero'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'seat'
+      seat-height: 0.55
+
+  sillon_cuero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Sillón de cuero'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/sillon_cuero'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'seat'
+      seat-height: 0.45
+
+  cepo_plaza:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cepo de la plaza'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/cepo_plaza'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'seat'
+      seat-height: 0.1
+
+  jarra_cerveza:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Jarra de cerveza'
+    lore:
+      - '<gray>Clic derecho: bebe.'
+    resource:
+      model: 'furniture/jarra_cerveza'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        interval: 20
+        particles:
+          - {particle: 'white_ash', offset: [0, 0.45, 0], count: 2, spread: 0.08, speed: 0.0}
+        on-click:
+          potions:
+            - 'speed 30 0'
+          sound: 'minecraft:entity.generic.drink'
+          cooldown: 10
+          message: '<gold>¡Salud! <gray>La cerveza te da alas.'
+        range: 24
+
+  jarra_hidromiel:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Jarra de hidromiel'
+    lore:
+      - '<gray>Clic derecho: bebe.'
+    resource:
+      model: 'furniture/jarra_hidromiel'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        interval: 20
+        particles:
+          - {particle: 'falling_honey', offset: [0, 0.42, 0], count: 1, spread: 0.06, speed: 0.0}
+        on-click:
+          potions:
+            - 'regeneration 8 0'
+          sound: 'minecraft:entity.generic.drink'
+          cooldown: 10
+          message: '<gold>El hidromiel te reconforta.'
+        range: 24
+
+  copa_vino:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Copa de vino'
+    lore:
+      - '<gray>Clic derecho: bebe.'
+    resource:
+      model: 'furniture/copa_vino'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        interval: 25
+        particles:
+          - {particle: 'dripping_honey', offset: [0, 0.48, 0], count: 1, spread: 0.04, speed: 0.0}
+        on-click:
+          potions:
+            - 'absorption 60 0'
+          sound: 'minecraft:entity.generic.drink'
+          cooldown: 10
+          message: '<dark_red>Un buen vino de la cosecha real.'
+        range: 24
+
+  botella_licor:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Botella de licor'
+    lore:
+      - '<gray>Clic derecho: bebe.'
+    resource:
+      model: 'furniture/botella_licor'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        interval: 30
+        particles:
+          - {particle: 'glow', offset: [0, 0.75, 0], count: 1, spread: 0.05, speed: 0.0}
+        on-click:
+          potions:
+            - 'strength 20 0'
+            - 'nausea 4 0'
+          sound: 'minecraft:entity.generic.drink'
+          cooldown: 10
+          message: '<red>¡Fuerte como un dragón!'
+        range: 24
+
+  barril_cerveza:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Barril de cerveza con grifo'
+    lore:
+      - '<gray>Clic derecho: bebe.'
+    resource:
+      model: 'furniture/barril_cerveza'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        interval: 16
+        particles:
+          - {particle: 'dripping_honey', offset: [0, 0.18, 0.46], count: 1, spread: 0.02, speed: 0.0}
+        on-click:
+          potions:
+            - 'saturation 1 2'
+          sound: 'minecraft:entity.generic.drink'
+          cooldown: 20
+          message: '<gold>Te sirves una jarra del barril.'
+        range: 24
+
+  caldero_estofado:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caldero de estofado'
+    lore:
+      - '<gray>Clic derecho: bebe.'
+    resource:
+      model: 'furniture/caldero_estofado'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        interval: 8
+        particles:
+          - {particle: 'campfire_cosy_smoke', offset: [0, 0.9, 0], count: 1, spread: 0.15, speed: 0.01}
+          - {particle: 'bubble_pop', offset: [0, 0.75, 0], count: 2, spread: 0.2, speed: 0.0}
+        on-click:
+          potions:
+            - 'saturation 2 3'
+          sound: 'minecraft:entity.generic.eat'
+          cooldown: 30
+          message: '<gold>Estofado caliente.'
+        range: 24
+
+  caldero_pociones:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caldero de pociones'
+    lore:
+      - '<gray>Clic derecho: bebe.'
+    resource:
+      model: 'furniture/caldero_pociones'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        interval: 10
+        particles:
+          - {particle: 'witch', offset: [0, 0.85, 0], count: 2, spread: 0.2, speed: 0.0}
+          - {particle: 'bubble_pop', offset: [0, 0.75, 0], count: 1, spread: 0.2, speed: 0.0}
+        on-click:
+          potions:
+            - 'night_vision 60 0'
+          sound: 'minecraft:entity.generic.drink'
+          cooldown: 10
+          message: '<light_purple>Ves en la oscuridad.'
+        range: 24
+
+  caldero_bruja:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caldero de la bruja'
+    lore:
+      - '<gray>Clic derecho: bebe.'
+    resource:
+      model: 'furniture/caldero_bruja'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        interval: 8
+        particles:
+          - {particle: 'happy_villager', offset: [0, 0.9, 0], count: 2, spread: 0.25, speed: 0.0}
+          - {particle: 'bubble_pop', offset: [0, 0.75, 0], count: 2, spread: 0.2, speed: 0.0}
+        on-click:
+          potions:
+            - 'jump_boost 30 1'
+          sound: 'minecraft:entity.generic.drink'
+          cooldown: 10
+          message: '<green>Una poción burbujeante...'
+        range: 24
+
+  fogata_asador:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Fogata con asador'
+    lore:
+      - '<gray>Clic derecho: ambiente.'
+    resource:
+      model: 'furniture/fogata_asador'
+    furniture:
+      support: 'LIGHT'
+      light: 13
+      interactable: 'effect'
+      effect:
+        interval: 6
+        particles:
+          - {particle: 'campfire_cosy_smoke', offset: [0, 0.4, 0], count: 1, spread: 0.1, speed: 0.01}
+          - {particle: 'small_flame', offset: [0, 0.2, 0], count: 2, spread: 0.15, speed: 0.0}
+        range: 24
+
+  brasero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Brasero'
+    lore:
+      - '<gray>Clic derecho: ambiente.'
+    resource:
+      model: 'furniture/brasero'
+    furniture:
+      support: 'LIGHT'
+      light: 14
+      interactable: 'effect'
+      effect:
+        interval: 5
+        particles:
+          - {particle: 'flame', offset: [0, 0.8, 0], count: 2, spread: 0.15, speed: 0.01}
+          - {particle: 'smoke', offset: [0, 1.0, 0], count: 1, spread: 0.1, speed: 0.01}
+        range: 24
+
+  candelabro_mesa:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Candelabro de mesa'
+    lore:
+      - '<gray>Clic derecho: ambiente.'
+    resource:
+      model: 'furniture/candelabro_mesa'
+    furniture:
+      support: 'LIGHT'
+      light: 12
+      interactable: 'effect'
+      effect:
+        interval: 6
+        particles:
+          - {particle: 'small_flame', offset: [-0.25, 0.82, 0], count: 1, spread: 0.05, speed: 0.0}
+          - {particle: 'small_flame', offset: [0, 0.95, 0], count: 1, spread: 0.05, speed: 0.0}
+          - {particle: 'small_flame', offset: [0.25, 0.82, 0], count: 1, spread: 0.05, speed: 0.0}
+        range: 24
+
+  pozo_deseos:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Pozo de los deseos'
+    lore:
+      - '<gray>Clic derecho: bebe.'
+    resource:
+      model: 'furniture/pozo_deseos'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        interval: 20
+        particles:
+          - {particle: 'dripping_water', offset: [0, 0.7, 0], count: 2, spread: 0.15, speed: 0.0}
+        on-click:
+          potions:
+            - 'luck 300 0'
+          sound: 'minecraft:entity.player.splash'
+          cooldown: 60
+          message: '<aqua>Lanzas una moneda y pides un deseo...'
+        range: 24
+
+  alambique:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Alambique del alquimista'
+    lore:
+      - '<gray>Clic derecho: bebe.'
+    resource:
+      model: 'furniture/alambique'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        interval: 10
+        particles:
+          - {particle: 'smoke', offset: [0.125, 0.8, 0.125], count: 1, spread: 0.05, speed: 0.01}
+          - {particle: 'bubble_pop', offset: [-0.34, 0.65, -0.28], count: 1, spread: 0.1, speed: 0.0}
+        on-click:
+          potions:
+            - 'fire_resistance 30 0'
+          sound: 'minecraft:entity.generic.drink'
+          cooldown: 10
+          message: '<gold>Un destilado que resiste el fuego.'
+        range: 24
+
+  forja:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Forja'
+    lore:
+      - '<gray>Clic derecho: ambiente.'
+    resource:
+      model: 'furniture/forja'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        interval: 4
+        particles:
+          - {particle: 'flame', offset: [0, 0.75, 0], count: 2, spread: 0.3, speed: 0.01}
+          - {particle: 'lava', offset: [0, 0.7, 0], count: 1, spread: 0.2, speed: 0.0}
+          - {particle: 'large_smoke', offset: [0, 2.0, -0.34], count: 1, spread: 0.1, speed: 0.02}
+        range: 24
+
+  horno_pan:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Horno de pan'
+    lore:
+      - '<gray>Clic derecho: bebe.'
+    resource:
+      model: 'furniture/horno_pan'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        interval: 10
+        particles:
+          - {particle: 'smoke', offset: [-0.22, 1.65, -0.16], count: 1, spread: 0.05, speed: 0.02}
+          - {particle: 'small_flame', offset: [0, 0.3, 0.42], count: 1, spread: 0.15, speed: 0.0}
+        on-click:
+          potions:
+            - 'saturation 1 4'
+          sound: 'minecraft:entity.generic.eat'
+          cooldown: 30
+          message: '<gold>Pan recién horneado.'
+        range: 24
+
+  cartel_banco:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cartel del banco'
+    lore:
+      - '<gray>Clic derecho para usarlo.'
+    resource:
+      model: 'furniture/cartel_banco'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'command'
+      command:
+        run:
+          - 'minecraft:tellraw %player% ["",{"text":"[Banco] ","color":"gold"},{"text":"Bienvenido al banco del reino.","color":"gray"}]'
+        sound: 'minecraft:block.chain.place'
+        as: 'console'
+        cooldown: 2
+
+  cartel_taberna:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cartel de la taberna'
+    lore:
+      - '<gray>Clic derecho para usarlo.'
+    resource:
+      model: 'furniture/cartel_taberna'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'command'
+      command:
+        run:
+          - 'minecraft:tellraw %player% ["",{"text":"[Taberna] ","color":"gold"},{"text":"La taberna está abierta: siéntate y pide una jarra.","color":"gray"}]'
+        sound: 'minecraft:block.wood.place'
+        as: 'console'
+        cooldown: 2
+
+  cartel_herreria:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cartel de la herrería'
+    lore:
+      - '<gray>Clic derecho para usarlo.'
+    resource:
+      model: 'furniture/cartel_herreria'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'command'
+      command:
+        run:
+          - 'minecraft:tellraw %player% ["",{"text":"[Herrería] ","color":"gold"},{"text":"El herrero repara tu equipo.","color":"gray"}]'
+        sound: 'minecraft:block.anvil.place'
+        as: 'console'
+        cooldown: 2
+
+  cartel_mercado:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cartel del mercado'
+    lore:
+      - '<gray>Clic derecho para usarlo.'
+    resource:
+      model: 'furniture/cartel_mercado'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'command'
+      command:
+        run:
+          - 'minecraft:tellraw %player% ["",{"text":"[Mercado] ","color":"gold"},{"text":"Compra y vende en los puestos de la plaza.","color":"gray"}]'
+        sound: 'minecraft:entity.villager.trade'
+        as: 'console'
+        cooldown: 2
+
+  cartel_establo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cartel del establo'
+    lore:
+      - '<gray>Clic derecho para usarlo.'
+    resource:
+      model: 'furniture/cartel_establo'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'command'
+      command:
+        run:
+          - 'minecraft:tellraw %player% ["",{"text":"[Establo] ","color":"gold"},{"text":"Los caballos descansan aquí.","color":"gray"}]'
+        sound: 'minecraft:entity.horse.ambient'
+        as: 'console'
+        cooldown: 2
+
+  cartel_alquimista:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cartel del alquimista'
+    lore:
+      - '<gray>Clic derecho para usarlo.'
+    resource:
+      model: 'furniture/cartel_alquimista'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'command'
+      command:
+        run:
+          - 'minecraft:tellraw %player% ["",{"text":"[Alquimista] ","color":"gold"},{"text":"Pociones, elixires y remedios.","color":"gray"}]'
+        sound: 'minecraft:block.brewing_stand.brew'
+        as: 'console'
+        cooldown: 2
+
+  cartel_posada:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cartel de la posada'
+    lore:
+      - '<gray>Clic derecho para usarlo.'
+    resource:
+      model: 'furniture/cartel_posada'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'command'
+      command:
+        run:
+          - 'minecraft:tellraw %player% ["",{"text":"[Posada] ","color":"gold"},{"text":"Una cama caliente para el viajero.","color":"gray"}]'
+        sound: 'minecraft:block.wool.place'
+        as: 'console'
+        cooldown: 2
+
+  campana_plaza:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Campana de la plaza'
+    lore:
+      - '<gray>Clic derecho para usarlo.'
+    resource:
+      model: 'furniture/campana_plaza'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'command'
+      command:
+        run:
+          - 'minecraft:execute in %dimension% positioned %x% %y% %z% run playsound minecraft:block.bell.use block @a[distance=..48] ~ ~ ~ 2 1'
+        cooldown: 5
+        as: 'console'
+
+  buzon:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Buzón'
+    lore:
+      - '<gray>Clic derecho para usarlo.'
+    resource:
+      model: 'furniture/buzon'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'command'
+      command:
+        run:
+          - 'mail read'
+        as: 'player'
+        cooldown: 3
+        sound: 'minecraft:item.book.page_turn'
+
+  mapa_mural:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Mapa del reino'
+    lore:
+      - '<gray>Clic derecho para usarlo.'
+    resource:
+      model: 'furniture/mapa_mural'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'command'
+      command:
+        run:
+          - 'minecraft:tellraw %player% ["",{"text":"[Mapa] ","color":"gold"},{"text":"Estás en la plaza del reino, en %x%, %y%, %z%.","color":"gray"}]'
+        sound: 'minecraft:item.book.page_turn'
+        as: 'console'
+        cooldown: 2
+
+  barril_almacen:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Barril de almacén'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/barril_almacen'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Barril de la taberna'
+
+  caja_madera:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de madera'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_madera'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Caja de madera'
+
+  baul_viaje:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Baúl de viaje'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/baul_viaje'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Baúl de viaje'
+
+  estanteria_botellas:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Estantería de botellas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/estanteria_botellas'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Estantería de botellas'
+
+  tonel_vino:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Tonel de vino'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/tonel_vino'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 1
+      interactable: 'storage'
+      slots: 54
+      storage-title: '<dark_gray>Tonel de vino'
+
+  saco_grano:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Saco de grano'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/saco_grano'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Saco de grano'
+
+  mesa_taberna:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Mesa de taberna'
+    lore:
+      - '<gray>Decoración medieval.'
+    resource:
+      model: 'furniture/mesa_taberna'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 1
+
+  mesa_redonda:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Mesa redonda'
+    lore:
+      - '<gray>Decoración medieval.'
+    resource:
+      model: 'furniture/mesa_redonda'
+    furniture:
+      support: 'BARRIER'
+
+  mesa_banquete:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Mesa de banquete'
+    lore:
+      - '<gray>Decoración medieval.'
+    resource:
+      model: 'furniture/mesa_banquete'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 3
+        height: 1
+
+  armero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Armero'
+    lore:
+      - '<gray>Decoración medieval.'
+    resource:
+      model: 'furniture/armero'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+
+  yunque_herrero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Yunque del herrero'
+    lore:
+      - '<gray>Decoración medieval.'
+    resource:
+      model: 'furniture/yunque_herrero'
+    furniture:
+      support: 'BARRIER'
+
+  piedra_afilar:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Piedra de afilar'
+    lore:
+      - '<gray>Decoración medieval.'
+    resource:
+      model: 'furniture/piedra_afilar'
+    furniture:
+      support: 'BARRIER'
+
+  maniqui_armadura:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Maniquí con armadura'
+    lore:
+      - '<gray>Decoración medieval.'
+    resource:
+      model: 'furniture/maniqui_armadura'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+
+  estandarte_rojo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Estandarte rojo'
+    lore:
+      - '<gray>Decoración medieval.'
+    resource:
+      model: 'furniture/estandarte_rojo'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+
+  estandarte_azul:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Estandarte azul'
+    lore:
+      - '<gray>Decoración medieval.'
+    resource:
+      model: 'furniture/estandarte_azul'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+
+  carro_heno:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Carro de heno'
+    lore:
+      - '<gray>Decoración medieval.'
+    resource:
+      model: 'furniture/carro_heno'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 1
+
+  puesto_mercado:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Puesto de mercado'
+    lore:
+      - '<gray>Decoración medieval.'
+    resource:
+      model: 'furniture/puesto_mercado'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 3
+        height: 2
+
+  abrevadero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Abrevadero'
+    lore:
+      - '<gray>Decoración medieval.'
+    resource:
+      model: 'furniture/abrevadero'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 1
+
+  farol_hierro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Farol de hierro'
+    lore:
+      - '<gray>Ilumina la plaza.'
+    resource:
+      model: 'furniture/farol_hierro'
+    furniture:
+      support: 'LIGHT'
+      light: 15
+      size:
+        width: 1
+        height: 2
+
+  lampara_aceite:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Lámpara de aceite'
+    lore:
+      - '<gray>Ilumina la plaza.'
+    resource:
+      model: 'furniture/lampara_aceite'
+    furniture:
+      support: 'LIGHT'
+      light: 10
+
+  pila_lena:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Pila de leña'
+    lore:
+      - '<gray>Decoración medieval.'
+    resource:
+      model: 'furniture/pila_lena'
+    furniture:
+      support: 'BARRIER'
+
+  # The guillotine of the square: a frame two blocks wide and three high. The
+  # left block (as you face it) holds the stocks: a right click there kneels
+  # you in them. The right one holds the lever: a right click there drops the
+  # blade, on the first server tick at least delay-ms after the click, and it
+  # lands impact-ms later on whoever kneels in the stocks - nobody, and it
+  # falls harmlessly. The blow counts as the lever-puller's attack, so where a
+  # protection plugin denies PvP it does nothing; respect-pvp: false lets it
+  # through. victim: user drops it on whoever pulls the lever instead.
+  guillotina_plaza:
+    type: custom_furniture
+    display-name: "<#c8a165>Guillotina de la plaza"
+    lore:
+      - "<gray>Clic en el cepo: arrodíllate."
+      - "<gray>Clic en la palanca: deja caer la hoja."
+    resource:
+      model: furniture/guillotina_plaza_icon
+    furniture:
+      support: BARRIER
+      size: {width: 2, height: 3}
+      animated-model: furniture/guillotina_plaza
+      interactable: guillotine
+      guillotine:
+        drop: drop_blade
+        reset: reset_blade
+        delay-ms: 63
+        impact-ms: 250
+        reset-after: 3
+        lever: {across: 1, up: 0}
+        kneel-height: 0.2
+        victim: occupant
+        respect-pvp: true
+        impact-sound: minecraft:block.anvil.land
+        impact-particles:
+          - {particle: crit, offset: [0, 1.4, 0], count: 18, spread: 0.3, speed: 0.4}
+          - {particle: electric_spark, offset: [0, 1.4, 0], count: 10, spread: 0.25, speed: 0.2}
+          - {particle: enchanted_hit, offset: [0, 1.3, 0], count: 8, spread: 0.3, speed: 0.2}
+        commands:
+          - 'minecraft:tellraw @a ["",{"text":"[Plaza] ","color":"dark_red"},{"text":"La guillotina ha caído sobre %player%.","color":"gray"}]'

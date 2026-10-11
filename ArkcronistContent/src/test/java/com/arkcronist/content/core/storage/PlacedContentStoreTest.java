@@ -45,6 +45,41 @@ class PlacedContentStoreTest {
         reopened.close();
     }
 
+    /** 1.9.5: a piece's rows are in memory at once, and on disk after a restart, all or none. */
+    @Test
+    void aPiecesRowsAreAddedAndRemovedTogether() throws Exception {
+        DatabaseManager database = new DatabaseManager(temp.resolve("content.db"), LOGGER);
+        database.open();
+        PlacedContentStore store = new PlacedContentStore(database, LOGGER);
+        java.util.List<PlacedContent> stall = new java.util.ArrayList<>();
+        for (int across = -1; across <= 1; across++) {
+            for (int up = 0; up < 2; up++) {
+                stall.add(new PlacedContent(WORLD, 20 + across, 64 + up, 0, "medieval_props:puesto_mercado",
+                        PlacedContent.Kind.FURNITURE));
+            }
+        }
+        store.addAll(stall);
+        assertEquals("medieval_props:puesto_mercado", store.at(WORLD, 21, 65, 0).contentId());
+        store.addAll(java.util.List.of(new PlacedContent(WORLD, 0, 64, 0, "medieval_props:jarra_cerveza",
+                PlacedContent.Kind.FURNITURE)));
+        database.close();
+
+        DatabaseManager reopened = new DatabaseManager(temp.resolve("content.db"), LOGGER);
+        reopened.open();
+        PlacedContentStore restarted = new PlacedContentStore(reopened, LOGGER);
+        assertEquals(7, restarted.loadWorld(WORLD).get(10, TimeUnit.SECONDS));
+        restarted.removeAll(WORLD, stall.stream().map(row -> new int[] {row.x(), row.y(), row.z()}).toList());
+        assertNull(restarted.at(WORLD, 19, 64, 0));
+        reopened.close();
+
+        DatabaseManager again = new DatabaseManager(temp.resolve("content.db"), LOGGER);
+        again.open();
+        PlacedContentStore third = new PlacedContentStore(again, LOGGER);
+        assertEquals(1, third.loadWorld(WORLD).get(10, TimeUnit.SECONDS));
+        assertEquals("medieval_props:jarra_cerveza", third.at(WORLD, 0, 64, 0).contentId());
+        again.close();
+    }
+
     /** A block broken before its world's rows arrived still has its row deleted. */
     @Test
     void removingBeforeTheWorldIsLoadedStillDeletesTheRow() throws Exception {

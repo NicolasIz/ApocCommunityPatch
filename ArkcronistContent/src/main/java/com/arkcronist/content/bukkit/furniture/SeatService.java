@@ -56,6 +56,14 @@ public final class SeatService {
      * @param yaw the direction the chair faces, which the sitter faces too
      */
     public void sit(Player player, Block support, Placement.Seat seat, float yaw) {
+        sit(player, support, support.getLocation().add(0.5, seat.height(), 0.5), yaw);
+    }
+
+    /**
+     * Sits {@code player} at {@code sitting} - where their seat is to be, in the world - on behalf of
+     * the furniture standing on {@code support}: the guillotine's stocks, a little behind its frame.
+     */
+    public void sit(Player player, Block support, Location sitting, float yaw) {
         if (player.isInsideVehicle() || player.isSneaking()) {
             return;
         }
@@ -68,8 +76,9 @@ public final class SeatService {
             existing.remove();
         }
 
-        Location at = support.getLocation().add(0.5, seat.height() + RIDER_OFFSET, 0.5);
+        Location at = sitting.clone().add(0, RIDER_OFFSET, 0);
         at.setYaw(yaw);
+        at.setPitch(0f);
         long anchor = BlockKey.pack(support.getX(), support.getY(), support.getZ());
         ItemDisplay entity = support.getWorld().spawn(at, ItemDisplay.class, display -> {
             display.setPersistent(false);
@@ -90,8 +99,9 @@ public final class SeatService {
     }
 
     /**
-     * {@code sitter} got off {@code vehicle}. If that was a seat, it goes, and the sitter is stood on
-     * top of the chair a tick later - left where the seat was, they would be inside a solid support.
+     * {@code sitter} got off {@code vehicle}. If that was a seat, it goes, and the sitter is stood up
+     * a tick later - see {@link #standUp} - since left where the seat was, they would be inside a
+     * solid support.
      */
     public void dismounted(Entity sitter, Entity vehicle) {
         Long anchor = vehicle.getPersistentDataContainer().get(seatTag, PersistentDataType.LONG);
@@ -100,7 +110,8 @@ public final class SeatService {
         }
         forget(vehicle);
         World world = vehicle.getWorld();
-        Location standUp = new Location(world, BlockKey.x(anchor) + 0.5, BlockKey.y(anchor) + 1, BlockKey.z(anchor) + 0.5);
+        Location standUp = standUp(world.getBlockAt(BlockKey.x(anchor), BlockKey.y(anchor), BlockKey.z(anchor)),
+                vehicle.getLocation().getYaw());
         plugin.getServer().getScheduler().runTask(plugin, () -> {
             vehicle.remove();
             if (sitter.isValid() && !sitter.isInsideVehicle()) {
@@ -119,10 +130,36 @@ public final class SeatService {
             seat.eject();
             forget(seat);
             seat.remove();
+            Location standUp = standUp(support, seat.getLocation().getYaw());
             for (Entity sitter : sitters) {
-                sitter.teleport(support.getLocation().add(0.5, 1, 0.5).setDirection(sitter.getLocation().getDirection()));
+                sitter.teleport(standUp.clone().setDirection(sitter.getLocation().getDirection()));
             }
         }
+    }
+
+    /**
+     * Where someone getting up from the furniture on {@code support} stands: on top of it, as from
+     * a chair - unless the piece is taller than its seat, a throne or the guillotine's frame, and
+     * the block above is part of it: then in front of it, where the seat faces, if there is room
+     * there, or else on top of the whole piece.
+     *
+     * @param yaw the way the seat faces
+     */
+    static Location standUp(Block support, float yaw) {
+        Block above = support.getRelative(0, 1, 0);
+        if (above.isPassable() && above.getRelative(0, 1, 0).isPassable()) {
+            return above.getLocation().add(0.5, 0, 0.5);
+        }
+        double radians = Math.toRadians(yaw);
+        Block front = support.getRelative((int) Math.round(-Math.sin(radians)), 0, (int) Math.round(Math.cos(radians)));
+        if (front.isPassable() && front.getRelative(0, 1, 0).isPassable()) {
+            return front.getLocation().add(0.5, 0, 0.5);
+        }
+        Block top = above;
+        for (int i = 0; i < 6 && !(top.isPassable() && top.getRelative(0, 1, 0).isPassable()); i++) {
+            top = top.getRelative(0, 1, 0);
+        }
+        return top.getLocation().add(0.5, 0, 0.5);
     }
 
     /** On disable: nobody stays seated on an entity no plugin will clean up. */
@@ -137,6 +174,20 @@ public final class SeatService {
             }
         }
         seats.clear();
+    }
+
+    /** Who sits on the furniture standing on {@code support}, if anyone does. */
+    public @Nullable Player occupant(Block support) {
+        Entity seat = seatAt(support);
+        if (seat == null) {
+            return null;
+        }
+        for (Entity passenger : seat.getPassengers()) {
+            if (passenger instanceof Player player && player.isValid()) {
+                return player;
+            }
+        }
+        return null;
     }
 
     public boolean isSeat(Entity entity) {

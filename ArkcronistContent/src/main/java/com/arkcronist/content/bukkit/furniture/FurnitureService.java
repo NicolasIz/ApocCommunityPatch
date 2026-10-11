@@ -12,6 +12,7 @@ import com.arkcronist.content.core.definition.ResourceLocation;
 import com.arkcronist.content.core.furniture.BedLayout;
 import com.arkcronist.content.core.furniture.ChestPairing;
 import com.arkcronist.content.core.furniture.DisplayTransform;
+import com.arkcronist.content.core.furniture.Footprint;
 import com.arkcronist.content.core.storage.BlockKey;
 import com.arkcronist.content.core.storage.ChestPair;
 import com.arkcronist.content.core.storage.ChestPairStore;
@@ -136,6 +137,16 @@ public final class FurnitureService {
     private Predicate<Block> obstacle = block -> false;
     /** Pieces drawn with a transform of their own (the editor's "this piece only"); null until storage is up. */
     private @Nullable FurnitureTransformStore transforms;
+    /** Told of every piece's root display as it is spawned, or loads with its chunk. */
+    private Consumer<ItemDisplay> rootAppeared = root -> { };
+
+    /**
+     * A piece of furniture as seen from one of its blocks: its root display, the block it was placed
+     * on, the way it faces, and where that block is in it - {@code across} its front, from the left
+     * of someone looking at it to their right (0 the block it was placed on), and {@code up}.
+     */
+    public record Piece(ItemDisplay root, Block anchor, float yaw, int across, int up) {
+    }
 
     public FurnitureService(Plugin plugin, ItemRegistry registry, ItemFactory items, PlacedContentStore store,
                             HookManager hooks, AnimationPlayer animations) {
@@ -167,6 +178,11 @@ public final class FurnitureService {
     /** Where pieces with a transform of their own are kept. */
     public void useTransforms(FurnitureTransformStore transforms) {
         this.transforms = transforms;
+    }
+
+    /** Who to tell of every piece's root display as it is spawned or loads: the ambient effects. */
+    public void onRootAppeared(Consumer<ItemDisplay> listener) {
+        this.rootAppeared = listener;
     }
 
     /** Crops live in light blocks too: a ray looking for furniture stops at one, instead of reaching past it. */
@@ -208,9 +224,17 @@ public final class FurnitureService {
      * @return false if a bed has lost its head and nothing was placed
      */
     public boolean place(Block block, Player player, CustomItem item, Placement.Furniture furniture) {
+        return place(block, placementYaw(player, furniture), item, furniture);
+    }
+
+    /**
+     * As {@link #place(Block, Player, CustomItem, Placement.Furniture)}, turned to {@code facing} -
+     * where it faces unless it stands on a chest or a bed, which decide that themselves.
+     */
+    public boolean place(Block block, float facing, CustomItem item, Placement.Furniture furniture) {
         List<Block> parts = List.of(block);
         Location at = centre(block);
-        float yaw = placementYaw(player, furniture);
+        float yaw = facing;
         switch (furniture.support()) {
             case LIGHT -> {
                 if (block.getBlockData() instanceof Light light) {
@@ -261,11 +285,14 @@ public final class FurnitureService {
 
         Block anchor = parts.get(0);
         ItemDisplay root = spawn(at, item, furniture, anchor, parts, false);
+        List<PlacedContent> rows = new ArrayList<>(parts.size());
         for (Block part : parts) {
             link(part, root.getUniqueId());
-            store.add(new PlacedContent(part.getWorld().getUID(), part.getX(), part.getY(), part.getZ(),
+            rows.add(new PlacedContent(part.getWorld().getUID(), part.getX(), part.getY(), part.getZ(),
                     item.id(), PlacedContent.Kind.FURNITURE));
         }
+        // Every block of the piece in one database task and one transaction: none of it, or all.
+        store.addAll(rows);
         if (furniture.animated() == null) {
             attachModelEngine(root, furniture);
         }
@@ -274,7 +301,12 @@ public final class FurnitureService {
 
     /** The way a piece placed by {@code player} will face: towards them, or south. */
     public static float placementYaw(Player player, Placement.Furniture furniture) {
-        return furniture.facePlayer() ? facing(player) : 0f;
+        return placementYaw(player.getLocation().getYaw(), furniture);
+    }
+
+    /** As {@link #placementYaw(Player, Placement.Furniture)}, for a player who looks along {@code playerYaw}. */
+    public static float placementYaw(float playerYaw, Placement.Furniture furniture) {
+        return furniture.facePlayer() ? facing(playerYaw) : 0f;
     }
 
     /**
@@ -316,6 +348,7 @@ public final class FurnitureService {
         if (animated != null) {
             spawnBones(root, item, furniture);
         }
+        rootAppeared.accept(root);
         return root;
     }
 
@@ -750,6 +783,7 @@ public final class FurnitureService {
         if (!pairStillStands(root, item.get(), furniture)) {
             return;
         }
+        rootAppeared.accept(root);
         Placement.Animated animated = animatedOf(root, furniture);
         boolean wasAnimated = data.has(bonesTag);
         if (wasAnimated != (animated != null)) {
@@ -983,6 +1017,22 @@ public final class FurnitureService {
         return identify(block).flatMap(registry::get);
     }
 
+    /**
+     * The piece standing on {@code part}, and where {@code part} is in it; empty when its root
+     * display is not loaded.
+     */
+    public Optional<Piece> piece(Block part) {
+        if (!(root(part) instanceof ItemDisplay root) || !root.isValid()) {
+            return Optional.empty();
+        }
+        Block anchor = anchor(root);
+        float yaw = root.getLocation().getYaw();
+        int[] right = Footprint.right(yaw);
+        int dx = part.getX() - anchor.getX();
+        int dz = part.getZ() - anchor.getZ();
+        return Optional.of(new Piece(root, anchor, yaw, dx * right[0] + dz * right[1], part.getY() - anchor.getY()));
+    }
+
     /** The direction the furniture on this block faces: its display's yaw. */
     public Optional<Float> facing(Block block) {
         Entity display = root(block);
@@ -1035,9 +1085,10 @@ public final class FurnitureService {
             root.remove();
         }
         FurnitureTransformStore own = transforms;
+        List<int[]> positions = new ArrayList<>(parts.size());
         for (Block part : parts) {
             unlink(part);
-            store.remove(part.getWorld().getUID(), part.getX(), part.getY(), part.getZ());
+            positions.add(new int[] {part.getX(), part.getY(), part.getZ()});
             if (own != null && own.at(part.getWorld().getUID(), part.getX(), part.getY(), part.getZ()) != null) {
                 own.remove(part.getWorld().getUID(), part.getX(), part.getY(), part.getZ());
             }
@@ -1046,6 +1097,8 @@ public final class FurnitureService {
                 part.setType(Material.AIR, false);
             }
         }
+        // The rows of all its blocks go in one database task and one transaction.
+        store.removeAll(block.getWorld().getUID(), positions);
         if (dropItem) {
             registry.get(id).ifPresent(item -> block.getWorld().dropItemNaturally(centre(block), items.create(item, 1)));
         }
@@ -1061,6 +1114,12 @@ public final class FurnitureService {
         Optional<String> id = recorded(block);
         id.ifPresent(furniture -> remove(block, furniture, false));
         return id.isPresent();
+    }
+
+    /** Every block the furniture standing on {@code block} covers, {@code block} among them. */
+    public List<Block> partsOf(Block block) {
+        Entity root = root(block);
+        return parts(block, root != null ? root : findRoot(block));
     }
 
     /** Every support block of the furniture at {@code block}: the root's list, or what the block itself says. */
@@ -1257,20 +1316,30 @@ public final class FurnitureService {
      * earlier one's task being the older.
      */
     private void afterLidDelay(UUID root, Runnable lid) {
+        afterDelay(root, System.nanoTime(), doubleDelayNanos, lid);
+    }
+
+    /**
+     * Runs {@code task} on the main thread on the first tick at least {@code delayNanos} after
+     * {@code fromNanos} ({@link System#nanoTime()}) - the click that set it off - if the piece whose
+     * root this is still stands then. The clock decides, not a count of ticks: see
+     * {@link #afterLidDelay}. With no delay left, it runs now.
+     */
+    public void afterDelay(UUID root, long fromNanos, long delayNanos, Runnable task) {
         Runnable onTheDisplay = () -> {
             Entity still = plugin.getServer().getEntity(root);
             if (still != null && still.isValid()) {
-                lid.run();
+                task.run();
             }
         };
-        if (doubleDelayNanos <= 0) {
+        long due = fromNanos + Math.max(0, delayNanos);
+        if (System.nanoTime() - due >= 0) {
             onTheDisplay.run();
             return;
         }
-        long due = System.nanoTime() + doubleDelayNanos;
-        plugin.getServer().getScheduler().runTaskTimer(plugin, task -> {
+        plugin.getServer().getScheduler().runTaskTimer(plugin, timer -> {
             if (System.nanoTime() - due >= 0) {
-                task.cancel();
+                timer.cancel();
                 onTheDisplay.run();
             }
         }, 1L, 1L);
@@ -1399,7 +1468,11 @@ public final class FurnitureService {
 
     /** Towards the player, to the nearest quarter turn: an entity at yaw 0 faces south, +z. */
     private static float facing(Player player) {
-        float yaw = player.getLocation().getYaw() + 180f;
+        return facing(player.getLocation().getYaw());
+    }
+
+    private static float facing(float playerYaw) {
+        float yaw = playerYaw + 180f;
         return ((Math.round(yaw / 90f) * 90f) % 360f + 360f) % 360f;
     }
 

@@ -67,13 +67,32 @@ public sealed interface Placement {
      * @param footprint     the blocks it stands on, {@link Footprint#SINGLE} for one; more only on a
      *                      barrier or light support
      * @param board         a right click opens the quest board; null for anything else
+     * @param ambience      {@code interactable: effect}: particles around it on a loop, and a drink
+     *                      or a meal on a right click; null for anything else
+     * @param commands      a right click runs commands, as a sign over a shop door does; null for
+     *                      anything else
+     * @param guillotine    a lever that drops a blade on whoever kneels in it; null for anything else
      */
     record Furniture(Support support, int light, boolean facePlayer, Display display, String modelEngineId,
                      Seat seat, Storage storage, Animated animated, Bed bed, DoubleChest doubleChest,
-                     Footprint footprint, QuestBoard board) implements Placement {
+                     Footprint footprint, QuestBoard board, Ambience ambience, Commands commands,
+                     Guillotine guillotine) implements Placement {
 
         public Furniture {
             footprint = footprint == null ? Footprint.SINGLE : footprint;
+        }
+
+        public Furniture(Support support, int light, boolean facePlayer, Display display, String modelEngineId,
+                         Seat seat, Storage storage, Animated animated, Bed bed, DoubleChest doubleChest,
+                         Footprint footprint, QuestBoard board) {
+            this(support, light, facePlayer, display, modelEngineId, seat, storage, animated, bed, doubleChest, footprint,
+                    board, null, null, null);
+        }
+
+        /** Whether a right click on it does something of its own, rather than what its support block would. */
+        public boolean interactive() {
+            return seat != null || storage != null || board != null || commands != null || guillotine != null
+                    || (ambience != null && ambience.clickable());
         }
 
         public Furniture(Support support, int light, boolean facePlayer, Display display, String modelEngineId,
@@ -160,6 +179,97 @@ public sealed interface Placement {
     record Seat(float height) {
 
         public static final Seat DEFAULT = new Seat(0.5f);
+    }
+
+    /**
+     * One kind of particle drawn around a piece of furniture.
+     *
+     * @param particle a particle id that takes no extra data: {@code campfire_cosy_smoke},
+     *                 {@code minecraft:small_flame}
+     * @param x        offset from the centre of the support block's bottom, in blocks, across its front
+     * @param y        height above the bottom of the support block
+     * @param z        offset towards its front
+     * @param count    how many at once
+     * @param spread   how far they scatter, in blocks, each way
+     * @param speed    how fast they move
+     */
+    record Particles(String particle, double x, double y, double z, int count, double spread, double speed) {
+    }
+
+    /**
+     * {@code interactable: effect}: particles around the piece on a loop, seen by every player near
+     * enough, and what a right click does - a drink, a stew: potion effects, a sound, a line of text.
+     *
+     * @param intervalTicks how often the particles are drawn
+     * @param range         how far away, in blocks, a player still sees them
+     * @param potions       potion effects a right click gives; empty for none
+     * @param sound         played by a right click; null for none
+     * @param cooldownTicks how long one player waits between two clicks on one piece
+     * @param message       MiniMessage shown above the hotbar on a click; null for none
+     */
+    record Ambience(List<Particles> particles, int intervalTicks, int range, List<Effect> potions,
+                    String sound, int cooldownTicks, String message) {
+
+        public Ambience {
+            particles = List.copyOf(particles);
+            potions = List.copyOf(potions);
+        }
+
+        /** Whether a right click does anything: a piece with only particles leaves the click alone. */
+        public boolean clickable() {
+            return !potions.isEmpty() || sound != null || message != null;
+        }
+    }
+
+    /**
+     * {@code interactable: command}: a right click runs commands - a sign over the bank's door, the
+     * tavern's, the smithy's.
+     *
+     * @param run           the commands, without their slash; see {@code CommandTemplate} for the
+     *                      placeholders filled in
+     * @param asPlayer      run as the player who clicked, with their permissions; false runs them
+     *                      from the console
+     * @param cooldownTicks how long one player waits between two clicks on one piece
+     * @param permission    what the player needs to use it; null for nothing
+     * @param message       MiniMessage shown above the hotbar on a click; null for none
+     * @param sound         played on a click; null for none
+     */
+    record Commands(List<String> run, boolean asPlayer, int cooldownTicks, String permission, String message,
+                    String sound) {
+
+        public Commands {
+            run = List.copyOf(run);
+        }
+    }
+
+    /**
+     * {@code interactable: guillotine}: a Blockbench model whose lever, pulled, drops its blade on
+     * whoever kneels in its stocks.
+     *
+     * @param drop          the animation the blade falls by
+     * @param reset         the one that raises it again; null leaves it down until the next pull
+     * @param delayMillis   the blade moves on the first server tick at least this long after the pull
+     * @param impactMillis  when it reaches the bottom, after it starts to move: the blow lands then
+     * @param resetTicks    how long the blade stays down before {@code reset} plays
+     * @param leverAcross   which block of its footprint is the lever: across its front, as
+     *                      {@code Footprint} counts from the anchor
+     * @param leverUp       and how high
+     * @param kneelHeight   where the one in the stocks kneels, above the bottom of the anchor block
+     * @param killUser      the blade falls on whoever pulled the lever, not on whoever kneels
+     * @param respectPvp    the blow counts as the puller's attack, so a region without PvP stops it
+     * @param commands      console commands run when the blade lands on someone: {@code %player%} is
+     *                      who it fell on, {@code %killer%} who pulled the lever
+     * @param impact        particles where the blade lands
+     * @param impactSound   played where it lands; null for none
+     */
+    record Guillotine(String drop, String reset, int delayMillis, int impactMillis, int resetTicks, int leverAcross,
+                      int leverUp, float kneelHeight, boolean killUser, boolean respectPvp, List<String> commands,
+                      List<Particles> impact, String impactSound) {
+
+        public Guillotine {
+            commands = List.copyOf(commands);
+            impact = List.copyOf(impact);
+        }
     }
 
     /**

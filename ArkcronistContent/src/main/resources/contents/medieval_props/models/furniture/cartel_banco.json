@@ -1,0 +1,495 @@
+{
+ "textures": {
+  "atlas": "medieval_props:furniture/medieval_atlas",
+  "particle": "medieval_props:furniture/medieval_atlas"
+ },
+ "elements": [
+  {
+   "from": [
+    -2,
+    0,
+    6.5
+   ],
+   "to": [
+    2,
+    1.5,
+    9.5
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      4,
+      2,
+      4.5,
+      2.1875
+     ],
+     "texture": "#atlas"
+    },
+    "south": {
+     "uv": [
+      4,
+      2,
+      4.5,
+      2.1875
+     ],
+     "texture": "#atlas"
+    },
+    "east": {
+     "uv": [
+      4,
+      2,
+      4.375,
+      2.1875
+     ],
+     "texture": "#atlas"
+    },
+    "west": {
+     "uv": [
+      4,
+      2,
+      4.375,
+      2.1875
+     ],
+     "texture": "#atlas"
+    },
+    "up": {
+     "uv": [
+      4,
+      2,
+      4.5,
+      2.375
+     ],
+     "texture": "#atlas"
+    },
+    "down": {
+     "uv": [
+      4,
+      2,
+      4.5,
+      2.375
+     ],
+     "texture": "#atlas"
+    }
+   }
+  },
+  {
+   "from": [
+    -1,
+    1.5,
+    7
+   ],
+   "to": [
+    1,
+    30,
+    9
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      2,
+      0,
+      2.25,
+      2.0
+     ],
+     "texture": "#atlas"
+    },
+    "south": {
+     "uv": [
+      2,
+      0,
+      2.25,
+      2.0
+     ],
+     "texture": "#atlas"
+    },
+    "east": {
+     "uv": [
+      2,
+      0,
+      2.25,
+      2.0
+     ],
+     "texture": "#atlas"
+    },
+    "west": {
+     "uv": [
+      2,
+      0,
+      2.25,
+      2.0
+     ],
+     "texture": "#atlas"
+    },
+    "up": {
+     "uv": [
+      2,
+      0,
+      2.25,
+      0.25
+     ],
+     "texture": "#atlas"
+    },
+    "down": {
+     "uv": [
+      2,
+      0,
+      2.25,
+      0.25
+     ],
+     "texture": "#atlas"
+    }
+   }
+  },
+  {
+   "from": [
+    -1,
+    28,
+    7
+   ],
+   "to": [
+    15,
+    29.5,
+    9
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      2,
+      0,
+      4.0,
+      0.1875
+     ],
+     "texture": "#atlas"
+    },
+    "south": {
+     "uv": [
+      2,
+      0,
+      4.0,
+      0.1875
+     ],
+     "texture": "#atlas"
+    },
+    "east": {
+     "uv": [
+      2,
+      0,
+      2.25,
+      0.1875
+     ],
+     "texture": "#atlas"
+    },
+    "west": {
+     "uv": [
+      2,
+      0,
+      2.25,
+      0.1875
+     ],
+     "texture": "#atlas"
+    },
+    "up": {
+     "uv": [
+      2,
+      0,
+      4.0,
+      0.25
+     ],
+     "texture": "#atlas"
+    },
+    "down": {
+     "uv": [
+      2,
+      0,
+      4.0,
+      0.25
+     ],
+     "texture": "#atlas"
+    }
+   }
+  },
+  {
+   "from": [
+    11,
+    26.5,
+    7.5
+   ],
+   "to": [
+    12,
+    28,
+    8.5
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      10,
+      14,
+      10.125,
+      14.1875
+     ],
+     "texture": "#atlas"
+    },
+    "south": {
+     "uv": [
+      10,
+      14,
+      10.125,
+      14.1875
+     ],
+     "texture": "#atlas"
+    },
+    "east": {
+     "uv": [
+      10,
+      14,
+      10.125,
+      14.1875
+     ],
+     "texture": "#atlas"
+    },
+    "west": {
+     "uv": [
+      10,
+      14,
+      10.125,
+      14.1875
+     ],
+     "texture": "#atlas"
+    },
+    "up": {
+     "uv": [
+      10,
+      14,
+      10.125,
+      14.125
+     ],
+     "texture": "#atlas"
+    },
+    "down": {
+     "uv": [
+      10,
+      14,
+      10.125,
+      14.125
+     ],
+     "texture": "#atlas"
+    }
+   }
+  },
+  {
+   "from": [
+    3,
+    26.5,
+    7.5
+   ],
+   "to": [
+    4,
+    28,
+    8.5
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      10,
+      14,
+      10.125,
+      14.1875
+     ],
+     "texture": "#atlas"
+    },
+    "south": {
+     "uv": [
+      10,
+      14,
+      10.125,
+      14.1875
+     ],
+     "texture": "#atlas"
+    },
+    "east": {
+     "uv": [
+      10,
+      14,
+      10.125,
+      14.1875
+     ],
+     "texture": "#atlas"
+    },
+    "west": {
+     "uv": [
+      10,
+      14,
+      10.125,
+      14.1875
+     ],
+     "texture": "#atlas"
+    },
+    "up": {
+     "uv": [
+      10,
+      14,
+      10.125,
+      14.125
+     ],
+     "texture": "#atlas"
+    },
+    "down": {
+     "uv": [
+      10,
+      14,
+      10.125,
+      14.125
+     ],
+     "texture": "#atlas"
+    }
+   }
+  },
+  {
+   "from": [
+    1,
+    15,
+    7.25
+   ],
+   "to": [
+    15,
+    26.5,
+    8.75
+   ],
+   "faces": {
+    "north": {
+     "uv": [
+      0,
+      8,
+      1.75,
+      9.4375
+     ],
+     "texture": "#atlas"
+    },
+    "south": {
+     "uv": [
+      0,
+      8,
+      1.75,
+      9.4375
+     ],
+     "texture": "#atlas"
+    },
+    "east": {
+     "uv": [
+      2,
+      0,
+      2.1875,
+      1.4375
+     ],
+     "texture": "#atlas"
+    },
+    "west": {
+     "uv": [
+      2,
+      0,
+      2.1875,
+      1.4375
+     ],
+     "texture": "#atlas"
+    },
+    "up": {
+     "uv": [
+      2,
+      0,
+      3.75,
+      0.1875
+     ],
+     "texture": "#atlas"
+    },
+    "down": {
+     "uv": [
+      2,
+      0,
+      3.75,
+      0.1875
+     ],
+     "texture": "#atlas"
+    }
+   }
+  }
+ ],
+ "display": {
+  "gui": {
+   "rotation": [
+    30,
+    225,
+    0
+   ],
+   "translation": [
+    0,
+    -2.1,
+    0
+   ],
+   "scale": [
+    0.333,
+    0.333,
+    0.333
+   ]
+  },
+  "ground": {
+   "translation": [
+    0,
+    2,
+    0
+   ],
+   "scale": [
+    0.1332,
+    0.1332,
+    0.1332
+   ]
+  },
+  "fixed": {
+   "scale": [
+    0.2664,
+    0.2664,
+    0.2664
+   ]
+  },
+  "thirdperson_righthand": {
+   "rotation": [
+    75,
+    45,
+    0
+   ],
+   "translation": [
+    0,
+    2.5,
+    0
+   ],
+   "scale": [
+    0.1998,
+    0.1998,
+    0.1998
+   ]
+  },
+  "firstperson_righthand": {
+   "rotation": [
+    0,
+    45,
+    0
+   ],
+   "scale": [
+    0.1998,
+    0.1998,
+    0.1998
+   ]
+  },
+  "firstperson_lefthand": {
+   "rotation": [
+    0,
+    225,
+    0
+   ],
+   "scale": [
+    0.1998,
+    0.1998,
+    0.1998
+   ]
+  }
+ }
+}

@@ -1,0 +1,26 @@
+package com.arkcronist.content.core.furniture;
+
+/**
+ * A piece of furniture's own directions, in the world: <i>across</i> its front, from the left of
+ * someone looking at it to their right; <i>up</i>; and <i>forward</i>, out of its front towards
+ * that someone. Particles and the guillotine's stocks are placed in these, so they turn with the
+ * piece.
+ *
+ * <p>A piece at yaw 0 faces south: forward is +z, and the right hand of someone looking at it - from
+ * the south, looking north - is east, +x. The same right hand {@link Footprint#right(float)} gives
+ * for its blocks.</p>
+ */
+public final class PieceAxes {
+
+    private PieceAxes() {
+    }
+
+    /** {@code across, up, forward} for a piece turned to {@code yaw}, as {dx, dy, dz} in the world. */
+    public static double[] offset(float yaw, double across, double up, double forward) {
+        double radians = Math.toRadians(yaw);
+        double sin = Math.sin(radians);
+        double cos = Math.cos(radians);
+        // right = (cos, sin), forward = (-sin, cos)
+        return new double[] {across * cos - forward * sin, up, across * sin + forward * cos};
+    }
+}

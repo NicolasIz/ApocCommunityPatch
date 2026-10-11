@@ -1,6 +1,9 @@
 package com.arkcronist.content.bukkit.listener;
 
+import com.arkcronist.content.bukkit.furniture.AmbienceService;
+import com.arkcronist.content.bukkit.furniture.CommandSigns;
 import com.arkcronist.content.bukkit.furniture.FurnitureService;
+import com.arkcronist.content.bukkit.furniture.GuillotineService;
 import com.arkcronist.content.bukkit.furniture.SeatService;
 import com.arkcronist.content.bukkit.furniture.StorageService;
 import com.arkcronist.content.bukkit.item.CustomItem;
@@ -31,6 +34,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDismountEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -80,6 +84,10 @@ public final class FurnitureListener implements Listener {
     private final ItemFactory items;
     /** Opens quest boards; null until it is set. */
     private @Nullable QuestBoardOpener boards;
+    /** Drinks, command signs and guillotines; null until they are set. */
+    private @Nullable AmbienceService ambience;
+    private @Nullable CommandSigns signs;
+    private @Nullable GuillotineService guillotines;
 
     /** What a right click on a quest board does. */
     public interface QuestBoardOpener {
@@ -89,6 +97,13 @@ public final class FurnitureListener implements Listener {
     /** Who opens quest boards. */
     public void useBoards(QuestBoardOpener boards) {
         this.boards = boards;
+    }
+
+    /** Who hands out drinks, runs command signs and drops guillotine blades. */
+    public void useInteractions(AmbienceService ambience, CommandSigns signs, GuillotineService guillotines) {
+        this.ambience = ambience;
+        this.signs = signs;
+        this.guillotines = guillotines;
     }
 
     public FurnitureListener(Plugin plugin, FurnitureService furniture, SeatService seats, StorageService storage,
@@ -162,7 +177,9 @@ public final class FurnitureListener implements Listener {
     }
 
     /**
-     * A right click on a seat sits on it, and on storage furniture opens it; sneaking, the click is
+     * A right click on a seat sits on it, and on storage furniture opens it; a drink is drunk, a
+     * command sign runs its commands, and a guillotine kneels the player in its stocks - or, on its
+     * lever, drops the blade. Sneaking, the click is
      * left to vanilla, to place a block against the furniture. Any other furniture does not react as
      * its support block would: holding a light item, a click on a light block steps its light level.
      *
@@ -189,8 +206,7 @@ public final class FurnitureListener implements Listener {
         Optional<CustomItem> item = support.flatMap(furniture::item);
         Placement.Furniture definition = item.map(CustomItem::placement).filter(Placement.Furniture.class::isInstance)
                 .map(Placement.Furniture.class::cast).orElse(null);
-        boolean interactive = definition != null
-                && (definition.seat() != null || definition.storage() != null || definition.board() != null);
+        boolean interactive = definition != null && definition.interactive();
         Player player = event.getPlayer();
         boolean chest = support.isPresent() && support.get().getType() == Material.CHEST;
         boolean sneakingThrough = player.isSneaking()
@@ -202,9 +218,15 @@ public final class FurnitureListener implements Listener {
             if (event.getHand() != EquipmentSlot.HAND) {
                 return;
             }
-            if (definition.seat() != null && protection.check(player, support.get(), Interaction.SIT)) {
+            if (definition.guillotine() != null) {
+                useGuillotine(player, support.get(), item.get(), definition);
+            } else if (definition.seat() != null && protection.check(player, support.get(), Interaction.SIT)) {
                 float yaw = furniture.facing(support.get()).orElse(player.getLocation().getYaw());
-                seats.sit(player, support.get(), definition.seat(), yaw);
+                // A tall piece - a throne - is sat on from its bottom row, whichever block was clicked;
+                // a wide one - a bench - seats one on each of its blocks.
+                Block seat = furniture.piece(support.get())
+                        .map(piece -> support.get().getRelative(0, -piece.up(), 0)).orElse(support.get());
+                seats.sit(player, seat, definition.seat(), yaw);
             } else if (definition.storage() != null && protection.check(player, support.get(), Interaction.CONTAINER)) {
                 Optional<ChestPair> pair = furniture.pairAt(support.get());
                 if (pair.isPresent() && definition.doubleChest() != null) {
@@ -221,11 +243,38 @@ public final class FurnitureListener implements Listener {
                 }
             } else if (definition.board() != null && boards != null) {
                 boards.open(player, support.get(), item.get(), definition.board());
+            } else if (definition.commands() != null && signs != null
+                    && protection.check(player, support.get(), Interaction.USE)) {
+                furniture.piece(support.get()).ifPresent(piece ->
+                        signs.use(player, piece, item.get(), definition.commands()));
+            } else if (definition.ambience() != null && ambience != null
+                    && protection.check(player, support.get(), Interaction.USE)) {
+                furniture.piece(support.get()).ifPresent(piece ->
+                        ambience.click(player, piece, item.get(), definition.ambience()));
             }
             return;
         }
         if (action == Action.RIGHT_CLICK_BLOCK && clickedFurniture) {
             event.setUseInteractedBlock(Event.Result.DENY);
+        }
+    }
+
+    /**
+     * The lever pulls - if the player may work it - and anywhere else on the frame kneels them in
+     * the stocks, if they may sit there.
+     */
+    private void useGuillotine(Player player, Block support, CustomItem item, Placement.Furniture definition) {
+        Optional<FurnitureService.Piece> piece = furniture.piece(support);
+        if (guillotines == null || piece.isEmpty()) {
+            return;
+        }
+        Placement.Guillotine spec = definition.guillotine();
+        if (GuillotineService.isLever(piece.get(), spec)) {
+            if (protection.check(player, support, Interaction.USE)) {
+                guillotines.pull(player, piece.get(), item, definition, spec);
+            }
+        } else if (protection.check(player, piece.get().anchor(), Interaction.SIT)) {
+            guillotines.kneel(player, piece.get(), spec);
         }
     }
 
@@ -305,10 +354,32 @@ public final class FurnitureListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuit(PlayerQuitEvent event) {
+        if (ambience != null) {
+            ambience.forget(event.getPlayer());
+        }
+        if (signs != null) {
+            signs.forget(event.getPlayer());
+        }
         Entity vehicle = event.getPlayer().getVehicle();
         if (vehicle != null && seats.isSeat(vehicle)) {
             vehicle.eject();
             vehicle.remove();
+        }
+    }
+
+    /**
+     * Someone sitting in a piece taller than its seat - a throne, the guillotine's stocks - has
+     * their head in the barrier above the seat, and the server would have them suffocate in it. The
+     * barrier is invisible, so there is nothing to see in there; only the damage is taken away.
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void noSuffocationInASeat(EntityDamageEvent event) {
+        if (event.getCause() != EntityDamageEvent.DamageCause.SUFFOCATION) {
+            return;
+        }
+        Entity vehicle = event.getEntity().getVehicle();
+        if (vehicle != null && seats.isSeat(vehicle)) {
+            event.setCancelled(true);
         }
     }
 
@@ -362,7 +433,7 @@ public final class FurnitureListener implements Listener {
         Block block = event.getBlock();
         Player player = event.getPlayer();
         furniture.identify(block).ifPresent(id -> {
-            seats.release(block);
+            furniture.partsOf(block).forEach(seats::release);
             storage.broken(block);
             furniture.remove(block, id, player.getGameMode() != GameMode.CREATIVE);
         });
@@ -412,7 +483,7 @@ public final class FurnitureListener implements Listener {
             }
             it.remove();
             if (protection.allowsExplosion(block, origin, source)) {
-                seats.release(block);
+                furniture.partsOf(block).forEach(seats::release);
                 storage.broken(block);
                 furniture.remove(block, id.get(), true);
                 block.setType(Material.AIR, false);

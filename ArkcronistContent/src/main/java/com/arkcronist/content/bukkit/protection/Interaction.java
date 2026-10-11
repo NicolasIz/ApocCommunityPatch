@@ -14,5 +14,10 @@ public enum Interaction {
     /** Sitting on it: riding the seat a chair puts under its sitter. */
     SIT,
     /** Opening its inventory: storage furniture. */
-    CONTAINER
+    CONTAINER,
+    /**
+     * Working it, as a lever or a button: a drink taken from a tankard, a sign that runs a command,
+     * the guillotine's lever.
+     */
+    USE
 }

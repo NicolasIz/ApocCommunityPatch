@@ -76,6 +76,19 @@ public final class ContentAdminCommand {
                                 })
                                 .executes(this::modelData)))
                 .then(Commands.literal("import").requires(ContentAdminCommand::admin).executes(this::importContent))
+                .then(Commands.literal("showcase").requires(ContentAdminCommand::admin)
+                        .then(Commands.argument("namespace", StringArgumentType.word())
+                                .suggests((context, builder) -> {
+                                    String typed = builder.getRemainingLowerCase();
+                                    plugin.items().all().stream()
+                                            .filter(item -> item.placement() instanceof Placement.Furniture)
+                                            .map(item -> item.id().substring(0, item.id().indexOf(':')))
+                                            .distinct().filter(namespace -> namespace.startsWith(typed)).sorted()
+                                            .forEach(builder::suggest);
+                                    return builder.buildFuture();
+                                })
+                                .executes(context -> showcase(context,
+                                        StringArgumentType.getString(context, "namespace")))))
                 .then(Commands.literal("animate").requires(ContentAdminCommand::admin)
                         .then(Commands.argument("animation", StringArgumentType.word())
                                 .suggests((context, builder) -> {
@@ -256,6 +269,40 @@ public final class ContentAdminCommand {
             return 0;
         }
         sender.sendMessage(Component.text("Playing '" + name + "'.", NamedTextColor.GREEN));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    /**
+     * {@code /arkcontent showcase <namespace>}: every piece of furniture of a pack, placed in rows in
+     * front of the player, facing them - a spawn's worth of furniture in one go, to look over or to
+     * measure the server with. Pieces on a chest or a bed are left out, and so is any piece without
+     * the room it needs.
+     */
+    private int showcase(CommandContext<CommandSourceStack> context, String namespace) {
+        CommandSender sender = context.getSource().getSender();
+        Player player = viewer(context.getSource());
+        if (player == null) {
+            sender.sendMessage(Component.text("Only a player can have furniture set out in front of them.",
+                    NamedTextColor.RED));
+            return 0;
+        }
+        List<CustomItem> pieces = plugin.items().all().stream()
+                .filter(item -> item.id().startsWith(namespace + ":"))
+                .filter(item -> item.placement() instanceof Placement.Furniture spec
+                        && (spec.support() == Placement.Support.BARRIER || spec.support() == Placement.Support.LIGHT))
+                .toList();
+        if (pieces.isEmpty()) {
+            sender.sendMessage(Component.text("No furniture on a barrier or light block in '" + namespace + "'.",
+                    NamedTextColor.RED));
+            return 0;
+        }
+        sender.sendMessage(Component.text("Setting out " + pieces.size() + " piece(s) of " + namespace + ", "
+                + Showcase.PER_TICK + " a tick...", NamedTextColor.GRAY));
+        Showcase.start(plugin, plugin.furniture(), plugin.storage(), player, pieces, result ->
+                sender.sendMessage(Component.text(String.format(Locale.ROOT,
+                        "Set out %d piece(s) of %s in %d row(s) over %d tick(s), at most %.1f ms in one tick%s.",
+                        result.placed(), namespace, result.rows(), result.ticks(), result.slowestTickMillis(),
+                        result.skipped() > 0 ? "; " + result.skipped() + " had no room" : ""), NamedTextColor.GREEN)));
         return Command.SINGLE_SUCCESS;
     }
 
@@ -454,6 +501,9 @@ public final class ContentAdminCommand {
         sender.sendMessage(Component.text("Custom items: " + plugin.items().size() + ", of which blocks: "
                 + plugin.blocks().size() + " (of " + (NoteBlockState.CAPACITY - 1) + " note block states)",
                 NamedTextColor.GOLD));
+        int[] ambient = plugin.ambience().counts();
+        sender.sendMessage(Component.text("Furniture loaded: " + ambient[0] + ", giving off particles: " + ambient[1],
+                NamedTextColor.GRAY));
         sender.sendMessage(Component.text("Placed blocks and furniture in loaded worlds: " + plugin.placed().size()
                 + ", crops: " + plugin.crops().store().size() + ", storage open now: " + plugin.storage().open()
                 + "; chat emojis: " + plugin.emojis().size(),

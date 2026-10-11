@@ -15,6 +15,9 @@ import com.arkcronist.content.bukkit.editor.FurnitureEditor;
 import com.arkcronist.content.bukkit.emoji.ChatEmojiListener;
 import com.arkcronist.content.bukkit.emoji.EmojiRegistry;
 import com.arkcronist.content.bukkit.furniture.AnimationPlayer;
+import com.arkcronist.content.bukkit.furniture.AmbienceService;
+import com.arkcronist.content.bukkit.furniture.CommandSigns;
+import com.arkcronist.content.bukkit.furniture.GuillotineService;
 import com.arkcronist.content.bukkit.furniture.FurnitureService;
 import com.arkcronist.content.bukkit.furniture.SeatService;
 import com.arkcronist.content.bukkit.furniture.StorageService;
@@ -119,6 +122,7 @@ public final class ArkContentPlugin extends JavaPlugin {
     private SeatService seats;
     private StorageService storage;
     private FurnitureService furniture;
+    private AmbienceService ambience;
     private AnimationPlayer animations;
     private Protection protection;
     private PackDelivery delivery;
@@ -224,6 +228,10 @@ public final class ArkContentPlugin extends JavaPlugin {
         FurnitureListener furnitureListener = new FurnitureListener(this, furniture, seats, storage, protection,
                 itemFactory);
         furnitureListener.useBoards(questBoards::open);
+        this.ambience = new AmbienceService(this, items, furniture);
+        furniture.onRootAppeared(ambience::track);
+        CommandSigns signs = new CommandSigns(this);
+        furnitureListener.useInteractions(ambience, signs, new GuillotineService(this, furniture, seats, signs));
         plugins.registerEvents(furnitureListener, this);
         plugins.registerEvents(new QuestBoardListener(this, questBoards, block -> {
             PlacedContent at = placed.at(block.getWorld().getUID(), block.getX(), block.getY(), block.getZ());
@@ -270,6 +278,8 @@ public final class ArkContentPlugin extends JavaPlugin {
         huds.start();
         // The first audit an interval from now, driven from the database's thread.
         sanity.start();
+        // Smoke, steam and flames: picked on the main thread each tick, drawn on ArkContent-Effects.
+        ambience.start();
     }
 
     /**
@@ -382,6 +392,9 @@ public final class ArkContentPlugin extends JavaPlugin {
         if (seats != null) {
             seats.releaseAll();
         }
+        if (ambience != null) {
+            ambience.shutdown();
+        }
         // Open storage is saved - queued ahead of the database closing below - and closed.
         if (storage != null) {
             storage.shutdown();
@@ -470,6 +483,10 @@ public final class ArkContentPlugin extends JavaPlugin {
     }
 
     /** Placed furniture: its displays and animations. */
+    public AmbienceService ambience() {
+        return ambience;
+    }
+
     public FurnitureService furniture() {
         return furniture;
     }

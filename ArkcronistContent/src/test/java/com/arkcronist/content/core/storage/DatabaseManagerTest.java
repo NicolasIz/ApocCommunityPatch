@@ -338,6 +338,42 @@ class DatabaseManagerTest {
         assertEquals("ArkContent-DB", get(database.onThread(() -> Thread.currentThread().getName())));
     }
 
+    /** 1.9.5: every block one piece stands on goes in, and out, in one task and one transaction. */
+    @Test
+    void aPiecesRowsAreWrittenAndDeletedTogether() throws Exception {
+        database = open();
+        List<PlacedContent> guillotine = new ArrayList<>();
+        for (int up = 0; up < 3; up++) {
+            for (int across = 0; across < 2; across++) {
+                guillotine.add(new PlacedContent(OVERWORLD, 10 + across, 64 + up, -5, "medieval_props:guillotina_plaza",
+                        PlacedContent.Kind.FURNITURE));
+            }
+        }
+        get(database.saveAll(guillotine));
+        assertEquals(6, get(database.loadWorld(OVERWORLD)).size());
+
+        assertEquals(6, get(database.deleteAll(OVERWORLD, guillotine.stream()
+                .map(row -> new int[] {row.x(), row.y(), row.z()}).toList())));
+        assertEquals(List.of(), get(database.loadWorld(OVERWORLD)));
+    }
+
+    @Test
+    void aPieceWithOneBadRowLeavesNoneOfItsRowsBehind() throws Exception {
+        database = open();
+        List<PlacedContent> rows = List.of(
+                new PlacedContent(OVERWORLD, 1, 64, 1, "medieval_props:banco_largo", PlacedContent.Kind.FURNITURE),
+                new PlacedContent(OVERWORLD, 2, 64, 1, "medieval_props:banco_largo", PlacedContent.Kind.FURNITURE),
+                // block_id is NOT NULL: this row fails, and the transaction with it.
+                new PlacedContent(OVERWORLD, 3, 64, 1, null, PlacedContent.Kind.FURNITURE));
+        ExecutionException failed = assertThrows(ExecutionException.class, () -> get(database.saveAll(rows)));
+        assertInstanceOf(SQLException.class, failed.getCause() instanceof java.util.concurrent.CompletionException
+                ? failed.getCause().getCause() : failed.getCause());
+        assertEquals(List.of(), get(database.loadWorld(OVERWORLD)), "rolled back: not the first two either");
+        // And the connection is usable afterwards, back in autocommit.
+        database.save(rows.get(0));
+        assertEquals(List.of(rows.get(0)), get(database.loadWorld(OVERWORLD)));
+    }
+
     private DatabaseManager open() throws Exception {
         DatabaseManager opened = new DatabaseManager(temp.resolve("content.db"), Logger.getLogger("test"));
         opened.open().get(10, TimeUnit.SECONDS);

@@ -44,6 +44,44 @@ public final class PlacedContentStore {
     }
 
     /**
+     * Records every block one piece stands on: memory at once, the disk in one task and one
+     * transaction on the database's thread - all of the rows written, or none.
+     */
+    public void addAll(List<PlacedContent> contents) {
+        if (contents.size() == 1) {
+            add(contents.get(0));
+            return;
+        }
+        if (contents.isEmpty()) {
+            return;
+        }
+        contents.forEach(index::put);
+        PlacedContent first = contents.get(0);
+        database.saveAll(List.copyOf(contents)).exceptionally(error -> failed("save " + contents.size()
+                + " blocks of", first.world(), first.x(), first.y(), first.z(), error));
+    }
+
+    /**
+     * Forgets several positions of one world - every block one piece stood on - in one task and
+     * one transaction.
+     *
+     * @param positions {x, y, z} each
+     */
+    public void removeAll(UUID world, List<int[]> positions) {
+        if (positions.isEmpty()) {
+            return;
+        }
+        for (int[] at : positions) {
+            index.remove(world, at[0], at[1], at[2]);
+        }
+        int[] first = positions.get(0);
+        database.deleteAll(world, List.copyOf(positions)).exceptionally(error -> {
+            failed("delete " + positions.size() + " blocks of", world, first[0], first[1], first[2], error);
+            return 0;
+        });
+    }
+
+    /**
      * Forgets a position. The row is deleted even when memory had nothing there: its world's rows
      * may simply not have arrived yet.
      *

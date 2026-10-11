@@ -37,7 +37,7 @@ public final class GriefPreventionProtection implements ProtectionProvider {
         }
         ClaimPermission permission = switch (interaction) {
             case PLACE, BREAK, BUILD -> ClaimPermission.Build;
-            case SIT -> ClaimPermission.Access;
+            case SIT, USE -> ClaimPermission.Access;
             case CONTAINER -> ClaimPermission.Inventory;
         };
         return claim.checkPermission(player, permission, null) == null;

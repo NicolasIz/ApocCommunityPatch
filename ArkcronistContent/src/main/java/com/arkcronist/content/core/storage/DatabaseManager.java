@@ -312,6 +312,53 @@ public final class DatabaseManager {
         }, false);
     }
 
+    /**
+     * Records several positions in one task and one transaction: every block a piece of furniture
+     * stands on, so the file never holds half of it.
+     */
+    public CompletableFuture<Void> saveAll(List<PlacedContent> contents) {
+        return submit(connection -> inTransaction(connection, () -> {
+            try (PreparedStatement statement = connection.prepareStatement(UPSERT)) {
+                for (PlacedContent content : contents) {
+                    statement.setString(1, content.world().toString());
+                    statement.setInt(2, content.x());
+                    statement.setInt(3, content.y());
+                    statement.setInt(4, content.z());
+                    statement.setString(5, content.contentId());
+                    statement.setString(6, content.kind().name());
+                    statement.addBatch();
+                }
+                statement.executeBatch();
+            }
+            return null;
+        }), false);
+    }
+
+    /**
+     * Forgets several positions of one world in one task and one transaction.
+     *
+     * @param positions {x, y, z} each
+     * @return how many rows there were
+     */
+    public CompletableFuture<Integer> deleteAll(UUID world, List<int[]> positions) {
+        return submit(connection -> inTransaction(connection, () -> {
+            int deleted = 0;
+            try (PreparedStatement statement = connection.prepareStatement(DELETE)) {
+                for (int[] at : positions) {
+                    statement.setString(1, world.toString());
+                    statement.setInt(2, at[0]);
+                    statement.setInt(3, at[1]);
+                    statement.setInt(4, at[2]);
+                    statement.addBatch();
+                }
+                for (int count : statement.executeBatch()) {
+                    deleted += Math.max(0, count);
+                }
+            }
+            return deleted;
+        }), false);
+    }
+
     /** @return whether there was a row to delete */
     public CompletableFuture<Boolean> delete(UUID world, int x, int y, int z) {
         return submit(connection -> {

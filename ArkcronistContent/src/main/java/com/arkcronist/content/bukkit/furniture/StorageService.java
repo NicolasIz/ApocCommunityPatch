@@ -18,6 +18,7 @@ import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -517,6 +518,8 @@ public final class StorageService {
 
     private void tick() {
         boolean autosave = ++seconds % AUTOSAVE_SECONDS == 0;
+        // Every open inventory that changed, in one database task and one transaction.
+        List<StoredInventory> autosaved = new ArrayList<>();
         for (Session session : List.copyOf(new LinkedHashSet<>(sessions.values()))) {
             if (session.inventory == null) {
                 continue;
@@ -527,8 +530,12 @@ public final class StorageService {
                 }
             }
             if (autosave && session.dirty && sessions.get(session.holder.key) == session) {
-                save(session);
+                autosaved.addAll(rows(session));
             }
+        }
+        if (!autosaved.isEmpty()) {
+            database.saveInventories(autosaved).exceptionally(error -> logged(error, "autosave "
+                    + autosaved.size() + " storage inventories"));
         }
     }
 
@@ -544,6 +551,19 @@ public final class StorageService {
 
     /** A snapshot of the inventory, taken now, written on the database thread. */
     private void save(Session session) {
+        List<StoredInventory> rows = rows(session);
+        Key key = session.holder.key;
+        if (rows.size() > 1) {
+            // Both halves in one transaction: never one saved and the other not.
+            database.saveInventories(rows).exceptionally(error -> logged(error, "save the double chest at "
+                    + describe(key)));
+            return;
+        }
+        database.saveInventory(rows.get(0)).exceptionally(error -> logged(error, "save the storage at " + describe(key)));
+    }
+
+    /** The rows that hold the inventory as it is now - two for a double chest - which is then no longer changed. */
+    private List<StoredInventory> rows(Session session) {
         ItemStack[] contents = session.inventory.getContents();
         for (int slot = 0; slot < contents.length; slot++) {
             if (contents[slot] == null) {
@@ -553,18 +573,13 @@ public final class StorageService {
         session.dirty = false;
         Key key = session.holder.key;
         if (session.holder.partner != null) {
-            // Both halves in one transaction: never one saved and the other not.
-            database.saveInventories(List.of(
-                            stored(key, session.holder.furnitureId, Arrays.copyOfRange(contents, 0, HALF_SLOTS)),
-                            stored(session.holder.partner, session.holder.furnitureId,
-                                    Arrays.copyOfRange(contents, HALF_SLOTS, PAIR_SLOTS))))
-                    .exceptionally(error -> logged(error, "save the double chest at " + describe(key)));
-            return;
+            return List.of(stored(key, session.holder.furnitureId, Arrays.copyOfRange(contents, 0, HALF_SLOTS)),
+                    stored(session.holder.partner, session.holder.furnitureId,
+                            Arrays.copyOfRange(contents, HALF_SLOTS, PAIR_SLOTS)));
         }
         byte[] bytes = ItemStack.serializeItemsAsBytes(contents);
-        database.saveInventory(new StoredInventory(key.world(), key.x(), key.y(), key.z(), session.holder.furnitureId,
-                        contents.length, bytes))
-                .exceptionally(error -> logged(error, "save the storage at " + describe(key)));
+        return List.of(new StoredInventory(key.world(), key.x(), key.y(), key.z(), session.holder.furnitureId,
+                contents.length, bytes));
     }
 
     /** A half's contents as a row: empty slots kept as empty stacks, so slot numbers survive. */
