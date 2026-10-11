@@ -1,0 +1,327 @@
+package com.arkcronist.content.core.geyser;
+
+import com.arkcronist.content.core.block.NoteBlockState;
+import com.arkcronist.content.core.definition.Placement;
+import com.arkcronist.content.core.definition.ResourceLocation;
+import com.arkcronist.content.core.furniture.Footprint;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import org.junit.jupiter.api.Test;
+
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+/** 3.0: the content converted for Bedrock players - models, furniture cut into blocks, icons, the pack. */
+class BedrockConversionTest {
+
+    private static final ResourceLocation STONE = new ResourceLocation("demo", "block/stone");
+
+    private static JsonObject json(String text) {
+        return JsonParser.parseString(text).getAsJsonObject();
+    }
+
+    @Test
+    void aCubeAllBlockResolvesToOneCubeWithItsTextureOnEveryFace() {
+        JavaModel model = JavaModel.resolve(new ResourceLocation("demo", "block/ruby"),
+                location -> location.path().equals("block/ruby")
+                        ? json("{\"parent\":\"minecraft:block/cube_all\",\"textures\":{\"all\":\"demo:block/ruby\"}}") : null);
+        assertNotNull(model);
+        assertEquals(1, model.elements().size());
+        assertEquals(6, model.elements().get(0).faces().size());
+        model.elements().get(0).faces().values()
+                .forEach(face -> assertEquals(new ResourceLocation("demo", "block/ruby"), face.texture()));
+        assertArrayEquals(new float[]{0, 0, 16, 16}, model.elements().get(0).faces().get(JavaModel.Face.UP).uv());
+    }
+
+    @Test
+    void aFlatItemHasLayersAndAMissingParentResolvesToNothing() {
+        JavaModel flat = JavaModel.resolve(new ResourceLocation("demo", "item/ruby"),
+                location -> json("{\"parent\":\"minecraft:item/generated\",\"textures\":{\"layer0\":\"demo:item/ruby\"}}"));
+        assertEquals(List.of(new ResourceLocation("demo", "item/ruby")), flat.layers());
+        assertNull(JavaModel.resolve(new ResourceLocation("demo", "x"),
+                location -> location.path().equals("x") ? json("{\"parent\":\"other:nowhere\"}") : null));
+    }
+
+    /** A face with no UV of its own gets its rectangle on the 16 x 16 square, as the client lays it. */
+    @Test
+    void facesWithoutUvTakeTheirOwnRectangle() {
+        float[] from = {2, 3, 4};
+        float[] to = {10, 12, 14};
+        assertArrayEquals(new float[]{6, 4, 14, 13}, JavaModel.autoUv(JavaModel.Face.NORTH, from, to));
+        assertArrayEquals(new float[]{2, 4, 10, 13}, JavaModel.autoUv(JavaModel.Face.SOUTH, from, to));
+        assertArrayEquals(new float[]{2, 4, 10, 14}, JavaModel.autoUv(JavaModel.Face.UP, from, to));
+        assertArrayEquals(new float[]{2, 2, 10, 12}, JavaModel.autoUv(JavaModel.Face.DOWN, from, to));
+    }
+
+    private static JavaModel cubeModel(float[] from, float[] to) {
+        JsonObject model = json("{\"textures\":{\"0\":\"demo:block/stone\"},\"elements\":[{\"from\":[" + from[0] + ","
+                + from[1] + "," + from[2] + "],\"to\":[" + to[0] + "," + to[1] + "," + to[2] + "],\"faces\":{"
+                + "\"north\":{\"uv\":[0,0,16,16],\"texture\":\"#0\"},\"south\":{\"uv\":[0,0,16,16],\"texture\":\"#0\"},"
+                + "\"up\":{\"uv\":[0,0,16,8],\"texture\":\"#0\"},\"east\":{\"texture\":\"#0\"}}}]}");
+        return JavaModel.resolve(new ResourceLocation("demo", "m"), location -> model);
+    }
+
+    /**
+     * A single block piece: the item display's half turn puts the model's south face to the north,
+     * turns its top's picture half round, and leaves the cube in its own block.
+     */
+    @Test
+    void aOneBlockPieceIsHalfTurnedIntoItsOwnBlock() {
+        FurnitureLayout.Layout layout = FurnitureLayout.lay(cubeModel(new float[]{0, 0, 0}, new float[]{16, 16, 16}),
+                Footprint.SINGLE, Placement.Display.DEFAULT, false);
+        assertEquals(Set.of(new FurnitureLayout.Cell(0, 0, 0)), layout.cells().keySet());
+        BedrockCube cube = layout.cells().get(new FurnitureLayout.Cell(0, 0, 0)).get(0);
+        assertArrayEquals(new float[]{-8, 0, -8}, cube.min());
+        assertArrayEquals(new float[]{8, 16, 8}, cube.max());
+        assertTrue(cube.faces().containsKey(JavaModel.Face.NORTH) && cube.faces().containsKey(JavaModel.Face.WEST),
+                "the model's east is the world's west");
+        assertArrayEquals(new float[]{16, 8, 0, 0}, cube.faces().get(JavaModel.Face.UP).uv(), "the top turned half round");
+        assertTrue(layout.notes().isEmpty());
+    }
+
+    /**
+     * A bench two blocks wide is cut at the block boundary; each half keeps its half of the front's
+     * texture - the model's north face, shown to the south once turned.
+     */
+    @Test
+    void aTwoBlockBenchIsCutInTwoAndEachHalfKeepsItsHalfOfTheTexture() {
+        FurnitureLayout.Layout layout = FurnitureLayout.lay(cubeModel(new float[]{-8, 0, 4}, new float[]{24, 8, 12}),
+                new Footprint(2, 1), Placement.Display.DEFAULT, false);
+        assertEquals(Set.of(new FurnitureLayout.Cell(0, 0, 0), new FurnitureLayout.Cell(1, 0, 0)),
+                layout.cells().keySet());
+        BedrockCube west = layout.cells().get(new FurnitureLayout.Cell(0, 0, 0)).get(0);
+        BedrockCube east = layout.cells().get(new FurnitureLayout.Cell(1, 0, 0)).get(0);
+        assertArrayEquals(new float[]{-8, 0, -4}, west.min());
+        assertArrayEquals(new float[]{8, 8, 4}, west.max());
+        assertArrayEquals(new float[]{-8, 0, -4}, east.min(), "in its own block's frame");
+        // The model's north face (u 0-16 running east to west) is the world's south: x in the model
+        // runs the other way once turned, so the world's west half carries u 8-16... of the model's east half.
+        float[] westFront = west.faces().get(JavaModel.Face.SOUTH).uv();
+        float[] eastFront = east.faces().get(JavaModel.Face.SOUTH).uv();
+        assertEquals(8, Math.abs(westFront[2] - westFront[0]), 1e-4);
+        assertEquals(8, Math.abs(eastFront[2] - eastFront[0]), 1e-4);
+        assertEquals(16, Math.min(westFront[0], westFront[2]) + Math.min(eastFront[0], eastFront[2]) + 8, 1e-4);
+        assertFalse(west.faces().containsKey(JavaModel.Face.EAST) && east.faces().containsKey(JavaModel.Face.WEST),
+                "no face where the bench was cut");
+    }
+
+    /** A chair back 24.5 pixels tall: the 8.5 above its block go to the block above. */
+    @Test
+    void whatRisesAboveItsBlockGoesToTheBlockAbove() {
+        FurnitureLayout.Layout layout = FurnitureLayout.lay(cubeModel(new float[]{2, 0, 12}, new float[]{14, 24.5f, 14}),
+                Footprint.SINGLE, Placement.Display.DEFAULT, false);
+        BedrockCube top = layout.cells().get(new FurnitureLayout.Cell(0, 1, 0)).get(0);
+        assertEquals(0, top.min()[1], 1e-4);
+        assertEquals(8.5f, top.max()[1], 1e-4);
+        assertTrue(BedrockGeometry.fits(layout.cells().get(new FurnitureLayout.Cell(0, 0, 0))));
+    }
+
+    /**
+     * The blocks a turned piece covers, worked out by turning its south-facing layout, are exactly
+     * the blocks the plugin puts its supports on - for every footprint and every quarter turn.
+     */
+    @Test
+    void turnedCellsLandOnTheSupportsThePluginPlaces() {
+        for (Footprint footprint : List.of(Footprint.SINGLE, new Footprint(2, 1), new Footprint(3, 2),
+                new Footprint(4, 1), new Footprint(1, 3))) {
+            for (int quarter = 0; quarter < 4; quarter++) {
+                Set<String> turned = new TreeSet<>();
+                for (int[] offset : footprint.offsets(0)) {
+                    FurnitureLayout.Cell cell = FurnitureLayout.turned(new FurnitureLayout.Cell(offset[0], offset[1],
+                            offset[2]), footprint, quarter);
+                    turned.add(cell.key());
+                }
+                Set<String> supports = new TreeSet<>();
+                for (int[] offset : footprint.offsets(quarter * 90f)) {
+                    supports.add(offset[0] + "," + offset[1] + "," + offset[2]);
+                }
+                assertEquals(supports, turned, footprint + " turned " + quarter);
+            }
+        }
+    }
+
+    /** Bedrock stores x mirrored and lays the top and bottom pictures half turned against Java. */
+    @Test
+    void geometryIsWrittenInBedrocksTerms() {
+        BedrockCube cube = new BedrockCube(new float[]{2, 0, -3}, new float[]{6, 4, 5},
+                Map.of(JavaModel.Face.UP, new BedrockCube.Face(new float[]{1, 2, 5, 10}, STONE),
+                        JavaModel.Face.EAST, new BedrockCube.Face(new float[]{0, 0, 8, 4}, STONE)),
+                null, 0, new float[]{0, 0, 0});
+        BedrockGeometry.Built built = BedrockGeometry.build("geometry.arkcontent.test", List.of(cube));
+        JsonObject written = built.json().getAsJsonArray("minecraft:geometry").get(0).getAsJsonObject()
+                .getAsJsonArray("bones").get(0).getAsJsonObject().getAsJsonArray("cubes").get(0).getAsJsonObject();
+        assertEquals("[-6.0,0.0,-3.0]", written.get("origin").toString());
+        assertEquals("[4.0,4.0,8.0]", written.get("size").toString());
+        JsonObject up = written.getAsJsonObject("uv").getAsJsonObject("up");
+        assertEquals("[5.0,10.0]", up.get("uv").toString());
+        assertEquals("[-4.0,-8.0]", up.get("uv_size").toString());
+        assertEquals("[0.0,0.0]", written.getAsJsonObject("uv").getAsJsonObject("east").get("uv").toString());
+        assertEquals(Map.of("t0", STONE), built.materials());
+        assertFalse(BedrockGeometry.fits(List.of(cube.moved(0, 20, 0))));
+    }
+
+    private static byte[] png(int width, int height, int argb) throws IOException {
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                image.setRGB(x, y, argb);
+            }
+        }
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ImageIO.write(image, "png", out);
+        return out.toByteArray();
+    }
+
+    @Test
+    void aBlockIconIsDrawnLitFromAbove() throws IOException {
+        JavaModel model = cubeModel(new float[]{0, 0, 0}, new float[]{16, 16, 16});
+        BufferedImage texture = ImageIO.read(new ByteArrayInputStream(png(16, 16, 0xffc04040)));
+        BufferedImage icon = IconRenderer.render(model, location -> texture);
+        assertNotNull(icon);
+        int top = icon.getRGB(16, 6);
+        int side = icon.getRGB(10, 22);
+        assertTrue((top >>> 24) > 200 && (side >>> 24) > 200, "both drawn");
+        assertTrue(((top >> 16) & 0xff) > ((side >> 16) & 0xff), "the top brighter than a side");
+        assertEquals(0, icon.getRGB(0, 0) >>> 24, "the corner left clear");
+    }
+
+    private static BedrockConverter.Input input(Map<String, byte[]> pack, Map<String, Integer> previous) {
+        Placement.Display display = Placement.Display.DEFAULT;
+        return new BedrockConverter.Input(pack::get,
+                List.of(new BedrockConverter.ItemSpec("demo:ruby", "PAPER", new ResourceLocation("demo", "ruby"),
+                                new ResourceLocation("demo", "item/ruby"), 1001, "Ruby", false),
+                        new BedrockConverter.ItemSpec("demo:bench", "BARRIER", new ResourceLocation("demo", "bench"),
+                                new ResourceLocation("demo", "furniture/bench"), 1002, "Bench", false)),
+                List.of(new BedrockConverter.BlockSpec("demo:stone_block", NoteBlockState.fromIndex(1),
+                        new ResourceLocation("demo", "block/stone_block"), "Stone block")),
+                List.of(),
+                List.of(new BedrockConverter.FurnitureSpec("demo:bench", new ResourceLocation("demo", "furniture/bench"),
+                        new Footprint(2, 1), display, false, true, 0, "Bench")),
+                List.of(new BedrockConverter.EmojiSpec(0xE001, new ResourceLocation("demo", "emoji/ruby"))),
+                previous, Set.of(1, 799));
+    }
+
+    private static Map<String, byte[]> pack() throws IOException {
+        Map<String, byte[]> pack = new HashMap<>();
+        pack.put("assets/demo/models/item/ruby.json",
+                "{\"parent\":\"minecraft:item/generated\",\"textures\":{\"layer0\":\"demo:item/ruby\"}}".getBytes(StandardCharsets.UTF_8));
+        pack.put("assets/demo/models/block/stone_block.json",
+                "{\"parent\":\"minecraft:block/cube_all\",\"textures\":{\"all\":\"demo:block/stone\"}}".getBytes(StandardCharsets.UTF_8));
+        pack.put("assets/demo/models/furniture/bench.json", ("{\"textures\":{\"0\":\"demo:block/stone\"},\"elements\":"
+                + "[{\"from\":[-8,0,4],\"to\":[24,8,12],\"faces\":{\"north\":{\"texture\":\"#0\"},\"up\":{\"texture\":\"#0\"}}}]}")
+                .getBytes(StandardCharsets.UTF_8));
+        pack.put("assets/demo/textures/item/ruby.png", png(16, 16, 0xffd02020));
+        pack.put("assets/demo/textures/block/stone.png", png(16, 16, 0xff808080));
+        pack.put("assets/demo/textures/emoji/ruby.png", png(16, 16, 0xffff0000));
+        return pack;
+    }
+
+    private static Map<String, byte[]> unzip(byte[] zip) throws IOException {
+        Map<String, byte[]> files = new HashMap<>();
+        try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(zip))) {
+            for (ZipEntry entry = in.getNextEntry(); entry != null; entry = in.getNextEntry()) {
+                files.put(entry.getName(), in.readAllBytes());
+            }
+        }
+        return files;
+    }
+
+    /**
+     * The whole conversion: items with icons, a custom block as a full block, the bench as two
+     * blocks four ways round on carrier states from the top of the range, the emoji on its glyph
+     * sheet - and the same content gives the same pack.
+     */
+    @Test
+    void contentBecomesBedrockItemsBlocksCarriersAndAPack() throws IOException {
+        BedrockConverter.Build build = BedrockConverter.convert(input(pack(), Map.of()));
+        assertEquals(List.of(), build.problems());
+        assertEquals(List.of("ark_demo_ruby", "ark_demo_bench"), build.items().stream().map(BedrockConverter.BedrockItem::name).toList());
+        assertEquals("minecraft:barrier", build.items().get(1).javaItem());
+
+        BedrockConverter.BedrockBlock stone = build.blocks().get(0);
+        assertEquals("minecraft:note_block[instrument=harp,note=0,powered=true]", stone.javaState());
+        assertEquals("minecraft:geometry.full_block", stone.geometry());
+        assertEquals("ark_demo_block_stone", stone.materials().get("up").texture());
+
+        assertEquals(8, build.carriers().size(), "two blocks, four quarter turns");
+        Set<Integer> states = new HashSet<>();
+        build.carriers().forEach(carrier -> states.add(carrier.state().index()));
+        assertEquals(8, states.size());
+        assertFalse(states.contains(799), "a custom block's state is never a carrier");
+        assertTrue(states.stream().allMatch(state -> state >= 790), "carriers come from the top: " + states);
+        assertEquals(new TreeSet<>(states), new TreeSet<>(build.carrierAssignments().values()));
+        BedrockConverter.Carrier turned = build.carriers().stream()
+                .filter(carrier -> carrier.quarter() == 1 && !(carrier.dx() == 0 && carrier.dz() == 0)).findFirst().orElseThrow();
+        assertEquals(1, turned.dz(), "facing west, the bench's second block is to the south");
+        assertTrue(build.blocks().stream().anyMatch(block -> block.rotationY() == -90));
+
+        Map<String, byte[]> files = unzip(build.pack());
+        assertTrue(files.containsKey("manifest.json"));
+        assertTrue(files.containsKey("textures/terrain_texture.json") && files.containsKey("textures/item_texture.json"));
+        assertTrue(files.containsKey("textures/items/ark/ark_demo_bench.png"), "the bench drawn as an icon");
+        assertTrue(files.containsKey("models/blocks/ark/ark_demo_bench_c0_0_0.geo.json"));
+        assertTrue(files.containsKey("models/blocks/ark/ark_demo_bench_c1_0_0.geo.json"));
+        assertTrue(files.containsKey("font/glyph_E0.png"));
+        JsonObject manifest = JsonParser.parseString(new String(files.get("manifest.json"), StandardCharsets.UTF_8)).getAsJsonObject();
+        JsonArray modules = manifest.getAsJsonArray("modules");
+        assertEquals("resources", modules.get(0).getAsJsonObject().get("type").getAsString());
+
+        BedrockConverter.Build again = BedrockConverter.convert(input(pack(), build.carrierAssignments()));
+        assertArrayEquals(build.pack(), again.pack(), "the same content, the same bytes");
+        assertEquals(build.carrierAssignments(), again.carrierAssignments(), "carriers kept");
+    }
+
+    /**
+     * An item made with resource.item-model - most imported ones - names an item definition, not
+     * a model: its icon comes from the model the definition draws by default. And however long an
+     * id, no path in the pack reaches 80 characters, which some Bedrock platforms cannot open.
+     */
+    @Test
+    void anItemDefinitionIsFollowedToItsModelAndLongNamesGetShortPaths() throws IOException {
+        Map<String, byte[]> pack = pack();
+        String longId = "nazgul_weaponry_vol_4:espada_del_senor_oscuro_de_las_tierras_del_este_edicion_coleccionista";
+        String path = longId.substring(longId.indexOf(':') + 1);
+        pack.put("assets/nazgul_weaponry_vol_4/items/" + path + ".json", ("{\"model\":{\"type\":\"minecraft:select\","
+                + "\"property\":\"minecraft:display_context\",\"cases\":[{\"when\":\"gui\",\"model\":{\"type\":"
+                + "\"minecraft:model\",\"model\":\"demo:item/ruby\"}}],\"fallback\":{\"type\":\"minecraft:model\","
+                + "\"model\":\"demo:item/ruby\"}}}").getBytes(StandardCharsets.UTF_8));
+        BedrockConverter.Input base = input(pack, Map.of());
+        List<BedrockConverter.ItemSpec> items = new java.util.ArrayList<>(base.items());
+        ResourceLocation definition = new ResourceLocation("nazgul_weaponry_vol_4", path);
+        items.add(new BedrockConverter.ItemSpec(longId, "NETHERITE_SWORD", definition, definition, 1003, "Espada", true));
+        BedrockConverter.Build build = BedrockConverter.convert(new BedrockConverter.Input(base.pack(), items,
+                base.blocks(), base.liquids(), base.furniture(), base.emojis(), base.previousCarriers(), base.blockStates()));
+        assertEquals(List.of(), build.problems());
+        assertEquals(3, build.items().size(), "the sword has its icon");
+        assertTrue(unzip(build.pack()).keySet().stream().allMatch(file -> file.length() < 80),
+                "every path under 80 characters");
+    }
+
+    @Test
+    void textureBlendingIsReadFromItsPixels() throws IOException {
+        assertEquals("opaque", BedrockConverter.blending(ImageIO.read(new ByteArrayInputStream(png(4, 4, 0xff112233)))));
+        assertEquals("alpha_test", BedrockConverter.blending(ImageIO.read(new ByteArrayInputStream(png(4, 4, 0x00000000)))));
+        assertEquals("blend", BedrockConverter.blending(ImageIO.read(new ByteArrayInputStream(png(4, 4, 0x80ff0000)))));
+        assertEquals("ark_demo_block_stone", BedrockConverter.name("demo:block/stone"));
+    }
+}

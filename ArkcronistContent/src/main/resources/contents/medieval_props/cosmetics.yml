@@ -1,0 +1,47 @@
+# ---------------------------------------------------------------------------
+#  Cosmetics (3.0): worn on the back, swinging as you move.
+# ---------------------------------------------------------------------------
+#     /customgive <player> medieval_props:mochila_viaje
+#
+#  Right click with it in your hand to put it on; /arkcontent cosmetic off to
+#  take it off - it comes back to your inventory. What you wear is kept in the
+#  plugin's database across restarts.
+#
+#  It is drawn by a display that only the clients see, riding the wearer, so
+#  it follows them smoothly and never stops a teleport. With PacketEvents
+#  installed its swing is sent straight from the physics thread
+#  (ArkContent-Physics); without it, the display is a real entity the main
+#  thread moves each tick.
+#
+#  cosmetic:
+#    slot      back
+#    offset    [x, y, z]: from the wearer's back at shoulder height, in
+#              blocks - x to their left, y up, z behind them
+#    scale     how big the model is drawn
+#    physics   how it swings, or none:
+#      stiffness   how hard it springs back to rest (1-400)
+#      damping     how fast a swing dies down (0-60)
+#      sway        how much the wearer's movement throws it about (0-4)
+#      max-angle   the farthest it swings either way, degrees (0-80)
+#      bounce      what is left of a swing that reaches its limit (0-1)
+# ---------------------------------------------------------------------------
+
+items:
+
+  mochila_viaje:
+    material: PAPER
+    display-name: "<#c8a165>Mochila de viaje"
+    lore:
+      - "<gray>Clic derecho para ponértela."
+    resource:
+      model: cosmetic/mochila_viaje
+    cosmetic:
+      slot: back
+      offset: [0, -0.32, 0.27]
+      scale: 1
+      physics:
+        stiffness: 40
+        damping: 5
+        sway: 1
+        max-angle: 28
+        bounce: 0.45

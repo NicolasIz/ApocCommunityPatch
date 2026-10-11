@@ -28,9 +28,13 @@ public final class ActionBars {
     }
 
     private final Map<UUID, Flash> flashes = new ConcurrentHashMap<>();
+    /** 3.0: a frame drawn over everything else - a minigame's bar - for as long as it is set. */
+    private final Map<UUID, Component> overlays = new ConcurrentHashMap<>();
     private final LongSupplier tick;
     /** The bars a player has on the action bar now, or null for none. */
     private volatile Function<Player, Component> bars = player -> null;
+    /** 3.0: players whose client draws no custom font - Bedrock players - and see no bars. */
+    private volatile java.util.function.Predicate<Player> plain = player -> false;
 
     /** @param tick the server's current tick */
     public ActionBars(LongSupplier tick) {
@@ -41,21 +45,54 @@ public final class ActionBars {
         this.bars = bars;
     }
 
+    /**
+     * Players who are sent no bars: their client has no negative spaces to place them with. A
+     * message or a minigame's frame still reaches them, as the plain text it is for them.
+     */
+    public void plainFor(java.util.function.Predicate<Player> plain) {
+        this.plain = plain;
+    }
+
     /** Shows {@code message} for {@code ticks}, over the bars. */
     public void flash(Player player, Component message, int ticks) {
         flashes.put(player.getUniqueId(), new Flash(message, tick.getAsLong() + ticks));
         send(player);
     }
 
+    /**
+     * Sets the frame drawn over the bars and any message, or clears it with null, and sends the
+     * line. The frame has to be width-neutral, as the bars are, so neither moves the other.
+     */
+    public void overlay(Player player, @org.jetbrains.annotations.Nullable Component overlay) {
+        if (overlay == null) {
+            if (overlays.remove(player.getUniqueId()) == null) {
+                return;
+            }
+        } else {
+            overlays.put(player.getUniqueId(), overlay);
+        }
+        send(player);
+    }
+
     /** Sends what the player's action bar holds now; nothing when it holds nothing. */
     public void send(Player player) {
-        Component bar = bars.apply(player);
+        Component overlay = overlays.get(player.getUniqueId());
+        boolean plainText = plain.test(player);
+        Component bar = plainText ? null : bars.apply(player);
+        if (overlay != null) {
+            bar = bar == null ? overlay : overlay.append(bar);
+        }
         Flash flash = flashes.get(player.getUniqueId());
         if (flash != null && flash.until() < tick.getAsLong()) {
             flashes.remove(player.getUniqueId(), flash);
             flash = null;
         }
         if (bar == null && flash == null) {
+            return;
+        }
+        if (plainText && flash != null) {
+            // A frame and a message, side by side: there are no spaces to lay one over the other.
+            player.sendActionBar(bar == null ? flash.message() : bar.append(Component.text("  ")).append(flash.message()));
             return;
         }
         player.sendActionBar(bar == null ? flash.message() : flash == null ? bar : centred(flash.message(), bar));
@@ -91,5 +128,6 @@ public final class ActionBars {
 
     public void forget(UUID player) {
         flashes.remove(player);
+        overlays.remove(player);
     }
 }

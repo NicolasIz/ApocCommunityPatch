@@ -10,12 +10,15 @@ import com.arkcronist.content.bukkit.hooks.deluxemenus.DeluxeMenusHook;
 import com.arkcronist.content.bukkit.hooks.eco.EcoHook;
 import com.arkcronist.content.bukkit.hooks.economyshopgui.EconomyShopGuiHook;
 import com.arkcronist.content.bukkit.hooks.executableblocks.ExecutableBlocksHook;
+import com.arkcronist.content.bukkit.hooks.geyser.GeyserHook;
 import com.arkcronist.content.bukkit.hooks.griefprevention.GriefPreventionProtection;
 import com.arkcronist.content.bukkit.hooks.hmccosmetics.HmcCosmeticsHook;
 import com.arkcronist.content.bukkit.hooks.iris.IrisHook;
 import com.arkcronist.content.bukkit.hooks.itembridge.ItemBridgeHook;
 import com.arkcronist.content.bukkit.hooks.jobs.ExcellentJobsHook;
 import com.arkcronist.content.bukkit.hooks.jobs.JobsRebornHook;
+import com.arkcronist.content.bukkit.hooks.lands.LandsProtection;
+import com.arkcronist.content.bukkit.hooks.luckperms.LuckPermsHook;
 import com.arkcronist.content.bukkit.hooks.mcmmo.McMMOHook;
 import com.arkcronist.content.bukkit.hooks.mimic.MimicHook;
 import com.arkcronist.content.bukkit.hooks.mmoitems.MMOItemsHook;
@@ -23,10 +26,12 @@ import com.arkcronist.content.bukkit.hooks.modelengine.ModelEngineHook;
 import com.arkcronist.content.bukkit.hooks.mythicarmor.MythicArmorHook;
 import com.arkcronist.content.bukkit.hooks.mythicmobs.MythicMobsHook;
 import com.arkcronist.content.bukkit.hooks.nightcore.NightcoreItemsHook;
+import com.arkcronist.content.bukkit.hooks.packetevents.PacketCosmetics;
 import com.arkcronist.content.bukkit.hooks.placeholderapi.PlaceholderApiHook;
 import com.arkcronist.content.bukkit.hooks.shopgui.ShopGuiPlusHook;
 import com.arkcronist.content.bukkit.hooks.skillapi.FabledHook;
 import com.arkcronist.content.bukkit.hooks.skillapi.SkillAPIHook;
+import com.arkcronist.content.bukkit.hooks.towny.TownyProtection;
 import com.arkcronist.content.bukkit.hooks.vault.VaultShop;
 import com.arkcronist.content.bukkit.hooks.worldedit.WorldEditHook;
 import com.arkcronist.content.bukkit.hooks.worldguard.WorldGuardFlags;
@@ -93,6 +98,8 @@ public final class HookManager {
     private final java.util.concurrent.atomic.AtomicBoolean manaFailed = new java.util.concurrent.atomic.AtomicBoolean();
     private final List<AutoCloseable> closing = new ArrayList<>();
     private ModelEngineBridge modelEngine;
+    private @org.jetbrains.annotations.Nullable com.arkcronist.content.bukkit.cosmetic.CosmeticRenderer packetCosmetics;
+    private @org.jetbrains.annotations.Nullable GeyserHook geyser;
     private Shop shop;
     private NpcBridge npcs;
     private Predicate<Block> foreignBlocks = block -> false;
@@ -196,6 +203,32 @@ public final class HookManager {
             plugin.protection().add(griefPrevention);
             return griefPrevention;
         });
+        // 3.0: Lands and Towny, asked the same way - and, for guns, whether the target may be hurt.
+        create("Lands", "me.angeschossen.lands.api.LandsIntegration", () -> {
+            LandsProtection lands = new LandsProtection(plugin);
+            plugin.protection().add(lands);
+            return lands;
+        });
+        create("Towny", "com.palmergames.bukkit.towny.TownyAPI", () -> {
+            TownyProtection towny = new TownyProtection();
+            plugin.protection().add(towny);
+            return towny;
+        });
+        // 3.0: worn cosmetics sent as packets from their own thread, when PacketEvents is there.
+        packetCosmetics = create("PacketEvents", "com.github.retrooper.packetevents.PacketEvents",
+                PacketCosmetics::new);
+        // 3.0: LuckPerms prefixes, suffixes and meta with emojis, for TAB, chat and menus.
+        LuckPermsHook luckPerms = create("LuckPerms", "net.luckperms.api.LuckPermsProvider",
+                () -> new LuckPermsHook(plugin.emojis()));
+        if (luckPerms != null) {
+            placeholders.add(luckPerms);
+        }
+        // 3.0: Bedrock players, through Geyser - items, blocks, furniture and the pack, made for them
+        // by the pipeline and handed over as Geyser starts.
+        if (plugin.pipeline().bedrockActive()) {
+            geyser = create("Geyser", "org.geysermc.geyser.api.event.lifecycle.GeyserDefineCustomBlocksEvent",
+                    () -> new GeyserHook(plugin, plugin.pipeline().bedrockReady()));
+        }
 
         // Skills plugins: experience for custom blocks and crops. AuraSkills also knows the items,
         // for its menus - registered now, before it loads them on the first tick.
@@ -489,6 +522,16 @@ public final class HookManager {
     /** Names of the hooks that are running. */
     public List<String> active() {
         return List.copyOf(active);
+    }
+
+    /** Cosmetics drawn by packets, when PacketEvents is installed; null otherwise. */
+    public @org.jetbrains.annotations.Nullable com.arkcronist.content.bukkit.cosmetic.CosmeticRenderer packetCosmetics() {
+        return packetCosmetics;
+    }
+
+    /** Geyser, when it is installed and Bedrock content is on; null otherwise. */
+    public @org.jetbrains.annotations.Nullable GeyserHook geyser() {
+        return geyser;
     }
 
     private <T> T create(String name, String probeClass, Supplier<T> factory) {

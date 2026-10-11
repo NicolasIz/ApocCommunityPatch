@@ -3,11 +3,12 @@ package com.arkcronist.content.core.loader;
 import com.arkcronist.content.core.animation.AnimatedModel;
 import com.arkcronist.content.core.animation.BbModelReader;
 import com.arkcronist.content.core.ballistics.DamageFalloff;
+import com.arkcronist.content.core.cosmetic.CosmeticDefinition;
 import com.arkcronist.content.core.definition.AdvancementDefinition;
 import com.arkcronist.content.core.definition.ContentType;
 import com.arkcronist.content.core.definition.EmojiDefinition;
-import com.arkcronist.content.core.definition.FontImageDefinition;
 import com.arkcronist.content.core.definition.Equipment;
+import com.arkcronist.content.core.definition.FontImageDefinition;
 import com.arkcronist.content.core.definition.GunDefinition;
 import com.arkcronist.content.core.definition.ItemBehaviour;
 import com.arkcronist.content.core.definition.ItemDefinition;
@@ -18,9 +19,10 @@ import com.arkcronist.content.core.definition.ResourceLocation;
 import com.arkcronist.content.core.furniture.Footprint;
 import com.arkcronist.content.core.hud.HudAnchor;
 import com.arkcronist.content.core.hud.HudDefinition;
+import com.arkcronist.content.core.liquid.LiquidModels;
+import com.arkcronist.content.core.minigame.MinigameDefinition;
 import com.arkcronist.content.core.quest.QuestDefinition;
 import com.arkcronist.content.core.quest.QuestReader;
-import com.arkcronist.content.core.liquid.LiquidModels;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
@@ -331,7 +333,127 @@ public final class ContentLoader {
                 item = item.withGun(gun(gun, prefix, problems));
             }
         }
+        Map<?, ?> minigame = section(section, "minigame", prefix, problems);
+        if (minigame != null) {
+            boolean rod = type == ContentType.ITEM && "FISHING_ROD".equalsIgnoreCase(item.material());
+            if (type != ContentType.CUSTOM_BLOCK && !rod) {
+                problems.add(prefix + "'minigame' is played on a custom_block (a right click on it) or on an item"
+                        + " made of FISHING_ROD (when something bites); ignored here");
+            } else {
+                item = item.withMinigame(minigame(minigame, rod, prefix, problems));
+            }
+        }
+        Map<?, ?> cosmetic = section(section, "cosmetic", prefix, problems);
+        if (cosmetic != null) {
+            if (type != ContentType.ITEM) {
+                problems.add(prefix + "'cosmetic' is only read on items (type: item)");
+            } else if (model == null) {
+                problems.add(prefix + "'cosmetic' needs a 'resource' - the model drawn on the wearer");
+            } else {
+                item = item.withCosmetic(cosmetic(cosmetic, prefix, problems));
+            }
+        }
         return item;
+    }
+
+    /**
+     * {@code minigame:} (3.0) - the precision bar. Every key has a default; a value out of range is
+     * reported and the default used.
+     */
+    private static MinigameDefinition minigame(Map<?, ?> section, boolean rod, String prefix, List<String> problems) {
+        String where = prefix + "minigame: ";
+        double speed = number(section, "speed", 1.2, 0.1, 10, where, problems);
+        int zone = (int) number(section, "zone", 20, 1, MinigameDefinition.BAR, where, problems);
+        int critical = (int) number(section, "critical", Math.min(4, zone), 0, zone, where, problems);
+        int sweeps = (int) number(section, "sweeps", 4, 1, 50, where, problems);
+        boolean randomZone = flag(section, "random-zone", true, where, problems);
+        List<MinigameDefinition.Drop> drops = drops(section, "drops", where, problems);
+        List<MinigameDefinition.Drop> criticalDrops = drops(section, "critical-drops", where, problems);
+        MinigameDefinition.OnMiss fallback = rod ? MinigameDefinition.OnMiss.LOSE : MinigameDefinition.OnMiss.KEEP;
+        MinigameDefinition.OnMiss onMiss = fallback;
+        String rawMiss = text(section, "on-miss", where, problems);
+        if (rawMiss != null) {
+            try {
+                onMiss = MinigameDefinition.OnMiss.parse(rawMiss);
+            } catch (IllegalArgumentException unknown) {
+                problems.add(where + "'on-miss' should be keep, break or lose; using " + fallback.name().toLowerCase(Locale.ROOT));
+            }
+            if (rod && onMiss != MinigameDefinition.OnMiss.LOSE && onMiss != fallback) {
+                problems.add(where + "a fishing rod's catch can only be lost on a miss; 'on-miss' is ignored");
+                onMiss = MinigameDefinition.OnMiss.LOSE;
+            } else if (!rod && onMiss == MinigameDefinition.OnMiss.LOSE) {
+                problems.add(where + "a block cannot be lost - use keep or break; using keep");
+                onMiss = MinigameDefinition.OnMiss.KEEP;
+            }
+        }
+        int cooldown = (int) Math.round(number(section, "cooldown-seconds", 1, 0, 3600, where, problems) * 20);
+        return new MinigameDefinition(speed, zone, critical, sweeps, randomZone, drops, criticalDrops, onMiss, cooldown);
+    }
+
+    /** A list of {@code {item, amount, chance}}; the item is a custom item's id or a material, checked once all files are read. */
+    private static List<MinigameDefinition.Drop> drops(Map<?, ?> section, String key, String prefix,
+                                                       List<String> problems) {
+        Object value = section.get(key);
+        if (value == null) {
+            return List.of();
+        }
+        if (!(value instanceof List<?> list)) {
+            problems.add(prefix + "'" + key + "' should be a list of {item, amount, chance}");
+            return List.of();
+        }
+        List<MinigameDefinition.Drop> drops = new ArrayList<>();
+        for (Object entry : list) {
+            if (entry instanceof String item && !item.isBlank()) {
+                drops.add(new MinigameDefinition.Drop(item.trim(), 1, 1));
+                continue;
+            }
+            if (!(entry instanceof Map<?, ?> drop)) {
+                problems.add(prefix + "each of '" + key + "' should be an item id, or {item, amount, chance}");
+                continue;
+            }
+            String item = text(drop, "item", prefix + key + " ", problems);
+            if (item == null || item.isBlank()) {
+                problems.add(prefix + "a drop in '" + key + "' has no 'item'");
+                continue;
+            }
+            int amount = (int) number(drop, "amount", 1, 1, 6400, prefix + key + " ", problems);
+            double chance = number(drop, "chance", 1, 0, 1, prefix + key + " ", problems);
+            drops.add(new MinigameDefinition.Drop(item.trim(), amount, chance));
+        }
+        return drops;
+    }
+
+    /** {@code cosmetic:} (3.0) - worn on the back, swinging as its wearer moves. */
+    private static CosmeticDefinition cosmetic(Map<?, ?> section, String prefix, List<String> problems) {
+        String where = prefix + "cosmetic: ";
+        CosmeticDefinition.Slot slot = CosmeticDefinition.Slot.BACK;
+        String rawSlot = text(section, "slot", where, problems);
+        if (rawSlot != null) {
+            try {
+                slot = CosmeticDefinition.Slot.parse(rawSlot);
+            } catch (IllegalArgumentException unknown) {
+                problems.add(where + "'slot' can only be back for now; using back");
+            }
+        }
+        Placement.Vec3 offset = vector(section, "offset", CosmeticDefinition.BACK_OFFSET, where, problems);
+        float scale = (float) number(section, "scale", 1, 0.05, 4, where, problems);
+        CosmeticDefinition.Physics physics = CosmeticDefinition.Physics.DEFAULT;
+        Object rawPhysics = section.get("physics");
+        if (rawPhysics instanceof Boolean on && !on || "none".equals(rawPhysics)) {
+            physics = CosmeticDefinition.Physics.STILL;
+        } else if (rawPhysics instanceof Map<?, ?> map) {
+            String at = where + "physics ";
+            CosmeticDefinition.Physics base = CosmeticDefinition.Physics.DEFAULT;
+            physics = new CosmeticDefinition.Physics(
+                    number(map, "stiffness", base.stiffness(), 1, 400, at, problems),
+                    number(map, "damping", base.damping(), 0, 60, at, problems),
+                    number(map, "sway", base.sway(), 0, 4, at, problems),
+                    number(map, "max-angle", base.maxAngle(), 0, 80, at, problems),
+                    number(map, "bounce", base.bounce(), 0, 1, at, problems));
+        } else if (rawPhysics != null && !(rawPhysics instanceof Boolean)) {
+            problems.add(where + "'physics' should be a section, or none");
+        }
+        return new CosmeticDefinition(slot, offset, scale, physics);
     }
 
     /**

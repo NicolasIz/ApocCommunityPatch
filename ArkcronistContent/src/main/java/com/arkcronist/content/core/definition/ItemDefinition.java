@@ -34,10 +34,20 @@ import java.util.List;
 public record ItemDefinition(String namespace, String id, String material, String displayName,
                              List<String> lore, ModelSource model, ItemBehaviour behaviour,
                              Placement placement, Path source, double price, @Nullable Equipment equipment,
-                             @Nullable GunDefinition gun) {
+                             @Nullable GunDefinition gun,
+                             @Nullable com.arkcronist.content.core.minigame.MinigameDefinition minigame,
+                             @Nullable com.arkcronist.content.core.cosmetic.CosmeticDefinition cosmetic) {
 
     public ItemDefinition {
         lore = List.copyOf(lore);
+    }
+
+    /** An item with no minigame and not worn as a cosmetic. */
+    public ItemDefinition(String namespace, String id, String material, String displayName, List<String> lore,
+                          ModelSource model, ItemBehaviour behaviour, Placement placement, Path source, double price,
+                          @Nullable Equipment equipment, @Nullable GunDefinition gun) {
+        this(namespace, id, material, displayName, lore, model, behaviour, placement, source, price, equipment, gun,
+                null, null);
     }
 
     /** An item that is not for sale. */
@@ -62,19 +72,31 @@ public record ItemDefinition(String namespace, String id, String material, Strin
     /** The same item with a price: what one costs in the content shop, through Vault. 0 is not for sale. */
     public ItemDefinition withPrice(double price) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment, gun);
+                equipment, gun, minigame, cosmetic);
     }
 
     /** The same item, worn as {@code equipment}. */
     public ItemDefinition withEquipment(@Nullable Equipment equipment) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment, gun);
+                equipment, gun, minigame, cosmetic);
+    }
+
+    /** The same item, played as {@code minigame} (3.0): a rare ore's, or a fishing rod's. */
+    public ItemDefinition withMinigame(@Nullable com.arkcronist.content.core.minigame.MinigameDefinition minigame) {
+        return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
+                equipment, gun, minigame, cosmetic);
+    }
+
+    /** The same item, worn as {@code cosmetic} (3.0). */
+    public ItemDefinition withCosmetic(@Nullable com.arkcronist.content.core.cosmetic.CosmeticDefinition cosmetic) {
+        return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
+                equipment, gun, minigame, cosmetic);
     }
 
     /** The same item, shooting as {@code gun}. */
     public ItemDefinition withGun(@Nullable GunDefinition gun) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment, gun);
+                equipment, gun, minigame, cosmetic);
     }
 
     /** {@code namespace:id}, the key the item is registered, given and recognised by. */

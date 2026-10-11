@@ -1,0 +1,72 @@
+# ---------------------------------------------------------------------------
+#  Minigames (3.0): a needle sweeps across a bar on the HUD; stop it with a
+#  left click. Inside the zone is a hit, inside its narrow middle a critical.
+# ---------------------------------------------------------------------------
+#     /customgive <player> demo:star_ore
+#     /customgive <player> demo:master_rod
+#
+#  On a custom_block - a rare ore - the game starts with a right click on the
+#  placed block, and the block is mined only that way. On an item made of
+#  FISHING_ROD it starts when something is reeled in, and decides whether the
+#  catch is landed.
+#
+#  minigame:
+#    speed            times a second the needle crosses the bar (0.1-10)
+#    zone             pixels of the 100-pixel bar that count as a hit
+#    critical         pixels in the middle of the zone that count as critical
+#    sweeps           crossings before the game ends by itself, as a miss
+#    random-zone      put the zone somewhere else each game (default true)
+#    drops            what a hit gives: {item, amount, chance}; item is a
+#                     custom item's id or a material
+#    critical-drops   what a critical hit gives instead; on a rod, on top of
+#                     the catch
+#    on-miss          a block: keep (try again) or break (for nothing);
+#                     a rod's catch is always lost
+#    cooldown-seconds before the same player can play it again
+#
+#  Everything is decided by the server: it draws every frame, times the click
+#  as it arrives - taking off the player's ping, up to 250 ms - and judges it
+#  on its own thread. The client never says whether it hit.
+# ---------------------------------------------------------------------------
+
+items:
+
+  star_ore:
+    type: custom_block
+    display-name: "<#9fd8ff>Star Ore"
+    lore:
+      - "<gray>Right click it, then strike when the needle"
+      - "<gray>crosses the middle of the bar."
+    resource:
+      texture: block/star_ore
+    block:
+      drop-self: false
+    minigame:
+      speed: 1.2
+      zone: 22
+      critical: 5
+      sweeps: 4
+      drops:
+        - { item: demo:ruby, amount: 1 }
+      critical-drops:
+        - { item: demo:ruby, amount: 3 }
+        - { item: DIAMOND, amount: 1, chance: 0.5 }
+      on-miss: keep
+      cooldown-seconds: 1
+
+  master_rod:
+    material: FISHING_ROD
+    display-name: "<gold>Master's Rod"
+    lore:
+      - "<gray>When something bites, reel it in - then"
+      - "<gray>strike to land it."
+    resource:
+      texture: item/master_rod
+    minigame:
+      speed: 1.6
+      zone: 26
+      critical: 6
+      sweeps: 3
+      critical-drops:
+        - { item: demo:ruby, amount: 1 }
+        - { item: NAUTILUS_SHELL, amount: 1, chance: 0.3 }

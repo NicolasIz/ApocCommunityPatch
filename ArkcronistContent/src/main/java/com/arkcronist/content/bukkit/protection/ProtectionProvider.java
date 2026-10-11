@@ -54,4 +54,14 @@ public interface ProtectionProvider {
     default boolean allowsLiquidContactAt(Block block) {
         return true;
     }
+
+    /**
+     * Whether {@code attacker} may hurt {@code target} with a gun (3.0), asked before the shot's damage
+     * is dealt. The damage is a player's attack either way, so plugins that judge it from the damage
+     * event still do; this is for those whose rules - a town's PvP, a land's animal protection - are
+     * better asked directly.
+     */
+    default boolean allowsAttack(Player attacker, Entity target) {
+        return true;
+    }
 }

@@ -195,6 +195,33 @@ dependencies:
       load: BEFORE
       required: false
       join-classpath: true
+    # 3.0: lands and towns, asked like the others - and, for guns, whether a target may be hurt.
+    Lands:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    Towny:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    # 3.0: Bedrock players. No load order either way: Geyser starts - and asks for custom items,
+    # blocks and packs - only once the server has loaded (ServerLoadEvent), after every plugin has
+    # enabled, and waits for the content built in the background since this plugin enabled. An
+    # order would only tie loops with plugins that load after Geyser, as PacketEvents does.
+    Geyser-Spigot:
+      load: OMIT
+      required: false
+      join-classpath: true
+    # 3.0: cosmetics drawn by packets from their own thread.
+    packetevents:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    # 3.0: rank prefixes with emojis, as placeholders.
+    LuckPerms:
+      load: BEFORE
+      required: false
+      join-classpath: true
     # Skills plugins: experience for custom blocks and crops. AuraSkills also takes the items, for
     # its menus, as it enables - it loads first, and the items are registered before its first tick.
     AuraSkills:
@@ -266,6 +293,9 @@ permissions:
   arkcontent.board.admin:
     description: Create, post and remove quest board notices (/arkcontent board).
     default: op
+  arkcontent.cosmetic:
+    description: Wear cosmetics, and take them off (/cosmetic).
+    default: true
   arkcontent.shop:
     description: Buy custom items that have a price (/arkcontent shop). Needs Vault and an economy plugin.
     default: true

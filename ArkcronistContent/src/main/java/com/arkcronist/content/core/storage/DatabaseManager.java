@@ -61,17 +61,19 @@ public final class DatabaseManager {
     public static final String PROGRESS_TABLE = "quest_progress";
     public static final String PIECE_TABLE = "furniture_pieces";
     public static final String RECOVERED_TABLE = "recovered_storage";
+    public static final String COSMETIC_TABLE = "player_cosmetics";
+    public static final String MINIGAME_TABLE = "minigame_stats";
 
     /**
      * Bumped with each change to the schema, so a later version knows what it opened.
      * 1: custom_blocks_world. 2: custom_crops added. 3: furniture_storage added. 4:
      * advancement_unlocks added. 5: liquid_sources and hud_values added. 6: furniture_transforms
      * added. 7: furniture_pairs, quest_notices and quest_progress added. 8: furniture_pieces and
-     * recovered_storage added. An older file gains the tables it lacks on open, all of them and the
+     * recovered_storage added. 9: player_cosmetics and minigame_stats added. An older file gains the tables it lacks on open, all of them and the
      * new version number in one transaction - or none of it; nothing existing is touched, so an
      * older plugin still opens the file and leaves the tables it does not know alone.
      */
-    public static final int SCHEMA_VERSION = 8;
+    public static final int SCHEMA_VERSION = 9;
 
     /**
      * Each piece of furniture as a whole, by its anchor block: which way it faces. Written in the
@@ -108,6 +110,51 @@ public final class DatabaseManager {
                 claimed_by   TEXT,
                 claimed_at   INTEGER NOT NULL DEFAULT 0
             )""";
+
+    /**
+     * 3.0: what each player wears, one row per slot - the stack itself, as it was taken from their
+     * hand, so taking it off gives back exactly that item.
+     */
+    private static final String CREATE_COSMETIC_TABLE = """
+            CREATE TABLE IF NOT EXISTS player_cosmetics (
+                player_uuid TEXT    NOT NULL,
+                slot        TEXT    NOT NULL,
+                item_id     TEXT    NOT NULL,
+                item        BLOB    NOT NULL,
+                equipped_at INTEGER NOT NULL,
+                PRIMARY KEY (player_uuid, slot)
+            ) WITHOUT ROWID""";
+
+    /**
+     * 3.0: each player's record at each HUD minigame: games played, hits, critical hits, and the
+     * closest they came to the middle of the bar, in pixels.
+     */
+    private static final String CREATE_MINIGAME_TABLE = """
+            CREATE TABLE IF NOT EXISTS minigame_stats (
+                player_uuid TEXT    NOT NULL,
+                game        TEXT    NOT NULL,
+                plays       INTEGER NOT NULL DEFAULT 0,
+                hits        INTEGER NOT NULL DEFAULT 0,
+                criticals   INTEGER NOT NULL DEFAULT 0,
+                best_error  REAL,
+                last_played INTEGER NOT NULL,
+                PRIMARY KEY (player_uuid, game)
+            ) WITHOUT ROWID""";
+
+    private static final String SELECT_COSMETICS = "SELECT slot, item_id, item, equipped_at FROM " + COSMETIC_TABLE
+            + " WHERE player_uuid = ?";
+    private static final String UPSERT_COSMETIC = "INSERT OR REPLACE INTO " + COSMETIC_TABLE
+            + " (player_uuid, slot, item_id, item, equipped_at) VALUES (?, ?, ?, ?, ?)";
+    private static final String DELETE_COSMETIC = "DELETE FROM " + COSMETIC_TABLE + " WHERE player_uuid = ? AND slot = ?";
+    private static final String RECORD_MINIGAME = "INSERT INTO " + MINIGAME_TABLE
+            + " (player_uuid, game, plays, hits, criticals, best_error, last_played) VALUES (?, ?, 1, ?, ?, ?, ?)"
+            + " ON CONFLICT (player_uuid, game) DO UPDATE SET plays = plays + 1, hits = hits + excluded.hits,"
+            + " criticals = criticals + excluded.criticals,"
+            + " best_error = CASE WHEN excluded.best_error IS NULL THEN best_error"
+            + " WHEN best_error IS NULL OR excluded.best_error < best_error THEN excluded.best_error ELSE best_error END,"
+            + " last_played = excluded.last_played";
+    private static final String SELECT_MINIGAME = "SELECT plays, hits, criticals, best_error, last_played FROM "
+            + MINIGAME_TABLE + " WHERE player_uuid = ? AND game = ?";
 
     private static final String UPSERT_PIECE = "INSERT OR REPLACE INTO " + PIECE_TABLE
             + " (world_uuid, x, y, z, furniture_id, yaw, placed_at) VALUES (?, ?, ?, ?, ?, ?, ?)";
@@ -1175,6 +1222,126 @@ public final class DatabaseManager {
         }), false);
     }
 
+    // ---------------------------------------------------------------- 3.0: cosmetics
+
+    /** What {@code player} wears, by slot. */
+    public CompletableFuture<List<StoredCosmetic>> cosmetics(UUID player) {
+        return submit(connection -> {
+            List<StoredCosmetic> worn = new ArrayList<>();
+            try (PreparedStatement statement = connection.prepareStatement(SELECT_COSMETICS)) {
+                statement.setString(1, player.toString());
+                try (ResultSet result = statement.executeQuery()) {
+                    while (result.next()) {
+                        worn.add(new StoredCosmetic(player, result.getString(1), result.getString(2),
+                                result.getBytes(3), result.getLong(4)));
+                    }
+                }
+            }
+            return worn;
+        }, false);
+    }
+
+    /**
+     * Puts {@code cosmetic} on, and takes off what was in its slot, in one transaction: the item
+     * taken off is returned to be given back, so a slot never holds two and nothing is lost between.
+     *
+     * @return what the slot held before, if anything
+     */
+    public CompletableFuture<Optional<StoredCosmetic>> equipCosmetic(StoredCosmetic cosmetic) {
+        return submit(connection -> inTransaction(connection, () -> {
+            Optional<StoredCosmetic> before = cosmeticIn(connection, cosmetic.player(), cosmetic.slot());
+            try (PreparedStatement statement = connection.prepareStatement(UPSERT_COSMETIC)) {
+                statement.setString(1, cosmetic.player().toString());
+                statement.setString(2, cosmetic.slot());
+                statement.setString(3, cosmetic.itemId());
+                statement.setBytes(4, cosmetic.item());
+                statement.setLong(5, cosmetic.equippedAtMillis());
+                statement.executeUpdate();
+            }
+            return before;
+        }), false);
+    }
+
+    /**
+     * Takes off what {@code player} wears in {@code slot}: read and deleted in one transaction, so
+     * two calls at once cannot both hand the item back.
+     *
+     * @return what was worn there, if anything
+     */
+    public CompletableFuture<Optional<StoredCosmetic>> unequipCosmetic(UUID player, String slot) {
+        return submit(connection -> inTransaction(connection, () -> {
+            Optional<StoredCosmetic> worn = cosmeticIn(connection, player, slot);
+            if (worn.isPresent()) {
+                try (PreparedStatement statement = connection.prepareStatement(DELETE_COSMETIC)) {
+                    statement.setString(1, player.toString());
+                    statement.setString(2, slot);
+                    statement.executeUpdate();
+                }
+            }
+            return worn;
+        }), false);
+    }
+
+    private static Optional<StoredCosmetic> cosmeticIn(Connection connection, UUID player, String slot)
+            throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(SELECT_COSMETICS + " AND slot = ?")) {
+            statement.setString(1, player.toString());
+            statement.setString(2, slot);
+            try (ResultSet result = statement.executeQuery()) {
+                return result.next()
+                        ? Optional.of(new StoredCosmetic(player, result.getString(1), result.getString(2),
+                        result.getBytes(3), result.getLong(4)))
+                        : Optional.empty();
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- 3.0: minigames
+
+    /**
+     * Adds one game to {@code player}'s record at {@code game}.
+     *
+     * @param error how far from the middle of the bar the needle stopped, in pixels; null for a
+     *              game that ran out without a press
+     */
+    public CompletableFuture<Void> recordMinigame(UUID player, String game, boolean hit, boolean critical,
+                                                  @Nullable Double error) {
+        return submit(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(RECORD_MINIGAME)) {
+                statement.setString(1, player.toString());
+                statement.setString(2, game);
+                statement.setInt(3, hit ? 1 : 0);
+                statement.setInt(4, critical ? 1 : 0);
+                if (error == null) {
+                    statement.setNull(5, java.sql.Types.REAL);
+                } else {
+                    statement.setDouble(5, error);
+                }
+                statement.setLong(6, System.currentTimeMillis());
+                statement.executeUpdate();
+            }
+            return null;
+        }, false);
+    }
+
+    /** {@code player}'s record at {@code game}; all zero if they never played it. */
+    public CompletableFuture<MinigameStats> minigameStats(UUID player, String game) {
+        return submit(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(SELECT_MINIGAME)) {
+                statement.setString(1, player.toString());
+                statement.setString(2, game);
+                try (ResultSet result = statement.executeQuery()) {
+                    if (!result.next()) {
+                        return MinigameStats.NONE;
+                    }
+                    double best = result.getDouble(4);
+                    return new MinigameStats(result.getInt(1), result.getInt(2), result.getInt(3),
+                            result.wasNull() ? null : best, result.getLong(5));
+                }
+            }
+        }, false);
+    }
+
     private static RecoveredStorage recoveredRow(ResultSet result) throws SQLException {
         return new RecoveredStorage(result.getLong(1), UUID.fromString(result.getString(2)), result.getInt(3),
                 result.getInt(4), result.getInt(5), result.getString(6), result.getInt(7), result.getBytes(8),
@@ -1345,7 +1512,7 @@ public final class DatabaseManager {
                 for (String create : List.of(CREATE_TABLE, CREATE_CROP_TABLE, CREATE_STORAGE_TABLE,
                         CREATE_UNLOCK_TABLE, CREATE_LIQUID_TABLE, CREATE_HUD_TABLE, CREATE_TRANSFORM_TABLE,
                         CREATE_PAIR_TABLE, CREATE_NOTICE_TABLE, CREATE_PROGRESS_TABLE, CREATE_PIECE_TABLE,
-                        CREATE_RECOVERED_TABLE)) {
+                        CREATE_RECOVERED_TABLE, CREATE_COSMETIC_TABLE, CREATE_MINIGAME_TABLE)) {
                     statement.execute(create);
                 }
                 if (version < SCHEMA_VERSION) {

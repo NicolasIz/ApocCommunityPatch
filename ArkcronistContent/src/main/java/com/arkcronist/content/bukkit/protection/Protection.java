@@ -17,8 +17,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Asks every installed protection plugin - WorldGuard, GriefPrevention - before this plugin changes
- * a block itself.
+ * Asks every installed protection plugin - WorldGuard, GriefPrevention, Lands, Towny - before this
+ * plugin changes a block itself.
  *
  * <p>Most of what players do to custom content reaches protection plugins anyway, as a real
  * {@code BlockBreakEvent} or {@code BlockPlaceEvent} this plugin fires, and they cancel it as they
@@ -69,6 +69,11 @@ public final class Protection {
     /** Whether an explosion at {@code origin}, set off by {@code source}, may destroy {@code block}. */
     public boolean allowsExplosion(Block block, Location origin, @Nullable Entity source) {
         return all(provider -> provider.allowsExplosion(block, origin, source));
+    }
+
+    /** Whether {@code attacker} may shoot {@code target}, by every protection plugin (3.0). */
+    public boolean allowsAttack(Player attacker, Entity target) {
+        return all(provider -> provider.allowsAttack(attacker, target));
     }
 
     /** Whether a mob, a fluid or anything else that is not a player may change {@code block} from {@code from}. */

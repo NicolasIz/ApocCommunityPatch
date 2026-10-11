@@ -140,6 +140,8 @@ public final class FurnitureService {
     private @Nullable FurnitureTransformStore transforms;
     /** Told of every piece's root display as it is spawned, or loads with its chunk. */
     private Consumer<ItemDisplay> rootAppeared = root -> { };
+    /** 3.0: a piece about to be taken away - its root, still there to read. */
+    private Consumer<ItemDisplay> rootGoing = root -> { };
 
     /**
      * A piece of furniture as seen from one of its blocks: its root display, the block it was placed
@@ -181,9 +183,20 @@ public final class FurnitureService {
         this.transforms = transforms;
     }
 
-    /** Who to tell of every piece's root display as it is spawned or loads: the ambient effects. */
+    /**
+     * Also tells {@code listener} of every piece's root display as the piece is taken down, just
+     * before the display is removed: Bedrock players' carriers.
+     */
+    public void onRootGoing(Consumer<ItemDisplay> listener) {
+        this.rootGoing = this.rootGoing.andThen(listener);
+    }
+
+    /**
+     * Also tells {@code listener} of every piece's root display as it is spawned or loads: the
+     * ambient effects, Bedrock players' carriers.
+     */
     public void onRootAppeared(Consumer<ItemDisplay> listener) {
-        this.rootAppeared = listener;
+        this.rootAppeared = this.rootAppeared.andThen(listener);
     }
 
     /** Crops live in light blocks too: a ray looking for furniture stops at one, instead of reaching past it. */
@@ -1047,6 +1060,9 @@ public final class FurnitureService {
      */
     public void dismantle(@Nullable Entity root, List<Block> parts) {
         if (root != null) {
+            if (root instanceof ItemDisplay display) {
+                rootGoing.accept(display);
+            }
             animations.stop(root.getUniqueId());
             bones(root).forEach(Entity::remove);
             ModelEngineBridge modelEngine = hooks.modelEngine();
@@ -1188,6 +1204,9 @@ public final class FurnitureService {
         }
         List<Block> parts = parts(block, root);
         if (root != null) {
+            if (root instanceof ItemDisplay display) {
+                rootGoing.accept(display);
+            }
             animations.stop(root.getUniqueId());
             for (Entity bone : bones(root)) {
                 bone.remove();

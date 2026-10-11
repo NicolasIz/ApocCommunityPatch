@@ -287,3 +287,28 @@ sanity:
   # Server-thread time an audit may take per tick; a large world spreads over
   # more ticks.
   max-millis-per-tick: 1.0
+
+# ---------------------------------------------------------------------------
+#  Bedrock players (3.0), through Geyser-Spigot on this server
+# ---------------------------------------------------------------------------
+#  Every rebuild also converts the content for Bedrock, on the ArkContent-Worker
+#  thread: an icon for each item, each custom block and liquid as a Bedrock
+#  block, each piece of furniture cut into the block cells it covers, and the
+#  emojis as glyph sheets, all in one .mcpack (output/bedrock/). As Geyser
+#  starts, it is handed the items, the blocks and the pack through its API -
+#  its mappings are made in memory; nothing is written into Geyser's folder and
+#  nothing needs configuring there. Geyser draws no item displays, so Bedrock
+#  players are shown furniture as blocks of its own, sent to them alone: Java
+#  players and the world keep the barriers. Geyser takes custom items and
+#  blocks only as it starts: content added later reaches Bedrock players after
+#  a restart. The note block states furniture is drawn with are kept in
+#  data/bedrock_carriers.json, taken from the top of the range down and never
+#  given to custom blocks.
+#    auto  - when Geyser-Spigot is installed (default)
+#    true  - always; for Geyser on a proxy, take output/bedrock/*.mcpack from here
+#    false - never
+#  With it on, every item with a model also gets a custom_model_data number
+#  (pack.custom-model-data), which Geyser 2.8 tells custom items apart by.
+# ---------------------------------------------------------------------------
+bedrock:
+  enabled: auto

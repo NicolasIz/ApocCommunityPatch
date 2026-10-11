@@ -122,6 +122,7 @@ public final class ContentAdminCommand {
                                                                 StringArgumentType.getString(context, "change"),
                                                                 DoubleArgumentType.getDouble(context, "amount"))))))))
                 .then(Commands.literal("liquids").requires(ContentAdminCommand::admin).executes(this::liquids))
+                .then(Commands.literal("bedrock").requires(ContentAdminCommand::admin).executes(this::bedrock))
                 .then(Commands.literal("integrity").requires(ContentAdminCommand::admin)
                         .executes(this::integrity)
                         .then(Commands.literal("now").executes(this::integrityNow))
@@ -498,6 +499,20 @@ public final class ContentAdminCommand {
             }
         }
         return total;
+    }
+
+    /** 3.0: what Geyser was given, and what Bedrock players are being shown. */
+    private int bedrock(CommandContext<CommandSourceStack> context) {
+        CommandSender sender = context.getSource().getSender();
+        if (plugin.bedrock() == null) {
+            sender.sendMessage(Component.text(plugin.pipeline().bedrockActive()
+                    ? "Bedrock content is made (output/bedrock/), but Geyser-Spigot is not on this server to hand it to."
+                    : "Bedrock content is off: Geyser-Spigot is not installed (bedrock.enabled: auto), or it was turned"
+                    + " off in config.yml.", NamedTextColor.YELLOW));
+            return 0;
+        }
+        plugin.bedrock().status().forEach(line -> sender.sendMessage(Component.text(line, NamedTextColor.GOLD)));
+        return 1;
     }
 
     // ---------------------------------------------------------------- integrity (2.0)

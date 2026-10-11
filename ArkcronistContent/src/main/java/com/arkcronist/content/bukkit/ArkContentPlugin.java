@@ -137,6 +137,9 @@ public final class ArkContentPlugin extends JavaPlugin {
     private final FontImageRegistry fontImages = new FontImageRegistry();
     private LiquidService liquids;
     private HudService huds;
+    private com.arkcronist.content.bukkit.minigame.MinigameService minigames;
+    private com.arkcronist.content.bukkit.cosmetic.CosmeticService cosmetics;
+    private @org.jetbrains.annotations.Nullable com.arkcronist.content.bukkit.bedrock.BedrockService bedrock;
     private SanityChecker sanity;
     private PackWebHost webHost;
     private ContentPipeline pipeline;
@@ -208,12 +211,18 @@ public final class ArkContentPlugin extends JavaPlugin {
                 pipeline.contentsDir());
         this.advancements = new AdvancementService(this, items, itemFactory, database);
         this.actionBars = new ActionBars(() -> getServer().getCurrentTick());
-        this.guns = new GunService(this, items, itemFactory, hooks, actionBars, settings.guns());
+        this.guns = new GunService(this, items, itemFactory, hooks, protection, actionBars, settings.guns());
         hooks.addPlaceholders(guns::placeholder);
         this.liquids = new LiquidService(this, liquidRegistry, protection, database, settings.liquids());
         this.huds = new HudService(this, hudRegistry, database, actionBars, settings.huds(), hooks::placeholders,
                 hooks::auraSkillsMana);
         hooks.addPlaceholders(huds::placeholder);
+        this.minigames = new com.arkcronist.content.bukkit.minigame.MinigameService(this, items, itemFactory,
+                blockService, protection, database, actionBars, pipeline.mainThread());
+        com.arkcronist.content.bukkit.cosmetic.CosmeticRenderer cosmeticRenderer = hooks.packetCosmetics();
+        this.cosmetics = new com.arkcronist.content.bukkit.cosmetic.CosmeticService(this, items, database,
+                pipeline.mainThread(), cosmeticRenderer != null ? cosmeticRenderer
+                : new com.arkcronist.content.bukkit.cosmetic.EntityCosmetics(this));
         this.sanity = new SanityChecker(this, settings.sanity(), database, placed, transforms, furniture, blockService,
                 liquids, liquidRegistry, seats, storage);
 
@@ -248,11 +257,29 @@ public final class ArkContentPlugin extends JavaPlugin {
         if (settings.fontImages().titles()) {
             plugins.registerEvents(new GlyphTitleListener(fontImages), this);
         }
+        // 3.0: Bedrock players, through Geyser: furniture as carrier blocks, plain titles and bars,
+        // and no Java pack - Geyser sends them the Bedrock one. After the title listener above.
+        com.arkcronist.content.bukkit.hooks.geyser.GeyserHook geyser = hooks.geyser();
+        if (geyser != null) {
+            com.arkcronist.content.bukkit.bedrock.BedrockService bedrock =
+                    new com.arkcronist.content.bukkit.bedrock.BedrockService(this, furniture, itemFactory,
+                            geyser::isBedrockPlayer, () -> {
+                                ContentPipeline.BedrockContent given = geyser.registered();
+                                return given != null && geyser.live() ? given.build() : null;
+                            });
+            this.bedrock = bedrock;
+            plugins.registerEvents(bedrock, this);
+            delivery.skip(bedrock::isBedrock);
+            actionBars.plainFor(bedrock::isBedrock);
+            minigames.plainTextFor(bedrock::isBedrock);
+        }
         plugins.registerEvents(new ContentMenuListener(this), this);
         plugins.registerEvents(new AdvancementListener(this, advancements), this);
         plugins.registerEvents(new GunListener(this, guns), this);
         plugins.registerEvents(new LiquidListener(liquids, liquidRegistry, itemFactory, protection), this);
         plugins.registerEvents(new HudListener(huds, itemFactory), this);
+        plugins.registerEvents(new com.arkcronist.content.bukkit.minigame.MinigameListener(minigames, itemFactory), this);
+        plugins.registerEvents(new com.arkcronist.content.bukkit.cosmetic.CosmeticListener(cosmetics, itemFactory), this);
 
         openStorage();
         // Queued behind the database opening: notices and online players' progress.
@@ -267,6 +294,8 @@ public final class ArkContentPlugin extends JavaPlugin {
             commands.register(new ContentAdminCommand(this).build(),
                     "Rebuild or inspect the custom content", List.of("acontent"));
             commands.register(new EmojiCommand(emojis).build(), "List the chat emojis", List.of("emoji"));
+            commands.register(new com.arkcronist.content.bukkit.command.CosmeticCommand(cosmetics).build(),
+                    "What you wear, and taking it off", List.of("cosmetics"));
         });
 
         // Queued on the worker ahead of the first rebuild; a port that will not open never stops the start.
@@ -278,6 +307,7 @@ public final class ArkContentPlugin extends JavaPlugin {
         // Queued behind the database opening, like the rest of storage.
         liquids.start(getServer().getWorlds());
         huds.start();
+        cosmetics.start();
         // The first audit an interval from now, driven from the database's thread.
         sanity.start();
         // Smoke, steam and flames: picked on the main thread each tick, drawn on ArkContent-Effects.
@@ -412,6 +442,12 @@ public final class ArkContentPlugin extends JavaPlugin {
             liquids.shutdown();
         }
         // HUD values are queued for writing ahead of the database closing below.
+        if (minigames != null) {
+            minigames.stop();
+        }
+        if (cosmetics != null) {
+            cosmetics.stop();
+        }
         if (huds != null) {
             huds.shutdown();
         }
@@ -554,6 +590,19 @@ public final class ArkContentPlugin extends JavaPlugin {
     }
 
     /** The action bar, shared by HUD bars and short messages. Null before enable. */
+    /** Bedrock players' side of things, when Geyser is installed; null otherwise. */
+    public @org.jetbrains.annotations.Nullable com.arkcronist.content.bukkit.bedrock.BedrockService bedrock() {
+        return bedrock;
+    }
+
+    public com.arkcronist.content.bukkit.cosmetic.CosmeticService cosmetics() {
+        return cosmetics;
+    }
+
+    public com.arkcronist.content.bukkit.minigame.MinigameService minigames() {
+        return minigames;
+    }
+
     public ActionBars actionBars() {
         return actionBars;
     }

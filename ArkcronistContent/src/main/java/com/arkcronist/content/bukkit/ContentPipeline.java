@@ -14,10 +14,11 @@ import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.definition.EmojiDefinition;
 import com.arkcronist.content.core.definition.FontImageDefinition;
 import com.arkcronist.content.core.definition.ItemDefinition;
-import com.arkcronist.content.core.definition.ResourceLocation;
 import com.arkcronist.content.core.definition.Placement;
+import com.arkcronist.content.core.definition.ResourceLocation;
 import com.arkcronist.content.core.furniture.DisplayFile;
 import com.arkcronist.content.core.furniture.DisplayTransform;
+import com.arkcronist.content.core.geyser.BedrockConverter;
 import com.arkcronist.content.core.hud.GlyphMetrics;
 import com.arkcronist.content.core.hud.HudDefinition;
 import com.arkcronist.content.core.hud.HudGlyph;
@@ -27,20 +28,20 @@ import com.arkcronist.content.core.importer.ImportReport;
 import com.arkcronist.content.core.importer.ItemsAdderImporter;
 import com.arkcronist.content.core.liquid.TripwireState;
 import com.arkcronist.content.core.loader.ContentLoader;
-import com.arkcronist.content.core.quest.QuestDefinition;
 import com.arkcronist.content.core.loader.ExampleUpdates;
 import com.arkcronist.content.core.loader.LoadReport;
+import com.arkcronist.content.core.menu.GuiPicture;
+import com.arkcronist.content.core.minigame.MinigameRenderer;
 import com.arkcronist.content.core.pack.ExternalPack;
 import com.arkcronist.content.core.pack.FontImages;
 import com.arkcronist.content.core.pack.ModelDataDispatch;
 import com.arkcronist.content.core.pack.PackArtifact;
-import com.arkcronist.content.core.menu.GuiPicture;
 import com.arkcronist.content.core.pack.PackCompiler;
 import com.arkcronist.content.core.pack.PackSource;
 import com.arkcronist.content.core.pack.PackZipper;
+import com.arkcronist.content.core.quest.QuestDefinition;
 import com.arkcronist.content.core.upload.PackUploader;
 import com.arkcronist.content.core.upload.UploadSettings;
-
 import com.google.gson.JsonElement;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
@@ -204,7 +205,15 @@ public final class ContentPipeline {
             "2.0.0", List.of(
                     "contents/demo/textures/hud/shield_full.png",
                     "contents/demo/textures/hud/shield_half.png",
-                    "contents/demo/textures/hud/shield_empty.png"));
+                    "contents/demo/textures/hud/shield_empty.png"),
+            // 3.0: a rare ore and a fishing rod with the HUD minigame, and a backpack worn on the back.
+            "3.0.0", List.of(
+                    "contents/demo/minigames.yml",
+                    "contents/demo/textures/block/star_ore.png",
+                    "contents/demo/textures/item/master_rod.png",
+                    "contents/medieval_props/cosmetics.yml",
+                    "contents/medieval_props/models/cosmetic/mochila_viaje.json",
+                    "contents/medieval_props/textures/cosmetic/mochila_viaje.png"));
 
     /** Copied into contents/ the first time the plugin starts. */
     private static final List<String> EXAMPLES = Stream.concat(FIRST_EXAMPLES.stream(),
@@ -252,6 +261,16 @@ public final class ContentPipeline {
             "to HUDs no longer defined; remove those from hud_characters.json");
 
     /** Liquids: one pair of tripwire states each, of the sixteen free pairs. */
+    /** The minigame's glyphs' keys in hud_characters.json. */
+    private static final String MINIGAME_KEY = "arkcontent:minigame/";
+    /**
+     * The minigame's textures are 24 pixels tall, the bar in their top 13; an ascent of 21 puts
+     * the bar's top 86 pixels above the bottom of the screen - just over the HUD bars, with the
+     * action bar's own text under it ({@link com.arkcronist.content.core.hud.HudAnchor}).
+     */
+    private static final int MINIGAME_HEIGHT = 24;
+    private static final int MINIGAME_ASCENT = 21;
+
     private static final StableAllocator LIQUID_SLOTS = new StableAllocator(0, TripwireState.LIQUIDS - 1,
             "pair of tripwire states", "to liquids no longer defined; remove those from liquid_states.json once"
             + " none is left poured in a world");
@@ -270,51 +289,77 @@ public final class ContentPipeline {
                          List<HudDefinition> hudDefinitions, Map<String, Integer> liquids, List<HudLayout> huds,
                          List<HudGlyph> hudGlyphs, List<FontImageDefinition> fontImageDefinitions,
                          FontImages fontImages, List<String> problems, int files, PackArtifact artifact,
-                         Hosted hosted) {
+                         Hosted hosted, Extras extras) {
 
         Build withNoteBlocks(Map<String, NoteBlockState> noteBlocks) {
             return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
-                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted);
+                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted, extras);
         }
 
         Build withEmojis(Map<EmojiDefinition, Integer> emojis) {
             return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
-                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted);
+                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted, extras);
         }
 
         Build withFiles(int files) {
             return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
-                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted);
+                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted, extras);
         }
 
         Build withArtifact(PackArtifact artifact) {
             return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
-                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted);
+                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted, extras);
         }
 
         Build withModelData(Map<String, Integer> modelData) {
             return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
-                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted);
+                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted, extras);
         }
 
         Build withLiquids(Map<String, Integer> liquids) {
             return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
-                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted);
+                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted, extras);
         }
 
         Build withHuds(List<HudLayout> huds, List<HudGlyph> hudGlyphs) {
             return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
-                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted);
+                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted, extras);
         }
 
         Build withFontImages(FontImages fontImages) {
             return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
-                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted);
+                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted, extras);
+        }
+
+        Build withExtras(Extras extras) {
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
+                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted, extras);
         }
 
         Build withHosted(Hosted hosted) {
             return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
-                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted);
+                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted, extras);
+        }
+    }
+
+    /**
+     * What 3.0 adds to a rebuild, kept together so the stages before it pass it on unchanged.
+     *
+     * @param minigame    the minigame's glyphs, once given characters; null with no minigame defined
+     * @param bedrock     the content made for Bedrock players; null without Geyser
+     * @param bedrockPack where its resource pack was written
+     */
+    record Extras(@Nullable MinigameRenderer.Glyphs minigame, @Nullable BedrockConverter.Build bedrock,
+                  @Nullable Path bedrockPack) {
+
+        static final Extras NONE = new Extras(null, null, null);
+
+        Extras withMinigame(@Nullable MinigameRenderer.Glyphs minigame) {
+            return new Extras(minigame, bedrock, bedrockPack);
+        }
+
+        Extras withBedrock(BedrockConverter.Build bedrock, Path bedrockPack) {
+            return new Extras(minigame, bedrock, bedrockPack);
         }
     }
 
@@ -334,6 +379,13 @@ public final class ContentPipeline {
     private final Path packDir;
     private final Path zipFile;
     private final Path noteBlockStateFile;
+    /** 3.0: the note block states Bedrock players are shown furniture through. */
+    private final Path carrierFile;
+    private final Path bedrockDir;
+    /** The first build's Bedrock content, for Geyser, which asks for it as it starts. */
+    private final CompletableFuture<BedrockContent> bedrockReady = new CompletableFuture<>();
+    private volatile @Nullable BedrockContent bedrockLatest;
+    private final boolean bedrockActive;
     private final Path emojiCharacterFile;
     private final Path modelDataFile;
     private final Path liquidStateFile;
@@ -392,6 +444,9 @@ public final class ContentPipeline {
         this.packDir = data.resolve("pack");
         this.zipFile = data.resolve("output").resolve("resource_pack.zip");
         this.noteBlockStateFile = data.resolve("data").resolve("note_block_states.json");
+        this.carrierFile = data.resolve("data").resolve("bedrock_carriers.json");
+        this.bedrockDir = data.resolve("output").resolve("bedrock");
+        this.bedrockActive = bedrockActive(plugin);
         this.emojiCharacterFile = data.resolve("data").resolve("emoji_characters.json");
         this.modelDataFile = data.resolve("data").resolve("custom_model_data.json");
         this.liquidStateFile = data.resolve("data").resolve("liquid_states.json");
@@ -441,6 +496,8 @@ public final class ContentPipeline {
         next.whenComplete((report, error) -> {
             if (error != null) {
                 logger.log(Level.SEVERE, "Rebuild failed - the previous items and pack stay live.", error);
+                // Geyser, if it is waiting on the first build, stops waiting.
+                bedrockReady.completeExceptionally(error);
             }
         });
         last = next;
@@ -535,6 +592,7 @@ public final class ContentPipeline {
                 .thenApplyAsync(this::assignLiquidStates, worker)
                 .thenApplyAsync(this::assignHudCharacters, worker)
                 .thenApplyAsync(this::compilePack, worker)
+                .thenApplyAsync(this::bedrock, worker)
                 .thenComposeAsync(this::zipPack, worker)
                 .thenApplyAsync(this::hashPack, worker)
                 .thenComposeAsync(this::host, worker)
@@ -589,7 +647,7 @@ public final class ContentPipeline {
             problems.addAll(advancements.problems());
             return new Build(items, Map.of(), report.emojis(), Map.of(), advancements.advancements(), Map.of(),
                     report.huds(), Map.of(), List.of(), List.of(), report.fontImages(), FontImages.EMPTY, problems, 0,
-                    null, null);
+                    null, null, Extras.NONE);
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
@@ -678,6 +736,8 @@ public final class ContentPipeline {
                     reserved.addAll(com.arkcronist.content.core.pack.BlockStates.customNoteBlockStates(source));
                 }
             }
+            // 3.0: states shown to Bedrock players as furniture are never a block's.
+            reserved.addAll(StableAllocator.read(carrierFile).values());
             NoteBlockAllocator.Allocation allocation = NoteBlockAllocator.allocate(previous, blockIds, reserved);
             if (allocation.changed()) {
                 NoteBlockAllocator.write(noteBlockStateFile, allocation.assignments());
@@ -696,12 +756,16 @@ public final class ContentPipeline {
      */
     private Build assignModelData(Build build) {
         EngineSettings.ModelData config = settings.pack().modelData();
-        if (!config.enabled()) {
+        // Geyser 2.8 - the one for 1.21.8 - tells custom items apart by custom_model_data alone, so
+        // with Geyser installed every item gets a number, whatever its material.
+        boolean bedrock = bedrockActive();
+        if (!config.enabled() && !bedrock) {
             return build;
         }
         try {
             List<String> ids = build.items().values().stream()
-                    .filter(item -> item.hasModel() && ModelDataDispatch.dispatchable(item.definition().material()))
+                    .filter(item -> item.hasModel()
+                            && (bedrock || ModelDataDispatch.dispatchable(item.definition().material())))
                     .map(CustomItem::id)
                     .toList();
             Map<String, Integer> previous = StableAllocator.read(modelDataFile);
@@ -776,6 +840,11 @@ public final class ContentPipeline {
             for (HudDefinition hud : build.hudDefinitions()) {
                 hud.icons().forEach(icon -> keys.add(hud.iconKey(icon.name())));
             }
+            // 3.0: the minigame's bar, zone pieces and needle - only once something plays it.
+            boolean minigames = build.items().values().stream()
+                    .anyMatch(item -> item.definition().minigame() != null);
+            Map<String, Path> minigameTextures = minigames ? builtinMinigameTextures() : Map.of();
+            minigameTextures.keySet().forEach(name -> keys.add(MINIGAME_KEY + name));
             Map<Integer, FontImageDefinition> onSymbol = new LinkedHashMap<>();
             for (FontImageDefinition definition : own) {
                 Integer symbol = definition.symbol();
@@ -842,7 +911,10 @@ public final class ContentPipeline {
                         FontImages.DEFAULT_FONT, new String(Character.toChars(character)), ascent, drawnHeight,
                         definition.texture() + ".png"));
             }
-            return build.withHuds(layouts, glyphs).withFontImages(fontImageIndex(build, definedImages, provided));
+            MinigameRenderer.Glyphs minigameGlyphs = minigameGlyphs(minigameTextures, allocation.active(), glyphs,
+                    build.problems());
+            return build.withHuds(layouts, glyphs).withFontImages(fontImageIndex(build, definedImages, provided))
+                    .withExtras(build.extras().withMinigame(minigameGlyphs));
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
@@ -873,7 +945,9 @@ public final class ContentPipeline {
                     .toList();
             PackCompiler.Result result = compiler.compile(packDir, new PackCompiler.Input(definitions, build.noteBlocks(),
                     build.emojis(), build.advancements().stream().map(AdvancementCompiler.Compiled::definition).toList(),
-                    build.modelData(), build.liquids(), build.hudGlyphs(), settings.pack().negativeSpaces(),
+                    // Numbers given only for Bedrock change nothing in the Java pack.
+                    settings.pack().modelData().enabled() ? build.modelData() : Map.of(), build.liquids(),
+                    build.hudGlyphs(), settings.pack().negativeSpaces(),
                     mergedPacks(), contentsDir, builtinIcons()));
             build.problems().addAll(result.problems());
             result.notes().forEach(note -> logger.info("[pack] " + note));
@@ -881,6 +955,139 @@ public final class ContentPipeline {
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
+    }
+
+    // ---------------------------------------------------------------- 3.0: Bedrock
+
+    /**
+     * Whether the content is made for Bedrock players too: config {@code bedrock.enabled}, where
+     * auto means when Geyser is installed. Decided once, as the plugin starts - Geyser takes the
+     * content only as it starts too.
+     */
+    public boolean bedrockActive() {
+        return bedrockActive;
+    }
+
+    private static boolean bedrockActive(ArkContentPlugin plugin) {
+        Object mode = plugin.getConfig().get("bedrock.enabled", "auto");
+        return switch (String.valueOf(mode).trim().toLowerCase(Locale.ROOT)) {
+            case "true", "on", "yes" -> true;
+            case "false", "off", "no" -> false;
+            default -> plugin.getServer().getPluginManager().getPlugin("Geyser-Spigot") != null;
+        };
+    }
+
+    /** What Bedrock players are shown, and the .mcpack it is drawn with. */
+    public record BedrockContent(BedrockConverter.Build build, Path pack) {
+    }
+
+    /**
+     * The first build's Bedrock content: Geyser waits on this as it starts. Completed on the worker,
+     * never on the main thread - which is where Geyser waits.
+     */
+    public CompletableFuture<BedrockContent> bedrockReady() {
+        return bedrockReady;
+    }
+
+    /** The last build's Bedrock content; null before the first, or with Bedrock off. */
+    public @Nullable BedrockContent bedrockLatest() {
+        return bedrockLatest;
+    }
+
+    /**
+     * The content for Bedrock players, from the Java pack just compiled: items with icons, blocks,
+     * furniture as carriers, and the .mcpack - written as output/bedrock/arkcontent-&lt;hash&gt;.mcpack,
+     * a name of its own for each build, since Geyser holds on to the one it started with.
+     */
+    private Build bedrock(Build build) {
+        if (!bedrockActive()) {
+            return build;
+        }
+        try {
+            BedrockConverter.Input input = bedrockInput(build);
+            long started = System.nanoTime();
+            BedrockConverter.Build bedrock = BedrockConverter.convert(input);
+            if (!bedrock.carrierAssignments().equals(input.previousCarriers())) {
+                StableAllocator.write(carrierFile, bedrock.carrierAssignments());
+            }
+            Files.createDirectories(bedrockDir);
+            Path pack = bedrockDir.resolve("arkcontent-" + bedrock.packId() + ".mcpack");
+            if (!Files.isRegularFile(pack)) {
+                Files.write(pack, bedrock.pack());
+            }
+            build.problems().addAll(bedrock.problems());
+            Path missing = bedrockDir.resolve("left-out-items.txt");
+            if (bedrock.unpictured().isEmpty()) {
+                Files.deleteIfExists(missing);
+            } else {
+                Files.write(missing, bedrock.unpictured());
+            }
+            logger.info(String.format(Locale.ROOT, "[bedrock] %d item(s), %d block(s) (%d furniture carrier state(s)),"
+                            + " pack %s (%d KB) in %d ms.", bedrock.items().size(), bedrock.blocks().size(),
+                    bedrock.carriers().size(), pack.getFileName(), bedrock.pack().length / 1024,
+                    TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)));
+            BedrockContent content = new BedrockContent(bedrock, pack);
+            bedrockLatest = content;
+            bedrockReady.complete(content);
+            return build.withExtras(build.extras().withBedrock(bedrock, pack));
+        } catch (IOException | RuntimeException failure) {
+            bedrockReady.completeExceptionally(failure);
+            build.problems().add("bedrock: the content could not be made for Bedrock players - " + failure);
+            return build;
+        }
+    }
+
+    private BedrockConverter.Input bedrockInput(Build build) throws IOException {
+        net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer plain =
+                net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
+        List<BedrockConverter.ItemSpec> items = new ArrayList<>();
+        List<BedrockConverter.BlockSpec> blocks = new ArrayList<>();
+        List<BedrockConverter.LiquidSpec> liquids = new ArrayList<>();
+        List<BedrockConverter.FurnitureSpec> furniture = new ArrayList<>();
+        for (CustomItem item : build.items().values()) {
+            ItemDefinition definition = item.definition();
+            String name = item.displayName() == null ? item.id() : plain.serialize(item.displayName());
+            ResourceLocation model = definition.model() == null ? null : definition.model().location();
+            if (item.hasModel()) {
+                String material = item.material().name();
+                boolean handheld = definition.gun() != null || material.endsWith("_SWORD") || material.endsWith("_AXE")
+                        || material.endsWith("_PICKAXE") || material.endsWith("_SHOVEL") || material.endsWith("_HOE")
+                        || material.equals("FISHING_ROD") || material.equals("STICK");
+                items.add(new BedrockConverter.ItemSpec(item.id(), material, definition.itemModel(), model,
+                        build.modelData().get(item.id()), name, handheld));
+            }
+            NoteBlockState state = build.noteBlocks().get(item.id());
+            if (state != null && model != null) {
+                blocks.add(new BedrockConverter.BlockSpec(item.id(), state, model, name));
+            }
+            Integer slot = build.liquids().get(item.id());
+            if (slot != null && item.placement() instanceof Placement.Liquid liquid) {
+                liquids.add(new BedrockConverter.LiquidSpec(item.id(), TripwireState.source(slot).blockData(),
+                        liquid.source().location(), TripwireState.flowing(slot).blockData(), liquid.flowing().location(),
+                        name, liquid.glow()));
+            }
+            if (item.placement() instanceof Placement.Furniture piece && model != null && piece.modelEngineId() == null
+                    && (piece.support() == Placement.Support.BARRIER || piece.support() == Placement.Support.LIGHT)) {
+                furniture.add(new BedrockConverter.FurnitureSpec(item.id(), model, piece.footprint(), piece.display(),
+                        piece.animated() != null, piece.support() == Placement.Support.BARRIER, piece.light(), name));
+            }
+        }
+        List<BedrockConverter.EmojiSpec> emojis = new ArrayList<>();
+        build.emojis().forEach((emoji, character) -> emojis.add(new BedrockConverter.EmojiSpec(character, emoji.texture())));
+        Set<Integer> blockStates = new java.util.HashSet<>(NoteBlockAllocator.read(noteBlockStateFile).values());
+        build.noteBlocks().values().forEach(state -> blockStates.add(state.index()));
+        Path root = packDir;
+        return new BedrockConverter.Input(path -> {
+            Path file = root.resolve(path).normalize();
+            if (!file.startsWith(root) || !Files.isRegularFile(file)) {
+                return null;
+            }
+            try {
+                return Files.readAllBytes(file);
+            } catch (IOException unreadable) {
+                return null;
+            }
+        }, items, blocks, liquids, furniture, emojis, StableAllocator.read(carrierFile), blockStates);
     }
 
     private CompletableFuture<Build> zipPack(Build build) {
@@ -1033,6 +1240,15 @@ public final class ContentPipeline {
         }
         plugin.liquidRegistry().replace(liquids);
         plugin.hudRegistry().replace(build.huds());
+        if (plugin.minigames() != null) {
+            plugin.minigames().glyphs(build.extras().minigame());
+        }
+        if (plugin.cosmetics() != null) {
+            plugin.cosmetics().contentReloaded();
+        }
+        if (plugin.bedrock() != null && build.extras().bedrock() != null) {
+            plugin.bedrock().update(build.extras().bedrock());
+        }
         plugin.fontImages().replace(build.fontImages());
         emojis.replace(build.emojis());
         int advancements = plugin.advancements() == null ? 0 : plugin.advancements().publish(build.advancements());
@@ -1100,6 +1316,74 @@ public final class ContentPipeline {
                     root, file));
         }
         return images;
+    }
+
+    /** The minigame's textures, out of the jar the same way: name to file. */
+    private Map<String, Path> builtinMinigameTextures() throws IOException {
+        Path root = builtinRoot();
+        Map<String, Path> textures = new LinkedHashMap<>();
+        List<String> names = new ArrayList<>(List.of("frame", "needle"));
+        for (int width = 1; width <= 64; width *= 2) {
+            names.add("hit_" + width);
+            names.add("critical_" + width);
+        }
+        for (String name : names) {
+            Path file = extract(root, "textures/minigame/" + name + ".png");
+            if (file != null) {
+                textures.put(name, file);
+            }
+        }
+        return textures;
+    }
+
+    /**
+     * The minigame's glyphs, on their characters, each measured as the client will draw it - the
+     * frame is stepped over pixel by pixel, so its advance has to be exact. Null when any is
+     * missing: no minigame is better than one drawn wrong.
+     */
+    private @Nullable MinigameRenderer.Glyphs minigameGlyphs(Map<String, Path> textures, Map<String, Integer> characters,
+                                                             List<HudGlyph> glyphs, List<String> problems) {
+        if (textures.isEmpty()) {
+            return null;
+        }
+        Map<String, int[]> placed = new HashMap<>();
+        for (Map.Entry<String, Path> texture : textures.entrySet()) {
+            Integer character = characters.get(MINIGAME_KEY + texture.getKey());
+            if (character == null) {
+                continue;
+            }
+            int advance;
+            try {
+                advance = GlyphMetrics.advance(texture.getValue(), MINIGAME_HEIGHT);
+            } catch (IOException exception) {
+                problems.add("minigame: could not read " + texture.getValue().getFileName() + " - " + exception.getMessage());
+                return null;
+            }
+            glyphs.add(new HudGlyph("minigame " + texture.getKey(), "arkcontent",
+                    new ResourceLocation("arkcontent", "minigame/" + texture.getKey()), builtinRoot(), MINIGAME_HEIGHT,
+                    MINIGAME_ASCENT, character));
+            placed.put(texture.getKey(), new int[]{character, advance});
+        }
+        Map<Integer, MinigameRenderer.Piece> hit = new HashMap<>();
+        Map<Integer, MinigameRenderer.Piece> critical = new HashMap<>();
+        for (int width = 1; width <= 64; width *= 2) {
+            int[] h = placed.get("hit_" + width);
+            int[] c = placed.get("critical_" + width);
+            if (h == null || c == null) {
+                problems.add("minigame: the pieces of the bar did not all get a character; the minigame is off");
+                return null;
+            }
+            hit.put(width, new MinigameRenderer.Piece((char) h[0], h[1]));
+            critical.put(width, new MinigameRenderer.Piece((char) c[0], c[1]));
+        }
+        int[] frame = placed.get("frame");
+        int[] needle = placed.get("needle");
+        if (frame == null || needle == null) {
+            problems.add("minigame: the bar or the needle did not get a character; the minigame is off");
+            return null;
+        }
+        return new MinigameRenderer.Glyphs((char) frame[0], frame[1], frame[1] - 1, 2, (char) needle[0], needle[1],
+                needle[1] - 1, hit, critical);
     }
 
     /** The menu buttons' icons, out of the jar the same way, for the pack's {@code arkcontent:menu/<name>}. */

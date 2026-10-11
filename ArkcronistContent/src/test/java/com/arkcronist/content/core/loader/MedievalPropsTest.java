@@ -38,8 +38,38 @@ class MedievalPropsTest {
     private static Map<String, Placement.Furniture> props() throws IOException {
         LoadReport report = new ContentLoader().load(SHIPPED);
         assertEquals(List.of(), report.problems());
+        // The pack's furniture; since 3.0 it also has a backpack, an item worn rather than placed.
         return report.items().stream().filter(item -> item.namespace().equals("medieval_props"))
+                .filter(item -> item.placement() instanceof Placement.Furniture)
                 .collect(Collectors.toMap(ItemDefinition::id, item -> (Placement.Furniture) item.placement()));
+    }
+
+    /** 3.0: the backpack is worn on the back, its model and texture shipped with the pack. */
+    @Test
+    void theBackpackIsACosmeticWornOnTheBack() throws IOException {
+        LoadReport report = new ContentLoader().load(SHIPPED);
+        ItemDefinition backpack = report.items().stream().filter(item -> item.id().equals("mochila_viaje"))
+                .findFirst().orElseThrow();
+        assertEquals(com.arkcronist.content.core.cosmetic.CosmeticDefinition.Slot.BACK, backpack.cosmetic().slot());
+        assertEquals(28, backpack.cosmetic().physics().maxAngle());
+        assertEquals("PAPER", backpack.material());
+        assertTrue(java.nio.file.Files.isRegularFile(SHIPPED.resolve("medieval_props/models/cosmetic/mochila_viaje.json")));
+        assertTrue(java.nio.file.Files.isRegularFile(SHIPPED.resolve("medieval_props/textures/cosmetic/mochila_viaje.png")));
+    }
+
+    /** 3.0: the demo's rare ore and fishing rod play the HUD minigame. */
+    @Test
+    void theDemoOreAndRodPlayTheMinigame() throws IOException {
+        LoadReport report = new ContentLoader().load(SHIPPED);
+        ItemDefinition ore = report.items().stream().filter(item -> item.fullId().equals("demo:star_ore"))
+                .findFirst().orElseThrow();
+        ItemDefinition rod = report.items().stream().filter(item -> item.fullId().equals("demo:master_rod"))
+                .findFirst().orElseThrow();
+        assertEquals(22, ore.minigame().zone());
+        assertEquals(com.arkcronist.content.core.minigame.MinigameDefinition.OnMiss.KEEP, ore.minigame().onMiss());
+        assertEquals(2, ore.minigame().criticalDrops().size());
+        assertEquals(com.arkcronist.content.core.minigame.MinigameDefinition.OnMiss.LOSE, rod.minigame().onMiss());
+        assertEquals("FISHING_ROD", rod.material());
     }
 
     @Test

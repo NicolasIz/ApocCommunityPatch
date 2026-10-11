@@ -113,7 +113,8 @@ public final class ItemFactory {
      * Puts back what makes a stack look like its item, when something took it off: another plugin
      * that rebuilt the stack from its material, name, lore and tags - an auction house, a crate,
      * a mail plugin - keeps the plugin's id tag but can lose the {@code item_model} and the
-     * {@code equippable}. Only the look is restored; name, lore, enchantments and amount stay as
+     * {@code equippable} - or was made before the item had a {@code custom_model_data} number,
+     * which Bedrock players see it by. Only the look is restored; name, lore, enchantments and amount stay as
      * they are.
      *
      * @return whether anything was put back
@@ -128,6 +129,17 @@ public final class ItemFactory {
         if (item.hasModel() && !item.itemModel().equals(stack.getData(DataComponentTypes.ITEM_MODEL))) {
             stack.setData(DataComponentTypes.ITEM_MODEL, item.itemModel());
             changed = true;
+        }
+        Integer number = modelData.get(item.id());
+        if (number != null) {
+            // Geyser 2.8 knows a custom item by this number alone: a stack made before it had one
+            // looks vanilla to Bedrock players until it gets it.
+            CustomModelData current = stack.getData(DataComponentTypes.CUSTOM_MODEL_DATA);
+            if (current == null || current.floats().isEmpty() || current.floats().getFirst() != number.floatValue()) {
+                stack.setData(DataComponentTypes.CUSTOM_MODEL_DATA,
+                        CustomModelData.customModelData().addFloat(number).build());
+                changed = true;
+            }
         }
         Equipment equipment = item.definition().equipment();
         if (equipment != null) {

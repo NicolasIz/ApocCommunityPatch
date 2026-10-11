@@ -44,6 +44,7 @@ public final class PackDelivery {
     private final AtomicReference<Live> current = new AtomicReference<>();
 
     private volatile Predicate<Player> waiting = player -> false;
+    private volatile Predicate<Player> elsewhere = player -> false;
 
     public PackDelivery(EngineSettings settings) {
         this.settings = settings;
@@ -86,7 +87,7 @@ public final class PackDelivery {
      */
     public void send(Player player) {
         Live live = current.get();
-        if (live == null || live.url() == null) {
+        if (live == null || live.url() == null || elsewhere.test(player)) {
             return;
         }
         EngineSettings.Delivery delivery = settings.delivery();
@@ -99,6 +100,14 @@ public final class PackDelivery {
      */
     public void holdWhile(Predicate<Player> waiting) {
         this.waiting = waiting;
+    }
+
+    /**
+     * Players who never get the Java pack - Bedrock players, whose client could not use it and who
+     * get the Bedrock pack from Geyser as they connect.
+     */
+    public void skip(Predicate<Player> elsewhere) {
+        this.elsewhere = elsewhere;
     }
 
     /** Whether the player is still at a login prompt, and gets the pack later. */

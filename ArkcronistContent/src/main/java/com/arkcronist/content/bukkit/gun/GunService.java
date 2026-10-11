@@ -123,6 +123,7 @@ public final class GunService {
     private final ItemRegistry items;
     private final ItemFactory factory;
     private final HookManager hooks;
+    private final com.arkcronist.content.bukkit.protection.Protection protection;
     private final ActionBars actionBars;
     private final Logger logger;
     private final NamespacedKey ammoKey;
@@ -136,12 +137,14 @@ public final class GunService {
     private final Map<UUID, AmmoView> views = new ConcurrentHashMap<>();
     private final Set<String> warned = new HashSet<>();
 
-    public GunService(Plugin plugin, ItemRegistry items, ItemFactory factory, HookManager hooks, ActionBars actionBars,
+    public GunService(Plugin plugin, ItemRegistry items, ItemFactory factory, HookManager hooks,
+                      com.arkcronist.content.bukkit.protection.Protection protection, ActionBars actionBars,
                       EngineSettings.Guns settings) {
         this.plugin = plugin;
         this.items = items;
         this.factory = factory;
         this.hooks = hooks;
+        this.protection = protection;
         this.actionBars = actionBars;
         this.logger = plugin.getLogger();
         this.ammoKey = new NamespacedKey(plugin, "gun_ammo");
@@ -315,6 +318,10 @@ public final class GunService {
         for (Map.Entry<UUID, Shot.Damage> entry : outcome.damage().entrySet()) {
             Entity entity = plugin.getServer().getEntity(entry.getKey());
             if (!(entity instanceof LivingEntity target) || target.isDead() || !target.getWorld().equals(world)) {
+                continue;
+            }
+            // Lands and Towny are asked here, as well as through the damage event below (3.0).
+            if (!protection.allowsAttack(shooter, target)) {
                 continue;
             }
             Shot.Damage damage = entry.getValue();

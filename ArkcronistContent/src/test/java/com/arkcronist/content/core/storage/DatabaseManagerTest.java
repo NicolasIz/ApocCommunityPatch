@@ -19,6 +19,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -399,7 +400,7 @@ class DatabaseManagerTest {
         try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
              Statement statement = connection.createStatement()) {
             try (ResultSet version = statement.executeQuery("PRAGMA user_version")) {
-                assertEquals(8, version.getInt(1));
+                assertEquals(DatabaseManager.SCHEMA_VERSION, version.getInt(1));
             }
             List<String> tables = new ArrayList<>();
             try (ResultSet result = statement.executeQuery("SELECT name FROM sqlite_master WHERE type = 'table'")) {
@@ -410,6 +411,85 @@ class DatabaseManagerTest {
             assertTrue(tables.containsAll(List.of(DatabaseManager.PIECE_TABLE, DatabaseManager.RECOVERED_TABLE)),
                     tables.toString());
         }
+    }
+
+    /**
+     * 3.0: a 2.0 file (schema 8) opens as schema 9 with the cosmetic and minigame tables, its
+     * furniture and recovered storage untouched.
+     */
+    @Test
+    void aVersionEightFileGainsTheCosmeticAndMinigameTablesAndKeepsItsRows() throws Exception {
+        Path file = temp.resolve("content.db");
+        database = open();
+        get(database.saveAll(List.of(new PlacedContent(OVERWORLD, 1, 70, 1, "medieval_props:trono_real",
+                PlacedContent.Kind.FURNITURE)), new FurniturePiece(OVERWORLD, 1, 70, 1, "medieval_props:trono_real", 90f)));
+        database.close();
+        database = null;
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+             Statement statement = connection.createStatement()) {
+            // What a 2.0 server leaves: schema 8, without the two 3.0 tables.
+            statement.execute("DROP TABLE " + DatabaseManager.COSMETIC_TABLE);
+            statement.execute("DROP TABLE " + DatabaseManager.MINIGAME_TABLE);
+            statement.execute("PRAGMA user_version=8");
+        }
+        database = open();
+        assertEquals(List.of(new PlacedContent(OVERWORLD, 1, 70, 1, "medieval_props:trono_real",
+                PlacedContent.Kind.FURNITURE)), get(database.loadWorld(OVERWORLD)));
+        assertEquals(90f, get(database.loadPieces(OVERWORLD)).values().iterator().next().yaw());
+        assertTrue(get(database.cosmetics(UUID.randomUUID())).isEmpty());
+        database.close();
+        database = null;
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+             Statement statement = connection.createStatement();
+             ResultSet version = statement.executeQuery("PRAGMA user_version")) {
+            assertEquals(9, version.getInt(1));
+        }
+    }
+
+    /**
+     * 3.0: a slot holds one cosmetic. Putting on another hands back the first; taking it off hands it
+     * back once - the second call finds nothing - and the bytes are the ones stored.
+     */
+    @Test
+    void aCosmeticSlotHoldsOneAndGivesItBackOnce() throws Exception {
+        database = open();
+        UUID player = UUID.fromString("00000000-0000-0000-0000-0000000000aa");
+        StoredCosmetic satchel = new StoredCosmetic(player, "back", "medieval_props:mochila_viaje",
+                new byte[]{1, 2, 3}, 1000L);
+        StoredCosmetic quiver = new StoredCosmetic(player, "back", "medieval_props:carcaj",
+                new byte[]{4, 5}, 2000L);
+        assertTrue(get(database.equipCosmetic(satchel)).isEmpty());
+        StoredCosmetic replaced = get(database.equipCosmetic(quiver)).orElseThrow();
+        assertEquals("medieval_props:mochila_viaje", replaced.itemId());
+        assertArrayEquals(new byte[]{1, 2, 3}, replaced.item());
+        List<StoredCosmetic> worn = get(database.cosmetics(player));
+        assertEquals(1, worn.size());
+        assertEquals("medieval_props:carcaj", worn.get(0).itemId());
+        assertEquals(2000L, worn.get(0).equippedAtMillis());
+
+        StoredCosmetic off = get(database.unequipCosmetic(player, "back")).orElseThrow();
+        assertArrayEquals(new byte[]{4, 5}, off.item());
+        assertTrue(get(database.unequipCosmetic(player, "back")).isEmpty(), "taken off once");
+        assertTrue(get(database.cosmetics(player)).isEmpty());
+    }
+
+    /** 3.0: plays, hits and criticals add up; the best is the smallest error, and a timeout has none. */
+    @Test
+    void minigameRecordsAddUpAndKeepTheClosestPress() throws Exception {
+        database = open();
+        UUID player = UUID.fromString("00000000-0000-0000-0000-0000000000bb");
+        assertEquals(MinigameStats.NONE, get(database.minigameStats(player, "demo:rare_ore")));
+        get(database.recordMinigame(player, "demo:rare_ore", true, false, 6.5));
+        get(database.recordMinigame(player, "demo:rare_ore", true, true, 0.5));
+        get(database.recordMinigame(player, "demo:rare_ore", false, false, null));
+        get(database.recordMinigame(player, "demo:rare_ore", false, false, 30.0));
+        get(database.recordMinigame(player, "demo:other", true, true, 0.0));
+        MinigameStats stats = get(database.minigameStats(player, "demo:rare_ore"));
+        assertEquals(4, stats.plays());
+        assertEquals(2, stats.hits());
+        assertEquals(1, stats.criticals());
+        assertEquals(0.5, stats.bestError());
+        assertTrue(stats.lastPlayedMillis() > 0);
     }
 
     /**
