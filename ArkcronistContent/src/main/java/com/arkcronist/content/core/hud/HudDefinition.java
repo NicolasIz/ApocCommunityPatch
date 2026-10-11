@@ -29,10 +29,20 @@ import java.util.Map;
  * @param offset    pixels from where the bar is written to where it is drawn; negative moves it left
  * @param source    where its value comes from
  * @param actionBar also show it on the action bar, sent by the plugin
+ * @param anchor    2.0: where on the screen it sits, against the vanilla HUD - its ascent and offset
+ *                  then follow from it; null for the ascent and offset as written
  */
 public record HudDefinition(String namespace, String id, ResourceLocation full, @Nullable ResourceLocation half,
                             @Nullable ResourceLocation empty, int height, int ascent, int segments, int spacing,
-                            int offset, Source source, boolean actionBar, Path sourceRoot, Path file) {
+                            int offset, Source source, boolean actionBar, Path sourceRoot, Path file,
+                            @Nullable HudAnchor anchor) {
+
+    public HudDefinition(String namespace, String id, ResourceLocation full, @Nullable ResourceLocation half,
+                         @Nullable ResourceLocation empty, int height, int ascent, int segments, int spacing,
+                         int offset, Source source, boolean actionBar, Path sourceRoot, Path file) {
+        this(namespace, id, full, half, empty, height, ascent, segments, spacing, offset, source, actionBar, sourceRoot,
+                file, null);
+    }
 
     /** The icons a HUD uses, by name: full, then half and empty if it has them. */
     public List<Icon> icons() {
@@ -91,6 +101,22 @@ public record HudDefinition(String namespace, String id, ResourceLocation full, 
             public double clamp(double value) {
                 return Math.max(0, Math.min(max, value));
             }
+        }
+
+        /**
+         * 2.0: a value the server already knows about the player, read straight from it - no
+         * placeholder, no other plugin: {@code health}, {@code absorption} (the golden hearts:
+         * shields), {@code armor}, {@code toughness}, {@code food}, {@code saturation}, {@code air},
+         * {@code level}, {@code experience}; or another plugin's through its API,
+         * {@code auraskills:mana}.
+         *
+         * @param max its full value; 0 for the player's own (max health, max air, AuraSkills' max mana)
+         */
+        record Stat(String stat, double max) implements Source {
+
+            /** The stats there are, as written in YAML. */
+            public static final List<String> NAMES = List.of("health", "absorption", "armor", "toughness", "food",
+                    "saturation", "air", "level", "experience", "auraskills:mana");
         }
     }
 }

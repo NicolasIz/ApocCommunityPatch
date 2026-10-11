@@ -419,9 +419,17 @@ public sealed interface Placement {
      * @param source       how a source is drawn
      * @param flowing      how flowing liquid is drawn
      * @param contact      what it does to a player standing in it
+     * @param glow         0-15: the light its faces are drawn with however dark it is around them - a
+     *                     glowing acid, lava of its own - through the model's {@code light_emission}
+     *                     (2.0). It is how it is drawn, not light it gives off: it lights nothing else
      */
     record Liquid(int flowDistance, int tickRate, int maxFall, ModelSource source, ModelSource flowing,
-                  Contact contact) implements Placement {
+                  Contact contact, int glow) implements Placement {
+
+        public Liquid(int flowDistance, int tickRate, int maxFall, ModelSource source, ModelSource flowing,
+                      Contact contact) {
+            this(flowDistance, tickRate, maxFall, source, flowing, contact, 0);
+        }
 
         @Override
         public ContentType type() {
@@ -437,14 +445,20 @@ public sealed interface Placement {
      * @param fireTicks  sets the player alight for this long; 0 for not
      * @param freezeTicks freezes the player, as powder snow does, for this long; 0 for not
      * @param effects    potion effects given each time
+     * @param mobs       whether mobs in it get the same as players (2.0); players always do
      */
     record Contact(int intervalTicks, double damage, String damageType, int fireTicks, int freezeTicks,
-                   List<Effect> effects) {
+                   List<Effect> effects, boolean mobs) {
 
-        public static final Contact HARMLESS = new Contact(10, 0, "minecraft:generic", 0, 0, List.of());
+        public static final Contact HARMLESS = new Contact(10, 0, "minecraft:generic", 0, 0, List.of(), false);
 
         public Contact {
             effects = List.copyOf(effects);
+        }
+
+        public Contact(int intervalTicks, double damage, String damageType, int fireTicks, int freezeTicks,
+                       List<Effect> effects) {
+            this(intervalTicks, damage, damageType, fireTicks, freezeTicks, effects, false);
         }
 
         public boolean harmless() {

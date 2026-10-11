@@ -195,6 +195,18 @@ public final class AuraSkillsHook implements ContentHook, SkillXpHook, LevelSour
         return found == null ? OptionalInt.empty() : OptionalInt.of(user.getSkillLevel(found));
     }
 
+    /**
+     * 2.0: a player's mana and their most, for HUD bars ({@code value: { auraskills: mana }}); null
+     * while AuraSkills has not loaded them. Main thread.
+     */
+    public @org.jetbrains.annotations.Nullable double[] mana(Player player) {
+        SkillsUser user = AuraSkillsApi.get().getUser(player.getUniqueId());
+        if (user == null || !user.isLoaded()) {
+            return null;
+        }
+        return new double[] {user.getMana(), user.getMaxMana()};
+    }
+
     @Override
     public void reward(Player player, Source source, String contentId, double xp) {
         SkillsUser user = AuraSkillsApi.get().getUser(player.getUniqueId());

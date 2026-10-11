@@ -1,0 +1,583 @@
+{
+ "blocks": {
+  "BitsConfig": [
+   "Resolution",
+   "MosaicSize"
+  ],
+  "BlitConfig": [
+   "ColorModulate"
+  ],
+  "BlurConfig": [
+   "BlurDir",
+   "Radius"
+  ],
+  "CloudInfo": [
+   "CloudColor",
+   "CloudOffset",
+   "CellSize"
+  ],
+  "ColorConfig": [
+   "RedMatrix",
+   "GreenMatrix",
+   "BlueMatrix"
+  ],
+  "DynamicTransforms": [
+   "ModelViewMat",
+   "ColorModulator",
+   "ModelOffset",
+   "TextureMat",
+   "LineWidth"
+  ],
+  "Fog": [
+   "FogColor",
+   "FogEnvironmentalStart",
+   "FogEnvironmentalEnd",
+   "FogRenderDistanceStart",
+   "FogRenderDistanceEnd",
+   "FogSkyEnd",
+   "FogCloudsEnd"
+  ],
+  "Globals": [
+   "ScreenSize",
+   "GlintAlpha",
+   "GameTime",
+   "MenuBlurRadius"
+  ],
+  "InvertConfig": [
+   "InverseAmount"
+  ],
+  "Lighting": [
+   "Light0_Direction",
+   "Light1_Direction"
+  ],
+  "LightmapInfo": [
+   "AmbientLightFactor",
+   "SkyFactor",
+   "BlockFactor",
+   "UseBrightLightmap",
+   "NightVisionFactor",
+   "DarknessScale",
+   "DarkenWorldFactor",
+   "BrightnessFactor",
+   "SkyLightColor"
+  ],
+  "Projection": [
+   "ProjMat"
+  ],
+  "RotScaleConfig": [
+   "InScale",
+   "InOffset",
+   "InRotation"
+  ],
+  "SamplerInfo": [
+   "OutSize",
+   "InSize"
+  ],
+  "SpiderConfig": [
+   "Scissor",
+   "Vignette"
+  ]
+ },
+ "bound": {
+  "core/blit_screen.fsh": [],
+  "core/blit_screen.vsh": [
+   "LightmapInfo"
+  ],
+  "core/entity.fsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Lighting",
+   "Projection"
+  ],
+  "core/entity.vsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Lighting",
+   "Projection"
+  ],
+  "core/glint.fsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Globals",
+   "Projection"
+  ],
+  "core/glint.vsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Globals",
+   "Projection"
+  ],
+  "core/gui.fsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/gui.vsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/lightmap.fsh": [
+   "LightmapInfo"
+  ],
+  "core/panorama.fsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/panorama.vsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/particle.fsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/particle.vsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/position.fsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/position.vsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/position_color.fsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/position_color.vsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/position_tex_color.fsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/position_tex_color.vsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/rendertype_beacon_beam.fsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/rendertype_beacon_beam.vsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/rendertype_clouds.fsh": [
+   "CloudFaces",
+   "CloudInfo",
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/rendertype_clouds.vsh": [
+   "CloudFaces",
+   "CloudInfo",
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/rendertype_crumbling.fsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/rendertype_crumbling.vsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/rendertype_end_portal.fsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Globals",
+   "Projection"
+  ],
+  "core/rendertype_end_portal.vsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Globals",
+   "Projection"
+  ],
+  "core/rendertype_entity_alpha.fsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/rendertype_entity_alpha.vsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/rendertype_entity_decal.fsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Lighting",
+   "Projection"
+  ],
+  "core/rendertype_entity_decal.vsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Lighting",
+   "Projection"
+  ],
+  "core/rendertype_entity_shadow.fsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/rendertype_entity_shadow.vsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/rendertype_item_entity_translucent_cull.fsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Lighting",
+   "Projection"
+  ],
+  "core/rendertype_item_entity_translucent_cull.vsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Lighting",
+   "Projection"
+  ],
+  "core/rendertype_leash.fsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/rendertype_leash.vsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/rendertype_lightning.fsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/rendertype_lightning.vsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/rendertype_lines.fsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Globals",
+   "Projection"
+  ],
+  "core/rendertype_lines.vsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Globals",
+   "Projection"
+  ],
+  "core/rendertype_outline.fsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/rendertype_outline.vsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/rendertype_text.fsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/rendertype_text.vsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/rendertype_text_background.fsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/rendertype_text_background.vsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/rendertype_text_background_see_through.fsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/rendertype_text_background_see_through.vsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/rendertype_text_intensity.fsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/rendertype_text_intensity.vsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/rendertype_text_intensity_see_through.fsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/rendertype_text_intensity_see_through.vsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/rendertype_text_see_through.fsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/rendertype_text_see_through.vsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/rendertype_translucent_moving_block.fsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/rendertype_translucent_moving_block.vsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/rendertype_water_mask.fsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/rendertype_water_mask.vsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/rendertype_world_border.fsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/rendertype_world_border.vsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/sky.fsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/sky.vsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/stars.fsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/stars.vsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/terrain.fsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ],
+  "core/terrain.vsh": [
+   "DynamicTransforms",
+   "Fog",
+   "Projection"
+  ]
+ },
+ "builtin": [
+  "Fog",
+  "Globals",
+  "Lighting",
+  "Projection"
+ ],
+ "files": [
+  "core/blit_screen.fsh",
+  "core/blit_screen.vsh",
+  "core/entity.fsh",
+  "core/entity.vsh",
+  "core/glint.fsh",
+  "core/glint.vsh",
+  "core/gui.fsh",
+  "core/gui.vsh",
+  "core/lightmap.fsh",
+  "core/panorama.fsh",
+  "core/panorama.vsh",
+  "core/particle.fsh",
+  "core/particle.vsh",
+  "core/position.fsh",
+  "core/position.vsh",
+  "core/position_color.fsh",
+  "core/position_color.vsh",
+  "core/position_color_lightmap.fsh",
+  "core/position_color_lightmap.vsh",
+  "core/position_color_tex_lightmap.fsh",
+  "core/position_color_tex_lightmap.vsh",
+  "core/position_tex.fsh",
+  "core/position_tex.vsh",
+  "core/position_tex_color.fsh",
+  "core/position_tex_color.vsh",
+  "core/rendertype_beacon_beam.fsh",
+  "core/rendertype_beacon_beam.vsh",
+  "core/rendertype_clouds.fsh",
+  "core/rendertype_clouds.vsh",
+  "core/rendertype_crumbling.fsh",
+  "core/rendertype_crumbling.vsh",
+  "core/rendertype_end_portal.fsh",
+  "core/rendertype_end_portal.vsh",
+  "core/rendertype_entity_alpha.fsh",
+  "core/rendertype_entity_alpha.vsh",
+  "core/rendertype_entity_decal.fsh",
+  "core/rendertype_entity_decal.vsh",
+  "core/rendertype_entity_shadow.fsh",
+  "core/rendertype_entity_shadow.vsh",
+  "core/rendertype_item_entity_translucent_cull.fsh",
+  "core/rendertype_item_entity_translucent_cull.vsh",
+  "core/rendertype_leash.fsh",
+  "core/rendertype_leash.vsh",
+  "core/rendertype_lightning.fsh",
+  "core/rendertype_lightning.vsh",
+  "core/rendertype_lines.fsh",
+  "core/rendertype_lines.vsh",
+  "core/rendertype_outline.fsh",
+  "core/rendertype_outline.vsh",
+  "core/rendertype_text.fsh",
+  "core/rendertype_text.vsh",
+  "core/rendertype_text_background.fsh",
+  "core/rendertype_text_background.vsh",
+  "core/rendertype_text_background_see_through.fsh",
+  "core/rendertype_text_background_see_through.vsh",
+  "core/rendertype_text_intensity.fsh",
+  "core/rendertype_text_intensity.vsh",
+  "core/rendertype_text_intensity_see_through.fsh",
+  "core/rendertype_text_intensity_see_through.vsh",
+  "core/rendertype_text_see_through.fsh",
+  "core/rendertype_text_see_through.vsh",
+  "core/rendertype_translucent_moving_block.fsh",
+  "core/rendertype_translucent_moving_block.vsh",
+  "core/rendertype_water_mask.fsh",
+  "core/rendertype_water_mask.vsh",
+  "core/rendertype_world_border.fsh",
+  "core/rendertype_world_border.vsh",
+  "core/sky.fsh",
+  "core/sky.vsh",
+  "core/stars.fsh",
+  "core/stars.vsh",
+  "core/terrain.fsh",
+  "core/terrain.vsh",
+  "include/dynamictransforms.glsl",
+  "include/fog.glsl",
+  "include/globals.glsl",
+  "include/light.glsl",
+  "include/matrix.glsl",
+  "include/projection.glsl",
+  "post/bits.fsh",
+  "post/blit.fsh",
+  "post/blit.vsh",
+  "post/blur.vsh",
+  "post/box_blur.fsh",
+  "post/color_convolve.fsh",
+  "post/entity_outline_box_blur.fsh",
+  "post/entity_sobel.fsh",
+  "post/invert.fsh",
+  "post/invert.vsh",
+  "post/rotscale.vsh",
+  "post/screenquad.vsh",
+  "post/sobel.vsh",
+  "post/spiderclip.fsh",
+  "post/transparency.fsh"
+ ],
+ "includes": {
+  "dynamictransforms.glsl": [
+   "DynamicTransforms"
+  ],
+  "fog.glsl": [
+   "Fog"
+  ],
+  "globals.glsl": [
+   "Globals"
+  ],
+  "light.glsl": [
+   "Lighting"
+  ],
+  "matrix.glsl": [],
+  "projection.glsl": [
+   "Projection"
+  ]
+ },
+ "inline": {
+  "core/gui.fsh": [
+   "DynamicTransforms"
+  ],
+  "core/gui.vsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/lightmap.fsh": [
+   "LightmapInfo"
+  ],
+  "core/position_tex_color.fsh": [
+   "DynamicTransforms"
+  ],
+  "core/position_tex_color.vsh": [
+   "DynamicTransforms",
+   "Projection"
+  ],
+  "core/rendertype_clouds.vsh": [
+   "CloudInfo"
+  ],
+  "post/bits.fsh": [
+   "SamplerInfo",
+   "BitsConfig"
+  ],
+  "post/blit.fsh": [
+   "BlitConfig"
+  ],
+  "post/blit.vsh": [
+   "SamplerInfo"
+  ],
+  "post/blur.vsh": [
+   "SamplerInfo",
+   "BlurConfig"
+  ],
+  "post/box_blur.fsh": [
+   "BlurConfig"
+  ],
+  "post/color_convolve.fsh": [
+   "SamplerInfo",
+   "ColorConfig"
+  ],
+  "post/invert.fsh": [
+   "InvertConfig"
+  ],
+  "post/invert.vsh": [
+   "SamplerInfo"
+  ],
+  "post/rotscale.vsh": [
+   "SamplerInfo",
+   "RotScaleConfig"
+  ],
+  "post/screenquad.vsh": [
+   "SamplerInfo"
+  ],
+  "post/sobel.vsh": [
+   "SamplerInfo"
+  ],
+  "post/spiderclip.fsh": [
+   "SamplerInfo",
+   "SpiderConfig"
+  ]
+ },
+ "pack_format": 64,
+ "version": "1.21.8"
+}

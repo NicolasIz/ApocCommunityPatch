@@ -230,7 +230,7 @@ class DatabaseManagerTest {
         }
     }
 
-    /** 1.9: a version 6 file gains the double chest and quest board tables, and says 7. */
+    /** 1.9: a version 6 file gains the double chest and quest board tables (and, since 2.0, the rest). */
     @Test
     void aVersionSixFileGainsTheNewTablesAndNothingElseChanges() throws Exception {
         Path file = temp.resolve("content.db");
@@ -251,7 +251,7 @@ class DatabaseManagerTest {
         try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
              Statement statement = connection.createStatement()) {
             try (ResultSet version = statement.executeQuery("PRAGMA user_version")) {
-                assertEquals(7, version.getInt(1));
+                assertEquals(DatabaseManager.SCHEMA_VERSION, version.getInt(1));
             }
             List<String> tables = new ArrayList<>();
             try (ResultSet result = statement.executeQuery("SELECT name FROM sqlite_master WHERE type = 'table'")) {
@@ -372,6 +372,167 @@ class DatabaseManagerTest {
         // And the connection is usable afterwards, back in autocommit.
         database.save(rows.get(0));
         assertEquals(List.of(rows.get(0)), get(database.loadWorld(OVERWORLD)));
+    }
+
+    /**
+     * 2.0: a 1.9.x file (schema 7) opens as schema 8 with the two new tables, and every row it had
+     * reads back unchanged.
+     */
+    @Test
+    void aVersionSevenFileGainsThePieceAndRecoveryTablesAndKeepsItsRows() throws Exception {
+        Path file = temp.resolve("content.db");
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+             Statement statement = connection.createStatement()) {
+            statement.execute("PRAGMA user_version=7");
+            statement.execute("CREATE TABLE custom_blocks_world (world_uuid TEXT NOT NULL, x INTEGER NOT NULL,"
+                    + " y INTEGER NOT NULL, z INTEGER NOT NULL, block_id TEXT NOT NULL, type TEXT NOT NULL"
+                    + " CHECK (type IN ('BLOCK', 'FURNITURE')), PRIMARY KEY (world_uuid, x, y, z)) WITHOUT ROWID");
+            statement.execute("INSERT INTO custom_blocks_world VALUES ('" + OVERWORLD + "', 3, 64, 3,"
+                    + " 'medieval_props:trono_real', 'FURNITURE')");
+        }
+        database = open();
+        assertEquals(List.of(new PlacedContent(OVERWORLD, 3, 64, 3, "medieval_props:trono_real",
+                PlacedContent.Kind.FURNITURE)), get(database.loadWorld(OVERWORLD)));
+        assertTrue(get(database.loadPieces(OVERWORLD)).isEmpty(), "pieces of 1.9 are adopted later, not invented");
+        database.close();
+        database = null;
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+             Statement statement = connection.createStatement()) {
+            try (ResultSet version = statement.executeQuery("PRAGMA user_version")) {
+                assertEquals(8, version.getInt(1));
+            }
+            List<String> tables = new ArrayList<>();
+            try (ResultSet result = statement.executeQuery("SELECT name FROM sqlite_master WHERE type = 'table'")) {
+                while (result.next()) {
+                    tables.add(result.getString(1));
+                }
+            }
+            assertTrue(tables.containsAll(List.of(DatabaseManager.PIECE_TABLE, DatabaseManager.RECOVERED_TABLE)),
+                    tables.toString());
+        }
+    }
+
+    /**
+     * What the migration relies on: tables created and user_version set inside one transaction are
+     * both undone when it fails - SQLite keeps the version number in the transaction too.
+     */
+    @Test
+    void aMigrationThatFailsHalfwayLeavesTheFileAsItWas() throws Exception {
+        Path file = temp.resolve("half.db");
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file)) {
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("PRAGMA user_version=7");
+            }
+            assertThrows(SQLException.class, () -> DatabaseManager.inTransaction(connection, () -> {
+                try (Statement statement = connection.createStatement()) {
+                    statement.execute("CREATE TABLE furniture_pieces (a)");
+                    statement.execute("PRAGMA user_version=8");
+                    statement.execute("THIS IS NOT SQL");
+                }
+                return null;
+            }));
+            try (Statement statement = connection.createStatement()) {
+                try (ResultSet version = statement.executeQuery("PRAGMA user_version")) {
+                    assertEquals(7, version.getInt(1), "the version number rolled back");
+                }
+                try (ResultSet tables = statement.executeQuery(
+                        "SELECT count(*) FROM sqlite_master WHERE name = 'furniture_pieces'")) {
+                    assertEquals(0, tables.getInt(1), "and the table with it");
+                }
+            }
+            // The real migration then goes through on the same connection.
+            assertEquals(7, DatabaseManager.migrate(connection));
+            try (Statement statement = connection.createStatement();
+                 ResultSet version = statement.executeQuery("PRAGMA user_version")) {
+                assertEquals(DatabaseManager.SCHEMA_VERSION, version.getInt(1));
+            }
+        }
+    }
+
+    /** 2.0: a piece's facing is written with its rows, in the same transaction, and goes with them. */
+    @Test
+    void aPiecesFacingIsKeptWithItsRows() throws Exception {
+        database = open();
+        List<PlacedContent> bench = List.of(
+                new PlacedContent(OVERWORLD, 1, 64, 1, "medieval_props:banco_largo", PlacedContent.Kind.FURNITURE),
+                new PlacedContent(OVERWORLD, 2, 64, 1, "medieval_props:banco_largo", PlacedContent.Kind.FURNITURE));
+        FurniturePiece piece = new FurniturePiece(OVERWORLD, 1, 64, 1, "medieval_props:banco_largo", 90f);
+        get(database.saveAll(bench, piece));
+        assertEquals(java.util.Map.of(piece.key(), piece), get(database.loadPieces(OVERWORLD)));
+
+        // Adopting never overwrites what placing wrote; it fills in pieces placed before 2.0.
+        FurniturePiece old = new FurniturePiece(OVERWORLD, 9, 64, 9, "demo:ruby_stool", -45f);
+        assertEquals(1, get(database.adoptPieces(List.of(
+                new FurniturePiece(OVERWORLD, 1, 64, 1, "medieval_props:banco_largo", 180f), old))));
+        assertEquals(90f, get(database.loadPieces(OVERWORLD)).get(piece.key()).yaw());
+        assertEquals(old, get(database.loadPieces(OVERWORLD)).get(old.key()));
+
+        get(database.deleteAll(OVERWORLD, List.of(new int[] {1, 64, 1}, new int[] {2, 64, 1})));
+        assertEquals(java.util.Map.of(old.key(), old), get(database.loadPieces(OVERWORLD)));
+    }
+
+    /**
+     * 2.0: a piece found broken goes whole, in one transaction - rows still as found, its facing,
+     * its pair - and what its storage held is moved to recovered_storage, claimable once.
+     */
+    @Test
+    void aBrokenPieceIsPurgedWholeAndItsStorageRecovered() throws Exception {
+        database = open();
+        List<PlacedContent> stall = List.of(
+                new PlacedContent(OVERWORLD, 0, 64, 0, "medieval_props:puesto_mercado", PlacedContent.Kind.FURNITURE),
+                new PlacedContent(OVERWORLD, 1, 64, 0, "medieval_props:puesto_mercado", PlacedContent.Kind.FURNITURE),
+                new PlacedContent(OVERWORLD, 2, 64, 0, "medieval_props:puesto_mercado", PlacedContent.Kind.FURNITURE));
+        get(database.saveAll(stall, new FurniturePiece(OVERWORLD, 0, 64, 0, "medieval_props:puesto_mercado", 0f)));
+        get(database.saveInventory(new StoredInventory(OVERWORLD, 0, 64, 0, "medieval_props:puesto_mercado", 27,
+                new byte[] {7, 7, 7})));
+        // Something else was placed on the third block since the piece was found broken.
+        database.save(new PlacedContent(OVERWORLD, 2, 64, 0, "demo:ruby_block", PlacedContent.Kind.BLOCK));
+
+        DatabaseManager.PieceRemoval removal = get(database.purgePiece(OVERWORLD, stall, "its blocks were gone"));
+        assertEquals(new DatabaseManager.PieceRemoval(2, 1), removal);
+        assertEquals(List.of(new PlacedContent(OVERWORLD, 2, 64, 0, "demo:ruby_block", PlacedContent.Kind.BLOCK)),
+                get(database.loadWorld(OVERWORLD)), "the new block stays");
+        assertTrue(get(database.loadPieces(OVERWORLD)).isEmpty());
+        assertTrue(get(database.loadInventory(OVERWORLD, 0, 64, 0)).isEmpty(), "moved, not copied");
+
+        List<RecoveredStorage> waiting = get(database.recovered(true, 10));
+        assertEquals(1, waiting.size());
+        RecoveredStorage row = waiting.get(0);
+        assertEquals("medieval_props:puesto_mercado", row.furnitureId());
+        assertEquals("its blocks were gone", row.reason());
+        assertEquals(List.of(7, 7, 7), toList(row.contents()));
+
+        // Claimed once: a second claim - another admin, the same click twice - gets nothing.
+        assertEquals(List.of(7, 7, 7), toList(get(database.claimRecovered(row.id(), "Admin")).orElseThrow().contents()));
+        assertTrue(get(database.claimRecovered(row.id(), "Other")).isEmpty());
+        assertTrue(get(database.recovered(true, 10)).isEmpty());
+        assertEquals("Admin", get(database.recovered(false, 10)).get(0).claimedBy());
+    }
+
+    /** 2.0: storage left behind by furniture purged before 2.0 - its row deleted, its items not - is recovered. */
+    @Test
+    void storageWithNoFurnitureLeftIsRecoveredAndTheRestStays() throws Exception {
+        database = open();
+        database.save(new PlacedContent(OVERWORLD, 5, 64, 5, "demo:ruby_chest", PlacedContent.Kind.FURNITURE));
+        get(database.saveInventory(new StoredInventory(OVERWORLD, 5, 64, 5, "demo:ruby_chest", 27, new byte[] {1})));
+        get(database.saveInventory(new StoredInventory(OVERWORLD, 8, 64, 8, "demo:ruby_chest", 27, new byte[] {2})));
+        assertEquals(1, get(database.recoverOrphanedStorage("left behind by an earlier version")));
+        assertEquals(0, get(database.recoverOrphanedStorage("again")), "nothing twice");
+        assertTrue(get(database.loadInventory(OVERWORLD, 5, 64, 5)).isPresent(), "a chest still standing keeps its own");
+        assertTrue(get(database.loadInventory(OVERWORLD, 8, 64, 8)).isEmpty());
+        assertEquals(List.of(2), toList(get(database.recovered(true, 10)).get(0).contents()));
+    }
+
+    /** 2.0: the single-row purge of a furniture row recovers its storage too. */
+    @Test
+    void aPurgedFurnitureRowTakesItsStorageToRecovery() throws Exception {
+        database = open();
+        PlacedContent chest = new PlacedContent(OVERWORLD, 4, 64, 4, "demo:ruby_chest", PlacedContent.Kind.FURNITURE);
+        database.save(chest);
+        get(database.saveInventory(new StoredInventory(OVERWORLD, 4, 64, 4, "demo:ruby_chest", 27, new byte[] {3})));
+        assertTrue(get(database.purgeIfUnchanged(chest)));
+        assertTrue(get(database.loadInventory(OVERWORLD, 4, 64, 4)).isEmpty());
+        assertEquals(1, get(database.recovered(true, 10)).size());
     }
 
     private DatabaseManager open() throws Exception {

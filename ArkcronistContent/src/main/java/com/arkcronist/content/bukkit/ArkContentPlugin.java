@@ -211,10 +211,11 @@ public final class ArkContentPlugin extends JavaPlugin {
         this.guns = new GunService(this, items, itemFactory, hooks, actionBars, settings.guns());
         hooks.addPlaceholders(guns::placeholder);
         this.liquids = new LiquidService(this, liquidRegistry, protection, database, settings.liquids());
-        this.huds = new HudService(this, hudRegistry, database, actionBars, settings.huds(), hooks::placeholders);
+        this.huds = new HudService(this, hudRegistry, database, actionBars, settings.huds(), hooks::placeholders,
+                hooks::auraSkillsMana);
         hooks.addPlaceholders(huds::placeholder);
         this.sanity = new SanityChecker(this, settings.sanity(), database, placed, transforms, furniture, blockService,
-                liquids, liquidRegistry);
+                liquids, liquidRegistry, seats, storage);
 
         PluginManager plugins = getServer().getPluginManager();
         plugins.registerEvents(new PackDeliveryListener(delivery, settings, getLogger()), this);
@@ -222,6 +223,7 @@ public final class ArkContentPlugin extends JavaPlugin {
         plugins.registerEvents(new ItemCombatListener(itemFactory), this);
         plugins.registerEvents(new WorldInterceptionListener(itemFactory), this);
         plugins.registerEvents(new CustomBlockListener(blockService, itemFactory, protection, hooks), this);
+        plugins.registerEvents(new com.arkcronist.content.bukkit.sanity.IntegrityListener(sanity, furniture), this);
         this.questStore = new QuestBoardStore(database);
         this.questBoards = new QuestBoardService(this, questStore, items, itemFactory, hooks, settings.questBoards(),
                 fontImages);

@@ -94,6 +94,11 @@ public final class Protection {
         return all(provider -> provider.allowsLiquidContact(player, block) && provider.allowsChange(block, source));
     }
 
+    /** Whether a liquid at {@code block}, come from {@code source}, may hurt a mob in it. */
+    public boolean allowsLiquidContactAt(Block block, Location source) {
+        return all(provider -> provider.allowsLiquidContactAt(block) && provider.allowsChange(block, source));
+    }
+
     private boolean all(Predicate<ProtectionProvider> question) {
         for (ProtectionProvider provider : providers) {
             try {

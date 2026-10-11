@@ -34,6 +34,15 @@ public final class ContentAccess {
     private final BlockRegistry blocks;
     /** Made after the hooks start; asked for only when a hook places or reads a block. */
     private final Supplier<CustomBlockService> blockService;
+    /** Told when a hook changed a block furniture may have stood on: the integrity check's fast path. */
+    private volatile SupportTouched supportTouched = (world, x, z) -> {
+    };
+
+    /** A block a piece of furniture may have stood on was changed by another plugin. Any thread. */
+    @FunctionalInterface
+    public interface SupportTouched {
+        void touched(org.bukkit.World world, int blockX, int blockZ);
+    }
 
     public ContentAccess(ItemRegistry items, ItemFactory factory, BlockRegistry blocks,
                          Supplier<CustomBlockService> blockService) {
@@ -41,6 +50,18 @@ public final class ContentAccess {
         this.factory = factory;
         this.blocks = blocks;
         this.blockService = blockService;
+    }
+
+    public void onSupportTouched(SupportTouched listener) {
+        this.supportTouched = listener;
+    }
+
+    /**
+     * A hook replaced a block that furniture may stand on - a barrier, a light block, a chest, a bed.
+     * Any thread; the integrity check looks at that chunk soon.
+     */
+    public void supportTouched(org.bukkit.World world, int blockX, int blockZ) {
+        supportTouched.touched(world, blockX, blockZ);
     }
 
     /** A new stack of the item, or empty when no item has that id. */

@@ -5,6 +5,7 @@ import com.arkcronist.content.core.definition.GunDefinition;
 import com.arkcronist.content.core.definition.ItemDefinition;
 import com.arkcronist.content.core.definition.ModelSource;
 import com.arkcronist.content.core.definition.Placement;
+import com.arkcronist.content.core.hud.HudAnchor;
 import com.arkcronist.content.core.hud.HudDefinition;
 import com.arkcronist.content.core.liquid.LiquidModels;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -181,6 +183,81 @@ class ContentLoaderGameplayTest {
         Placement.Liquid plain = (Placement.Liquid) item(report, "demo:plain").placement();
         assertInstanceOf(ModelSource.Provided.class, plain.source());
         assertTrue(plain.contact().harmless());
+    }
+
+    /** 2.0: a liquid can glow (light_emission in its own parents) and hurt mobs in it too. */
+    @Test
+    void aLiquidCanGlowAndHurtMobs() throws IOException {
+        write("demo/liquids.yml", """
+                items:
+                  acid:
+                    type: custom_liquid
+                    liquid:
+                      texture: block/acid
+                      glow: 12
+                      contact: { element: acid, mobs: true }
+                  dim:
+                    type: custom_liquid
+                    liquid: { texture: block/dim, glow: 40 }
+                  own:
+                    type: custom_liquid
+                    liquid: { model: block/a, flowing-model: block/b, glow: 5 }
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+
+        Placement.Liquid acid = (Placement.Liquid) item(report, "demo:acid").placement();
+        assertEquals(12, acid.glow());
+        assertTrue(acid.contact().mobs());
+        assertEquals(LiquidModels.parentFor(true, 12), ((ModelSource.Generated) acid.source()).parent());
+        assertEquals(LiquidModels.parentFor(false, 12), ((ModelSource.Generated) acid.flowing()).parent());
+        assertFalse(((Placement.Liquid) item(report, "demo:dim").placement()).contact().mobs(), "players only, as before");
+        assertProblem(report.problems(), "demo:dim", "glow");
+        assertProblem(report.problems(), "demo:own", "sets \"light_emission\" on its elements itself");
+    }
+
+    /** 2.0: HUD bars placed against the vanilla HUD, and fed by the player's own stats or AuraSkills. */
+    @Test
+    void hudsCanBeAnchoredAndReadStats() throws IOException {
+        write("demo/textures/hud/shield.png", "png");
+        write("demo/huds.yml", """
+                huds:
+                  shield:
+                    icons: { full: hud/shield }
+                    anchor: above-health
+                    value: { stat: absorption }
+                  mana:
+                    icons: { full: hud/shield }
+                    anchor: { at: above-food, row: 1, nudge: [2, 1] }
+                    value: { auraskills: mana }
+                  high:
+                    icons: { full: hud/shield }
+                    anchor: { at: above-food, row: 9 }
+                    ascent: 3
+                    value: { stat: food, max: 20 }
+                  wrong:
+                    icons: { full: hud/shield }
+                    anchor: over-the-moon
+                    value: { stat: luck }
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+
+        HudDefinition shield = report.huds().stream().filter(hud -> hud.id().equals("shield")).findFirst().orElseThrow();
+        assertEquals(new HudAnchor(HudAnchor.Kind.ABOVE_HEALTH, 0, 0, 0), shield.anchor());
+        assertEquals(-16, shield.ascent(), "computed from the anchor");
+        assertTrue(shield.actionBar(), "an anchored bar goes on the action bar unless it says otherwise");
+        assertEquals(new HudDefinition.Source.Stat("absorption", 0), shield.source());
+        HudDefinition mana = report.huds().stream().filter(hud -> hud.id().equals("mana")).findFirst().orElseThrow();
+        assertEquals(new HudAnchor(HudAnchor.Kind.ABOVE_FOOD, 1, 2, 1), mana.anchor());
+        assertEquals(-5, mana.ascent(), "row 1 is 10 up, nudged 1 more");
+        assertEquals(new HudDefinition.Source.Stat("auraskills:mana", 0), mana.source());
+        HudDefinition high = report.huds().stream().filter(hud -> hud.id().equals("high")).findFirst().orElseThrow();
+        assertEquals(2, high.anchor().row(), "brought down to the highest row a 9 px icon can reach");
+        assertProblem(report.problems(), "demo:high", "row 9 is too high");
+        assertProblem(report.problems(), "demo:high", "'ascent' and 'offset' are ignored");
+        assertProblem(report.problems(), "demo:wrong", "anchor 'over-the-moon'");
+        assertProblem(report.problems(), "demo:wrong", "unknown stat 'luck'");
     }
 
     @Test

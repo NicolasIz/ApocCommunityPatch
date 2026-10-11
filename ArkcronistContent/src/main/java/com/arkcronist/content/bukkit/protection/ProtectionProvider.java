@@ -49,4 +49,9 @@ public interface ProtectionProvider {
     default boolean allowsLiquidContact(Player player, Block block) {
         return true;
     }
+
+    /** The same for a mob in a liquid (2.0): the place alone decides, there is no member to ask about. */
+    default boolean allowsLiquidContactAt(Block block) {
+        return true;
+    }
 }

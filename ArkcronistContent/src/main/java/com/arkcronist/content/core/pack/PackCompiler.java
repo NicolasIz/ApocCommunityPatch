@@ -105,6 +105,7 @@ public final class PackCompiler {
 
     private final PackSettings settings;
     private final boolean fixSoundNames;
+    private final ShaderCheck.Mode shaders;
 
     public PackCompiler(PackSettings settings) {
         this(settings, true);
@@ -115,8 +116,17 @@ public final class PackCompiler {
      *                      ({@link SoundNames}); off, such names are only reported
      */
     public PackCompiler(PackSettings settings, boolean fixSoundNames) {
+        this(settings, fixSoundNames, ShaderCheck.Mode.KEEP);
+    }
+
+    /**
+     * @param shaders what to do with shaders in the built pack once {@link ShaderCheck} has read them
+     *                against the 1.21.8 client (2.0)
+     */
+    public PackCompiler(PackSettings settings, boolean fixSoundNames, ShaderCheck.Mode shaders) {
         this.settings = settings;
         this.fixSoundNames = fixSoundNames;
+        this.shaders = shaders;
     }
 
     /** {@link #compile(Path, Collection, Map, List)} with no other plugin's pack to merge. */
@@ -287,12 +297,14 @@ public final class PackCompiler {
         run.icons(input.icons());
         if (input.contentsDir() != null) {
             run.sounds(input.contentsDir());
+            run.shaders(input.contentsDir());
         }
         for (PackSource source : sources) {
             run.merge(source);
         }
         run.atlas();
         run.overlayShared();
+        run.checkShaders(shaders);
         run.soundNames(fixSoundNames);
         run.overlayEntries(settings.mcmeta());
         return new Result(run.itemDefinitions, run.models, run.textures, run.customBlockStates,
@@ -761,11 +773,23 @@ public final class PackCompiler {
                 return;
             }
             scaffold(LiquidModels.NAMESPACE);
-            place(LiquidModels.SOURCE_PARENT.assetPath("models", ".json"),
-                    json(LiquidModels.parent(LiquidModels.SOURCE_HEIGHT)), "liquids");
-            place(LiquidModels.FLOWING_PARENT.assetPath("models", ".json"),
-                    json(LiquidModels.parent(LiquidModels.FLOWING_HEIGHT)), "liquids");
-            models += 2;
+            // The plain parents, and one of each shape per glow a liquid asks for.
+            java.util.Set<ResourceLocation> parents = new java.util.TreeSet<>(java.util.Comparator.comparing(
+                    ResourceLocation::toString));
+            parents.add(LiquidModels.SOURCE_PARENT);
+            parents.add(LiquidModels.FLOWING_PARENT);
+            for (ItemDefinition item : ordered) {
+                if (slots.containsKey(item.fullId()) && item.placement() instanceof Placement.Liquid liquid
+                        && liquid.glow() > 0) {
+                    parents.add(LiquidModels.parentFor(true, liquid.glow()));
+                    parents.add(LiquidModels.parentFor(false, liquid.glow()));
+                }
+            }
+            for (ResourceLocation parent : parents) {
+                place(parent.assetPath("models", ".json"), json(LiquidModels.parent(LiquidModels.heightOf(parent),
+                        LiquidModels.glowOf(parent))), "liquids");
+                models++;
+            }
 
             Map<TripwireState, ResourceLocation> drawn = new HashMap<>();
             for (ItemDefinition item : ordered) {
@@ -962,6 +986,96 @@ public final class PackCompiler {
             JsonObject root = mcmeta.deepCopy();
             root.add("overlays", section);
             Files.write(packDir.resolve("pack.mcmeta"), (GSON.toJson(root) + "\n").getBytes(StandardCharsets.UTF_8));
+        }
+
+        /**
+         * 2.0: each content pack's shaders, as they are. {@code contents/<folder>/shaders/core/} and
+         * {@code shaders/post/} go to {@code assets/minecraft/shaders/} - the client reads core shaders
+         * from the minecraft namespace only, so these replace vanilla's - and {@code shaders/include/}
+         * to {@code assets/<folder>/shaders/include/}, imported as {@code #moj_import <folder:file.glsl>}.
+         * What they will do on a 1.21.8 client is checked once the whole pack is built.
+         */
+        void shaders(Path contentsDir) throws IOException {
+            if (!Files.isDirectory(contentsDir)) {
+                return;
+            }
+            List<Path> folders;
+            try (Stream<Path> list = Files.list(contentsDir)) {
+                folders = list.filter(path -> Files.isDirectory(path.resolve("shaders"), LinkOption.NOFOLLOW_LINKS))
+                        .sorted().toList();
+            }
+            for (Path folder : folders) {
+                String namespace = folder.getFileName().toString();
+                String origin = namespace + " shaders";
+                if (!ResourceLocation.isValidNamespace(namespace)) {
+                    problems.add(origin + ": '" + namespace + "' is not a valid namespace - its shaders are not packed");
+                    continue;
+                }
+                Path root = folder.resolve("shaders");
+                List<Path> files;
+                try (Stream<Path> walk = Files.walk(root)) {
+                    files = walk.filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)).sorted().toList();
+                }
+                for (Path file : files) {
+                    String relative = root.relativize(file).toString().replace('\\', '/');
+                    String name = file.getFileName().toString();
+                    if (!(name.endsWith(".vsh") || name.endsWith(".fsh") || name.endsWith(".glsl") || name.endsWith(".json"))
+                            || relative.contains("..")) {
+                        problems.add(origin + ": shaders/" + relative + " is not a shader (.vsh, .fsh, .glsl, .json) - left out");
+                        continue;
+                    }
+                    String target = relative.startsWith("include/")
+                            ? "assets/" + namespace + "/shaders/" + relative
+                            : "assets/minecraft/shaders/" + relative;
+                    place(target, Files.readAllBytes(file), origin);
+                }
+            }
+        }
+
+        /**
+         * 2.0: every shader in the built pack - a content pack's, a merged pack's, an overlay's - read
+         * against the 1.21.8 client ({@link ShaderCheck}): what will not compile, what it never loads,
+         * what reads uniforms it is never given, each reported once; and with
+         * {@code pack.shaders: drop-broken} or {@code drop}, left out of the pack.
+         */
+        void checkShaders(ShaderCheck.Mode mode) throws IOException {
+            Map<String, String> found = new TreeMap<>();
+            if (Files.isDirectory(packDir)) {
+                try (Stream<Path> walk = Files.walk(packDir)) {
+                    for (Path file : walk.filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)).toList()) {
+                        String relative = packDir.relativize(file).toString().replace('\\', '/');
+                        if (ShaderCheck.isShader(relative)) {
+                            found.put(relative, Files.readString(file, StandardCharsets.UTF_8));
+                        }
+                    }
+                }
+            }
+            if (found.isEmpty()) {
+                return;
+            }
+            List<ShaderCheck.Overlay> layers = new ArrayList<>();
+            for (JsonObject entry : overlays.values()) {
+                try {
+                    layers.add(ShaderCheck.Overlay.of(entry));
+                } catch (RuntimeException exception) {
+                    // An entry without a directory or with odd formats: its files are read as the root's would not be.
+                }
+            }
+            ShaderCheck.Report report = ShaderCheck.check(found, mode, layers);
+            for (ShaderCheck.Finding finding : report.findings()) {
+                String owner = placed.getOrDefault(finding.path(), "a merged pack");
+                problems.add("shader " + finding.path() + " (" + owner + "), " + finding.severity().name().toLowerCase(
+                        java.util.Locale.ROOT) + " on " + ShaderCheck.clientVersion() + ": " + finding.message());
+            }
+            for (String path : report.drop()) {
+                Files.deleteIfExists(packDir.resolve(path));
+                placed.remove(path);
+            }
+            notes.add(found.size() + " shader file(s) in the pack; the " + report.checked() + " a "
+                    + ShaderCheck.clientVersion() + " client loads checked (" + report.skipped() + " in overlays for"
+                    + " other versions, or replaced by one): " + report.findings().size() + " finding(s)"
+                    + (report.drop().isEmpty() ? "" : ", " + report.drop().size() + " left out (pack.shaders: "
+                    + mode.name().toLowerCase(java.util.Locale.ROOT).replace('_', '-') + ")"));
         }
 
         /**

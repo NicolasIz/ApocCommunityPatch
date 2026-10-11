@@ -5,10 +5,13 @@ Motor de contenido personalizado para **Paper 1.21.8+**, Java 21: define ítems,
 dobles, camas de dos bloques, muebles de varios bloques, tablones de misiones y muebles interactivos:
 bebidas y calderos con partículas, carteles que ejecutan comandos y una guillotina animada; se incluyen
 60 muebles medievales listos para decorar un spawn), armaduras (con cascos 3D), cultivos, emojis de chat, logros, armas de fuego, líquidos que
-fluyen y barras de HUD en YAML y el plugin compila
+fluyen (con brillo y shaders validados contra el cliente 1.21.8) y barras de HUD ancladas al píxel
+sobre las de vanilla, en YAML. El plugin compila
 su propio resource pack, lo empaqueta en ZIP, calcula su SHA-1, lo sirve con un servidor HTTP
 integrado —o lo sube solo a un servicio de almacenamiento— y se lo envía a cada jugador. Los bloques
-y muebles colocados, los cultivos y lo guardado en los muebles se conservan en SQLite. El mismo
+y muebles colocados, los cultivos y lo guardado en los muebles se conservan en SQLite, y un
+verificador de integridad repara o retira los muebles que un rollback, `/fill` o WorldEdit dejan
+a medias (2.0). El mismo
 concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer.
 
 ```
@@ -26,13 +29,14 @@ concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer
 /arkcontent npc equip <hueco> <item> | sit NPC de Citizens con un ítem o sentado (sección 5)
 /arkcontent hud <jugador> <hud> [set|add|take <n>]  ver o cambiar el valor de una barra (sección 4)
 /arkcontent liquids                        líquidos cargados y fuentes vertidas por mundo (sección 4)
+/arkcontent integrity [now|recovered|claim <n>]  verificador de integridad: estado, auditar ya, almacenes recuperados (sección 4)
 /emojis                                    los emojis de chat disponibles, dibujados (sección 4)
 ```
 
 | Permiso | Por defecto | Para |
 |---|---|---|
 | `arkcontent.give` | op | `/customgive`, y sacar ítems del explorador |
-| `arkcontent.admin` | op | `reload`, `info`, `import`, `editor`, `animate`, `showcase`, `npc`, `hud`, `liquids`; avisos del servidor web al entrar |
+| `arkcontent.admin` | op | `reload`, `info`, `import`, `editor`, `animate`, `showcase`, `npc`, `hud`, `liquids`, `integrity`; avisos del servidor web al entrar |
 | `arkcontent.menu` | op | abrir el explorador (solo mirar, si no tiene `arkcontent.give`) |
 | `arkcontent.emojis` | todos | `/emojis`. Usar un emoji no necesita permiso, salvo que el emoji declare el suyo |
 | `arkcontent.shop` | todos | `/arkcontent shop` (necesita Vault y un plugin de economía) |
@@ -56,7 +60,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-1.2.0.jar
+./gradlew build          # -> build/libs/ArkcronistContent-2.0.0.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -431,7 +435,7 @@ El soporte y el display se vinculan en tres sitios, cada uno para quien lo lee:
 - **PDC del display**: id del mueble y posición del soporte. Un display que carga sin su soporte
   (caída del servidor, rollback, soporte quitado con `/fill`) se reconoce huérfano y se elimina en
   `EntitiesLoadEvent`; uno que se queda huérfano con su chunk ya cargado lo retira el verificador
-  de cordura (más abajo).
+  de integridad (más abajo).
 - **Caché + SQLite**: para responder "¿hay un mueble aquí?" desde memoria.
 
 Romperlo: en supervivencia ningún soporte se puede minar (el barrier es irrompible y el light ni se
@@ -503,34 +507,89 @@ administrador edita una pieza a la vez y dos no pueden editar la misma. Los mueb
 editan para todas sus piezas (sus huesos se posan con los valores del tipo); los dibujados por
 ModelEngine no se editan aquí (su modelo es el blueprint).
 
-### Verificador de cordura (`sanity`)
+### Verificador de integridad (`sanity`)
 
 Un rollback (CoreProtect…), `/fill`, WorldEdit o una caída pueden cambiar el mundo a espaldas del
-plugin: el bloque de un mueble desaparece y su display sigue flotando, o un bloque personalizado se
-convierte en piedra y su fila sigue en SQLite. Cada `sanity.interval-seconds` (120 por defecto) se
-auditan los chunks cargados:
+plugin: un bloque invisible de un mueble desaparece y su display sigue flotando, `/kill` se lleva el
+display y deja las barreras, o un bloque personalizado se convierte en piedra y su fila sigue en
+SQLite. Cada `sanity.interval-seconds` (120 por defecto) se auditan los chunks cargados, sin cargar
+ninguno.
 
-- un display del plugin cuyo soporte ya no está —o un hueso de un mueble animado cuya raíz ya no
-  existe— se elimina (con sus huesos);
-- una fila de bloque cuyo note block ya no tiene el estado de ese bloque, una de mueble cuyo soporte
-  ya no está y una fuente de líquido cuyo tripwire ya no es el de ese líquido se purgan: cada una en
-  una transacción que solo borra si la fila sigue diciendo lo mismo que cuando se encontró (y, si es
-  un mueble, su transformación propia con ella).
+**El mueble entero (2.0).** Cada mueble colocado tiene ahora una fila en `furniture_pieces` con su
+ancla y hacia dónde mira. Así el verificador juzga la pieza completa, por ejemplo los seis bloques
+de la guillotina y su display juntos, y no cada bloque por separado:
 
-**Dos auditorías seguidas.** Un hallazgo solo se toca cuando dos auditorías consecutivas lo encuentran
-igual (la misma fila y el mismo bloque encontrado en su sitio): un rollback a medias o un `/fill`
-que va por chunks parecen un fallo un momento y están bien al siguiente. Antes de borrar se mira una
-vez más en el hilo principal. El contenido que ya no está definido no se toca (puede volver con el
-siguiente `reload`), y nunca se carga un chunk para auditarlo.
+| Veredicto | Cuándo | Qué se hace |
+|---|---|---|
+| **Roto** | falta uno o más de sus bloques de soporte | se retira lo que queda: el display (y sus huesos), las barreras y luces que sigan en pie y todas sus filas, en una transacción. Lo que tuviera dentro (un barril, un cofre) pasa a `recovered_storage` para un administrador |
+| **Fantasma** | están todos los soportes y falta el display, con las entidades de esos chunks cargadas (`/kill`, un limpiador de entidades) | se dibuja de nuevo, mirando hacia donde miraba; filas y contenido no cambian |
+| **Perdido** | como el fantasma, pero no se puede redibujar: ocupa más de un bloque y no se sabe hacia dónde miraba, o es media de un cofre doble | se retira como uno roto: unas barreras sin display serían paredes invisibles |
+| *Sin decidir* | un chunk o sus entidades sin cargar | nada; se mira en la siguiente |
 
-**Hilos.** El ciclo se programa y se juzga en `ArkContent-DB`: allí se planifica (qué filas de qué
-mundos, por chunk, desde memoria) y se decide. Leer el mundo solo se puede en el hilo principal, así
-que se mira allí por trozos, sin pasar de `sanity.max-millis-per-tick` (1 ms) por tick —en la prueba,
-288 chunks en 2 ticks y 2–3 ms en total—, y los borrados de filas vuelven a `ArkContent-DB`.
+Como antes, además:
 
-**Silencioso.** Una línea en consola cuando se limpió algo, nada si no; un fallo se avisa una vez y
-la siguiente auditoría se hace igual. `/arkcontent info` muestra la última auditoría y el total
-retirado.
+- un display del plugin sin filas detrás, o un hueso de un mueble animado cuya raíz ya no existe,
+  se elimina;
+- una fila de bloque cuyo note block ya no tiene el estado de ese bloque, y una fuente de líquido
+  cuyo tripwire ya no es el de ese líquido, se purgan. Cada una va en una transacción que solo borra
+  si la fila sigue diciendo lo mismo que cuando se encontró.
+
+**Ruta rápida.** No hace falta esperar al ciclo. Dos cosas anotan el chunk afectado:
+
+- un `EditSession` de WorldEdit (o FAWE) que reemplaza un soporte (barrera, luz, cofre o cama);
+- la eliminación de un display del plugin por cualquier causa salvo descargar el chunk o salir un
+  jugador (`EntityRemoveEvent`).
+
+Ese chunk se audita solo, dos veces: a los 2 s y otra vez 1 s después. Muchas ediciones seguidas
+hacen una sola auditoría.
+
+**Almacenes recuperados.** Antes de la 2.0, purgar un mueble con almacenamiento dejaba sus filas de
+`furniture_storage` sueltas, sin nada que las abriera. Ahora el contenido de un mueble retirado pasa
+a `recovered_storage` en la misma transacción, con el motivo («its blocks were gone (a rollback,
+/fill or a world editor)»). Las filas sueltas que dejaron versiones anteriores se recogen en cada
+ciclo. `/arkcontent integrity recovered` las lista. `/arkcontent integrity claim <n>` da el
+contenido al administrador que lo pide, y lo que no cabe en su inventario cae a sus pies. Cada
+almacén se reclama una sola vez y la consola apunta quién lo reclamó.
+
+**Dos auditorías seguidas.** Un hallazgo solo se toca cuando dos auditorías consecutivas lo
+encuentran igual: la misma pieza, los mismos soportes, las mismas filas. Un rollback a medias o un
+`/fill` que va por chunks parecen un fallo un momento y están bien al siguiente. Antes de cambiar
+nada se mira una vez más en el hilo principal. El contenido que ya no está definido no se toca:
+puede volver con el siguiente `reload`.
+
+**Datos de antes de la 2.0.** El archivo pasa del esquema 7 al 8 en una transacción: las dos tablas
+nuevas y `user_version` van juntos, y si algo falla el archivo queda como estaba. Las piezas
+colocadas antes de la 2.0 no tienen fila en `furniture_pieces`. El verificador las adopta al verlas
+con su display (ancla y dirección leídas de él, `INSERT OR IGNORE`) y no cambia nada de lo que ya
+hay. Una 1.9.x que abra después el archivo deja en paz las tablas que no conoce.
+
+**Hilos.** El ciclo se programa y se juzga en `ArkContent-DB`. Allí se planifica desde memoria qué
+filas y piezas de qué mundos mirar, por chunk, y allí se decide. Leer el mundo solo se puede en el
+hilo principal, así que se mira allí por trozos, sin pasar de `sanity.max-millis-per-tick` (1 ms)
+por tick. En la prueba fueron 358 chunks en 6–7 ticks y 6–7 ms en total. Los cambios de filas
+vuelven a `ArkContent-DB`. El núcleo (`PieceAudit`, `SanityJudge`, `AuditPlan`) no depende de
+Bukkit ni de NMS.
+
+**Silencioso.** Si se hizo algo, sale una línea en consola («Integrity check: took out 1 broken
+piece(s) of furniture (6 row(s)) (…)»); si no, nada. Un fallo se avisa una vez, sin traza, y la
+siguiente auditoría se hace igual. `/arkcontent integrity` muestra la última auditoría y los totales
+desde el arranque. `/arkcontent integrity now` audita ya, dos veces, todos los chunks cargados.
+
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (2.0, integridad)
+
+Con un bot (mineflayer), WorldEdit 7 y la consola, con `interval-seconds: 10`:
+
+| Qué | Resultado |
+|---|---|
+| Actualizar desde 1.9.6 | «schema 7 -> 8 (tables added in one transaction; nothing existing was changed)»; las piezas ya colocadas, adoptadas con su dirección |
+| Escaparate | 60 piezas, 97 filas de bloque y 60 filas en `furniture_pieces` |
+| `/kill` del display de un taburete | redibujado a los 3,1 s, mirando igual; sigue con 1 fila y su barrera |
+| `/kill` de un pedestal de antes de la 2.0, girado 270° | redibujado a los 4,3 s, a 270° |
+| `/setblock … air` en lo alto de la guillotina | retirada entera a los 12,0 s: los 6 bloques quedan en aire, sus 6 filas fuera |
+| `//set air` de WorldEdit en un bloque de un banco | banco retirado a los 3,5 s (ruta rápida) |
+| Barril con 16 diamantes y 5 manzanas, `/setblock` en su soporte | retirado a los 11,4 s; su fila de almacenamiento pasa a `recovered_storage` #1; `claim 1` da 16 diamantes y 5 manzanas; un segundo `claim 1` responde «#1 is not waiting: unknown, or already taken.» |
+| `/arkcontent integrity now` | «457 chunk(s) in 4.2 ms over 5 tick(s)» |
+| Consola | 0 líneas WARN o ERROR del plugin en toda la prueba |
 
 #### Qué se ha verificado en un servidor Paper 1.21.8 real (v1.8)
 
@@ -582,10 +641,15 @@ Con un bot (mineflayer) y la consola, en el servidor de pruebas con 1608 ítems 
   3 (+ `furniture_storage`, ver *Muebles con almacenamiento*), 4 (+ `advancement_unlocks`, ver
   *Logros*), 5 (+ `liquid_sources` y `hud_values`, ver *Líquidos* y *HUDs*), 6 (+ `furniture_transforms`,
   ver *Editor visual de muebles*) y 7 (+ `furniture_pairs`, `quest_notices` y `quest_progress`, ver
-  *Cofres dobles* y *Tablón de misiones*). Un archivo de una versión anterior
-  gana al abrirse las tablas que le faltan; no se toca nada de lo que ya hay. Verificado al pasar de
-  1.8.0 a 1.9.0: el archivo del servidor de prueba, con `user_version` 6, abre como 7 con las tres
-  tablas nuevas y todo lo anterior intacto.
+  *Cofres dobles* y *Tablón de misiones*) y 8 (2.0: + `furniture_pieces`, una fila por mueble con su
+  ancla y hacia dónde mira, y `recovered_storage`, ver *Verificador de integridad*). Un archivo de una
+  versión anterior gana al abrirse las tablas que le faltan; no se toca nada de lo que ya hay. Las
+  tablas nuevas y el `user_version` se escriben en **una sola transacción**: si falla una, el archivo
+  sigue en la versión de antes, sin media migración (probado con una sentencia que falla después de crear la tabla y subir la versión: las dos cosas se deshacen). Una
+  versión anterior del plugin que abra un archivo más nuevo deja en paz las tablas que no conoce.
+  Verificado al pasar de 1.8.0 a 1.9.0 (de 6 a 7, con las tres tablas nuevas y todo lo anterior
+  intacto) y de 1.9.6 a 2.0.0 (de 7 a 8, con las piezas ya colocadas adoptadas después por el
+  verificador).
 
 El driver es el `org.xerial` SQLite que Paper/Spigot traen en el servidor; si faltara, se avisa en
 consola y bloques y muebles siguen funcionando (reconocidos por su estado y su vínculo), solo que
@@ -1661,10 +1725,12 @@ acid:
     flow-distance: 4                            # cuánto se extiende de lado (1-8)
     tick-rate: 8                                # ticks entre un paso y el siguiente
     max-fall: 32
+    glow: 10                                    # 2.0: se ve con esa luz aunque esté a oscuras (0-15)
     contact:
       element: acid                             # fire, frost, poison, wither o acid
       damage: 1.5
       interval-ticks: 20
+      mobs: true                                # 2.0: también a los mobs; a los jugadores, siempre
       effects: [ { type: poison, duration: 60 } ]
 ```
 
@@ -1711,6 +1777,56 @@ vanilla que se diga), el fuego, la congelación y los efectos del líquido.
 Además, el líquido no se rompe a golpes, no se lo llevan pistones, explosiones ni agua vanilla, y
 no hace saltar ganchos de tripwire.
 
+**Brillo (2.0).** `glow: 0-15` pone `"light_emission": N` en los elementos del modelo del líquido,
+igual que hace vanilla con sus plantas que brillan (`cross_emissive`). El cliente lo dibuja con esa
+luz aunque esté a oscuras. No ilumina lo que tiene alrededor: eso solo lo hace un bloque que emite
+luz, y el tripwire no la emite. Si das tus dos modelos (`model` y `flowing-model`), `glow` no se
+aplica y se avisa: el `light_emission` va entonces en tus modelos.
+
+**Mobs (2.0).** Con `contact: { mobs: true }`, los mobs que estén dentro reciben lo mismo que un
+jugador, cada `interval-ticks`. Solo se miran los chunks donde hay ese líquido, solo si sus
+entidades están cargadas, y se respeta `arkcontent-liquid-damage` y los claims igual que con los
+jugadores. Sin `mobs`, a los mobs no les pasa nada (como antes).
+
+**Por qué no se mezcla con el agua ni con la lava.** Para el cliente, el líquido no es un fluido:
+es un bloque de tripwire dibujado con su modelo. El cliente solo trata como fluido el agua y la
+lava, así que no le aplica nada de ellas: ni la niebla, ni el nado, ni las caras compartidas con el
+agua de al lado, ni el contacto agua-lava que hace piedra u obsidiana. En el servidor, el agua y la
+lava que intentan entrar en él se cancelan (`BlockFromToEvent`) y no lo sustituyen. La textura se
+anima con su `.png.mcmeta`, que va al pack junto al PNG (desde 1.7).
+
+**Shaders (2.0).** Un pack de contenido puede traer los suyos:
+
+| En `contents/<pack>/` | En el pack | |
+|---|---|---|
+| `shaders/core/*.vsh`, `*.fsh`, `*.json` y `shaders/post/…` | `assets/minecraft/shaders/…` | el cliente solo lee los shaders principales del espacio `minecraft`: estos sustituyen a los de vanilla |
+| `shaders/include/*.glsl` | `assets/<pack>/shaders/include/` | se importan con `#moj_import <pack:archivo.glsl>` |
+
+Cualquier otro archivo en `shaders/` se avisa y se deja fuera. Al construir el pack se leen todos
+sus shaders, los de los packs de contenido y los de los packs fusionados (ItemsAdder…), contra lo
+que hace con ellos el cliente 1.21.8. Las tablas salen de su propio jar: qué shaders principales
+carga, qué bloques de uniformes da a cada uno y qué archivos de `include` trae. Solo se revisan los
+que ese cliente carga de verdad (formato 64): un overlay para otras versiones, o un archivo que
+otro overlay sustituye, se cuenta aparte. Se avisa de:
+
+- la primera directiva no es `#version`;
+- un `#moj_import` que nada del pack ni de vanilla proporciona;
+- uniformes sueltos (`uniform float GameTime;`), es decir, escrito para 1.21.4 o antes: desde
+  1.21.5 van en bloques (`Globals`, `Fog`…) y el aviso dice en cuál está cada uno;
+- un shader principal que el cliente 1.21.8 no carga;
+- un bloque de uniformes que no se le da nunca.
+
+`pack.shaders` decide qué hacer: `keep` (por defecto) solo avisa; `drop-broken` deja fuera además
+cada shader que no compilaría o dibujaría mal, con su otra mitad; `drop` los deja todos fuera.
+
+El plugin **no trae ningún shader activado**. Un shader principal sustituye al de vanilla para todo
+lo que dibuja, no solo para el líquido; y si falla, solo se nota en el cliente, no en el servidor ni
+en el ZIP. Sin un cliente real con el pack no se puede comprobar cómo queda. Lo que sí se ha
+comprobado, en el bytecode del cliente 1.21.8: el shader del terreno (`core/terrain`, el de los
+bloques translúcidos como el tripwire) recibe `Globals` y con él `GameTime` aunque su pipeline no
+lo declare, porque `RenderSystem.bindDefaultUniforms` lo enlaza al dibujar los chunks. Un shader que
+haga ondular o brillar el líquido con el tiempo es posible; el validador lo da por bueno.
+
 #### Qué se ha verificado en un servidor Paper 1.21.8 real (v1.7, líquidos)
 
 | Qué | Resultado |
@@ -1728,6 +1844,17 @@ no hace saltar ganchos de tripwire.
 Lo que no se puede comprobar aquí es cómo se ve: no hay un cliente real con el pack. El blockstate
 de tripwire (los 128 estados) y los modelos de los líquidos se han revisado en el ZIP generado.
 
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (2.0, líquidos y shaders)
+
+| Qué | Resultado |
+|---|---|
+| Ácido con `glow: 10` | en el ZIP, `acid_source` hereda de `arkcontent:block/liquid_source_glow_10`, que lleva `"light_emission": 10` |
+| Un cerdo en ácido (`mobs: true`) | 10 → 6 → 2,5 de vida → muerto, envenenado |
+| Un cerdo en escarcha líquida (sin `mobs`) | sigue con 10 |
+| Shaders con el pack generado de ItemsAdder del servidor (con overlays) y un pack de prueba | «26 shader file(s) in the pack; the 11 a 1.21.8 client loads checked (15 in overlays for other versions, or replaced by one): 2 finding(s)». Los dos avisos son de un `rendertype_translucent.vsh` de 1.21.4 puesto a propósito: el cliente ya no lo carga, y además usa uniformes sueltos. Un `core/terrain.vsh` que usa `GameTime` y los shaders de ItemsAdder que se cargan pasan sin avisos |
+
+Cómo se ve el brillo, o un shader, sigue sin poder comprobarse sin un cliente con el pack.
+
 ### HUDs (`huds`)
 
 Barras dibujadas con la fuente del pack, como el maná o la sed. Cada barra es una fila de iconos
@@ -1740,20 +1867,31 @@ huds:
   thirst:
     icons: { full: hud/thirst_full, half: hud/thirst_half, empty: hud/thirst_empty }
     height: 9
-    ascent: -5              # en la barra de acción, -5 la deja justo encima de la armadura
+    anchor: { at: above-food, row: 1 }   # 2.0: una fila por encima de las burbujas de aire
     segments: 10
-    spacing: -1             # píxeles entre iconos
-    offset: 10              # desde el centro: encima del hambre
-    action-bar: true
+    spacing: -1             # píxeles entre iconos: una gota mide 8, la fuente avanza 9
     value:                  # un valor que guarda este plugin
       max: 20
       per-second: -0.025    # se va vaciando
       empty-damage: 1       # daño por segundo a 0
       consume: { POTION: 8, MILK_BUCKET: 4 }
   mana:
-    icons: { full: hud/mana_full, empty: hud/mana_empty }
-    value: { placeholder: "%mmocore_mana%", max: "%mmocore_max_mana%" }   # o el de otro plugin
+    icons: { full: hud/mana_full, half: hud/mana_half, empty: hud/mana_empty }
+    height: 9
+    anchor: { at: above-health, row: 1 }
+    spacing: -2
+    value: { start: 100, max: 100, per-second: 2 }   # con AuraSkills (2.0): { auraskills: mana }
+  shield:
+    icons: { full: hud/shield_full, half: hud/shield_half, empty: hud/shield_empty }
+    height: 9
+    anchor: { at: above-health, row: 2 }
+    spacing: -2
+    value: { stat: absorption, max: 20 }  # 2.0: los corazones dorados, leídos del servidor
 ```
+
+Sin `anchor` sigue valiendo lo de antes: `ascent` (cuánto sube sobre la línea), `offset` (píxeles
+desde donde se escribe) y `action-bar: true|false`. Otro plugin se lee con
+`value: { placeholder: "%mmocore_mana%", max: "%mmocore_max_mana%" }`.
 
 **Fuente.** El pack escribe en `assets/minecraft/font/default.json` un glifo por icono, en
 U+F000–U+F7FF (los emojis pasan a U+E000–U+EFFF), y un proveedor `space` con los caracteres que la
@@ -1762,6 +1900,47 @@ mismo hacia delante). Se escribe aunque no haya HUDs, para menús y marcadores q
 ellos (`pack.negative-spaces: false` lo quita). El ancho de cada icono se mide en su PNG como lo
 mide el cliente (última columna con algún píxel visible, escalada a `height`, más uno). Así la barra
 sabe exactamente cuánto retroceder.
+
+**Anclajes (2.0).** Con `anchor`, la barra se coloca contra el HUD de vanilla y el plugin calcula
+su `ascent` y su `offset`. Las cuentas salen de la clase `Gui` del cliente 1.21.8:
+
+- la línea de la barra de acción se dibuja en `(ancho/2, alto − 68)` y su texto empieza 4 píxeles
+  más arriba;
+- la parte de arriba de un glifo queda `7 − ascent` por debajo de donde empieza su línea;
+- corazones y hambre están a 39 píxeles del borde inferior, y la armadura y el aire 10 más arriba;
+- la barra de objetos llega a 91 píxeles a cada lado del centro.
+
+Todo va en píxeles de la interfaz, así que vale con cualquier tamaño de ventana y escala de GUI. La
+línea que envía el plugin tiene ancho neto 0, de modo que el cliente la centra sobre nada y cada
+barra empieza exactamente donde dice su `offset`.
+
+| `at` | Fila | En horizontal |
+|---|---|---|
+| `health` | la de los corazones | desde el extremo izquierdo de los corazones (−91) |
+| `food` | la del hambre | termina donde termina el hambre (+91) y se llena desde la derecha, como el hambre |
+| `above-health` | la de la armadura, encima de los corazones | como `health` |
+| `above-food` | la de las burbujas de aire, encima del hambre | como `food` |
+
+`row: n` la sube n filas de 10 píxeles y `nudge: [x, y]` la mueve píxeles a la derecha y hacia
+arriba. Hay un límite: en un glifo de la fuente, el `ascent` no puede pasar de su `height`, así que
+un icono bajo no se puede subir mucho sobre la línea en que se escribe. Con iconos de 9 píxeles, lo
+más alto es 69 píxeles sobre el borde inferior (`health` fila 3, `above-health` o `above-food`
+fila 2). Una fila más alta se baja a la máxima y se avisa al cargar.
+
+**Valores del servidor (2.0).** `value: { stat: <nombre>, max: <n> }` lee del propio jugador
+`health`, `absorption` (los corazones dorados: un escudo), `armor`, `toughness`, `food`,
+`saturation`, `air`, `level` o `experience`, sin otro plugin. `max` es opcional; si falta: la vida máxima del
+jugador, 20 (absorción, armadura, hambre, saturación), 12 (dureza), el aire máximo, 100 (nivel) o 1
+(la barra de experiencia). `value: { auraskills: mana }` toma el maná y el máximo de AuraSkills por su
+API (`SkillsUser.getMana()`), sin pasar por PlaceholderAPI. Se leen en el hilo principal una vez por
+segundo.
+
+**TAB y DeluxeMenus.** El anclaje coloca la barra en la pantalla, y eso solo se puede en la barra de
+acción. La envía el plugin, y una barra anclada va a ella salvo `action-bar: false`.
+TAB 6.2.0 no tiene barra de acción (comprobado en su jar), así que «encima del hambre» no se puede
+hacer desde TAB. Por placeholder, en la cabecera, el pie, el marcador o la bossbar de TAB y en los
+títulos de DeluxeMenus, cada plugin decide dónde pinta su texto. Ahí sirve una barra sin `anchor`,
+con su `ascent` y su `offset`, y `%arkcontent_hud_<id>_value%` / `_max` valen en cualquier sitio.
 
 **Dónde se muestra.**
 
@@ -1799,6 +1978,22 @@ plugin. Con AuraSkills, desactiva la suya (`action_bar` en su configuración) o 
 por placeholders. El texto de la barra de acción y de TAB lleva sombra; en la barra de acción el
 plugin la quita, pero lo que llega por PlaceholderAPI es texto plano y la sombra depende de quien
 lo pinte.
+
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (2.0, HUDs anclados)
+
+Con un bot (mineflayer): se descodificó la barra de acción que recibió usando la fuente del pack
+generado, con el ancho y el `ascent` de cada glifo, como los calcula el cliente.
+
+| Qué | Resultado |
+|---|---|
+| La línea entera | ancho neto 0 |
+| Sed, `above-food` fila 1 | arriba a 59 píxeles del borde inferior; termina a +91 del centro, donde termina el hambre; 7 de 10 llenas, en orden «EEEFFFFFFF»: se vacía por la izquierda |
+| Escudo, `above-health` fila 2, con Absorción II | arriba a 69; empieza a −91, donde empiezan los corazones; 4 de 10 llenos; `%arkcontent_hud_shield_value%` = 8, `_max` = 20 |
+| Maná, `above-health` fila 1 | arriba a 59; empieza a −91 |
+| Maná de AuraSkills 2.3.12 por su API | 20 de 20, lo mismo que `%auraskills_mana%` (20.0) |
+
+Cómo se ve en un cliente real no se ha podido comprobar: no hay cliente con el pack. Las posiciones
+salen de las cuentas del propio cliente, no de una captura.
 
 ## 5. Integraciones
 
@@ -2916,8 +3111,8 @@ con `join-classpath: true` para ver sus clases.
   interiores. Solo hay dos alturas (fuente y flujo), no los 8 niveles del agua. No se puede
   construir dentro de un líquido (la cuerda no es reemplazable, como sí lo es el agua): hay que
   recoger la fuente primero. El flujo no sale de los chunks cargados alrededor de su fuente
-  (`liquids.chunk-reach`), ni empuja a quien está dentro, ni apaga el fuego. Solo los jugadores
-  reciben el efecto de contacto, no los mobs.
+  (`liquids.chunk-reach`), ni empuja a quien está dentro, ni apaga el fuego. Los mobs solo reciben
+  el efecto de contacto con `mobs: true` (2.0).
 - 1.8, font images: `:nombre:` y `:offset_N:` se reescriben en títulos de menú al abrirse; un
   plugin que cambia el título de un menú ya abierto (`InventoryView#setTitle`) no pasa por ahí. En
   chat, scoreboards y nombres de ítems sirve `%img_...%` a través de PlaceholderAPI, no la forma
@@ -2928,9 +3123,13 @@ con `join-classpath: true` para ver sus clases.
   o un ítem definido dos veces en el archivo, se rechaza sin escribir. Los valores escritos a mano
   como un solo número (`scale: 0.5`) pasan a lista (`[0.5, 0.5, 0.5]`). Ver el modelo moverse
   detrás del menú depende del cliente: el menú de cofre oscurece el fondo pero no lo tapa.
-- 1.8, verificador: solo audita chunks cargados, y tarda dos intervalos en actuar. Al purgar un
-  mueble de almacenamiento, el contenido guardado en `furniture_storage` no se borra. Los cultivos no
-  se auditan (tienen su propio ciclo).
+- 1.8/2.0, verificador: solo audita chunks cargados. Fuera de la ruta rápida (ediciones de
+  WorldEdit/FAWE y displays eliminados) tarda dos intervalos en actuar: un `/fill`, un `/setblock` o
+  un rollback de CoreProtect esperan al ciclo. Un mueble de más de un bloque colocado antes de la 2.0
+  que ya había perdido su display al actualizar no tiene dirección guardada y no se puede redibujar:
+  se retira y su contenido va a `recovered_storage`. Si algo devuelve después el display original
+  de un mueble ya redibujado (un rollback de entidades), quedan dos: el verificador no busca displays
+  repetidos, y esto no se ha probado. Los cultivos no se auditan (tienen su propio ciclo).
 - 1.9, cofres dobles: la tapa no puede moverse a los 63 ms justos, porque el servidor trabaja en
   ticks de 50 ms: se mueve en el primer tick a partir de los 63 ms (entre 63 y 113 ms). Un cofre doble
   con `animated-model` es un display por hueso más su raíz, no un solo `ItemDisplay`: así es como se
@@ -2969,11 +3168,22 @@ con `join-classpath: true` para ver sus clases.
 - 1.8, red: la IP descubierta es por la que la máquina **sale** a internet; en un nodo con varias IPs
   puede no ser por la que **entran** los jugadores. Ahí, `http.public-address` (o un `server-ip`
   público) manda. Un puerto de respaldo solo sirve si el hosting lo redirige.
-- 1.7, HUDs: la posición en pantalla depende de `ascent` y `offset`, y la escala de interfaz del
-  jugador no cambia nada (es todo en píxeles de fuente), pero otros mods de cliente que muevan la
-  barra de acción sí. AuraSkills tapa la barra de acción con la suya (ver sección 4). El dibujo en
-  un cliente real no se ha podido comprobar aquí: lo verificado es el texto exacto que recibe el
-  cliente y la fuente del pack.
+- 1.7/2.0, HUDs: la posición en pantalla depende de `ascent` y `offset` (o del `anchor`, que los
+  calcula con la geometría del cliente 1.21.8). La escala de interfaz del jugador no cambia nada
+  (es todo en píxeles de la interfaz), pero otros mods de cliente que muevan la barra de acción, los
+  corazones o el hambre sí. Un anclaje no se aparta cuando vanilla dibuja algo en esa fila: el
+  escudo en la fila de la armadura la taparía si el jugador lleva armadura (por eso el de ejemplo va
+  dos filas más arriba), y lo mismo la sed con las burbujas de aire. Con más de 10 corazones entre vida y
+  absorción, vanilla añade filas de corazones y sube la armadura; las barras ancladas a ese lado no
+  suben con ellas. Una barra anclada solo queda en su sitio en la barra de acción; TAB no tiene barra de
+  acción. AuraSkills tapa la barra de acción con la suya (ver sección 4). El dibujo en un cliente
+  real no se ha podido comprobar aquí: lo verificado es el texto exacto que recibe el cliente y la
+  fuente del pack.
+- 2.0, líquidos y shaders: el brillo (`glow`) hace que el líquido se vea iluminado, pero no ilumina
+  lo de alrededor. El plugin no trae ningún shader activado; el validador revisa los que se añadan
+  contra lo que el cliente 1.21.8 carga y declara, pero no compila GLSL: un error dentro del cuerpo
+  de un shader (un tipo mal, una variable que no existe) solo se ve en el cliente. Cómo se ven el
+  brillo y cualquier shader no se ha podido comprobar aquí.
 
 ## 10. Compatibilidad frente a ItemsAdder
 

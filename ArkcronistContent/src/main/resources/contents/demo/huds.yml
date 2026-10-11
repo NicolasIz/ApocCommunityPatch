@@ -14,15 +14,24 @@
 #
 #    icons     textures/hud/<name>.png; half and empty are optional
 #    height    icon height in font pixels (a chat line is 9)
-#    ascent    how high above the line's baseline it reaches: lower or
-#              negative moves it down the screen (at most 'height'). On the
-#              action bar, -5 puts a 9-pixel bar just over the armour row
+#    anchor    (2.0) where it sits against the vanilla HUD, to the pixel at
+#              any window size: health, food, above-health (the armour row),
+#              above-food (the air row); { at: above-food, row: 1 } is one
+#              row higher, nudge: [x, y] moves it pixels right and up. On the
+#              food side a bar ends where the food bar ends and fills from
+#              the right, as food does. An anchored bar is on the action bar
+#    ascent    without an anchor: how high above the line's baseline it
+#              reaches (at most 'height'); lower or negative moves it down
 #    segments  icons in the bar
 #    spacing   extra pixels between icons, negative to overlap
-#    offset    pixels from where it is written; negative moves it left
-#    value     either {placeholder, max} - another plugin's value, such as
-#              "%mmocore_mana%" out of "%mmocore_max_mana%" - or a value
-#              kept by this plugin in its database:
+#    offset    without an anchor: pixels from where it is written
+#    value     {placeholder, max} - another plugin's value, such as
+#              "%mmocore_mana%" out of "%mmocore_max_mana%";
+#              (2.0) {stat: <name>, max: <n>} - the player's own health,
+#              absorption, armor, toughness, food, saturation, air, level or
+#              experience, read from the server; max optional;
+#              (2.0) {auraskills: mana} - AuraSkills' mana, from its API;
+#              or a value kept by this plugin in its database:
 #                start, max      its first and highest value
 #                per-second      how it changes by itself (negative drains)
 #                empty-damage    damage each second while it is at 0
@@ -33,15 +42,15 @@
 
 huds:
 
-  # Over the hunger bar: from 10 pixels right of the centre, ten drops 8 apart.
+  # One row over the air bubbles, ending where the food bar ends: ten drops
+  # 8 pixels apart, like the food icons, emptying from the left. A drop is 8
+  # pixels wide, so the font moves on 9 after it: spacing -1 makes 8.
   thirst:
     icons: { full: hud/thirst_full, half: hud/thirst_half, empty: hud/thirst_empty }
     height: 9
-    ascent: -5
+    anchor: { at: above-food, row: 1 }
     segments: 10
     spacing: -1
-    offset: 10
-    action-bar: true
     value:
       start: 20
       max: 20
@@ -52,16 +61,25 @@ huds:
         MILK_BUCKET: 4
         MELON_SLICE: 2
 
-  # Over the hearts: from 91 pixels left of the centre.
+  # One row over the armour, from the left end of the hearts. With AuraSkills,
+  # value: { auraskills: mana } shows its mana instead of this one.
   mana:
     icons: { full: hud/mana_full, half: hud/mana_half, empty: hud/mana_empty }
     height: 9
-    ascent: -5
+    anchor: { at: above-health, row: 1 }
     segments: 10
     spacing: -2
-    offset: -91
-    action-bar: true
     value:
       start: 100
       max: 100
       per-second: 2
+
+  # Shields: the golden hearts of absorption (a golden apple gives 4), out of
+  # 20, read from the server - no plugin or placeholder needed.
+  shield:
+    icons: { full: hud/shield_full, half: hud/shield_half, empty: hud/shield_empty }
+    height: 9
+    anchor: { at: above-health, row: 2 }
+    segments: 10
+    spacing: -2
+    value: { stat: absorption, max: 20 }

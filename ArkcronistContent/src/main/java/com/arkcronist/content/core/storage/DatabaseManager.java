@@ -59,15 +59,72 @@ public final class DatabaseManager {
     public static final String PAIR_TABLE = "furniture_pairs";
     public static final String NOTICE_TABLE = "quest_notices";
     public static final String PROGRESS_TABLE = "quest_progress";
+    public static final String PIECE_TABLE = "furniture_pieces";
+    public static final String RECOVERED_TABLE = "recovered_storage";
 
     /**
      * Bumped with each change to the schema, so a later version knows what it opened.
      * 1: custom_blocks_world. 2: custom_crops added. 3: furniture_storage added. 4:
      * advancement_unlocks added. 5: liquid_sources and hud_values added. 6: furniture_transforms
-     * added. 7: furniture_pairs, quest_notices and quest_progress added. An older file gains the
-     * tables it lacks on open; nothing existing is touched.
+     * added. 7: furniture_pairs, quest_notices and quest_progress added. 8: furniture_pieces and
+     * recovered_storage added. An older file gains the tables it lacks on open, all of them and the
+     * new version number in one transaction - or none of it; nothing existing is touched, so an
+     * older plugin still opens the file and leaves the tables it does not know alone.
      */
-    public static final int SCHEMA_VERSION = 7;
+    public static final int SCHEMA_VERSION = 8;
+
+    /**
+     * Each piece of furniture as a whole, by its anchor block: which way it faces. Written in the
+     * same transaction as the rows of the blocks it stands on, deleted with them.
+     */
+    private static final String CREATE_PIECE_TABLE = """
+            CREATE TABLE IF NOT EXISTS furniture_pieces (
+                world_uuid   TEXT    NOT NULL,
+                x            INTEGER NOT NULL,
+                y            INTEGER NOT NULL,
+                z            INTEGER NOT NULL,
+                furniture_id TEXT    NOT NULL,
+                yaw          REAL    NOT NULL,
+                placed_at    INTEGER NOT NULL,
+                PRIMARY KEY (world_uuid, x, y, z)
+            ) WITHOUT ROWID""";
+
+    /**
+     * Storage contents of furniture the integrity check took out, waiting for an admin to hand them
+     * back. Moved here from furniture_storage in the transaction that deletes the furniture's rows.
+     */
+    private static final String CREATE_RECOVERED_TABLE = """
+            CREATE TABLE IF NOT EXISTS recovered_storage (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                world_uuid   TEXT    NOT NULL,
+                x            INTEGER NOT NULL,
+                y            INTEGER NOT NULL,
+                z            INTEGER NOT NULL,
+                furniture_id TEXT    NOT NULL,
+                slots        INTEGER NOT NULL,
+                contents     BLOB    NOT NULL,
+                reason       TEXT    NOT NULL,
+                recovered_at INTEGER NOT NULL,
+                claimed_by   TEXT,
+                claimed_at   INTEGER NOT NULL DEFAULT 0
+            )""";
+
+    private static final String UPSERT_PIECE = "INSERT OR REPLACE INTO " + PIECE_TABLE
+            + " (world_uuid, x, y, z, furniture_id, yaw, placed_at) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    private static final String ADOPT_PIECE = "INSERT OR IGNORE INTO " + PIECE_TABLE
+            + " (world_uuid, x, y, z, furniture_id, yaw, placed_at) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    private static final String DELETE_PIECE = "DELETE FROM " + PIECE_TABLE
+            + " WHERE world_uuid = ? AND x = ? AND y = ? AND z = ?";
+    private static final String SELECT_PIECES = "SELECT x, y, z, furniture_id, yaw FROM " + PIECE_TABLE
+            + " WHERE world_uuid = ?";
+    private static final String RECOVER_STORAGE = "INSERT INTO " + RECOVERED_TABLE
+            + " (world_uuid, x, y, z, furniture_id, slots, contents, reason, recovered_at)"
+            + " SELECT world_uuid, x, y, z, furniture_id, slots, contents, ?, ? FROM furniture_storage"
+            + " WHERE world_uuid = ? AND x = ? AND y = ? AND z = ?";
+    private static final String SELECT_RECOVERED = "SELECT id, world_uuid, x, y, z, furniture_id, slots, contents,"
+            + " reason, recovered_at, claimed_by, claimed_at FROM " + RECOVERED_TABLE;
+    private static final String CLAIM_RECOVERED = "UPDATE " + RECOVERED_TABLE
+            + " SET claimed_by = ?, claimed_at = ? WHERE id = ? AND claimed_by IS NULL";
 
     /**
      * Two chests of furniture joined into a double chest: the first half - vanilla's RIGHT, rows
@@ -317,7 +374,21 @@ public final class DatabaseManager {
      * stands on, so the file never holds half of it.
      */
     public CompletableFuture<Void> saveAll(List<PlacedContent> contents) {
+        return saveAll(contents, null);
+    }
+
+    /**
+     * As {@link #saveAll(List)}, with the piece they belong to - which way it faces - in the same
+     * transaction.
+     */
+    public CompletableFuture<Void> saveAll(List<PlacedContent> contents, @Nullable FurniturePiece piece) {
         return submit(connection -> inTransaction(connection, () -> {
+            if (piece != null) {
+                try (PreparedStatement statement = connection.prepareStatement(UPSERT_PIECE)) {
+                    bindPiece(statement, piece);
+                    statement.executeUpdate();
+                }
+            }
             try (PreparedStatement statement = connection.prepareStatement(UPSERT)) {
                 for (PlacedContent content : contents) {
                     statement.setString(1, content.world().toString());
@@ -354,6 +425,14 @@ public final class DatabaseManager {
                 for (int count : statement.executeBatch()) {
                     deleted += Math.max(0, count);
                 }
+            }
+            // The piece is kept by its anchor, which is one of the positions.
+            try (PreparedStatement statement = connection.prepareStatement(DELETE_PIECE)) {
+                for (int[] at : positions) {
+                    bindPosition(statement, world, at[0], at[1], at[2]);
+                    statement.addBatch();
+                }
+                statement.executeBatch();
             }
             return deleted;
         }), false);
@@ -922,13 +1001,8 @@ public final class DatabaseManager {
                     deleted = statement.executeUpdate() > 0;
                 }
                 if (deleted && stale.kind() == PlacedContent.Kind.FURNITURE) {
-                    try (PreparedStatement statement = connection.prepareStatement(DELETE_TRANSFORM)) {
-                        statement.setString(1, stale.world().toString());
-                        statement.setInt(2, stale.x());
-                        statement.setInt(3, stale.y());
-                        statement.setInt(4, stale.z());
-                        statement.executeUpdate();
-                    }
+                    forgetFurnitureAt(connection, stale.world(), stale.x(), stale.y(), stale.z(),
+                            "its block was replaced by something else", System.currentTimeMillis());
                 }
                 connection.commit();
                 return deleted;
@@ -953,6 +1027,216 @@ public final class DatabaseManager {
                 return statement.executeUpdate() > 0;
             }
         }, false);
+    }
+
+    /** What purging a whole piece did: rows deleted, and storage rows moved to recovered_storage. */
+    public record PieceRemoval(int rows, int recovered) {
+    }
+
+    /**
+     * Deletes the rows of a whole piece of furniture found broken - some of its blocks gone - in one
+     * transaction, each row only if it still says what {@code rows} says. For every position whose
+     * row went, or that had none left, what depends on it goes too: the piece's own transform, its
+     * facing, a chest pair it was half of; and what its storage held is moved to recovered_storage,
+     * never dropped or lost.
+     */
+    public CompletableFuture<PieceRemoval> purgePiece(UUID world, List<PlacedContent> rows, String reason) {
+        List<PlacedContent> copy = List.copyOf(rows);
+        return submit(connection -> inTransaction(connection, () -> {
+            long now = System.currentTimeMillis();
+            int deleted = 0;
+            int recovered = 0;
+            for (PlacedContent row : copy) {
+                boolean gone;
+                try (PreparedStatement statement = connection.prepareStatement(PURGE_ROW)) {
+                    bindPosition(statement, world, row.x(), row.y(), row.z());
+                    statement.setString(5, row.contentId());
+                    statement.setString(6, row.kind().name());
+                    gone = statement.executeUpdate() > 0;
+                }
+                if (gone) {
+                    deleted++;
+                } else if (rowAt(connection, world, row.x(), row.y(), row.z())) {
+                    // Written again since it was found: someone placed something there. Leave it.
+                    continue;
+                }
+                recovered += forgetFurnitureAt(connection, world, row.x(), row.y(), row.z(), reason, now);
+            }
+            return new PieceRemoval(deleted, recovered);
+        }), false);
+    }
+
+    /**
+     * Storage rows with no furniture row at their position any more - left by furniture purged
+     * before 2.0, which deleted the furniture's row but not what it held - moved to
+     * recovered_storage in one transaction.
+     *
+     * @return how many were moved
+     */
+    public CompletableFuture<Integer> recoverOrphanedStorage(String reason) {
+        return submit(connection -> inTransaction(connection, () -> {
+            String orphaned = " FROM furniture_storage s WHERE NOT EXISTS (SELECT 1 FROM custom_blocks_world c"
+                    + " WHERE c.world_uuid = s.world_uuid AND c.x = s.x AND c.y = s.y AND c.z = s.z"
+                    + " AND c.type = 'FURNITURE')";
+            int moved;
+            try (PreparedStatement statement = connection.prepareStatement("INSERT INTO " + RECOVERED_TABLE
+                    + " (world_uuid, x, y, z, furniture_id, slots, contents, reason, recovered_at)"
+                    + " SELECT s.world_uuid, s.x, s.y, s.z, s.furniture_id, s.slots, s.contents, ?, ?" + orphaned)) {
+                statement.setString(1, reason);
+                statement.setLong(2, System.currentTimeMillis());
+                moved = statement.executeUpdate();
+            }
+            if (moved > 0) {
+                try (Statement statement = connection.createStatement()) {
+                    statement.executeUpdate("DELETE FROM furniture_storage WHERE rowid IN (SELECT s.rowid" + orphaned + ")");
+                }
+            }
+            return moved;
+        }), false);
+    }
+
+    /** Every piece's facing in one world, by its anchor's packed position. */
+    public CompletableFuture<Map<Long, FurniturePiece>> loadPieces(UUID world) {
+        return submit(connection -> {
+            Map<Long, FurniturePiece> pieces = new LinkedHashMap<>();
+            try (PreparedStatement statement = connection.prepareStatement(SELECT_PIECES)) {
+                statement.setString(1, world.toString());
+                try (ResultSet result = statement.executeQuery()) {
+                    while (result.next()) {
+                        FurniturePiece piece = new FurniturePiece(world, result.getInt(1), result.getInt(2),
+                                result.getInt(3), result.getString(4), result.getFloat(5));
+                        pieces.put(piece.key(), piece);
+                    }
+                }
+            }
+            return pieces;
+        }, false);
+    }
+
+    /**
+     * Records the facing of pieces placed before schema 8, read off their displays - never over a
+     * record already there.
+     *
+     * @return how many were new
+     */
+    public CompletableFuture<Integer> adoptPieces(List<FurniturePiece> pieces) {
+        List<FurniturePiece> copy = List.copyOf(pieces);
+        return submit(connection -> inTransaction(connection, () -> {
+            int added = 0;
+            try (PreparedStatement statement = connection.prepareStatement(ADOPT_PIECE)) {
+                for (FurniturePiece piece : copy) {
+                    bindPiece(statement, piece);
+                    added += statement.executeUpdate();
+                }
+            }
+            return added;
+        }), false);
+    }
+
+    /** Recovered storage, newest first: those still waiting, or all of them. */
+    public CompletableFuture<List<RecoveredStorage>> recovered(boolean waitingOnly, int limit) {
+        return submit(connection -> {
+            List<RecoveredStorage> found = new ArrayList<>();
+            try (PreparedStatement statement = connection.prepareStatement(SELECT_RECOVERED
+                    + (waitingOnly ? " WHERE claimed_by IS NULL" : "") + " ORDER BY id DESC LIMIT ?")) {
+                statement.setInt(1, limit);
+                try (ResultSet result = statement.executeQuery()) {
+                    while (result.next()) {
+                        found.add(recoveredRow(result));
+                    }
+                }
+            }
+            return found;
+        }, false);
+    }
+
+    /**
+     * Claims what a recovered row holds for {@code claimer}, once: marked taken and read back in one
+     * transaction, so two admins claiming at once cannot both get the items.
+     *
+     * @return the contents, or empty if there is no such row or it was already taken
+     */
+    public CompletableFuture<Optional<RecoveredStorage>> claimRecovered(long id, String claimer) {
+        return submit(connection -> inTransaction(connection, () -> {
+            try (PreparedStatement claim = connection.prepareStatement(CLAIM_RECOVERED)) {
+                claim.setString(1, claimer);
+                claim.setLong(2, System.currentTimeMillis());
+                claim.setLong(3, id);
+                if (claim.executeUpdate() == 0) {
+                    return Optional.<RecoveredStorage>empty();
+                }
+            }
+            try (PreparedStatement select = connection.prepareStatement(SELECT_RECOVERED + " WHERE id = ?")) {
+                select.setLong(1, id);
+                try (ResultSet result = select.executeQuery()) {
+                    return result.next() ? Optional.of(recoveredRow(result)) : Optional.<RecoveredStorage>empty();
+                }
+            }
+        }), false);
+    }
+
+    private static RecoveredStorage recoveredRow(ResultSet result) throws SQLException {
+        return new RecoveredStorage(result.getLong(1), UUID.fromString(result.getString(2)), result.getInt(3),
+                result.getInt(4), result.getInt(5), result.getString(6), result.getInt(7), result.getBytes(8),
+                result.getString(9), result.getLong(10), result.getString(11), result.getLong(12));
+    }
+
+    /**
+     * What depends on a furniture position whose row is gone: its transform, its facing, a pair it
+     * was half of, and its storage - moved to recovered_storage. Inside the caller's transaction.
+     *
+     * @return storage rows moved (0 or 1)
+     */
+    private static int forgetFurnitureAt(Connection connection, UUID world, int x, int y, int z, String reason,
+                                         long now) throws SQLException {
+        for (String sql : List.of(DELETE_TRANSFORM, DELETE_PIECE)) {
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                bindPosition(statement, world, x, y, z);
+                statement.executeUpdate();
+            }
+        }
+        deletePairsAt(connection, world, x, y, z);
+        int moved;
+        try (PreparedStatement statement = connection.prepareStatement(RECOVER_STORAGE)) {
+            statement.setString(1, reason);
+            statement.setLong(2, now);
+            statement.setString(3, world.toString());
+            statement.setInt(4, x);
+            statement.setInt(5, y);
+            statement.setInt(6, z);
+            moved = statement.executeUpdate();
+        }
+        if (moved > 0) {
+            try (PreparedStatement statement = connection.prepareStatement(DELETE_STORAGE)) {
+                bindPosition(statement, world, x, y, z);
+                statement.executeUpdate();
+            }
+        }
+        return moved;
+    }
+
+    private static boolean rowAt(Connection connection, UUID world, int x, int y, int z) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT 1 FROM " + TABLE
+                + " WHERE world_uuid = ? AND x = ? AND y = ? AND z = ?")) {
+            bindPosition(statement, world, x, y, z);
+            try (ResultSet result = statement.executeQuery()) {
+                return result.next();
+            }
+        }
+    }
+
+    private static void bindPosition(PreparedStatement statement, UUID world, int x, int y, int z) throws SQLException {
+        statement.setString(1, world.toString());
+        statement.setInt(2, x);
+        statement.setInt(3, y);
+        statement.setInt(4, z);
+    }
+
+    private static void bindPiece(PreparedStatement statement, FurniturePiece piece) throws SQLException {
+        bindPosition(statement, piece.world(), piece.x(), piece.y(), piece.z());
+        statement.setString(5, piece.furnitureId());
+        statement.setFloat(6, piece.yaw());
+        statement.setLong(7, System.currentTimeMillis());
     }
 
     /**
@@ -1028,31 +1312,48 @@ public final class DatabaseManager {
             // a power cut can lose the last commits, never corrupt the file.
             statement.execute("PRAGMA journal_mode=WAL");
             statement.execute("PRAGMA synchronous=NORMAL");
-            statement.execute(CREATE_TABLE);
-            statement.execute(CREATE_CROP_TABLE);
-            statement.execute(CREATE_STORAGE_TABLE);
-            statement.execute(CREATE_UNLOCK_TABLE);
-            statement.execute(CREATE_LIQUID_TABLE);
-            statement.execute(CREATE_HUD_TABLE);
-            statement.execute(CREATE_TRANSFORM_TABLE);
-            statement.execute(CREATE_PAIR_TABLE);
-            statement.execute(CREATE_NOTICE_TABLE);
-            statement.execute(CREATE_PROGRESS_TABLE);
-            int version;
-            try (ResultSet result = statement.executeQuery("PRAGMA user_version")) {
-                version = result.next() ? result.getInt(1) : 0;
-            }
-            if (version < SCHEMA_VERSION) {
-                statement.execute("PRAGMA user_version=" + SCHEMA_VERSION);
-            } else if (version > SCHEMA_VERSION) {
+            int version = migrate(opened);
+            if (version > SCHEMA_VERSION) {
                 logger.warning(file.getFileName() + " was written by a newer version of the plugin (schema "
                         + version + "); tables it does not know are left alone.");
+            } else if (version < SCHEMA_VERSION && version > 0) {
+                logger.info(file.getFileName() + ": schema " + version + " -> " + SCHEMA_VERSION
+                        + " (tables added in one transaction; nothing existing was changed).");
             }
         } catch (SQLException exception) {
             opened.close();
             throw exception;
         }
         this.connection = opened;
+    }
+
+    /**
+     * Brings a file to this schema in one transaction: every table it lacks and the new version
+     * number are written together, or - on any failure, a crash included - none of them, and the
+     * file stays as the older plugin left it. SQLite keeps both the tables and user_version inside
+     * the transaction.
+     *
+     * @return the version the file had before
+     */
+    static int migrate(Connection connection) throws SQLException {
+        return inTransaction(connection, () -> {
+            int version;
+            try (Statement statement = connection.createStatement()) {
+                try (ResultSet result = statement.executeQuery("PRAGMA user_version")) {
+                    version = result.next() ? result.getInt(1) : 0;
+                }
+                for (String create : List.of(CREATE_TABLE, CREATE_CROP_TABLE, CREATE_STORAGE_TABLE,
+                        CREATE_UNLOCK_TABLE, CREATE_LIQUID_TABLE, CREATE_HUD_TABLE, CREATE_TRANSFORM_TABLE,
+                        CREATE_PAIR_TABLE, CREATE_NOTICE_TABLE, CREATE_PROGRESS_TABLE, CREATE_PIECE_TABLE,
+                        CREATE_RECOVERED_TABLE)) {
+                    statement.execute(create);
+                }
+                if (version < SCHEMA_VERSION) {
+                    statement.execute("PRAGMA user_version=" + SCHEMA_VERSION);
+                }
+            }
+            return version;
+        });
     }
 
     private void closeConnection() {

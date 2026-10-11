@@ -88,6 +88,9 @@ public final class HookManager {
     private final Map<String, JobsHook> jobHooks = new HashMap<>();
     /** Plugins that know players' skill and job levels, by hook name: the quest boards' requirements. */
     private final Map<String, LevelSource> levelSources = new java.util.LinkedHashMap<>();
+    /** AuraSkills' mana, when it is installed. */
+    private volatile java.util.function.Function<Player, double[]> mana = player -> null;
+    private final java.util.concurrent.atomic.AtomicBoolean manaFailed = new java.util.concurrent.atomic.AtomicBoolean();
     private final List<AutoCloseable> closing = new ArrayList<>();
     private ModelEngineBridge modelEngine;
     private Shop shop;
@@ -202,6 +205,7 @@ public final class HookManager {
             contentHooks.add(auraSkills);
             skillHooks.put("AuraSkills", auraSkills);
             levelSources.put("AuraSkills", auraSkills);
+            mana = auraSkills::mana;
         }
         skill("mcMMO", "com.gmail.nossr50.api.ExperienceAPI", McMMOHook::new);
         // SkillAPI and its fork ProSkillAPI share one API; Fabled is the renamed successor.
@@ -271,6 +275,13 @@ public final class HookManager {
         // same place, so an id means the same thing in all of them.
         ContentAccess content = new ContentAccess(plugin.items(), plugin.itemFactory(), plugin.blocks(),
                 plugin::customBlocks);
+        // 2.0: a hook that changes blocks (WorldEdit) tells the integrity check, made after the hooks.
+        content.onSupportTouched((world, x, z) -> {
+            var sanity = plugin.sanity();
+            if (sanity != null) {
+                sanity.touched(world, x, z);
+            }
+        });
         // eco: EcoItems, EcoArmor, EcoEnchants, EcoMobs, Reforges, StatTrackers, Talismans and the rest.
         create("eco", "com.willfp.eco.core.items.provider.ItemProvider", () -> EcoHook.register(content));
         // nightcore: ExcellentCrates, ExcellentShop, ExcellentEnchants and the rest.
@@ -309,6 +320,21 @@ public final class HookManager {
             if (hook instanceof LevelSource source) {
                 levelSources.put(name, source);
             }
+        }
+    }
+
+    /**
+     * 2.0: a player's AuraSkills mana and their most, for HUD bars; null without AuraSkills, or
+     * before it has loaded them. A broken call is told once and answered with null. Main thread.
+     */
+    public @Nullable double[] auraSkillsMana(Player player) {
+        try {
+            return mana.apply(player);
+        } catch (RuntimeException | LinkageError error) {
+            if (manaFailed.compareAndSet(false, true)) {
+                logger.warning("AuraSkills could not say a player's mana (" + error + "); HUD bars of it show 0.");
+            }
+            return null;
         }
     }
 

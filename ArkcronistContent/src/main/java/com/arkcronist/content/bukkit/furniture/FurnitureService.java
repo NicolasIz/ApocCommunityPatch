@@ -17,6 +17,7 @@ import com.arkcronist.content.core.storage.BlockKey;
 import com.arkcronist.content.core.storage.ChestPair;
 import com.arkcronist.content.core.storage.ChestPairStore;
 import com.arkcronist.content.core.storage.FurnitureTransform;
+import com.arkcronist.content.core.storage.FurniturePiece;
 import com.arkcronist.content.core.storage.FurnitureTransformStore;
 import com.arkcronist.content.core.storage.PlacedContent;
 import com.arkcronist.content.core.storage.PlacedContentStore;
@@ -232,9 +233,6 @@ public final class FurnitureService {
      * where it faces unless it stands on a chest or a bed, which decide that themselves.
      */
     public boolean place(Block block, float facing, CustomItem item, Placement.Furniture furniture) {
-        List<Block> parts = List.of(block);
-        Location at = centre(block);
-        float yaw = facing;
         switch (furniture.support()) {
             case LIGHT -> {
                 if (block.getBlockData() instanceof Light light) {
@@ -243,29 +241,19 @@ public final class FurnitureService {
                     block.setBlockData(light, false);
                 }
             }
-            case CHEST -> {
-                keepSingle(block, true);
-                if (block.getBlockData() instanceof Chest chest) {
-                    yaw = yaw(chest.getFacing());
-                }
-            }
-            case BED -> {
-                BedLayout layout = bed(block);
-                if (layout == null) {
-                    return false;
-                }
-                Block foot = block.getWorld().getBlockAt(layout.footX(), layout.footY(), layout.footZ());
-                Block head = block.getWorld().getBlockAt(layout.headX(), layout.headY(), layout.headZ());
-                parts = List.of(foot, head);
-                at = new Location(block.getWorld(), layout.displayX(), layout.displayY() + 0.5, layout.displayZ());
-                yaw = layout.yaw();
-            }
+            case CHEST -> keepSingle(block, true);
             default -> {
             }
         }
+        Layout layout = layout(block, facing, furniture);
+        if (layout == null) {
+            return false;
+        }
+        List<Block> parts = layout.parts();
+        Location at = layout.at();
+        float yaw = layout.yaw();
         if (!furniture.footprint().single()) {
             // The rest of a wide or tall piece: a support of the same kind on every block it covers.
-            parts = footprint(block, furniture, yaw);
             for (Block part : parts.subList(1, parts.size())) {
                 part.setType(block.getType(), false);
                 if (part.getBlockData() instanceof Light light) {
@@ -273,15 +261,7 @@ public final class FurnitureService {
                     part.setBlockData(light, false);
                 }
             }
-            double[] shift = furniture.footprint().centreShift(yaw);
-            at.add(shift[0], 0, shift[1]);
         }
-        if (furniture.animated() != null) {
-            // A Blockbench model's origin is the bottom of its block, not the centre.
-            at.subtract(0, 0.5, 0);
-        }
-        at.setYaw(yaw);
-        at.setPitch(0f);
 
         Block anchor = parts.get(0);
         ItemDisplay root = spawn(at, item, furniture, anchor, parts, false);
@@ -291,8 +271,10 @@ public final class FurnitureService {
             rows.add(new PlacedContent(part.getWorld().getUID(), part.getX(), part.getY(), part.getZ(),
                     item.id(), PlacedContent.Kind.FURNITURE));
         }
-        // Every block of the piece in one database task and one transaction: none of it, or all.
-        store.addAll(rows);
+        // Every block of the piece in one database task and one transaction: none of it, or all -
+        // and which way it faces, so it can be drawn again if its display is ever killed.
+        store.addAll(rows, new FurniturePiece(anchor.getWorld().getUID(), anchor.getX(), anchor.getY(), anchor.getZ(),
+                item.id(), yaw));
         if (furniture.animated() == null) {
             attachModelEngine(root, furniture);
         }
@@ -307,6 +289,54 @@ public final class FurnitureService {
     /** As {@link #placementYaw(Player, Placement.Furniture)}, for a player who looks along {@code playerYaw}. */
     public static float placementYaw(float playerYaw, Placement.Furniture furniture) {
         return furniture.facePlayer() ? facing(playerYaw) : 0f;
+    }
+
+    /** Where a piece stands and is drawn: the blocks it covers (anchor first), its display's place, its yaw. */
+    private record Layout(List<Block> parts, Location at, float yaw) {
+    }
+
+    /**
+     * Where a piece on {@code block}, turned to {@code facing}, stands and is drawn - placing it, or
+     * drawing it again. A chest or a bed turns it its own way. Changes nothing.
+     *
+     * @return null for a bed that has lost its other half
+     */
+    private @Nullable Layout layout(Block block, float facing, Placement.Furniture furniture) {
+        List<Block> parts = List.of(block);
+        Location at = centre(block);
+        float yaw = facing;
+        switch (furniture.support()) {
+            case CHEST -> {
+                if (block.getBlockData() instanceof Chest chest) {
+                    yaw = yaw(chest.getFacing());
+                }
+            }
+            case BED -> {
+                BedLayout layout = bed(block);
+                if (layout == null) {
+                    return null;
+                }
+                Block foot = block.getWorld().getBlockAt(layout.footX(), layout.footY(), layout.footZ());
+                Block head = block.getWorld().getBlockAt(layout.headX(), layout.headY(), layout.headZ());
+                parts = List.of(foot, head);
+                at = new Location(block.getWorld(), layout.displayX(), layout.displayY() + 0.5, layout.displayZ());
+                yaw = layout.yaw();
+            }
+            default -> {
+            }
+        }
+        if (!furniture.footprint().single()) {
+            parts = footprint(block, furniture, yaw);
+            double[] shift = furniture.footprint().centreShift(yaw);
+            at.add(shift[0], 0, shift[1]);
+        }
+        if (furniture.animated() != null) {
+            // A Blockbench model's origin is the bottom of its block, not the centre.
+            at.subtract(0, 0.5, 0);
+        }
+        at.setYaw(yaw);
+        at.setPitch(0f);
+        return new Layout(parts, at, yaw);
     }
 
     /**
@@ -953,6 +983,94 @@ public final class FurnitureService {
      */
     public void forgetStale(Block block) {
         unlink(block);
+    }
+
+    // ---------------------------------------------------------------- integrity (2.0)
+
+    /** The root display of the piece standing on {@code part}, if it is loaded; null otherwise. */
+    public @Nullable ItemDisplay pieceRoot(Block part) {
+        Entity root = root(part);
+        if (root == null || !root.isValid()) {
+            root = findRoot(part);
+        }
+        return root instanceof ItemDisplay display && display.isValid() && isPieceRoot(display) ? display : null;
+    }
+
+    /** Every block the piece of this root stands on, its anchor first. */
+    public List<Block> pieceParts(Entity root) {
+        Block anchor = anchor(root);
+        List<Block> parts = new ArrayList<>(parts(anchor, root));
+        parts.remove(anchor);
+        parts.add(0, anchor);
+        return parts;
+    }
+
+    /**
+     * The blocks a piece anchored on {@code anchor} and turned to {@code yaw} stands on, as its
+     * definition has them now: for a piece whose display is gone, from what was recorded of it.
+     */
+    public List<Block> layoutParts(Block anchor, Placement.Furniture furniture, float yaw) {
+        Layout layout = layout(anchor, yaw, furniture);
+        return layout == null ? List.of(anchor) : layout.parts();
+    }
+
+    /**
+     * Draws again a piece whose display is gone - killed, or rolled back, while every block it
+     * stands on stayed - turned as it was placed, on the supports already there. Its own transform,
+     * if the editor gave it one, is applied as it would be on loading.
+     *
+     * @return the new root; null if it cannot stand there now (a bed without its other half)
+     */
+    public @Nullable ItemDisplay redrawGhost(Block anchor, CustomItem item, Placement.Furniture furniture, float yaw) {
+        Layout layout = layout(anchor, yaw, furniture);
+        if (layout == null) {
+            return null;
+        }
+        ItemDisplay root = spawn(layout.at(), item, furniture, layout.parts().get(0), layout.parts(), false);
+        for (Block part : layout.parts()) {
+            link(part, root.getUniqueId());
+        }
+        if (furniture.animated() == null) {
+            attachModelEngine(root, furniture);
+        }
+        Block first = layout.parts().get(0);
+        redraw(first.getWorld(), first.getX(), first.getY(), first.getZ());
+        return root;
+    }
+
+    /**
+     * Takes out what is left of a piece the integrity check found broken - some of its blocks gone -
+     * or that cannot be drawn again: its displays, if loaded, their links, the invisible supports it
+     * placed that still stand (barriers and light blocks; a chest or a bed is the world's own and
+     * stays), and the transform kept for it in memory. Its rows are the caller's to purge, all in one
+     * transaction. Main thread; never drops anything.
+     */
+    public void dismantle(@Nullable Entity root, List<Block> parts) {
+        if (root != null) {
+            animations.stop(root.getUniqueId());
+            bones(root).forEach(Entity::remove);
+            ModelEngineBridge modelEngine = hooks.modelEngine();
+            if (modelEngine != null) {
+                try {
+                    modelEngine.detach(root);
+                } catch (RuntimeException | LinkageError error) {
+                    plugin.getLogger().log(Level.FINE, "ModelEngine could not detach a furniture model", error);
+                }
+            }
+            root.remove();
+        }
+        for (Block part : parts) {
+            unlink(part);
+            if (transforms != null) {
+                transforms.forget(part.getWorld().getUID(), part.getX(), part.getY(), part.getZ());
+            }
+            if (pairs != null) {
+                pairs.forget(part.getWorld().getUID(), part.getX(), part.getY(), part.getZ());
+            }
+            if (part.getType() == Material.BARRIER || part.getType() == Material.LIGHT) {
+                part.setType(Material.AIR, false);
+            }
+        }
     }
 
     /** Removes a left-over display, and the bones of one that is a root. */

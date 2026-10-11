@@ -28,6 +28,26 @@ public final class LiquidModels {
     /** The variable a liquid's texture is given as in its model. */
     public static final String TEXTURE_VARIABLE = "liquid";
 
+    /**
+     * The parent a liquid drawn from its texture sits under: one of the two plain ones, or - for a
+     * liquid that glows - one of the same shape whose faces carry {@code light_emission}.
+     */
+    public static ResourceLocation parentFor(boolean source, int glow) {
+        ResourceLocation plain = source ? SOURCE_PARENT : FLOWING_PARENT;
+        return glow <= 0 ? plain : new ResourceLocation(NAMESPACE, plain.path() + "_glow_" + Math.min(15, glow));
+    }
+
+    /** The height of the box a parent draws, from its name. */
+    public static int heightOf(ResourceLocation parent) {
+        return parent.path().startsWith(SOURCE_PARENT.path()) ? SOURCE_HEIGHT : FLOWING_HEIGHT;
+    }
+
+    /** The light a parent's faces are drawn with, from its name; 0 for a plain one. */
+    public static int glowOf(ResourceLocation parent) {
+        int at = parent.path().lastIndexOf("_glow_");
+        return at < 0 ? 0 : Integer.parseInt(parent.path().substring(at + "_glow_".length()));
+    }
+
     /** A source's surface sits two pixels under the top of the block, like water's; flowing liquid lower. */
     public static final int SOURCE_HEIGHT = 14;
     public static final int FLOWING_HEIGHT = 10;
@@ -40,6 +60,14 @@ public final class LiquidModels {
      * and each face but the top left out against a full block beside it.
      */
     public static JsonObject parent(int height) {
+        return parent(height, 0);
+    }
+
+    /**
+     * As {@link #parent(int)}, its faces drawn at least at light level {@code glow} - the 1.21.4+
+     * per-element {@code light_emission} vanilla's own open eyeblossom uses; 0 leaves it out.
+     */
+    public static JsonObject parent(int height, int glow) {
         JsonObject faces = new JsonObject();
         for (String face : new String[]{"down", "north", "south", "east", "west"}) {
             JsonObject entry = new JsonObject();
@@ -60,6 +88,9 @@ public final class LiquidModels {
         element.add("from", array(0, 0, 0));
         element.add("to", array(16, height, 16));
         element.addProperty("shade", false);
+        if (glow > 0) {
+            element.addProperty("light_emission", Math.min(15, glow));
+        }
         element.add("faces", faces);
         JsonArray elements = new JsonArray();
         elements.add(element);

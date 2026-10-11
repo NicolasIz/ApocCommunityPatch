@@ -1,5 +1,7 @@
 package com.arkcronist.content.core.storage;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -48,17 +50,40 @@ public final class PlacedContentStore {
      * transaction on the database's thread - all of the rows written, or none.
      */
     public void addAll(List<PlacedContent> contents) {
-        if (contents.size() == 1) {
-            add(contents.get(0));
+        addAll(contents, null);
+    }
+
+    /**
+     * As {@link #addAll(List)}, with the piece the rows belong to - which way it faces - written in
+     * the same transaction.
+     */
+    public void addAll(List<PlacedContent> contents, @Nullable FurniturePiece piece) {
+        if (contents.isEmpty()) {
             return;
         }
-        if (contents.isEmpty()) {
+        if (contents.size() == 1 && piece == null) {
+            add(contents.get(0));
             return;
         }
         contents.forEach(index::put);
         PlacedContent first = contents.get(0);
-        database.saveAll(List.copyOf(contents)).exceptionally(error -> failed("save " + contents.size()
+        database.saveAll(List.copyOf(contents), piece).exceptionally(error -> failed("save " + contents.size()
                 + " blocks of", first.world(), first.x(), first.y(), first.z(), error));
+    }
+
+    /**
+     * Takes out every row of a piece found broken: from memory each only if it still says what it
+     * said, and from disk in one transaction with everything that depends on them - storage moved
+     * to recovered_storage. See {@link DatabaseManager#purgePiece}.
+     */
+    public CompletableFuture<DatabaseManager.PieceRemoval> purgePiece(UUID world, List<PlacedContent> rows,
+                                                                      String reason) {
+        List<PlacedContent> still = rows.stream().filter(index::removeExact).toList();
+        if (still.isEmpty() && rows.stream().anyMatch(row -> index.get(world, row.x(), row.y(), row.z()) != null)) {
+            // Every row was written again since: nothing to purge.
+            return CompletableFuture.completedFuture(new DatabaseManager.PieceRemoval(0, 0));
+        }
+        return database.purgePiece(world, rows, reason);
     }
 
     /**

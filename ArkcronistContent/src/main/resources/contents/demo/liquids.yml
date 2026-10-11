@@ -21,11 +21,15 @@
 #    flow-distance    1-8: how far it spreads sideways
 #    tick-rate        ticks between one step and the next (water 5, lava 30)
 #    max-fall         blocks it falls at most
+#    glow             (2.0) 0-15: drawn this bright however dark it is around
+#                     it, through the model's light_emission - it lights
+#                     nothing else
 #    contact          what it does to a player in it, every interval-ticks:
 #      element        fire, frost, poison, wither or acid - a starting point;
 #                     any key below changes that part of it
 #      damage, damage-type, fire-ticks, freeze-ticks
 #      effects        a list of {type, duration, amplifier}
+#      mobs           (2.0) true: mobs in it get the same; players always do
 #
 #  Sixteen liquids fit: each is drawn by two of the tripwire states vanilla
 #  never uses.
@@ -44,10 +48,12 @@ items:
       texture: block/acid
       flow-distance: 4
       tick-rate: 8
+      glow: 10
       contact:
         element: acid
         damage: 1.5
         interval-ticks: 20
+        mobs: true
         effects:
           - { type: poison, duration: 60, amplifier: 0 }
 

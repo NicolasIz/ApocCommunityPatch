@@ -76,6 +76,79 @@ class PackCompilerGameplayTest {
         assertFalse(Files.exists(pack.resolve("assets/minecraft/models/item/water_bucket.json")));
     }
 
+    /** 2.0: a liquid that glows sits under parents of its own whose faces carry light_emission. */
+    @Test
+    void aGlowingLiquidGetsParentsWithLightEmission() throws IOException {
+        Path demo = temp.resolve("contents/demo");
+        PackCompilerTest.write(demo, "textures/block/acid.png", PackCompilerTest.png("acid"));
+        ResourceLocation sourceParent = LiquidModels.parentFor(true, 12);
+        ResourceLocation flowingParent = LiquidModels.parentFor(false, 12);
+        assertEquals("arkcontent:block/liquid_source_glow_12", sourceParent.toString());
+        assertEquals(LiquidModels.SOURCE_PARENT, LiquidModels.parentFor(true, 0));
+        ModelSource source = new ModelSource.Generated(demo, loc("demo:block/acid_source"), sourceParent,
+                Map.of(LiquidModels.TEXTURE_VARIABLE, loc("demo:block/acid"), "particle", loc("demo:block/acid")));
+        ModelSource flowing = new ModelSource.Generated(demo, loc("demo:block/acid_flowing"), flowingParent,
+                Map.of(LiquidModels.TEXTURE_VARIABLE, loc("demo:block/acid"), "particle", loc("demo:block/acid")));
+        ItemDefinition acid = new ItemDefinition("demo", "acid", "PAPER", null, List.of(),
+                new ModelSource.Provided(demo, loc("minecraft:item/water_bucket")), new ItemBehaviour(true, false),
+                new Placement.Liquid(4, 8, 32, source, flowing, Placement.Contact.HARMLESS, 12), demo.resolve("l.yml"));
+        Path pack = temp.resolve("pack");
+
+        PackCompiler.Result result = new PackCompiler(PackCompilerTest.SETTINGS).compile(pack, new PackCompiler.Input(
+                List.of(acid), Map.of(), Map.of(), List.of(), Map.of(), Map.of("demo:acid", 0), List.of(), false,
+                List.of()));
+
+        assertEquals(List.of(), result.problems());
+        JsonObject glowing = json(pack.resolve("assets/arkcontent/models/block/liquid_source_glow_12.json"));
+        JsonObject element = glowing.getAsJsonArray("elements").get(0).getAsJsonObject();
+        assertEquals(12, element.get("light_emission").getAsInt());
+        assertEquals(LiquidModels.SOURCE_HEIGHT, element.getAsJsonArray("to").get(1).getAsInt());
+        JsonObject flowingGlow = json(pack.resolve("assets/arkcontent/models/block/liquid_flowing_glow_12.json"));
+        assertEquals(LiquidModels.FLOWING_HEIGHT, flowingGlow.getAsJsonArray("elements").get(0).getAsJsonObject()
+                .getAsJsonArray("to").get(1).getAsInt());
+        assertFalse(json(pack.resolve("assets/arkcontent/models/block/liquid_source.json")).getAsJsonArray("elements")
+                .get(0).getAsJsonObject().has("light_emission"), "the plain parent stays plain");
+        assertEquals("arkcontent:block/liquid_source_glow_12",
+                json(pack.resolve("assets/demo/models/block/acid_source.json")).get("parent").getAsString());
+    }
+
+    /**
+     * 2.0: a content pack's shaders go where the client reads them - core over vanilla's, includes in
+     * the pack's own namespace - and are checked against 1.21.8 once the pack is built.
+     */
+    @Test
+    void aContentPacksShadersArePackedAndChecked() throws IOException {
+        Path contents = temp.resolve("contents");
+        Path demo = contents.resolve("demo");
+        String terrain;
+        try (java.io.InputStream in = getClass().getResourceAsStream("/shaders/terrain-like.vsh")) {
+            terrain = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        }
+        PackCompilerTest.write(demo, "shaders/core/terrain.vsh",
+                terrain.replace("#moj_import <minecraft:fog.glsl>", "#moj_import <minecraft:fog.glsl>\n#moj_import <demo:tint.glsl>"));
+        PackCompilerTest.write(demo, "shaders/include/tint.glsl", "#version 150\nvec4 tint(vec4 c) { return c; }\n");
+        PackCompilerTest.write(demo, "shaders/core/rendertype_translucent.vsh", "#version 150\nuniform mat4 ModelViewMat;\nvoid main() {}\n");
+        PackCompilerTest.write(demo, "shaders/readme.txt", "notes");
+        Path pack = temp.resolve("pack");
+
+        PackCompiler.Result result = new PackCompiler(PackCompilerTest.SETTINGS, true, ShaderCheck.Mode.DROP_BROKEN)
+                .compile(pack, new PackCompiler.Input(List.of(), Map.of(), Map.of(), List.of(), Map.of(), Map.of(),
+                        List.of(), false, List.of(), contents));
+
+        assertTrue(Files.exists(pack.resolve("assets/minecraft/shaders/core/terrain.vsh")));
+        assertTrue(Files.exists(pack.resolve("assets/demo/shaders/include/tint.glsl")));
+        assertFalse(Files.exists(pack.resolve("assets/minecraft/shaders/core/rendertype_translucent.vsh")),
+                "broken, and left out with drop-broken");
+        assertFalse(Files.exists(pack.resolve("assets/minecraft/shaders/readme.txt")));
+        List<String> problems = result.problems();
+        assertTrue(problems.stream().anyMatch(p -> p.contains("readme.txt is not a shader")), problems.toString());
+        assertTrue(problems.stream().anyMatch(p -> p.contains("rendertype_translucent.vsh (demo shaders), unused on 1.21.8")),
+                problems.toString());
+        assertTrue(problems.stream().anyMatch(p -> p.contains("rendertype_translucent.vsh (demo shaders), broken on 1.21.8")),
+                problems.toString());
+        assertTrue(problems.stream().noneMatch(p -> p.contains("core/terrain.vsh")), "the good one passes: " + problems);
+    }
+
     @Test
     void thePluginsOwnIconsAreFlatItemModels() throws IOException {
         Path png = temp.resolve("close.png");

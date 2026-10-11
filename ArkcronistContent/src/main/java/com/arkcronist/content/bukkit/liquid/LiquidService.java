@@ -558,11 +558,12 @@ public final class LiquidService {
 
     // ------------------------------------------------------------------ contact
 
-    /** Every player standing or swimming in a liquid that does something gets what it does. */
+    /** Every player standing or swimming in a liquid that does something gets what it does - and mobs, where it says so. */
     private void contact() {
         if (registry.isEmpty()) {
             return;
         }
+        contactMobs();
         for (Player player : plugin.getServer().getOnlinePlayers()) {
             if (player.getGameMode() == GameMode.SPECTATOR || player.isDead()) {
                 continue;
@@ -595,7 +596,79 @@ public final class LiquidService {
         lastTouch.remove(player.getUniqueId());
     }
 
-    private void touch(Player player, Block in, Placement.Contact contact) {
+    /**
+     * 2.0: mobs in a liquid whose {@code contact.mobs} is on. Only the chunks that hold such a liquid
+     * are looked at, and only while they and their entities are loaded; each mob keeps the liquid's
+     * pace, like a player.
+     */
+    private void contactMobs() {
+        if (registry.all().stream().noneMatch(liquid -> liquid.definition().contact().mobs())) {
+            return;
+        }
+        for (World world : plugin.getServer().getWorlds()) {
+            UUID id = world.getUID();
+            Set<Long> chunks = new HashSet<>();
+            collectMobChunks(sources.get(id), chunks, entry -> entry.liquid());
+            collectMobChunks(flows.get(id), chunks, liquid -> liquid);
+            for (long chunkKey : chunks) {
+                int cx = (int) chunkKey;
+                int cz = (int) (chunkKey >> 32);
+                if (!world.isChunkLoaded(cx, cz)) {
+                    continue;
+                }
+                org.bukkit.Chunk chunk = world.getChunkAt(cx, cz);
+                if (!chunk.isEntitiesLoaded()) {
+                    continue;
+                }
+                for (org.bukkit.entity.Entity entity : chunk.getEntities()) {
+                    if (entity instanceof org.bukkit.entity.LivingEntity living && !(entity instanceof Player)
+                            && !living.isDead() && !living.isInvulnerable()) {
+                        touchMob(living);
+                    }
+                }
+            }
+        }
+        lastTouch.keySet().removeIf(entity -> plugin.getServer().getEntity(entity) == null);
+    }
+
+    private <V> void collectMobChunks(@Nullable Map<Long, V> blocks, Set<Long> chunks,
+                                      java.util.function.Function<V, String> liquidOf) {
+        if (blocks == null) {
+            return;
+        }
+        for (Map.Entry<Long, V> entry : blocks.entrySet()) {
+            Optional<LiquidRegistry.Liquid> liquid = registry.get(liquidOf.apply(entry.getValue()));
+            if (liquid.isPresent() && liquid.get().definition().contact().mobs()) {
+                long key = entry.getKey();
+                chunks.add(((long) (BlockKey.z(key) >> 4) << 32) | ((BlockKey.x(key) >> 4) & 0xFFFFFFFFL));
+            }
+        }
+    }
+
+    private void touchMob(org.bukkit.entity.LivingEntity mob) {
+        Block in = mob.getLocation().getBlock();
+        LiquidRegistry.State state = registry.state(in.getBlockData());
+        if (state == null) {
+            in = mob.getEyeLocation().getBlock();
+            state = registry.state(in.getBlockData());
+        }
+        if (state == null || !state.liquid().definition().contact().mobs()) {
+            return;
+        }
+        Placement.Contact contact = state.liquid().definition().contact();
+        Long last = lastTouch.get(mob.getUniqueId());
+        if (contact.harmless() || last != null && tick - last < contact.intervalTicks()) {
+            return;
+        }
+        Location source = nearestSource(in, state.liquid());
+        if (source == null || !protection.allowsLiquidContactAt(in, source)) {
+            return;
+        }
+        lastTouch.put(mob.getUniqueId(), tick);
+        touch(mob, in, contact);
+    }
+
+    private void touch(org.bukkit.entity.LivingEntity player, Block in, Placement.Contact contact) {
         if (contact.damage() > 0) {
             DamageType type = damageType(contact.damageType());
             player.damage(contact.damage(), DamageSource.builder(type).withDamageLocation(in.getLocation()).build());

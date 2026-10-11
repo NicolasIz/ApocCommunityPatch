@@ -88,6 +88,69 @@ public final class HudRenderer {
         return text.toString();
     }
 
+    /** One icon of a bar as drawn: its character and how far it moves the pen. */
+    public record Icon(char character, int advance) {
+    }
+
+    /**
+     * 2.0: the icons a bar draws for {@code value}, in the order they stand on the screen from left
+     * to right. Filling from the right, as the food bar does, the full ones come last.
+     */
+    public static java.util.List<Icon> icons(Glyphs glyphs, int segments, double value, double max, boolean fromRight) {
+        int halves = halves(value, max, segments);
+        if (!glyphs.hasHalf()) {
+            halves = halves / 2 * 2;
+        }
+        java.util.List<Icon> icons = new java.util.ArrayList<>(segments);
+        for (int segment = 0; segment < segments; segment++) {
+            int filled = Math.min(2, Math.max(0, halves - segment * 2));
+            if (filled == 2) {
+                icons.add(new Icon(glyphs.full(), glyphs.fullAdvance()));
+            } else if (filled == 1) {
+                icons.add(new Icon(glyphs.half(), glyphs.halfAdvance()));
+            } else if (glyphs.hasEmpty()) {
+                icons.add(new Icon(glyphs.empty(), glyphs.emptyAdvance()));
+            }
+        }
+        if (fromRight) {
+            java.util.Collections.reverse(icons);
+        }
+        return icons;
+    }
+
+    /**
+     * How wide a run of icons is drawn: from the first one's left edge to the last one's right edge,
+     * the font's one-pixel gap after it left out.
+     */
+    public static int width(java.util.List<Icon> icons, int spacing) {
+        if (icons.isEmpty()) {
+            return 0;
+        }
+        int width = spacing * (icons.size() - 1) - 1;
+        for (Icon icon : icons) {
+            width += icon.advance();
+        }
+        return width;
+    }
+
+    /** The text of a run of icons drawn from {@code offset}, ending where it started. */
+    public static String place(java.util.List<Icon> icons, int spacing, int offset) {
+        StringBuilder text = new StringBuilder(Spaces.of(offset));
+        int moved = 0;
+        boolean first = true;
+        for (Icon icon : icons) {
+            if (!first && spacing != 0) {
+                text.append(Spaces.of(spacing));
+                moved += spacing;
+            }
+            text.append(icon.character());
+            moved += icon.advance();
+            first = false;
+        }
+        text.append(Spaces.of(-(offset + moved)));
+        return text.toString();
+    }
+
     /**
      * How far a rendered bar moves the text on, all of it counted: 0 for every bar this class
      * renders. For checks and tests.

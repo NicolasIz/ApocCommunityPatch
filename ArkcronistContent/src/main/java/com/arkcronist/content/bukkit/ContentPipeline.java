@@ -199,7 +199,12 @@ public final class ContentPipeline {
                     .flatMap(Function.identity()).toList(),
             // 1.9.6 gave each prop a texture of its own: to a pack 1.9.5 already set up, these are new.
             "1.9.6", Stream.concat(Stream.of("contents/medieval_props/textures/furniture/guillotina_plaza.png"),
-                    MEDIEVAL_PROPS.stream().map(id -> "contents/medieval_props/textures/furniture/" + id + ".png")).toList());
+                    MEDIEVAL_PROPS.stream().map(id -> "contents/medieval_props/textures/furniture/" + id + ".png")).toList(),
+            // 2.0 anchors the demo HUDs (huds.yml is brought up to date by its hash) and adds a shield bar.
+            "2.0.0", List.of(
+                    "contents/demo/textures/hud/shield_full.png",
+                    "contents/demo/textures/hud/shield_half.png",
+                    "contents/demo/textures/hud/shield_empty.png"));
 
     /** Copied into contents/ the first time the plugin starts. */
     private static final List<String> EXAMPLES = Stream.concat(FIRST_EXAMPLES.stream(),
@@ -365,7 +370,8 @@ public final class ContentPipeline {
         this.emojis = emojis;
         this.delivery = delivery;
         this.logger = plugin.getLogger();
-        this.compiler = new PackCompiler(settings.pack().toPackSettings(), settings.pack().fixSoundNames());
+        this.compiler = new PackCompiler(settings.pack().toPackSettings(), settings.pack().fixSoundNames(),
+                settings.pack().shaders());
         // Packs named in config.yml: CosmeticsCore's, a model pack bought separately, any other.
         Path server = plugin.getDataFolder().toPath().toAbsolutePath().getParent().getParent();
         for (String merge : settings.pack().merge()) {

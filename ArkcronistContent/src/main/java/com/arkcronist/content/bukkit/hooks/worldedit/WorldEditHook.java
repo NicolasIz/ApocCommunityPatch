@@ -127,9 +127,15 @@ public final class WorldEditHook {
             @Override
             public <T extends BlockStateHolder<T>> boolean setBlock(BlockVector3 position, T block)
                     throws WorldEditException {
-                // What was there, only when it could have been a custom block.
-                boolean wasNoteBlock = getBlock(position).getBlockType() == BlockTypes.NOTE_BLOCK;
+                // What was there, only when it could have been a custom block - or a furniture support.
+                com.sk89q.worldedit.world.block.BlockType old = getBlock(position).getBlockType();
+                boolean wasNoteBlock = old == BlockTypes.NOTE_BLOCK;
                 boolean changed = super.setBlock(position, block);
+                if (changed && old != block.getBlockType() && isSupport(old)) {
+                    // A barrier, light block, chest or bed gone under furniture: the integrity
+                    // check looks at this chunk in a moment rather than at its next round.
+                    content.supportTouched(world, position.x(), position.z());
+                }
                 String id = block.getBlockType() == BlockTypes.NOTE_BLOCK
                         ? content.blockIdOf(BukkitAdapter.adapt(block)).orElse(null) : null;
                 if (id != null || wasNoteBlock) {
@@ -139,6 +145,11 @@ public final class WorldEditHook {
                     }
                 }
                 return changed;
+            }
+
+            private static boolean isSupport(com.sk89q.worldedit.world.block.BlockType type) {
+                return type == BlockTypes.BARRIER || type == BlockTypes.LIGHT || type == BlockTypes.CHEST
+                        || type.id().endsWith("_bed");
             }
 
             private void settle() {

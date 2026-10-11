@@ -16,6 +16,7 @@ import com.arkcronist.content.core.definition.ModelSource;
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.definition.ResourceLocation;
 import com.arkcronist.content.core.furniture.Footprint;
+import com.arkcronist.content.core.hud.HudAnchor;
 import com.arkcronist.content.core.hud.HudDefinition;
 import com.arkcronist.content.core.quest.QuestDefinition;
 import com.arkcronist.content.core.quest.QuestReader;
@@ -1150,13 +1151,19 @@ public final class ContentLoader {
             problems.add(where + "needs 'texture' (or 'model') - without one it would be invisible");
             return null;
         }
+        int glow = (int) number(liquid, "glow", 0, 0, 15, where, problems);
+        if (glow > 0 && stillModel != null && flowingModel != null) {
+            problems.add(where + "'glow' applies to a liquid drawn from its 'texture'; a model of your own sets"
+                    + " \"light_emission\" on its elements itself");
+        }
         ModelSource source = stillModel != null ? new ModelSource.Provided(sourceRoot, stillModel)
-                : liquidModel(namespace, id, "source", still, sourceRoot);
+                : liquidModel(namespace, id, "source", still, glow, sourceRoot);
         ModelSource flowing;
         if (flowingModel != null) {
             flowing = new ModelSource.Provided(sourceRoot, flowingModel);
         } else if (still != null || flowingTexture != null) {
-            flowing = liquidModel(namespace, id, "flowing", flowingTexture != null ? flowingTexture : still, sourceRoot);
+            flowing = liquidModel(namespace, id, "flowing", flowingTexture != null ? flowingTexture : still, glow,
+                    sourceRoot);
         } else {
             flowing = source;
         }
@@ -1175,7 +1182,7 @@ public final class ContentLoader {
         ModelSource bucket = model != null ? model
                 : new ModelSource.Provided(sourceRoot, new ResourceLocation(ResourceLocation.MINECRAFT, "item/water_bucket"));
         return new ItemDefinition(namespace, id, "PAPER", displayName, lore, bucket, new ItemBehaviour(true, false),
-                new Placement.Liquid(flowDistance, tickRate, maxFall, source, flowing, contact), file);
+                new Placement.Liquid(flowDistance, tickRate, maxFall, source, flowing, contact, glow), file);
     }
 
     /**
@@ -1183,8 +1190,8 @@ public final class ContentLoader {
      * of the two parents the pack compiler writes ({@link LiquidModels}).
      */
     private static ModelSource liquidModel(String namespace, String id, String kind, ResourceLocation texture,
-                                           Path sourceRoot) {
-        ResourceLocation parent = kind.equals("source") ? LiquidModels.SOURCE_PARENT : LiquidModels.FLOWING_PARENT;
+                                           int glow, Path sourceRoot) {
+        ResourceLocation parent = LiquidModels.parentFor(kind.equals("source"), glow);
         return new ModelSource.Generated(sourceRoot, new ResourceLocation(namespace, "block/" + id + "_" + kind), parent,
                 Map.of(LiquidModels.TEXTURE_VARIABLE, texture, "particle", texture));
     }
@@ -1262,7 +1269,8 @@ public final class ContentLoader {
                 }
             }
         }
-        return new Placement.Contact(interval, damage, damageType, fireTicks, freezeTicks, effects);
+        boolean mobs = flag(section, "mobs", false, prefix, problems);
+        return new Placement.Contact(interval, damage, damageType, fireTicks, freezeTicks, effects, mobs);
     }
 
     /**
@@ -1482,6 +1490,10 @@ public final class ContentLoader {
      *   mana:
      *     icons: { full: hud/mana_full, empty: hud/mana_empty }
      *     value: { placeholder: "%mmocore_mana%", max: "%mmocore_max_mana%" }
+     *   shield:                                   # 2.0
+     *     icons: { full: hud/shield_full, empty: hud/shield_empty }
+     *     anchor: above-health                    # or { at: above-food, row: 1, nudge: [0, 1] }
+     *     value: { stat: absorption, max: 20 }    # or { auraskills: mana }
      * </pre>
      */
     private static void readHuds(Object node, String namespace, Path sourceRoot, Path file, String where,
@@ -1535,18 +1547,33 @@ public final class ContentLoader {
         }
 
         int height = (int) number(section, "height", 9, 1, 256, prefix, problems);
-        int ascent = (int) number(section, "ascent", 7, -512, 256, prefix, problems);
+        HudAnchor anchor = hudAnchor(section.get("anchor"), height, prefix, problems);
+        if (anchor != null && (section.containsKey("ascent") || section.containsKey("offset"))) {
+            problems.add(prefix + "'anchor' places the bar itself - 'ascent' and 'offset' are ignored; move it with"
+                    + " anchor: { at: " + anchor.kind().key() + ", nudge: [x, y] }");
+        }
+        int ascent = anchor != null ? anchor.ascent() : (int) number(section, "ascent", 7, -512, 256, prefix, problems);
         if (ascent > height) {
             problems.add(prefix + "'ascent' can be at most 'height' (" + height + "); using " + height);
             ascent = height;
         }
         int segments = (int) number(section, "segments", 10, 1, 100, prefix, problems);
         int spacing = (int) number(section, "spacing", 0, -64, 64, prefix, problems);
-        int offset = (int) number(section, "offset", 0, -2048, 2048, prefix, problems);
+        int offset = anchor != null ? 0 : (int) number(section, "offset", 0, -2048, 2048, prefix, problems);
 
         Map<?, ?> value = section(section, "value", prefix, problems);
         HudDefinition.Source source;
-        if (value != null && value.containsKey("placeholder")) {
+        if (value != null && (value.containsKey("stat") || value.containsKey("auraskills"))) {
+            String stat = value.containsKey("auraskills")
+                    ? "auraskills:" + String.valueOf(value.get("auraskills")).trim().toLowerCase(Locale.ROOT)
+                    : String.valueOf(value.get("stat")).trim().toLowerCase(Locale.ROOT);
+            if (!HudDefinition.Source.Stat.NAMES.contains(stat)) {
+                problems.add(prefix + "unknown stat '" + stat + "' ("
+                        + String.join(", ", HudDefinition.Source.Stat.NAMES) + ")");
+                return null;
+            }
+            source = new HudDefinition.Source.Stat(stat, number(value, "max", 0, 0, 1_000_000, prefix, problems));
+        } else if (value != null && value.containsKey("placeholder")) {
             String placeholder = text(value, "placeholder", prefix, problems);
             Object max = value.get("max");
             if (placeholder == null || placeholder.isBlank() || max == null || max instanceof Map<?, ?>
@@ -1574,8 +1601,57 @@ public final class ContentLoader {
                     number(stored, "per-second", 0, -1_000_000, 1_000_000, prefix, problems),
                     number(stored, "empty-damage", 0, 0, 1000, prefix, problems), consume);
         }
+        // A bar placed against the vanilla HUD is meant for the action bar, unless it says otherwise.
         return new HudDefinition(namespace, id, full, half, empty, height, ascent, segments, spacing, offset, source,
-                flag(section, "action-bar", false, prefix, problems), sourceRoot, file);
+                flag(section, "action-bar", anchor != null, prefix, problems), sourceRoot, file, anchor);
+    }
+
+    /**
+     * {@code anchor:} - {@code above-food}, or {@code { at: above-food, row: 1, nudge: [x, y] }}.
+     * A row too high for icons this tall - a glyph's ascent may not exceed its height - is brought
+     * down to the highest that fits, with a problem saying so.
+     */
+    private static HudAnchor hudAnchor(Object node, int height, String prefix, List<String> problems) {
+        if (node == null) {
+            return null;
+        }
+        String at;
+        int row = 0;
+        int nudgeX = 0;
+        int nudgeY = 0;
+        if (node instanceof Map<?, ?> anchor) {
+            at = anchor.get("at") == null ? null : String.valueOf(anchor.get("at"));
+            row = (int) number(anchor, "row", 0, 0, 20, prefix + "anchor ", problems);
+            Object nudge = anchor.get("nudge");
+            if (nudge instanceof List<?> pair && pair.size() == 2 && pair.get(0) instanceof Number x
+                    && pair.get(1) instanceof Number y) {
+                nudgeX = Math.max(-200, Math.min(200, x.intValue()));
+                nudgeY = Math.max(-100, Math.min(100, y.intValue()));
+            } else if (nudge != null) {
+                problems.add(prefix + "anchor 'nudge' should be [x, y] in pixels, right and up");
+            }
+        } else {
+            at = String.valueOf(node);
+        }
+        HudAnchor.Kind kind;
+        try {
+            kind = at == null ? null : HudAnchor.Kind.parse(at);
+        } catch (IllegalArgumentException exception) {
+            kind = null;
+        }
+        if (kind == null) {
+            problems.add(prefix + "anchor '" + at + "' is not health, food, above-health or above-food - left where"
+                    + " 'ascent' and 'offset' put it");
+            return null;
+        }
+        int max = HudAnchor.maxRow(kind, height, nudgeY);
+        if (row > max) {
+            problems.add(prefix + "anchor row " + row + " is too high for icons " + height + " pixels tall (a glyph"
+                    + " reaches at most its own height above its line); using row " + Math.max(0, max)
+                    + " - taller icons, with empty space below, go higher");
+            row = Math.max(0, max);
+        }
+        return new HudAnchor(kind, row, nudgeX, nudgeY);
     }
 
     /**

@@ -124,9 +124,17 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
      * @param merge         other plugins' packs to merge into this one: folders holding
      *                      {@code assets/}, or zips, relative to the server folder
      * @param fixSoundNames give a sounds.json name with no namespace the namespace its file is in
+     * @param shaders       what to do with shaders the 1.21.8 client would not run as written (2.0)
      */
     public record Pack(String description, int format, int minFormat, int maxFormat, List<String> merge,
-                       ModelData modelData, boolean negativeSpaces, boolean fixSoundNames) {
+                       ModelData modelData, boolean negativeSpaces, boolean fixSoundNames,
+                       com.arkcronist.content.core.pack.ShaderCheck.Mode shaders) {
+
+        public Pack(String description, int format, int minFormat, int maxFormat, List<String> merge,
+                    ModelData modelData, boolean negativeSpaces, boolean fixSoundNames) {
+            this(description, format, minFormat, maxFormat, merge, modelData, negativeSpaces, fixSoundNames,
+                    com.arkcronist.content.core.pack.ShaderCheck.Mode.KEEP);
+        }
 
         public Pack(String description, int format, int minFormat, int maxFormat, List<String> merge,
                     ModelData modelData, boolean negativeSpaces) {
@@ -368,14 +376,27 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
                     + " and pack.max-format " + max + " - using 46, 46 and 99.");
             return new Pack(description, PackSettings.FIRST_ITEM_MODEL_FORMAT,
                     PackSettings.FIRST_ITEM_MODEL_FORMAT, 99, merges(section), modelData(section),
-                    section.getBoolean("negative-spaces", true), section.getBoolean("fix-sound-names", true));
+                    section.getBoolean("negative-spaces", true), section.getBoolean("fix-sound-names", true),
+                shaderMode(section, logger));
         }
         if (min < PackSettings.FIRST_ITEM_MODEL_FORMAT) {
             logger.warning("pack.min-format " + min + " is below 46 (1.21.4). Older clients cannot"
                     + " show these items whatever the pack claims.");
         }
         return new Pack(description, format, min, max, merges(section), modelData(section),
-                section.getBoolean("negative-spaces", true), section.getBoolean("fix-sound-names", true));
+                section.getBoolean("negative-spaces", true), section.getBoolean("fix-sound-names", true),
+                shaderMode(section, logger));
+    }
+
+    /** {@code pack.shaders}: keep, drop-broken or drop. */
+    private static com.arkcronist.content.core.pack.ShaderCheck.Mode shaderMode(ConfigurationSection pack, Logger logger) {
+        String raw = pack.getString("shaders", "keep").trim().toLowerCase(java.util.Locale.ROOT).replace('-', '_');
+        try {
+            return com.arkcronist.content.core.pack.ShaderCheck.Mode.valueOf(raw.toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            logger.warning("pack.shaders '" + pack.getString("shaders") + "' is not keep, drop-broken or drop - keeping them.");
+            return com.arkcronist.content.core.pack.ShaderCheck.Mode.KEEP;
+        }
     }
 
     private static ModelData modelData(ConfigurationSection pack) {

@@ -56,6 +56,10 @@ public final class HudService {
     private final BiFunction<OfflinePlayer, String, String> placeholders;
     /** Stored values, per player and HUD id. Written on the main thread, read from any. */
     private final Map<UUID, Map<String, Double>> values = new ConcurrentHashMap<>();
+    /** 2.0: the stats bars read (health, absorption, AuraSkills mana...), per player: read on the main thread, for any. */
+    private final Map<UUID, Map<String, double[]>> stats = new ConcurrentHashMap<>();
+    /** AuraSkills' mana and max mana of a player; null without AuraSkills. Main thread. */
+    private final java.util.function.Function<Player, double[]> mana;
     private final Set<UUID> changed = ConcurrentHashMap.newKeySet();
     private BukkitTask secondly;
     private BukkitTask bars;
@@ -63,6 +67,13 @@ public final class HudService {
 
     public HudService(Plugin plugin, HudRegistry registry, DatabaseManager database, ActionBars actionBars,
                       EngineSettings.Huds settings, BiFunction<OfflinePlayer, String, String> placeholders) {
+        this(plugin, registry, database, actionBars, settings, placeholders, player -> null);
+    }
+
+    public HudService(Plugin plugin, HudRegistry registry, DatabaseManager database, ActionBars actionBars,
+                      EngineSettings.Huds settings, BiFunction<OfflinePlayer, String, String> placeholders,
+                      java.util.function.Function<Player, double[]> mana) {
+        this.mana = mana;
         this.plugin = plugin;
         this.registry = registry;
         this.database = database;
@@ -167,9 +178,17 @@ public final class HudService {
         }
     }
 
-    /** Each second: stored values change by themselves, and an empty one may hurt. */
+    /** Each second: stored values change by themselves, and an empty one may hurt; stats are read again. */
     private void second() {
         seconds++;
+        for (Player player : plugin.getServer().getOnlinePlayers()) {
+            // For the placeholders other plugins ask from their own threads.
+            for (HudLayout hud : registry.all()) {
+                if (hud.definition().source() instanceof HudDefinition.Source.Stat stat) {
+                    stat(player, stat);
+                }
+            }
+        }
         for (Player player : plugin.getServer().getOnlinePlayers()) {
             if (player.getGameMode() == GameMode.CREATIVE || player.getGameMode() == GameMode.SPECTATOR) {
                 continue;
@@ -194,15 +213,63 @@ public final class HudService {
 
     // ------------------------------------------------------------------ drawing
 
-    /** The value and max of a HUD for a player: stored, or read through placeholders. Any thread. */
+    /** The value and max of a HUD for a player: stored, read from the player, or through placeholders. Any thread. */
     public double[] valueAndMax(OfflinePlayer player, HudLayout hud) {
         HudDefinition.Source source = hud.definition().source();
         if (source instanceof HudDefinition.Source.Stored stored) {
             return new double[]{stored(player.getUniqueId(), hud), stored.max()};
         }
-        HudDefinition.Source.Placeholder placeholder = (HudDefinition.Source.Placeholder) source;
+        if (source instanceof HudDefinition.Source.Stat stat) {
+            return stat(player, stat);
+        }
+        if (!(source instanceof HudDefinition.Source.Placeholder placeholder)) {
+            return new double[]{0, 1};
+        }
         return new double[]{number(placeholders.apply(player, placeholder.value())),
                 number(placeholders.apply(player, placeholder.max()))};
+    }
+
+    /**
+     * A stat bar's value and max: read from the player now on the main thread - and kept, for the
+     * placeholders TAB asks from its own thread - or the last value kept, from any other.
+     */
+    private double[] stat(OfflinePlayer offline, HudDefinition.Source.Stat stat) {
+        Player online = offline.getPlayer();
+        double[] read = null;
+        if (online != null && plugin.getServer().isPrimaryThread()) {
+            read = readStat(online, stat.stat());
+            if (read != null) {
+                stats.computeIfAbsent(online.getUniqueId(), ignored -> new ConcurrentHashMap<>()).put(stat.stat(), read);
+            }
+        } else {
+            Map<String, double[]> kept = stats.get(offline.getUniqueId());
+            read = kept == null ? null : kept.get(stat.stat());
+        }
+        double value = read == null ? 0 : read[0];
+        double max = stat.max() > 0 ? stat.max() : read == null ? 1 : read[1];
+        return new double[]{value, max};
+    }
+
+    /** One stat of an online player, and its natural most. Main thread. */
+    private @Nullable double[] readStat(Player player, String stat) {
+        return switch (stat) {
+            case "health" -> new double[]{player.getHealth(), attribute(player, org.bukkit.attribute.Attribute.MAX_HEALTH, 20)};
+            case "absorption" -> new double[]{player.getAbsorptionAmount(), 20};
+            case "armor" -> new double[]{attribute(player, org.bukkit.attribute.Attribute.ARMOR, 0), 20};
+            case "toughness" -> new double[]{attribute(player, org.bukkit.attribute.Attribute.ARMOR_TOUGHNESS, 0), 12};
+            case "food" -> new double[]{player.getFoodLevel(), 20};
+            case "saturation" -> new double[]{player.getSaturation(), 20};
+            case "air" -> new double[]{Math.max(0, player.getRemainingAir()), Math.max(1, player.getMaximumAir())};
+            case "level" -> new double[]{player.getLevel(), 100};
+            case "experience" -> new double[]{player.getExp(), 1};
+            case "auraskills:mana" -> mana.apply(player);
+            default -> null;
+        };
+    }
+
+    private static double attribute(Player player, org.bukkit.attribute.Attribute attribute, double fallback) {
+        org.bukkit.attribute.AttributeInstance instance = player.getAttribute(attribute);
+        return instance == null ? fallback : instance.getValue();
     }
 
     /** The first number in a placeholder's text - "1,250" and "75.5 / 100" included; 0 for none. */
@@ -292,6 +359,7 @@ public final class HudService {
     }
 
     public void quit(Player player) {
+        stats.remove(player.getUniqueId());
         actionBars.forget(player.getUniqueId());
         save(player.getUniqueId());
         values.remove(player.getUniqueId());

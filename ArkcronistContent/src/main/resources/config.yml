@@ -55,6 +55,13 @@ pack:
   # they are; off, they are only reported. Only the name changes: volume, pitch,
   # weight, streaming and the .ogg itself are left alone.
   fix-sound-names: true
+  # Shaders - a content pack's (contents/<pack>/shaders/) and every merged pack's - are
+  # read against what the 1.21.8 client does with them, and each problem is reported:
+  # written for 1.21.4 or older (loose uniforms, which 1.21.5+ never sets), an import
+  # nothing provides, a core shader the client no longer loads, a uniform block it is
+  # never given. keep: report only. drop-broken: also leave out each shader that would
+  # not compile or draws wrong, with its other half. drop: leave out every shader.
+  shaders: keep
   # Space characters in the font that move text by whole pixels, right or left
   # (U+F801-F80F back, U+F821-F82F forward). HUDs use them; menus and scoreboards can
   # too, through %arkcontent_space_<pixels>%. Written even with no HUD or emoji.

@@ -58,8 +58,11 @@ public final class ChestPairStore {
         });
     }
 
-    /** Forgets, in memory, the pair one of whose halves is at the position - both halves of it. */
-    private void forget(UUID world, int x, int y, int z) {
+    /**
+     * Forgets, in memory, the pair one of whose halves is at the position - both halves of it. Its
+     * row is someone else's to delete: the integrity check's purge, in its own transaction.
+     */
+    public void forget(UUID world, int x, int y, int z) {
         ChestPair pair = at(world, x, y, z);
         if (pair != null) {
             index.remove(world, pair.x(), pair.y(), pair.z());

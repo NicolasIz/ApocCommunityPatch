@@ -122,6 +122,13 @@ public final class ContentAdminCommand {
                                                                 StringArgumentType.getString(context, "change"),
                                                                 DoubleArgumentType.getDouble(context, "amount"))))))))
                 .then(Commands.literal("liquids").requires(ContentAdminCommand::admin).executes(this::liquids))
+                .then(Commands.literal("integrity").requires(ContentAdminCommand::admin)
+                        .executes(this::integrity)
+                        .then(Commands.literal("now").executes(this::integrityNow))
+                        .then(Commands.literal("recovered").executes(this::recovered))
+                        .then(Commands.literal("claim")
+                                .then(Commands.argument("id", com.mojang.brigadier.arguments.LongArgumentType.longArg(1))
+                                        .executes(this::claim))))
                 .then(Commands.literal("editor").requires(ContentAdminCommand::admin)
                         .executes(context -> editor(context, null))
                         .then(Commands.argument("furniture", StringArgumentType.greedyString())
@@ -491,6 +498,123 @@ public final class ContentAdminCommand {
             }
         }
         return total;
+    }
+
+    // ---------------------------------------------------------------- integrity (2.0)
+
+    private int integrity(CommandContext<CommandSourceStack> context) {
+        CommandSender sender = context.getSource().getSender();
+        SanityChecker.Status audit = plugin.sanity().last();
+        if (!plugin.sanity().enabled()) {
+            sender.sendMessage(Component.text("Integrity check: off (sanity.enabled in config.yml).", NamedTextColor.GOLD));
+            return 0;
+        }
+        if (audit == null) {
+            sender.sendMessage(Component.text("Integrity check: first audit pending (every "
+                    + plugin.settings().sanity().intervalSeconds() + " s). /arkcontent integrity now runs one.",
+                    NamedTextColor.GOLD));
+            return 0;
+        }
+        sender.sendMessage(Component.text(String.format(Locale.ROOT, "Integrity check: last audit %d s ago, %d chunk(s)"
+                        + " in %.1f ms over %d tick(s); %d finding(s) waiting for a second look.",
+                (System.currentTimeMillis() - audit.finishedAtMillis()) / 1000, audit.chunks(), audit.millis(),
+                audit.ticks(), audit.suspects()), NamedTextColor.GOLD));
+        sender.sendMessage(Component.text(String.format(Locale.ROOT, "Since start: %d broken piece(s) taken out,"
+                        + " %d drawn again, %d left-over display(s) removed, %d row(s) and %d liquid source(s) purged,"
+                        + " %d storage(s) recovered, %d piece(s) placed before 2.0 given their facing.",
+                audit.piecesRemoved(), audit.piecesRedrawn(), audit.displaysRemoved(), audit.rowsPurged(),
+                audit.liquidsPurged(), audit.storageRecovered(), audit.piecesAdopted()), NamedTextColor.GRAY));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int integrityNow(CommandContext<CommandSourceStack> context) {
+        CommandSender sender = context.getSource().getSender();
+        sender.sendMessage(Component.text("Auditing the loaded chunks twice...", NamedTextColor.GRAY));
+        plugin.sanity().runNow().whenComplete((status, error) -> plugin.pipeline().mainThread().execute(() -> {
+            if (error != null) {
+                sender.sendMessage(Component.text("The audit could not finish: " + rootMessage(error), NamedTextColor.RED));
+            } else {
+                integrity(context);
+            }
+        }));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private int recovered(CommandContext<CommandSourceStack> context) {
+        CommandSender sender = context.getSource().getSender();
+        plugin.sanity().recovered(true, 20).whenComplete((rows, error) -> plugin.pipeline().mainThread().execute(() -> {
+            if (error != null) {
+                sender.sendMessage(Component.text("Could not read the recovered storage: " + rootMessage(error),
+                        NamedTextColor.RED));
+                return;
+            }
+            if (rows.isEmpty()) {
+                sender.sendMessage(Component.text("No recovered storage waiting.", NamedTextColor.GRAY));
+                return;
+            }
+            sender.sendMessage(Component.text("Recovered storage waiting (newest first; /arkcontent integrity claim <id>):",
+                    NamedTextColor.GOLD));
+            for (var row : rows) {
+                World world = plugin.getServer().getWorld(row.world());
+                sender.sendMessage(Component.text(String.format(Locale.ROOT, "  #%d %s at %s %d,%d,%d - %s",
+                        row.id(), row.furnitureId(), world == null ? row.world().toString() : world.getName(),
+                        row.x(), row.y(), row.z(), row.reason()), NamedTextColor.YELLOW));
+            }
+        }));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    /** Hands what a recovered row held to the admin: their inventory, the rest at their feet. Once. */
+    private int claim(CommandContext<CommandSourceStack> context) {
+        CommandSender sender = context.getSource().getSender();
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(Component.text("Only a player can take recovered items.", NamedTextColor.RED));
+            return 0;
+        }
+        long id = com.mojang.brigadier.arguments.LongArgumentType.getLong(context, "id");
+        plugin.sanity().claim(id, player.getName()).whenComplete((row, error) -> plugin.pipeline().mainThread().execute(() -> {
+            if (error != null) {
+                player.sendMessage(Component.text("Could not claim #" + id + ": " + rootMessage(error), NamedTextColor.RED));
+                return;
+            }
+            if (row.isEmpty()) {
+                player.sendMessage(Component.text("#" + id + " is not waiting: unknown, or already taken.",
+                        NamedTextColor.RED));
+                return;
+            }
+            org.bukkit.inventory.ItemStack[] items;
+            try {
+                items = org.bukkit.inventory.ItemStack.deserializeItemsFromBytes(row.get().contents());
+            } catch (RuntimeException exception) {
+                plugin.getLogger().log(Level.SEVERE, "Recovered storage #" + id + " cannot be read; it is marked taken"
+                        + " by " + player.getName() + " and its bytes are kept in the database.", exception);
+                player.sendMessage(Component.text("#" + id + " cannot be read; see the console.", NamedTextColor.RED));
+                return;
+            }
+            int given = 0;
+            for (org.bukkit.inventory.ItemStack item : items) {
+                if (item == null || item.isEmpty()) {
+                    continue;
+                }
+                given += item.getAmount();
+                player.getInventory().addItem(item).values()
+                        .forEach(rest -> player.getWorld().dropItem(player.getLocation(), rest));
+            }
+            plugin.getLogger().info(player.getName() + " claimed recovered storage #" + id + " (" + row.get().furnitureId()
+                    + ", " + given + " item(s)).");
+            player.sendMessage(Component.text("Recovered #" + id + ": " + given + " item(s) from " + row.get().furnitureId()
+                    + ".", NamedTextColor.GREEN));
+        }));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private static String rootMessage(Throwable error) {
+        Throwable cause = error;
+        while (cause.getCause() != null && (cause instanceof java.util.concurrent.CompletionException
+                || cause instanceof java.util.concurrent.ExecutionException)) {
+            cause = cause.getCause();
+        }
+        return cause.getMessage() == null ? cause.getClass().getSimpleName() : cause.getMessage();
     }
 
     private int info(CommandContext<CommandSourceStack> context) {
