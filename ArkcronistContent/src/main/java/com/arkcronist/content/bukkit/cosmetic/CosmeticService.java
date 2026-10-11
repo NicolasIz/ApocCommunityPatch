@@ -133,11 +133,15 @@ public final class CosmeticService {
         }
     }
 
-    /** Nothing a client would see changed: no packet. */
-    private static boolean same(@Nullable BackPose.Transform before, BackPose.Transform now) {
-        return before != null && before.translation().distanceSquared(now.translation()) < 1e-8
-                && Math.abs(before.rotation().dot(now.rotation())) > 1 - 1e-8
-                && before.scale().equals(now.scale(), 1e-6f);
+    /**
+     * Nothing a client would see changed: no packet. Under a millimetre and about 0.07 degrees from
+     * what was last sent - a 16th of a pixel is 4 mm - so a pack at rest, its spring dying away,
+     * costs nothing.
+     */
+    static boolean same(@Nullable BackPose.Transform before, BackPose.Transform now) {
+        return before != null && before.translation().distanceSquared(now.translation()) < 1e-6
+                && Math.abs(before.rotation().dot(now.rotation())) > 1 - 2e-7
+                && before.scale().equals(now.scale(), 1e-4f);
     }
 
     // ---------------------------------------------------------------- main thread

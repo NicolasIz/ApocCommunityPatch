@@ -277,7 +277,8 @@ public final class BedrockService implements Listener {
                     + given.carriers().size() + " furniture carrier(s) for " + pieceKinds + " piece(s)), and "
                     + given.packId() + ".mcpack.");
             if (!given.unpictured().isEmpty()) {
-                lines.add(given.unpictured().size() + " item(s) left out, with no icon: output/bedrock/left-out-items.txt");
+                lines.add(given.unpictured().size() + " item(s) with no picture, shown as a question mark:"
+                        + " output/bedrock/items-without-picture.txt");
             }
         }
         lines.add(bedrockOnline.size() + " Bedrock player(s) online; " + byRoot.size() + " piece(s) loaded that they"

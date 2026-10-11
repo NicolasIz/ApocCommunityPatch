@@ -119,7 +119,11 @@ public final class GeyserHook {
         }
         int registeredItems = 0;
         List<String> refused = new ArrayList<>();
-        for (BedrockConverter.BedrockItem item : content.build().items()) {
+        // Geyser 2.8 reverses the order items were registered in and gives a stack the first whose
+        // number is at most the stack's: registered lowest number first, that is the stack's own.
+        List<BedrockConverter.BedrockItem> items = ITEMS_BY_MODEL ? content.build().items()
+                : BedrockConverter.lowestNumberFirst(content.build().items());
+        for (BedrockConverter.BedrockItem item : items) {
             try {
                 boolean done = ITEMS_BY_MODEL ? GeyserItemsByModel.register(event, item) : registerByNumber(event, item);
                 if (done) {

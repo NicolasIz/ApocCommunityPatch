@@ -214,9 +214,11 @@ public final class HookManager {
             plugin.protection().add(towny);
             return towny;
         });
-        // 3.0: worn cosmetics sent as packets from their own thread, when PacketEvents is there.
+        // 3.0: worn cosmetics sent as packets from their own thread, when PacketEvents is there. A
+        // lambda, not PacketCosmetics::new: a constructor reference links the class where it stands,
+        // outside create's guard, and that fails without PacketEvents (seen live).
         packetCosmetics = create("PacketEvents", "com.github.retrooper.packetevents.PacketEvents",
-                PacketCosmetics::new);
+                () -> new PacketCosmetics());
         // 3.0: LuckPerms prefixes, suffixes and meta with emojis, for TAB, chat and menus.
         LuckPermsHook luckPerms = create("LuckPerms", "net.luckperms.api.LuckPermsProvider",
                 () -> new LuckPermsHook(plugin.emojis()));
@@ -240,10 +242,10 @@ public final class HookManager {
             levelSources.put("AuraSkills", auraSkills);
             mana = auraSkills::mana;
         }
-        skill("mcMMO", "com.gmail.nossr50.api.ExperienceAPI", McMMOHook::new);
+        skill("mcMMO", "com.gmail.nossr50.api.ExperienceAPI", () -> new McMMOHook());
         // SkillAPI and its fork ProSkillAPI share one API; Fabled is the renamed successor.
-        skill("SkillAPI", "com.sucy.skill.api.enums.ExpSource", SkillAPIHook::new);
-        skill("Fabled", "studio.magemonkey.fabled.api.enums.ExpSource", FabledHook::new);
+        skill("SkillAPI", "com.sucy.skill.api.enums.ExpSource", () -> new SkillAPIHook());
+        skill("Fabled", "studio.magemonkey.fabled.api.enums.ExpSource", () -> new FabledHook());
 
         // Economy: /arkcontent shop sells the items that have a price.
         shop = create("Vault", "net.milkbowl.vault.economy.Economy", () -> new VaultShop(plugin.getServer()));
@@ -267,7 +269,7 @@ public final class HookManager {
                 () -> new ExcellentJobsHook(plugin.getServer(), (player, amount) -> shop != null
                         && shop.deposit(player, amount), logger));
 
-        npcs = create("Citizens", "net.citizensnpcs.api.CitizensAPI", CitizensHook::new);
+        npcs = create("Citizens", "net.citizensnpcs.api.CitizensAPI", () -> new CitizensHook());
 
         DecentHologramsHook holograms = create("DecentHolograms", "eu.decentsoftware.holograms.api.DHAPI",
                 () -> new DecentHologramsHook(plugin, plugin::crops, plugin.items()));

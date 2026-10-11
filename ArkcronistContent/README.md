@@ -11,7 +11,10 @@ su propio resource pack, lo empaqueta en ZIP, calcula su SHA-1, lo sirve con un 
 integrado —o lo sube solo a un servicio de almacenamiento— y se lo envía a cada jugador. Los bloques
 y muebles colocados, los cultivos y lo guardado en los muebles se conservan en SQLite, y un
 verificador de integridad repara o retira los muebles que un rollback, `/fill` o WorldEdit dejan
-a medias (2.0). El mismo
+a medias (2.0). La 3.0 lleva el contenido a los jugadores de **Bedrock** a través de Geyser sin
+configurar nada, añade **cosméticos con física** (una mochila que se balancea a la espalda,
+calculada en su propio hilo) y **minijuegos de precisión** en la barra de acción para menas raras
+y cañas de pescar. El mismo
 concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer.
 
 ```
@@ -30,7 +33,9 @@ concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer
 /arkcontent hud <jugador> <hud> [set|add|take <n>]  ver o cambiar el valor de una barra (sección 4)
 /arkcontent liquids                        líquidos cargados y fuentes vertidas por mundo (sección 4)
 /arkcontent integrity [now|recovered|claim <n>]  verificador de integridad: estado, auditar ya, almacenes recuperados (sección 4)
+/arkcontent bedrock                        qué recibió Geyser y qué se enseña a los jugadores de Bedrock (sección 4)
 /emojis                                    los emojis de chat disponibles, dibujados (sección 4)
+/cosmetic [off]                            lo que llevas puesto, o quitártelo (sección 4)
 ```
 
 | Permiso | Por defecto | Para |
@@ -42,13 +47,14 @@ concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer
 | `arkcontent.shop` | todos | `/arkcontent shop` (necesita Vault y un plugin de economía) |
 | `arkcontent.board` | todos | usar los tablones de misiones: aceptar, entregar y abandonar avisos |
 | `arkcontent.board.admin` | op | `/arkcontent board` (también lo permite `arkcontent.admin`) |
+| `arkcontent.cosmetic` | todos | ponerse un cosmético (clic derecho con él) y `/cosmetic` |
 
 Con MythicMobs, ModelEngine, MythicArmor, MMOItems, PlaceholderAPI (y a través de él TAB y
 DeluxeMenus), ShopGUI+, Iris, WorldGuard, GriefPrevention, AuraSkills, mcMMO, SkillAPI/ProSkillAPI,
 Fabled, Vault, Citizens, DecentHolograms, EconomyShopGUI Premium, ExecutableBlocks, Jobs Reborn,
 ExcellentJobs, HMCCosmetics, zAuctionHouse, eco (EcoItems, EcoArmor, EcoEnchants, Reforges…), nightcore
-(ExcellentCrates, ExcellentShop…), Mimic, ItemBridge, WorldEdit, BetonQuest o AuthMe instalados se
-integra con ellos (sección 5); sin ellos funciona igual —verificado arrancando sin ninguno—. La
+(ExcellentCrates, ExcellentShop…), Mimic, ItemBridge, WorldEdit, BetonQuest, AuthMe, Geyser,
+PacketEvents, LuckPerms, Lands o Towny instalados se integra con ellos (sección 5); sin ellos funciona igual —verificado arrancando sin ninguno—. La
 sección 10 compara, plugin por plugin, con la lista de compatibilidad de ItemsAdder.
 
 El plugin se compila contra la API de Paper 1.21.8 y declara esa versión como mínima. El componente
@@ -60,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-2.0.0.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.0.0.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -562,6 +568,11 @@ nuevas y `user_version` van juntos, y si algo falla el archivo queda como estaba
 colocadas antes de la 2.0 no tienen fila en `furniture_pieces`. El verificador las adopta al verlas
 con su display (ancla y dirección leídas de él, `INSERT OR IGNORE`) y no cambia nada de lo que ya
 hay. Una 1.9.x que abra después el archivo deja en paz las tablas que no conoce.
+
+**Datos de antes de la 3.0.** El esquema pasa de 8 a 9 igual, en una transacción: se añaden
+`player_cosmetics` (lo que cada jugador lleva puesto: hueco, id e ítem serializado) y
+`minigame_stats` (partidas, aciertos, críticos, mejor error y última partida por jugador y juego).
+No se toca nada de lo que ya había.
 
 **Hilos.** El ciclo se programa y se juzga en `ArkContent-DB`. Allí se planifica desde memoria qué
 filas y piezas de qué mundos mirar, por chunk, y allí se decide. Leer el mundo solo se puede en el
@@ -1995,6 +2006,209 @@ generado, con el ancho y el `ascent` de cada glifo, como los calcula el cliente.
 Cómo se ve en un cliente real no se ha podido comprobar: no hay cliente con el pack. Las posiciones
 salen de las cuentas del propio cliente, no de una captura.
 
+### Jugadores de Bedrock (Geyser) — 3.0
+
+Con **Geyser-Spigot** en el mismo servidor, los jugadores de Bedrock (móvil, consolas, Windows) ven
+los ítems, los bloques, los líquidos y los muebles sin que el administrador escriba una línea: ni
+`items.json`, ni `blocks.json`, ni un pack aparte. Nada se escribe en la carpeta de Geyser; sus
+mapeos se crean en memoria, por su API, a partir del contenido que el plugin ya construye.
+
+```yaml
+# config.yml
+bedrock:
+  enabled: auto     # auto: cuando Geyser-Spigot está instalado · true: siempre · false: nunca
+```
+
+**En cada recompilación**, en el hilo `ArkContent-Worker` y justo después de compilar el pack Java,
+el conversor (`core.geyser`, sin nada de Bukkit) lee del pack recién compilado los modelos, sus
+padres (también los de vanilla más comunes: `cube_all`, `cube_column`, `orientable`...) y las
+texturas PNG, y produce:
+
+| Para Bedrock | De dónde sale |
+|---|---|
+| Un icono por ítem (`textures/items/ark/`) | los modelos planos, sus capas; los 3D, dibujados en isométrico (32×32, con luz de arriba) |
+| Un bloque por bloque personalizado | `minecraft:geometry.full_block` con una textura por cara si es un cubo; si no, una geometría propia |
+| Dos bloques por líquido (fuente y fluyendo) | su modelo, con `render_method: blend`, sin colisión, con su `glow` como luz |
+| Los muebles, cortados en bloques | el modelo del mueble partido en las celdas de bloque que ocupa, una geometría por celda y por cuarto de vuelta |
+| Los emojis | hojas de glifos `font/glyph_E0.png`… |
+| El `.mcpack` | `output/bedrock/arkcontent-<hash>.mcpack`, con UUID derivado del contenido |
+
+En el servidor de prueba (1673 ítems, 60 muebles medievales y los de ejemplo) la conversión tarda
+entre 0,8 y 1,4 s y el pack ocupa 430 KB. Las rutas del pack se acortan a menos de 80 caracteres
+(algunas plataformas de Bedrock no abren rutas más largas; Geyser avisa si las ve).
+
+**Geyser los recibe al arrancar.** Geyser 2.8 arranca cuando el servidor termina de cargar
+(`ServerLoadEvent`), después de todos los plugins, y pide entonces ítems, bloques y packs. Sus
+eventos se escuchan desde que este plugin se habilita, y cada uno espera a la primera compilación
+(en el servidor de prueba esperó entre 4,5 y 11,5 s; el límite son 180 s). Por eso no hay orden de
+carga entre los dos (`load: OMIT`): un orden fijo hace ciclos con plugins que cargan después de
+Geyser, como PacketEvents. Lo que Geyser recibe se queda hasta el siguiente reinicio: un ítem
+añadido con `/arkcontent reload` llega a Bedrock tras reiniciar, y la consola lo dice.
+
+**Ítems.** Geyser 2.8 (el de 1.21.8) solo distingue los ítems personalizados por su número
+`custom_model_data`; con Bedrock activo, todo ítem con modelo recibe uno (el pack Java no cambia si
+`pack.custom-model-data` está apagado). Geyser 2.8 invierte el orden de registro y da a una stack
+el primer ítem cuyo número es menor o igual que el suyo, así que se registran de menor a mayor:
+cada stack se ve como ella misma. Con Geyser 2.9 o posterior se usa su API nueva, por `item_model`.
+Las stacks antiguas sin número lo reciben cuando un jugador de Bedrock entra con ellas. Un ítem del
+que no se puede dibujar icono (su modelo o sus texturas no están en el pack) se registra igual, con
+su nombre y un signo de interrogación como dibujo; la lista entera queda en
+`output/bedrock/items-without-picture.txt`.
+
+**Muebles.** Geyser no dibuja `ItemDisplay`, que es lo que un mueble es para Java. Cada celda de
+cada mueble, en cada uno de sus cuatro giros, es un bloque personalizado de Bedrock que Geyser
+asocia a un estado de note block reservado («portador»). A los jugadores de Bedrock —y solo a
+ellos— se les envían esos estados como cambios de bloque donde está el mueble: donde hay un soporte
+(barrera o bloque de luz) y, para las partes del modelo que sobresalen de sus soportes (el respaldo
+de una silla), solo donde el mundo tiene aire. El mundo y los jugadores de Java siguen viendo las
+barreras. Los portadores se toman desde arriba del rango de note blocks hacia abajo, se guardan en
+`data/bedrock_carriers.json` para que no cambien entre compilaciones, y ningún bloque personalizado
+recibe nunca uno de esos estados. Se reenvían al cargar el chunk, tras tocar un mueble y al quitarlo.
+
+**Lo que Bedrock no puede dibujar se le da en texto.** A un jugador de Bedrock no se le envía el pack
+Java (Geyser le manda el `.mcpack` al conectar); las barras del HUD no se le envían (no hay espacios
+negativos); el minijuego le llega como texto con colores; y los títulos de los menús le llegan con
+sus palabras, sin las imágenes ni los espacios que los colocan.
+
+`/arkcontent bedrock` dice cuántos ítems, bloques y portadores recibió Geyser, cuántos jugadores de
+Bedrock hay, cuántas piezas se les están mostrando y cuántos bloques portadores se han enviado.
+
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (3.0, Bedrock)
+
+Con Geyser-Spigot 2.8.4 y un cliente de Bedrock 1.21.111 sin cuenta (`bedrock-protocol`; para él, y
+solo en el servidor de prueba, `auth-type: offline` y `enable-proxy-connections: true`):
+
+| Qué | Resultado |
+|---|---|
+| Arranque | Geyser esperó a la primera compilación y registró 690 bloques (684 portadores de 65 muebles) y 1671 ítems; ningún error |
+| El pack | ofrecido al conectar: `arkcontent` versión 3.0.0, 440 KB |
+| `StartGame` | 690 bloques `geyser_custom:ark_...` y 2361 entradas de ítem (1671 ítems + los ítems de los 690 bloques) |
+| Muebles junto a la exhibición medieval | el cliente recibió 2321 cambios a bloques personalizados, los mismos 2321 portadores que `/arkcontent bedrock` dice haber enviado |
+| Inventario | rubí, cubo de escarcha, mochila, cubo de ácido y un hueso importado sin texturas: cada uno como su propio `geyser_custom:` (el hueso, con el signo de interrogación) |
+| Menú del explorador | el título llega como «Categories», sin caracteres de uso privado |
+| Conexión | sin desconexiones ni avisos de Geyser |
+
+La prueba encontró dos fallos, corregidos antes de esta versión: registrados en el orden del
+contenido, el rubí (12007) se veía como la escarcha (12006), por la regla de Geyser 2.8 descrita
+arriba; y ~1590 ítems importados sin texturas en el pack de prueba se habrían visto como otro ítem.
+Ambos tienen test.
+
+No verificado: **cómo se ve** —aquí no hay cliente de Bedrock que dibuje—. La orientación de las
+geometrías sigue las convenciones de Blockbench y de las calaveras de Geyser (X reflejado, giros
+`-x, -y, z`), pero no se ha visto en pantalla. Tampoco se ha probado aquí: romper o usar un mueble
+desde Bedrock, el minijuego en Bedrock, Geyser 2.9+ (la API por `item_model` solo está compilada),
+Floodgate, ni Geyser en un proxy (para ese caso, `bedrock.enabled: true` deja el `.mcpack` en
+`output/bedrock/`, pero no hay Geyser en este servidor al que darle los bloques).
+
+### Cosméticos con física (`cosmetic`) — 3.0
+
+Un ítem con `cosmetic:` se lleva puesto con un clic derecho: se consume, y si ya había algo en ese
+hueco se devuelve. `/cosmetic` dice lo que llevas y `/cosmetic off` te lo quita (vuelve al
+inventario). Lo puesto se guarda en SQLite (`player_cosmetics`) y vuelve al entrar.
+
+```yaml
+# contents/medieval_props/cosmetics.yml
+items:
+  mochila_viaje:
+    material: PAPER
+    display-name: "<#c8a165>Mochila de viaje"
+    resource:
+      model: cosmetic/mochila_viaje
+    cosmetic:
+      slot: back            # de momento, solo la espalda
+      offset: [0, -0.32, 0.27]
+      scale: 1.0
+      physics:
+        stiffness: 40       # muelle: cuánto tira hacia su sitio
+        damping: 5          # cuánto frena la oscilación
+        sway: 1             # cuánto responde al movimiento
+        max-angle: 28       # grados como mucho
+        bounce: 0.45        # rebote al caer
+```
+
+La física corre en su propio hilo, `ArkContent-Physics`, cada 50 ms. `PlayerMoveEvent` solo apunta
+dónde está el jugador, hacia dónde mira su cuerpo y si se agacha (unas pocas escrituras); el hilo
+calcula velocidad y aceleración, integra un muelle amortiguado en pasos de 5 ms (péndulo al andar,
+retraso y torsión al girar, rebote al caer de un salto, inclinación al agacharse) y envía la nueva
+transformación. Con **PacketEvents** instalado, el display es un paquete —no existe en el mundo—
+montado sobre el jugador y la transformación sale directamente del hilo de física; sin él, es un
+`ItemDisplay` real, no persistente, que el hilo principal mueve cada tick con la última pose. En
+los dos casos, una pose que no cambia lo visible (menos de 1 mm y de 0,07°) no se envía: una
+mochila en reposo no cuesta paquetes.
+
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (3.0, cosméticos)
+
+Con dos bots, el que la lleva y otro que mira:
+
+| Qué | Con PacketEvents 2.14.0 | Sin PacketEvents |
+|---|---|---|
+| Ponérsela | clic derecho; se consume; `/cosmetic` la nombra | igual |
+| Lo que recibe cada cliente | el display, como pasajero del jugador | un display real que le sigue |
+| Paquetes de la pose, quieto 3 s | 0 | 0 |
+| Paquetes de la pose, andando y saltando | 20 por segundo (uno por paso de física) | solo cuando cambia la pose |
+| Tras reiniciar | la lleva puesta otra vez | — |
+
+Corregido durante la prueba: sin PacketEvents, la 3.0 no llegaba a habilitarse (la referencia
+`PacketCosmetics::new` enlazaba la clase fuera de la protección del gancho; `HookIsolationTest` lo
+comprueba ahora); los umbrales de «sin cambios» eran tan finos que una mochila quieta seguía
+enviando 20 paquetes por segundo; y el display real reenviaba su retardo de interpolación en cada
+tick.
+
+No verificado: cómo se ve el balanceo en un cliente (los bots no dibujan). Los jugadores de Bedrock
+no ven los cosméticos (Geyser no dibuja displays).
+
+### Minijuegos de precisión (`minigame`) — 3.0
+
+Una aguja recorre una barra de calibración en la barra de acción; se golpea (clic izquierdo, al aire
+o al bloque) cuando pasa por la zona. En un **bloque personalizado** —una mena rara— la partida
+empieza con clic derecho y el bloque solo se puede minar así; en un ítem hecho de **caña de
+pescar**, empieza cuando algo pica y se recoge, y decide si la captura se queda.
+
+```yaml
+# contents/demo/minigames.yml
+  star_ore:
+    type: custom_block
+    resource:
+      texture: block/star_ore
+    block:
+      drop-self: false
+    minigame:
+      speed: 1.2            # veces por segundo que la aguja cruza la barra (0,1-10)
+      zone: 22              # píxeles de la barra de 100 que cuentan como acierto
+      critical: 5           # píxeles en el centro de la zona que cuentan como crítico
+      sweeps: 4             # cruces antes de que acabe sola («Too slow»)
+      random-zone: true     # la zona cambia de sitio en cada partida
+      drops:
+        - { item: demo:ruby, amount: 1 }
+      critical-drops:
+        - { item: demo:ruby, amount: 3 }
+        - { item: DIAMOND, amount: 1, chance: 0.5 }
+      on-miss: keep         # bloque: keep (reintentar) o break (se rompe sin nada)
+      cooldown-seconds: 1
+```
+
+La barra se dibuja con la fuente de espacios negativos del pack (los mismos espacios que los HUD),
+sin ningún shader: un marco, la zona, el crítico y la aguja en su píxel. **El servidor manda**: la
+posición de la aguja es una función del tiempo en el servidor; al golpear, el juicio se hace en el
+hilo `ArkContent-Minigames` con un `CompletableFuture` —con el instante del clic menos el ping del
+jugador, hasta 250 ms— y el resultado vuelve al hilo principal, que rompe el bloque y suelta los
+drops, o da la captura. Los primeros 200 ms de una partida no cuentan (el clic que la empieza). Las
+partidas se cuentan en `minigame_stats`.
+
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (3.0, minijuegos)
+
+| Qué | Resultado |
+|---|---|
+| Mena de ejemplo | ~20 dibujos de la barra por segundo en la barra de acción; partidas y fallos en `minigame_stats` |
+| Mena de prueba con toda la barra crítica | «Critical hit!», el bloque se rompe y suelta sus 3 rubíes |
+| Mena de prueba con 1 píxel de zona | «Missed» tres veces; el bloque sigue (`on-miss: keep`) |
+| Sin golpear | «Too slow» al acabarse los cruces |
+| Caña del maestro, pescando de verdad en un estanque | picó, 18 dibujos de la barra, «Hit», la captura (un nenúfar) se queda |
+
+Las menas de prueba eran contenido solo del servidor de prueba. Un golpe al aire llega al servidor
+con la dirección en la que el cliente mira en ese momento: si mira a un bloque, cuenta como golpe
+al bloque, que también vale. Cómo se ve la barra en un cliente real no se ha podido ver.
+
 ## 5. Integraciones
 
 Todas opcionales. `paper-plugin.yml` declara cada plugin como dependencia con
@@ -2030,6 +2244,10 @@ gancho. `/arkcontent info` muestra cuáles están activos (`Hooks: MythicMobs, .
 | ExcellentCrates, ExcellentShop, ExcellentEnchants, ExcellentJobs | después de este | …antes de que lean sus recompensas y productos |
 | Mimic, ItemBridge, WorldEdit, BetonQuest, AuthMe | antes de este | este plugin se registra en sus APIs al habilitarse |
 | DeluxeMenus | antes de este | el gancho se añade a su tabla; ver su apartado |
+| Lands, Towny | antes de este | se les pregunta en cada acción protegida (3.0) |
+| LuckPerms | antes de este | sus prefijos se leen de su caché al pedirlos (3.0) |
+| PacketEvents | antes de este | el renderizador de cosméticos registra su listener de paquetes al habilitarse (3.0) |
+| Geyser-Spigot | **ninguno** (`load: OMIT`) | arranca después de todos, en `ServerLoadEvent`, y espera a la primera compilación; un orden fijo hace ciclos con plugins que cargan tras Geyser, como PacketEvents (visto en el servidor de prueba) (3.0) |
 
 **Aislamiento.** Ninguna clase que arranca los ganchos nombra un tipo que herede de otro plugin, ni
 siquiera como lo que devuelve una lambda (la JVM resuelve ese tipo antes de ejecutarla): una clase
@@ -2416,6 +2634,49 @@ bloque. Esas se consultan antes con WorldGuard y GriefPrevention, y se detienen 
   un servidor Paper 1.21.8 real con dos bots: una región sin flags y otra con `chest-access` y
   `ride` permitidos; un claim sin confianza, con `/containertrust` y con `/trust`; y explosiones
   con y sin `/claimexplosions`.
+
+### Lands y Towny (3.0)
+
+Las mismas acciones de la tabla de arriba —cultivos, muebles, almacenes, líquidos que fluyen o se
+vierten, explosiones— se consultan también con **Lands** y **Towny**, y se detienen si cualquiera
+dice que no:
+
+- **Lands**: el permiso de rol del jugador en el terreno (`BLOCK_BREAK`, `BLOCK_PLACE`,
+  `INTERACT_CONTAINER`...), las flags naturales del terreno para explosiones (`TNT_GRIEFING`,
+  `ENTITY_GRIEFING`), y que un líquido o un mob solo entre en un terreno desde el mismo terreno.
+- **Towny**: la caché de permisos de Towny para el jugador (construir, destruir, interruptor), los
+  permisos de explosión de la parcela, y que un líquido solo entre en una ciudad desde la misma ciudad.
+
+**Balística.** Un disparo de un arma de este plugin a una entidad se consulta antes de hacer daño:
+con Lands (`canPvP`, y `ATTACK_MONSTER` / `ATTACK_ANIMAL` para mobs) y con Towny (su comprobación
+de combate, la misma que usa para un ataque cuerpo a cuerpo). Un objetivo protegido no recibe daño
+y el disparo sigue su camino. Como con WorldGuard, si la comprobación lanza un error cuenta como no.
+
+Compilado contra LandsAPI 7.25.4 y Towny 0.101.2.7. Towny se cargó en el servidor de prueba y el
+gancho arrancó, pero no se crearon ciudades: las reglas no se han ejercitado en vivo. Lands no se
+ha ejecutado (es de pago).
+
+### LuckPerms (3.0)
+
+Los prefijos, sufijos y meta de LuckPerms, con los emojis del plugin dentro, para TAB, chat o menús:
+
+```
+%arkcontent_luckperms_prefix%          &c:crown: Admin  ->  la imagen de la corona, luego «Admin» en rojo
+%arkcontent_luckperms_suffix%
+%arkcontent_luckperms_meta_<clave>%
+```
+
+Un `:emoji:` del prefijo se cambia por su carácter, dibujado en blanco (un color lo teñiría), y
+después se restaura el color y el formato que tenía el texto (`&`/`§`, `&#rrggbb` y `§x`). Se lee
+de la caché de LuckPerms, sin consultas. Verificado en el servidor de prueba con LuckPerms 5.5.71:
+el prefijo `&#d4af37:ruby: &lVIP &r` da `&#d4af37&f<U+E026>&#d4af37 &lVIP &r`, donde U+E026 es el
+carácter del emoji `:ruby:`.
+
+### PacketEvents y Geyser (3.0)
+
+Con **PacketEvents** los cosméticos son paquetes enviados desde su propio hilo; sin él, displays
+reales. Con **Geyser-Spigot** el contenido llega a los jugadores de Bedrock. Los dos están en la
+sección 4.
 
 ### Jobs Reborn y ExcellentJobs
 
@@ -3184,6 +3445,21 @@ con `join-classpath: true` para ver sus clases.
   contra lo que el cliente 1.21.8 carga y declara, pero no compila GLSL: un error dentro del cuerpo
   de un shader (un tipo mal, una variable que no existe) solo se ve en el cliente. Cómo se ven el
   brillo y cualquier shader no se ha podido comprobar aquí.
+- 3.0, Bedrock: lo que Geyser recibe se fija al arrancar; contenido nuevo tras un `reload` llega a
+  Bedrock al reiniciar. Los muebles son bloques: solo los cuatro giros de 90° (un mueble girado a
+  45° se ve en el giro más cercano), sin animaciones, sin cosméticos (Geyser no dibuja displays), y
+  una geometría de Bedrock no puede salir más de 7 píxeles de su bloque, por eso se corta por celdas.
+  Un mueble de soporte de luz (que se atraviesa) es para Geyser un note block: la corrección de
+  movimiento de Geyser podría empujar a quien lo atraviesa; no se ha podido comprobar. Con Geyser
+  2.8, una stack con un `custom_model_data` ajeno mayor que los de este plugin se vería como el
+  último ítem de este plugin por debajo de ese número (es la regla de Geyser). Geyser tiene que estar
+  en este servidor; en un proxy, el `.mcpack` se puede copiar, pero los bloques no se registran.
+  Cómo se ve todo en un cliente de Bedrock no se ha podido ver aquí.
+- 3.0, cosméticos: un hueco, la espalda. Sin PacketEvents el display es una entidad real movida por
+  el hilo principal (barata, pero una entidad por jugador).
+- 3.0, minijuegos: la barra va en la barra de acción, así que otro plugin que la use a la vez (la de
+  AuraSkills, por ejemplo) se alterna con ella. Una mena de minijuego solo se mina jugando: ni
+  pistones, ni explosiones, ni otros plugins la rompen por esa vía.
 
 ## 10. Compatibilidad frente a ItemsAdder
 
@@ -3201,6 +3477,10 @@ material, y los ítems de este plugin ya funcionan · **necesita al otro plugin*
 ese plugin añade soporte para este, como lo añadió para ItemsAdder · **no aplica**.
 ✔ verificado en el servidor de prueba · ◐ compilado contra su API real o verificado solo a través
 de su librería · ○ sin probar.
+
+Fuera de esa lista, la 3.0 añade Geyser (todo el contenido para Bedrock, sin configuración; ✔ con
+un cliente de Bedrock por protocolo), PacketEvents (✔), LuckPerms (✔), Towny (◐: cargado, sin
+ciudades) y Lands (◐: compilado).
 
 | Plugin | Cómo lo hace ItemsAdder | ArkcronistContent | |
 |---|---|---|---|

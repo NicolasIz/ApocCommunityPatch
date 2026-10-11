@@ -82,6 +82,45 @@ public final class IconRenderer {
         return out;
     }
 
+    /**
+     * The picture of an item that has none - its textures are not in the pack: a grey tile with a
+     * question mark, 16 x 16.
+     */
+    public static BufferedImage missing() {
+        String[] mark = {
+                "................",
+                "..############..",
+                ".#////////////#.",
+                ".#////####////#.",
+                ".#///##//##///#.",
+                ".#///////##///#.",
+                ".#//////##////#.",
+                ".#/////##/////#.",
+                ".#/////##/////#.",
+                ".#////////////#.",
+                ".#/////##/////#.",
+                ".#/////##/////#.",
+                ".#////////////#.",
+                "..############..",
+                "................",
+                "................"};
+        BufferedImage image = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < 16; y++) {
+            for (int x = 0; x < 16; x++) {
+                char pixel = mark[y].charAt(x);
+                image.setRGB(x, y, pixel == '#' ? 0xff2b2b2b : pixel == '/' ? 0xff7a7a7a : 0);
+            }
+        }
+        for (int y = 3; y < 12; y++) {
+            for (int x = 5; x < 11; x++) {
+                if (mark[y].charAt(x) == '#') {
+                    image.setRGB(x, y, 0xffffffff);
+                }
+            }
+        }
+        return image;
+    }
+
     /** The first frame of an animated texture - frames stack downwards - or the image itself. */
     public static BufferedImage frame(BufferedImage image) {
         return image.getHeight() > image.getWidth() && image.getHeight() % image.getWidth() == 0

@@ -1016,7 +1016,7 @@ public final class ContentPipeline {
                 Files.write(pack, bedrock.pack());
             }
             build.problems().addAll(bedrock.problems());
-            Path missing = bedrockDir.resolve("left-out-items.txt");
+            Path missing = bedrockDir.resolve("items-without-picture.txt");
             if (bedrock.unpictured().isEmpty()) {
                 Files.deleteIfExists(missing);
             } else {

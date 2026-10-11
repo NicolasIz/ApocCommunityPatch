@@ -26,6 +26,8 @@ public final class EntityCosmetics implements CosmeticRenderer {
 
     private final Plugin plugin;
     private final Map<UUID, ItemDisplay> displays = new ConcurrentHashMap<>();
+    /** The pose each display was last given; a new display is given the current one. Main thread. */
+    private final Map<UUID, BackPose.Transform> applied = new java.util.HashMap<>();
     private final Map<UUID, Worn> worn = new ConcurrentHashMap<>();
 
     public EntityCosmetics(Plugin plugin) {
@@ -50,6 +52,7 @@ public final class EntityCosmetics implements CosmeticRenderer {
             entity.setTeleportDuration(2);
         });
         displays.put(worn.player(), display);
+        applied.remove(worn.player());
     }
 
     @Override
@@ -80,7 +83,10 @@ public final class EntityCosmetics implements CosmeticRenderer {
             }
             display.teleport(anchor(wearer));
             BackPose.Transform pose = on.latest();
-            if (pose != null) {
+            // Only a pose the physics has not drawn yet: the interpolation delay is sent every time
+            // it is set, changed or not - 20 packets a second for a pack at rest.
+            if (pose != null && applied.get(entry.getKey()) != pose) {
+                applied.put(entry.getKey(), pose);
                 display.setTransformation(new Transformation(pose.translation(), pose.rotation(), pose.scale(),
                         new Quaternionf()));
                 display.setInterpolationDelay(0);
@@ -92,6 +98,7 @@ public final class EntityCosmetics implements CosmeticRenderer {
     public void takeOff(Worn worn) {
         this.worn.remove(worn.player());
         ItemDisplay display = displays.remove(worn.player());
+        applied.remove(worn.player());
         if (display != null) {
             display.remove();
         }
@@ -101,6 +108,7 @@ public final class EntityCosmetics implements CosmeticRenderer {
     public void close() {
         displays.values().forEach(ItemDisplay::remove);
         displays.clear();
+        applied.clear();
         worn.clear();
     }
 

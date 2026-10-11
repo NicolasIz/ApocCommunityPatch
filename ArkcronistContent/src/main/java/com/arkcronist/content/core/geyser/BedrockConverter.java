@@ -61,6 +61,8 @@ public final class BedrockConverter {
     private static final String FULL_BLOCK = "minecraft:geometry.full_block";
     /** Paths in a Bedrock pack stay under this many characters: some platforms open no longer one. */
     private static final int MAX_PATH = 80;
+    /** The picture of an item with none of its own. */
+    static final String MISSING_ICON = "ark_no_picture";
 
     /** A file of the built Java pack by its path in the zip; null when there is none. */
     @FunctionalInterface
@@ -140,7 +142,7 @@ public final class BedrockConverter {
      * @param carrierAssignments what bedrock_carriers.json should hold
      * @param pack               the .mcpack
      * @param packId             a short hash of it, for its file name
-     * @param unpictured         items left out - no icon could be drawn - which show as their material
+     * @param unpictured         items no icon could be drawn for, which show as a question mark
      */
     public record Build(List<BedrockItem> items, List<BedrockBlock> blocks, List<Carrier> carriers,
                         Map<String, Integer> carrierAssignments, byte[] pack, String packId, List<String> problems,
@@ -215,7 +217,14 @@ public final class BedrockConverter {
             String reason = drawn == null || modelJsonOrDefinition(drawn) == null ? "its model is not in the pack"
                     : "its textures are not in the pack";
             unpictured.computeIfAbsent(reason, key -> new ArrayList<>()).add(item.id());
-            return null;
+            // Registered all the same, under its own name, with a question mark for a picture: left
+            // out, a stack of it would be drawn by Geyser 2.8 as the next item down by number.
+            if (!itemTextures.containsKey(MISSING_ICON)) {
+                files.put("textures/items/ark/" + MISSING_ICON + ".png", png(IconRenderer.missing()));
+                itemTextures.put(MISSING_ICON, "textures/items/ark/" + MISSING_ICON);
+            }
+            return new BedrockItem(item.id(), name, "minecraft:" + item.material().toLowerCase(Locale.ROOT),
+                    item.customModelData(), item.itemModel().toString(), MISSING_ICON, item.displayName(), item.handheld());
         }
         String path = shortPath("textures/items/ark/", name, ".png");
         files.put(path, png(icon));
@@ -479,6 +488,20 @@ public final class BedrockConverter {
         return defined == null ? null : modelJson(defined);
     }
 
+    /**
+     * The order Geyser 2.8 is to be given items in. It knows a custom item by its custom_model_data
+     * number: it reverses the order items were registered in, then gives a stack the first whose
+     * number is at most the stack's - Java's old override rule. Registered lowest number first,
+     * the first it finds for a stack is the stack's own. Items with no number go last; they are
+     * not registered that way.
+     */
+    public static List<BedrockItem> lowestNumberFirst(List<BedrockItem> items) {
+        List<BedrockItem> sorted = new ArrayList<>(items);
+        sorted.sort(java.util.Comparator.comparing((BedrockItem item) -> item.customModelData() == null ? Integer.MAX_VALUE
+                : item.customModelData()));
+        return sorted;
+    }
+
     /** One line for many items: how many, from which packs, a few of them. */
     static String unpicturedLine(String reason, List<String> ids) {
         Map<String, Integer> byNamespace = new TreeMap<>();
@@ -488,10 +511,10 @@ public final class BedrockConverter {
                 .limit(6)
                 .map(entry -> entry.getKey() + " " + entry.getValue())
                 .toList();
-        return "Bedrock: " + ids.size() + " item(s) left out - " + reason + ", so no icon could be drawn; they show as"
-                + " their material there (" + String.join(", ", largest) + (byNamespace.size() > 6 ? ", ..." : "")
+        return "Bedrock: " + ids.size() + " item(s) with no picture - " + reason + "; Bedrock players see them as a"
+                + " question mark, under their own names (" + String.join(", ", largest) + (byNamespace.size() > 6 ? ", ..." : "")
                 + "; e.g. " + String.join(", ", ids.subList(0, Math.min(3, ids.size())))
-                + " - every one in left-out-items.txt, beside the .mcpack)";
+                + " - every one in items-without-picture.txt, beside the .mcpack)";
     }
 
     /** The model an item definition draws: its plain model, or the fallback or first case of a switch. */

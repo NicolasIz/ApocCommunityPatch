@@ -317,6 +317,59 @@ class BedrockConversionTest {
                 "every path under 80 characters");
     }
 
+    /**
+     * Geyser 2.8 reverses the order items were registered in, then picks for a stack the first whose
+     * number is at most the stack's (its bytecode: Collections.reverse, then a scan). Registered in
+     * the order the content had, a ruby (12007) was drawn as a bucket of frost (12006) on a live
+     * Bedrock client; highest first, everything was drawn as the lowest. Lowest first, each is itself.
+     */
+    @Test
+    void itemsGoToGeyserLowestNumberFirst() {
+        BedrockConverter.BedrockItem acid = item("demo:acid", 12005);
+        BedrockConverter.BedrockItem frost = item("demo:frost", 12006);
+        BedrockConverter.BedrockItem ruby = item("demo:ruby", 12007);
+        BedrockConverter.BedrockItem backpack = item("medieval_props:mochila_viaje", 12404);
+        BedrockConverter.BedrockItem none = item("demo:x", null);
+        List<BedrockConverter.BedrockItem> order = BedrockConverter.lowestNumberFirst(List.of(ruby, none, backpack, frost, acid));
+        assertEquals(List.of(acid, frost, ruby, backpack, none), order);
+        List<BedrockConverter.BedrockItem> asGeyserReadsThem = new java.util.ArrayList<>(order);
+        java.util.Collections.reverse(asGeyserReadsThem);
+        for (BedrockConverter.BedrockItem stack : List.of(acid, frost, ruby, backpack)) {
+            BedrockConverter.BedrockItem drawn = asGeyserReadsThem.stream().filter(item -> item.customModelData() != null
+                    && stack.customModelData() >= item.customModelData()).findFirst().orElseThrow();
+            assertEquals(stack, drawn);
+        }
+    }
+
+    /**
+     * An item whose textures are not in the pack still goes to Geyser, under its own name, with a
+     * question mark: left out, Geyser 2.8 would draw a stack of it as the next item down by number.
+     */
+    @Test
+    void anItemWithNoPictureIsAQuestionMarkNotAnotherItem() throws IOException {
+        Map<String, byte[]> pack = pack();
+        pack.put("assets/demo/models/item/lost.json",
+                "{\"parent\":\"minecraft:item/generated\",\"textures\":{\"layer0\":\"ia:702\"}}".getBytes(StandardCharsets.UTF_8));
+        BedrockConverter.Input base = input(pack, Map.of());
+        List<BedrockConverter.ItemSpec> items = new java.util.ArrayList<>(base.items());
+        items.add(new BedrockConverter.ItemSpec("demo:lost", "PAPER", new ResourceLocation("demo", "lost"),
+                new ResourceLocation("demo", "item/lost"), 1004, "Lost", false));
+        BedrockConverter.Build build = BedrockConverter.convert(new BedrockConverter.Input(base.pack(), items,
+                base.blocks(), base.liquids(), base.furniture(), base.emojis(), base.previousCarriers(), base.blockStates()));
+        BedrockConverter.BedrockItem lost = build.items().stream().filter(item -> item.id().equals("demo:lost"))
+                .findFirst().orElseThrow();
+        assertEquals(BedrockConverter.MISSING_ICON, lost.icon());
+        assertEquals(1004, lost.customModelData());
+        assertEquals(List.of("demo:lost"), build.unpictured());
+        assertTrue(build.problems().get(0).contains("its textures are not in the pack"), build.problems().toString());
+        assertTrue(unzip(build.pack()).containsKey("textures/items/ark/" + BedrockConverter.MISSING_ICON + ".png"));
+    }
+
+    private static BedrockConverter.BedrockItem item(String id, Integer number) {
+        String name = BedrockConverter.name(id);
+        return new BedrockConverter.BedrockItem(id, name, "minecraft:paper", number, id, name, id, false);
+    }
+
     @Test
     void textureBlendingIsReadFromItsPixels() throws IOException {
         assertEquals("opaque", BedrockConverter.blending(ImageIO.read(new ByteArrayInputStream(png(4, 4, 0xff112233)))));
