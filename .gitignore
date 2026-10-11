@@ -5,6 +5,8 @@ target/
 !**/gradle/wrapper/gradle-wrapper.jar
 .gradle/
 build/
+# ...but not a source package that happens to be called build (the MMOItems API stubs)
+!**/src/**/build/
 ArkcronistContent/run/
 .idea/
 *.iml
