@@ -1102,12 +1102,30 @@ Con un bot de mineflayer, AuraSkills 2.3.12, ExcellentJobs, Vault y EssentialsX:
 | Reinicio | Tras reiniciar el servidor, el tablón muestra 1/2 en los dos; el segundo zombi y el segundo carbón dan 2/2, «Click to hand it in!»; entregar ambos da $50 + $10 (saldo $1,150 → $1,210) y 3 rubíes; los dos quedan `COMPLETED` y el no repetible pone «Done» |
 | 1.9.1 | Un aviso cuyo título no trae color llega con `#E6CB98` (antes `#4a3420`, casi invisible sobre el fondo oscuro del tooltip); el pergamino ya no tiene el sello rojo de la esquina izquierda debajo del título, y al arrancar se vuelve a extraer y entra en el pack (mismo SHA-1 en `data/builtin/` y en el ZIP) |
 
-### Muebles medievales interactivos (1.9.5)
+### Muebles medievales interactivos (1.9.5, rehechos en 1.9.6)
 
-`contents/medieval_props/` trae **60 muebles** para la plaza de un spawn: un solo atlas de texturas
-(`textures/furniture/medieval_atlas.png`, 128×128), 59 modelos Java y la guillotina, de Blockbench.
-En un servidor que ya tenía `contents/` se copia la primera vez que arranca la 1.9.5 (una carpeta
-de pack nueva sí se crea en una actualización; una que ya se ofreció y se borró no vuelve).
+`contents/medieval_props/` trae **60 muebles** para la plaza de un spawn: 59 modelos Java y la
+guillotina, de Blockbench, cada uno con su propia textura en `textures/furniture/<id>.png`. En un
+servidor que ya tenía `contents/` se copia la primera vez que arranca (una carpeta de pack nueva sí
+se crea en una actualización; una que ya se ofreció y se borró no vuelve).
+
+**1.9.6: modelos y texturas rehechos.** Cada cara de cada cubo tiene su propio rectángulo en la
+textura del mueble, a la densidad de Minecraft (un texel por píxel de modelo), pintado para su
+material y su tamaño: la veta de la madera sigue la pieza (sube por una pata, corre a lo largo de un
+listón, y los cortes muestran los anillos), los tablones llevan juntas y clavos, el metal bisel y
+remaches, el cuero costuras o capitoné, la tela su trama, y los carteles y estandartes su emblema
+pintado (monedas, jarra, yunque, balanza, herradura, matraz, luna; corona y flor de lis). Todas las
+caras llevan un borde claro arriba a la izquierda y oscuro abajo a la derecha, para que se lean como
+sólidas con la luz plana del juego. La geometría también ganó detalle: calderos redondeados con su
+contenido a la vista (estofado con cucharón, pociones con llama azul, la bruja con un hueso), barriles
+y jarras abombados, carteles colgados de un brazo con cadenas, estandartes con cola de golondrina,
+maniquí con peto, hombreras y yelmo, carro con ruedas de radios, horno con su pala, forja con fuelle,
+trono con respaldo capitoné, y la guillotina con la hoja en diagonal, cesta de mimbre y la cuerda de
+la palanca a la polea. Se mantienen las alturas de asiento y los puntos de donde salen las partículas.
+
+Al actualizar desde la 1.9.5, los archivos del pack que no habías cambiado (el `furniture.yml` y los
+61 modelos) se sustituyen solos por los nuevos, y las 60 texturas se añaden; lo que hubieras editado
+se queda como está. El `medieval_atlas.png` de la 1.9.5 deja de usarse y puede borrarse.
 
 | Tipo | Muebles | Clic derecho |
 |---|---|---|
@@ -1240,6 +1258,17 @@ de la sesión (`bot/medieval195.js`, `guillo195.js`, `deaths195.js`).
 | Romperla con alguien dentro | se le levanta delante; filas de la guillotina 6 → 0 |
 | Barril | inventario de 27 + el del jugador; al cerrarlo, una fila en `furniture_storage` |
 | TPS | con los 60 muebles y sus bucles de partículas y el jugador en medio: 20.0 / 20.0 / 20.0, MSPT media 1,7-1,9 ms, máx. 5,3-6,4 ms en 5-10 s; 67 paquetes de partículas por segundo al jugador |
+
+#### Y en la 1.9.6
+
+Sobre el mismo servidor, con los archivos de la 1.9.5 sin tocar en `contents/medieval_props/`:
+
+| Prueba | Resultado |
+|---|---|
+| Actualización desde 1.9.5 | «Added 60 example file(s)» (las texturas) y «Updated 62 example file(s) you had not changed» (`furniture.yml` y los 61 modelos); el pack generado lleva las 60 texturas en `assets/medieval_props/textures/furniture/`, las 60 en el atlas de bloques, y los huesos de la guillotina |
+| `showcase medieval_props` | 60 muebles, 97 filas; el tick más lento 6,4 ms (25,3 ms la primera vez tras reiniciar, con todo en frío) |
+| La misma batería de bots | asientos, bebida (Speed 600 ticks, «Not yet: 9s»), `white_ash` a 0,44 bloques, caldero 16 paquetes en 3 s, carteles con su mensaje y su línea en consola, campana, buzón, guillotina (primer paquete de huesos 101-102 ms, impacto a 346 ms a 1,40 bloques, muerte y aviso; PvP denegado por WorldGuard), romperla (6 → 0 filas), barril guardado |
+| TPS | 20.0 / 19.99 / 20.0 con los 60 muebles; 67 paquetes de partículas por segundo |
 
 ### Tienda (`price`)
 
@@ -2922,9 +2951,10 @@ con `join-classpath: true` para ver sus clases.
   se ven como un modelo que falta. Entrar en una carpeta reabre el inventario (es como Paper deja
   cambiar un título con imagen). Mientras el worker está ocupado con una recompilación, la página
   pedida espera a que termine.
-- 1.9.5, muebles medievales: los 60 modelos se generaron por programa y se comprobó que compilan,
-  que todos usan el atlas y que caben en los límites de un modelo Java, pero su aspecto en un cliente
-  real no se ha podido ver aquí (los bots no dibujan), ni tampoco dónde queda exactamente la cabeza
+- 1.9.5/1.9.6, muebles medievales: los 60 modelos se generaron por programa y se comprobó que
+  compilan, que cada uno usa su textura, que caben en los límites de un modelo Java y que ninguna cara
+  queda en el mismo plano que otra (no parpadean); se revisaron renderizados en un visor 3D con las
+  mismas UV, pero su aspecto en un cliente real no se ha podido ver aquí (los bots no dibujan), ni tampoco dónde queda exactamente la cabeza
   del que se arrodilla en el cepo respecto al agujero. Las partículas `effect:` solo pueden ser de
   las que no llevan datos (nada de `dust` con color). Los marcadores de los comandos son los de la
   tabla; `%player%` de PlaceholderAPI u otros se dejan como están, para el plugin del comando.

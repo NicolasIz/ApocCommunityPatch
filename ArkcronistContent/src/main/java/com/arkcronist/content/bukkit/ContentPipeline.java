@@ -67,6 +67,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -115,7 +116,10 @@ public final class ContentPipeline {
             "contents/demo/models/furniture/ruby_crate.json",
             "contents/demo/textures/furniture/ruby_crate.png");
 
-    /** The medieval props of 1.9.5, each a Java model of its own under contents/medieval_props/models/furniture/. */
+    /**
+     * The medieval props of 1.9.5, each a Java model under contents/medieval_props/models/furniture/ and,
+     * since 1.9.6, a texture of its own under textures/furniture/.
+     */
     private static final List<String> MEDIEVAL_PROPS = List.of(
             "abrevadero", "alambique", "armero", "banco_iglesia", "banco_largo", "banqueta_cuero", "barril_almacen",
             "barril_cerveza", "baul_viaje", "botella_licor", "brasero", "buzon", "caja_madera", "caldero_bruja",
@@ -185,12 +189,17 @@ public final class ContentPipeline {
                     "contents/demo/quest_board.yml",
                     "contents/demo/models/furniture/medieval_bulletin_board.json",
                     "contents/demo/textures/furniture/medieval_bulletin_board.png"),
-            "1.9.5", Stream.concat(Stream.of(
-                            "contents/medieval_props/furniture.yml",
-                            "contents/medieval_props/textures/furniture/medieval_atlas.png",
-                            "contents/medieval_props/models/furniture/guillotina_plaza.bbmodel",
-                            "contents/medieval_props/models/furniture/guillotina_plaza_icon.json"),
-                    MEDIEVAL_PROPS.stream().map(id -> "contents/medieval_props/models/furniture/" + id + ".json")).toList());
+            "1.9.5", Stream.of(
+                            Stream.of("contents/medieval_props/furniture.yml",
+                                    "contents/medieval_props/models/furniture/guillotina_plaza.bbmodel",
+                                    "contents/medieval_props/models/furniture/guillotina_plaza_icon.json",
+                                    "contents/medieval_props/textures/furniture/guillotina_plaza.png"),
+                            MEDIEVAL_PROPS.stream().map(id -> "contents/medieval_props/models/furniture/" + id + ".json"),
+                            MEDIEVAL_PROPS.stream().map(id -> "contents/medieval_props/textures/furniture/" + id + ".png"))
+                    .flatMap(Function.identity()).toList(),
+            // 1.9.6 gave each prop a texture of its own: to a pack 1.9.5 already set up, these are new.
+            "1.9.6", Stream.concat(Stream.of("contents/medieval_props/textures/furniture/guillotina_plaza.png"),
+                    MEDIEVAL_PROPS.stream().map(id -> "contents/medieval_props/textures/furniture/" + id + ".png")).toList());
 
     /** Copied into contents/ the first time the plugin starts. */
     private static final List<String> EXAMPLES = Stream.concat(FIRST_EXAMPLES.stream(),
@@ -950,10 +959,10 @@ public final class ContentPipeline {
                     plugin.saveResource(example, false);
                 }
                 if (!copy.isEmpty()) {
-                    logger.info("Added " + copy.size() + " example file(s) from newer versions to contents/: "
-                            + String.join(", ", copy.stream().filter(path -> path.endsWith(".yml")).toList())
-                            + " and what they use. Nothing already there was touched; delete what you do not"
-                            + " want, it will not come back.");
+                    List<String> files = copy.stream().filter(path -> path.endsWith(".yml")).toList();
+                    logger.info("Added " + copy.size() + " example file(s) from newer versions to contents/"
+                            + (files.isEmpty() ? "" : ": " + String.join(", ", files) + " and what they use")
+                            + ". Nothing already there was touched; delete what you do not want, it will not come back.");
                 }
             }
             rememberOffered();

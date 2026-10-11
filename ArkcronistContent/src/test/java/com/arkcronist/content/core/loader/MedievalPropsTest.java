@@ -117,8 +117,9 @@ class MedievalPropsTest {
         assertEquals("ONCE", model.clips().get("reset_blade").loop().name());
     }
 
+    /** 1.9.6: every piece is drawn from a texture of its own, painted for it, and it all goes into the pack. */
     @Test
-    void theyCompileWithEveryModelOnTheAtlas() throws IOException {
+    void theyCompileEachWithItsOwnTexture() throws IOException {
         LoadReport report = new ContentLoader().load(SHIPPED);
         List<ItemDefinition> props = report.items().stream()
                 .filter(item -> item.namespace().equals("medieval_props")).toList();
@@ -126,9 +127,7 @@ class MedievalPropsTest {
         PackCompiler.Result result = new PackCompiler(new PackSettings(new JsonPrimitive("medieval"), 46, 46, 99))
                 .compile(pack, props, Map.of());
         assertEquals(List.of(), result.problems());
-        assertTrue(Files.isRegularFile(pack.resolve("assets/medieval_props/textures/furniture/medieval_atlas.png")));
         String atlas = Files.readString(pack.resolve("assets/minecraft/atlases/blocks.json"));
-        assertTrue(atlas.contains("\"medieval_props:furniture/medieval_atlas\""), atlas);
         for (String bone : List.of("frame", "blade", "lever")) {
             assertTrue(Files.isRegularFile(pack.resolve("assets/medieval_props/models/guillotina_plaza/bone_" + bone
                     + ".json")), bone);
@@ -138,14 +137,27 @@ class MedievalPropsTest {
             assertEquals(60, files.size(), files.toString());
             for (Path file : files) {
                 JsonObject model = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
-                assertEquals("medieval_props:furniture/medieval_atlas",
-                        model.getAsJsonObject("textures").get("atlas").getAsString(), file.toString());
+                String id = file.getFileName().toString().replace(".json", "").replace("_icon", "");
+                String texture = model.getAsJsonObject("textures").get("0").getAsString();
+                assertEquals("medieval_props:furniture/" + id, texture, file.toString());
+                assertTrue(Files.isRegularFile(pack.resolve("assets/medieval_props/textures/furniture/" + id + ".png")), id);
+                assertTrue(atlas.contains("\"" + texture + "\""), texture + " on the atlas");
                 for (JsonElement element : model.getAsJsonArray("elements")) {
+                    JsonObject cube = element.getAsJsonObject();
                     for (String corner : List.of("from", "to")) {
-                        JsonArray at = element.getAsJsonObject().getAsJsonArray(corner);
+                        JsonArray at = cube.getAsJsonArray(corner);
                         for (JsonElement value : at) {
                             double v = value.getAsDouble();
                             assertTrue(v >= -16 && v <= 32, file.getFileName() + " " + corner + " " + at);
+                        }
+                    }
+                    if (cube.has("rotation")) {
+                        double angle = cube.getAsJsonObject("rotation").get("angle").getAsDouble();
+                        assertTrue(List.of(-45.0, -22.5, 0.0, 22.5, 45.0).contains(angle), file + " rotates " + angle);
+                    }
+                    for (var face : cube.getAsJsonObject("faces").entrySet()) {
+                        for (JsonElement uv : face.getValue().getAsJsonObject().getAsJsonArray("uv")) {
+                            assertTrue(uv.getAsDouble() >= 0 && uv.getAsDouble() <= 16, file + " uv " + uv);
                         }
                     }
                 }
