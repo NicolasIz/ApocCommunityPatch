@@ -39,6 +39,24 @@ public final class MenuTitle {
      * @param width the picture's drawn width, up to its last column with a pixel in it
      */
     public static String background(String glyph, int width) {
-        return Spaces.of(-TITLE_X) + glyph + Spaces.of(TITLE_X - (width + 1));
+        return background(glyph, width, 0);
+    }
+
+    /**
+     * As {@link #background(String, int)}, for a picture whose left edge is {@code left} pixels from
+     * the inventory's - negative for one wider than the chest.
+     */
+    public static String background(String glyph, int width, int left) {
+        return Spaces.of(left - TITLE_X) + glyph + Spaces.of(TITLE_X - left - (width + 1));
+    }
+
+    /**
+     * The spaces that take the pen from where the title starts to where text {@code advance} pixels
+     * wide - as {@code DefaultFontWidths} counts it, the last character's spacing pixel included -
+     * sits centred on {@code centre}, measured from the inventory's left edge.
+     */
+    public static String centring(int advance, int centre) {
+        int drawn = Math.max(0, advance - 1);
+        return Spaces.of(centre - drawn / 2 - TITLE_X);
     }
 }

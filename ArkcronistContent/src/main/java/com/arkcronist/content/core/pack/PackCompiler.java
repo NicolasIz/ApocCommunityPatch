@@ -211,11 +211,22 @@ public final class PackCompiler {
      * @param contentsDir     the content packs' folder: each pack's {@code sounds.json} and
      *                        {@code sounds/} go into {@code assets/<its folder name>/} as they are;
      *                        null takes no sounds
+     * @param icons           flat 16 x 16 item models of the plugin's own, for its menus' buttons
      */
     public record Input(Collection<ItemDefinition> items, Map<String, NoteBlockState> noteBlockStates,
                         Map<EmojiDefinition, Integer> glyphs, Collection<AdvancementDefinition> advancements,
                         Map<String, Integer> modelData, Map<String, Integer> liquidSlots, List<HudGlyph> hudGlyphs,
-                        boolean spaces, List<ExternalPack> externalPacks, @Nullable Path contentsDir) {
+                        boolean spaces, List<ExternalPack> externalPacks, @Nullable Path contentsDir,
+                        List<Icon> icons) {
+
+        /** No icons of the plugin's own. */
+        public Input(Collection<ItemDefinition> items, Map<String, NoteBlockState> noteBlockStates,
+                     Map<EmojiDefinition, Integer> glyphs, Collection<AdvancementDefinition> advancements,
+                     Map<String, Integer> modelData, Map<String, Integer> liquidSlots, List<HudGlyph> hudGlyphs,
+                     boolean spaces, List<ExternalPack> externalPacks, @Nullable Path contentsDir) {
+            this(items, noteBlockStates, glyphs, advancements, modelData, liquidSlots, hudGlyphs, spaces, externalPacks,
+                    contentsDir, List.of());
+        }
 
         /** No content pack sounds. */
         public Input(Collection<ItemDefinition> items, Map<String, NoteBlockState> noteBlockStates,
@@ -223,8 +234,15 @@ public final class PackCompiler {
                      Map<String, Integer> modelData, Map<String, Integer> liquidSlots, List<HudGlyph> hudGlyphs,
                      boolean spaces, List<ExternalPack> externalPacks) {
             this(items, noteBlockStates, glyphs, advancements, modelData, liquidSlots, hudGlyphs, spaces, externalPacks,
-                    null);
+                    null, List.of());
         }
+    }
+
+    /**
+     * An item model the plugin itself draws with: {@code assets/<ns>/items/<path>.json} pointing at
+     * {@code models/<path>.json}, a flat {@code item/generated} model of {@code textures/<path>.png}.
+     */
+    public record Icon(ResourceLocation id, Path png) {
     }
 
     /** Deletes {@code packDir} and writes the pack for {@code input} into it. */
@@ -266,6 +284,7 @@ public final class PackCompiler {
         run.liquids(ordered, input.liquidSlots());
         run.font(glyphs, input.hudGlyphs(), input.spaces());
         run.advancementBackgrounds(advancements);
+        run.icons(input.icons());
         if (input.contentsDir() != null) {
             run.sounds(input.contentsDir());
         }
@@ -1231,6 +1250,35 @@ public final class PackCompiler {
                 own.put(relative, bytes);
             }
             return true;
+        }
+
+        /** The plugin's own flat icons: an item definition, a model and its texture each. */
+        void icons(List<Icon> icons) throws IOException {
+            for (Icon icon : icons) {
+                String namespace = icon.id().namespace();
+                String path = icon.id().path();
+                String origin = "plugin icon " + icon.id();
+                scaffold(namespace);
+                JsonObject definition = new JsonObject();
+                JsonObject model = new JsonObject();
+                model.addProperty("type", "minecraft:model");
+                model.addProperty("model", namespace + ":" + path);
+                definition.add("model", model);
+                if (place("assets/" + namespace + "/items/" + path + ".json", json(definition), origin)) {
+                    itemDefinitions++;
+                }
+                JsonObject generated = new JsonObject();
+                generated.addProperty("parent", "minecraft:item/generated");
+                JsonObject layers = new JsonObject();
+                layers.addProperty("layer0", namespace + ":" + path);
+                generated.add("textures", layers);
+                if (place("assets/" + namespace + "/models/" + path + ".json", json(generated), origin)) {
+                    models++;
+                }
+                if (place("assets/" + namespace + "/textures/" + path + ".png", Files.readAllBytes(icon.png()), origin)) {
+                    textures++;
+                }
+            }
         }
 
         void writeText(String relative, String text) throws IOException {

@@ -200,7 +200,7 @@ public final class ArkContentPlugin extends JavaPlugin {
         furniture.usePairs(pairs, settings.doubleChests().animationDelayMillis(), storage::release);
         furniture.stopAt(block -> crops.at(block).isPresent());
         crops.stopAt(block -> furniture.identify(block).isPresent());
-        this.menus = new ContentMenus(getServer(), items, itemFactory, settings.menus(), fontImages,
+        this.menus = new ContentMenus(this, pipeline.worker(), items, itemFactory, settings.menus(), fontImages,
                 pipeline.contentsDir());
         this.advancements = new AdvancementService(this, items, itemFactory, database);
         this.actionBars = new ActionBars(() -> getServer().getCurrentTick());

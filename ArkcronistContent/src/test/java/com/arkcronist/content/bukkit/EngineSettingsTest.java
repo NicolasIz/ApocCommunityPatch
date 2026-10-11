@@ -231,6 +231,37 @@ class EngineSettingsTest {
         assertTrue(warnings.stream().anyMatch(w -> w.contains("upload.method")));
     }
 
+    @Test
+    void theBookIsPlacedByThePluginAndOtherPicturesByTheConfig() throws Exception {
+        EngineSettings.Menus book = read("menus: {background-width: 176, background-x: 0}").menus();
+        assertEquals(com.arkcronist.content.core.menu.GuiPicture.CONTENT_BROWSER, book.picture(),
+                "an old config's 176 does not shrink the book");
+        assertEquals(net.kyori.adventure.text.format.TextColor.color(0xE6CB98), book.titleColour());
+        assertTrue(book.titleCentred());
+        assertEquals(45, book.contentSlots().size());
+
+        EngineSettings.Menus custom = read(String.join("\n",
+                "menus:",
+                "  background: \"mypack:gui_book\"",
+                "  background-width: 256",
+                "  background-x: -40",
+                "  title-colour: \"#00aaaa\"",
+                "  title-align: left",
+                "  content-slots: \"10-16, 19-25\"")).menus();
+        assertEquals(256, custom.picture().width());
+        assertEquals(-40, custom.picture().left());
+        assertEquals(net.kyori.adventure.text.format.TextColor.color(0x00AAAA), custom.titleColour());
+        assertFalse(custom.titleCentred());
+        assertEquals(14, custom.contentSlots().size());
+        assertEquals(10, custom.contentSlots().get(0));
+
+        EngineSettings.Menus wrong = read("menus: {title-colour: not-a-colour, content-slots: \"99\"}").menus();
+        assertEquals(net.kyori.adventure.text.format.TextColor.color(0xE6CB98), wrong.titleColour());
+        assertEquals(45, wrong.contentSlots().size(), "nothing usable: all 45");
+        assertTrue(warnings.stream().anyMatch(w -> w.contains("title-colour")));
+        assertTrue(warnings.stream().anyMatch(w -> w.contains("content-slots")));
+    }
+
     private EngineSettings read(String yaml) throws InvalidConfigurationException {
         YamlConfiguration config = new YamlConfiguration();
         config.loadFromString(yaml);

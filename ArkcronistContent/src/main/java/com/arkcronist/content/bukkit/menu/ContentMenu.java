@@ -11,6 +11,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
@@ -20,31 +21,38 @@ import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
+import java.util.logging.Level;
 
 /**
  * One player's content browser: a 54-slot chest view of the loaded custom items, organised the way
  * {@code contents/} is - one folder per content pack, {@code dragones_epicos}, {@code arkespadas},
- * each opening onto its own items and sub-folders (see {@link ContentTree}) - 45 entries to a page.
+ * each opening onto its own items and sub-folders (see {@link ContentTree}).
  *
  * <pre>
- *   rows 1-5   the folder's sub-folders, then its items - real stacks from {@link ItemFactory}
- *   row 6      [prev] [up] [type] [home] [page] [ ] [ ] [close] [next]
+ *   rows 1-5   the folder's sub-folders, then its items - real stacks from {@link ItemFactory} -
+ *              in the slots menus.content-slots names (all 45 by default)
+ *   row 6      [prev] [up] [all] [type] [close] [page] [ ] [ ] [next]
  * </pre>
  *
- * <p>The type button cycles what is listed: everything, or only items, blocks, furniture, crops or
- * liquids - a folder is listed while it holds any of them. With {@code menus.folders: false} it is
- * one flat list, as it was before 1.9.</p>
+ * <p>Drawn over the plugin's book, the title is the open folder's name ("Categories" at the top),
+ * centred on the book's ribbon, and so a new folder is a new inventory: Paper cannot change a title
+ * that holds a picture and colours in place. Turning a page keeps the inventory.</p>
+ *
+ * <p>Each page is laid out on the {@code ArkContent-Worker} thread - which folder the trail ends
+ * at, what it holds of the type shown, the stacks for the page - and put into the inventory on the
+ * main thread a tick later. While one is on its way, further page turns are ignored, so two quick
+ * clicks never skip a page; a newer layout always wins over an older one.</p>
  *
  * <p>The inventory belongs to no block or entity; this object is its holder, which is how the
  * listener recognises it, and it keeps what sits in each slot, so a click is resolved by id against
@@ -53,8 +61,6 @@ import java.util.function.Predicate;
  * <p>Opened as a {@link Shop shop}, it shows only the items with a {@code price}, the price under
  * each, and a click buys instead of taking: one, or a stack on a shift-click - as many as fit, paid
  * for before they are handed over.</p>
- *
- * <p>Main thread only, like any inventory.</p>
  */
 public final class ContentMenu implements InventoryHolder {
 
@@ -63,13 +69,13 @@ public final class ContentMenu implements InventoryHolder {
     public static final String BROWSE_PERMISSION = "arkcontent.menu";
 
     static final int SIZE = 54;
-    static final int PAGE_SIZE = 45;
+    static final int CONTROLS = 45;
     static final int PREVIOUS = 45;
     static final int UP = 46;
-    static final int TYPE = 47;
-    static final int HOME = 48;
-    static final int PAGE_INFO = 49;
-    static final int CLOSE = 52;
+    static final int HOME = 47;
+    static final int TYPE = 48;
+    static final int CLOSE = 49;
+    static final int PAGE_INFO = 50;
     static final int NEXT = 53;
 
     /**
@@ -82,44 +88,63 @@ public final class ContentMenu implements InventoryHolder {
     /** What a click in the menu asked for; the listener carries out the parts that must wait a tick. */
     enum Outcome { NOTHING, CLOSE }
 
-    /** What one of the 45 slots shows: a folder to open, or an item to take. */
-    private sealed interface Entry {
-        record Folder(ContentTree.Node node) implements Entry {
+    /** What one of the content slots shows: a folder to open, or an item to take. */
+    sealed interface Entry {
+        record Folder(String path) implements Entry {
         }
 
         record Item(String id) implements Entry {
         }
     }
 
+    /** What a page is asked for with: everything the worker needs, copied off the main thread's state. */
+    record Request(List<String> trail, @Nullable ContentType type, int page, boolean shop, int pageSize) {
+    }
+
+    /**
+     * A page as the worker laid it out.
+     *
+     * @param trail      the trail as it stands in the current tree: a folder a rebuild removed is gone
+     * @param folderPath the folder shown; "" at the top
+     * @param folderName its name; null at the top
+     * @param upName     the name of the folder "Back" leads to
+     * @param stacks     one per entry, in order
+     */
+    record Laid(List<String> trail, String folderPath, @Nullable String folderName, String upName, int page, int pages,
+                int total, List<Entry> entries, List<ItemStack> stacks) {
+    }
+
+    private final ContentMenus menus;
     private final ItemRegistry registry;
     private final ItemFactory factory;
     /** Null for the browser; the economy, for the shop. */
     private final @Nullable Shop shop;
-    private final @Nullable Path contentsDir;
-    private final boolean folders;
-    private final Inventory inventory;
-    private final Entry[] shown = new Entry[PAGE_SIZE];
+    private final List<Integer> contentSlots;
+    private final boolean textured;
+    private Inventory inventory;
+    /** The folder whose name the inventory's title shows. */
+    private String titled = "";
+    private final Map<Integer, Entry> shown = new HashMap<>();
 
     /** The folders opened, from the root down; the last is the one shown. */
     private final List<String> trail = new ArrayList<>(List.of(""));
     /** Null for everything. */
     private @Nullable ContentType type;
     private int page;
-    /** How many pages the folder had at the last render. */
+    /** How many pages the folder had at the last layout. */
     private int pages = 1;
+    /** Each layout asked for gets the next number; only the newest one is put in the inventory. */
+    private int generation;
+    private boolean pending;
 
-    /**
-     * @param contentsDir where the content packs are, to tell which folder an item comes from; null
-     *                    for one flat list
-     */
-    ContentMenu(ItemRegistry registry, ItemFactory factory, @Nullable Shop shop, @Nullable Path contentsDir,
-                Component title) {
-        this.registry = registry;
-        this.factory = factory;
+    ContentMenu(ContentMenus menus, @Nullable Shop shop) {
+        this.menus = menus;
+        this.registry = menus.registry();
+        this.factory = menus.factory();
         this.shop = shop;
-        this.contentsDir = contentsDir;
-        this.folders = contentsDir != null;
-        this.inventory = Bukkit.createInventory(this, SIZE, title);
+        this.contentSlots = menus.settings().contentSlots();
+        this.textured = menus.settings().textured();
+        this.inventory = Bukkit.createInventory(this, SIZE, menus.title(null, shop != null));
     }
 
     @Override
@@ -127,58 +152,151 @@ public final class ContentMenu implements InventoryHolder {
         return inventory;
     }
 
-    /** Fills every slot from the registry as it is now. */
-    void render(Player viewer) {
-        List<CustomItem> listed = registry.all().stream().filter(this::listed).toList();
-        ContentTree.Node folder = currentFolder(listed);
-        Predicate<CustomItem> ofType = item -> type == null || item.definition().type() == type;
+    /** Shows the book at once; its entries follow when the worker has laid out the first page. */
+    void open(Player player) {
+        player.openInventory(inventory);
+        request(player);
+    }
 
+    // ---------------------------------------------------------------- laying out a page
+
+    /** Asks the worker for the page the menu now points at. Main thread. */
+    void request(Player viewer) {
+        int ticket = ++generation;
+        pending = true;
+        Request request = new Request(List.copyOf(trail), type, page, shop != null, contentSlots.size());
+        UUID id = viewer.getUniqueId();
+        CompletableFuture.supplyAsync(() -> lay(menus, request), menus.worker())
+                .whenComplete((laid, error) -> menus.onMain(() -> {
+                    if (ticket != generation) {
+                        return;
+                    }
+                    pending = false;
+                    Player player = Bukkit.getPlayer(id);
+                    if (player == null || ContentMenus.of(player.getOpenInventory()) != this) {
+                        return;
+                    }
+                    if (error != null) {
+                        menus.plugin().getLogger().log(Level.WARNING, "Could not lay out the content browser", error);
+                        player.sendActionBar(Component.text("The menu could not be drawn - see the console",
+                                NamedTextColor.RED));
+                        return;
+                    }
+                    apply(player, laid);
+                }));
+    }
+
+    /**
+     * The page for {@code request}, from the registry as it is now: which folder the trail ends at
+     * (after a rebuild that emptied or moved one, the deepest of the trail still there), what it
+     * holds of the type shown, and the stacks. Worker thread: reads only the registry, which a
+     * rebuild swaps whole, and builds new stacks; touches no inventory.
+     */
+    static Laid lay(ContentMenus menus, Request request) {
+        ItemRegistry registry = menus.registry();
+        ContentTree.Node root = menus.tree(request.shop());
+        List<String> kept = new ArrayList<>(List.of(""));
+        ContentTree.Node folder = root;
+        for (int i = request.trail().size() - 1; i > 0; i--) {
+            ContentTree.Node found = root.find(request.trail().get(i));
+            if (found != null) {
+                folder = found;
+                kept = new ArrayList<>(request.trail().subList(0, i + 1));
+                break;
+            }
+        }
+        ContentType type = request.type();
+        Predicate<CustomItem> ofType = item -> type == null || item.definition().type() == type;
         List<Entry> entries = new ArrayList<>();
+        Map<String, ContentTree.Node> nodes = new HashMap<>();
         for (ContentTree.Node child : folder.folders()) {
-            if (count(child, ofType) > 0) {
-                entries.add(new Entry.Folder(child));
+            if (count(registry, child, ofType) > 0) {
+                entries.add(new Entry.Folder(child.path()));
+                nodes.put(child.path(), child);
             }
         }
         for (String id : folder.items()) {
             registry.get(id).filter(ofType).ifPresent(item -> entries.add(new Entry.Item(item.id())));
         }
-        Page<Entry> current = Page.of(entries, page, PAGE_SIZE);
-        page = current.index();
-        pages = current.count();
-
-        inventory.clear();
-        Arrays.fill(shown, null);
-        for (int slot = 0; slot < current.entries().size(); slot++) {
-            Entry entry = current.entries().get(slot);
+        Page<Entry> current = Page.of(entries, request.page(), request.pageSize());
+        List<Entry> onPage = new ArrayList<>();
+        List<ItemStack> stacks = new ArrayList<>();
+        for (Entry entry : current.entries()) {
             ItemStack stack = switch (entry) {
-                case Entry.Folder child -> folderIcon(child.node(), ofType);
-                case Entry.Item item -> registry.get(item.id()).map(this::display).orElse(null);
+                case Entry.Folder child -> folderIcon(menus, nodes.get(child.path()), ofType, type);
+                case Entry.Item item -> registry.get(item.id()).map(found -> display(menus.factory(), found)).orElse(null);
             };
             if (stack != null) {
-                shown[slot] = entry;
-                inventory.setItem(slot, stack);
+                onPage.add(entry);
+                stacks.add(stack);
             }
         }
-        if (entries.isEmpty()) {
-            inventory.setItem(22, icon(Material.STRUCTURE_VOID, "Nothing here", NamedTextColor.GRAY, false,
+        String upName = "all packs";
+        if (kept.size() > 2) {
+            ContentTree.Node up = root.find(kept.get(kept.size() - 2));
+            upName = up == null ? kept.get(kept.size() - 2) : up.name();
+        }
+        return new Laid(List.copyOf(kept), folder.path(), folder.path().isEmpty() ? null : folder.name(), upName,
+                current.index(), current.count(), current.total(), onPage, stacks);
+    }
+
+    /** Puts a laid-out page into the inventory - a new one, titled, when the folder changed. Main thread. */
+    private void apply(Player player, Laid laid) {
+        trail.clear();
+        trail.addAll(laid.trail());
+        page = laid.page();
+        pages = laid.pages();
+        if (!laid.folderPath().equals(titled)) {
+            Inventory next = Bukkit.createInventory(this, SIZE, menus.title(laid.folderName(), shop != null));
+            fill(next, player, laid);
+            inventory = next;
+            titled = laid.folderPath();
+            player.openInventory(next);
+        } else {
+            fill(inventory, player, laid);
+        }
+    }
+
+    private void fill(Inventory target, Player viewer, Laid laid) {
+        target.clear();
+        shown.clear();
+        for (int i = 0; i < laid.entries().size() && i < contentSlots.size(); i++) {
+            Entry entry = laid.entries().get(i);
+            ItemStack stack = laid.stacks().get(i);
+            if (shop != null && entry instanceof Entry.Item item) {
+                priced(stack, item.id());
+            }
+            int slot = contentSlots.get(i);
+            target.setItem(slot, stack);
+            shown.put(slot, entry);
+        }
+        if (laid.entries().isEmpty()) {
+            int middle = contentSlots.contains(22) ? 22 : contentSlots.get(contentSlots.size() / 2);
+            target.setItem(middle, button("page", Material.STRUCTURE_VOID, "Nothing here", NamedTextColor.GRAY, false,
                     List.of(type == null ? "No content is loaded." : "No " + label(type).toLowerCase(Locale.ROOT)
                             + " here.")));
         }
-
-        ItemStack filler = filler();
-        for (int slot = PAGE_SIZE; slot < SIZE; slot++) {
-            inventory.setItem(slot, filler);
+        if (!textured) {
+            // Over vanilla's grey, the unused slots are filled; over the book they stay blank paper.
+            ItemStack filler = filler();
+            for (int slot = 0; slot < SIZE; slot++) {
+                if (target.getItem(slot) == null && (slot >= CONTROLS || !contentSlots.contains(slot))) {
+                    target.setItem(slot, filler);
+                }
+            }
         }
-        if (current.hasPrevious()) {
-            inventory.setItem(PREVIOUS, icon(Material.ARROW, "Previous page", NamedTextColor.YELLOW, false, List.of()));
+        if (laid.page() > 0) {
+            target.setItem(PREVIOUS, button("previous", Material.ARROW, "Previous page", NamedTextColor.YELLOW, false,
+                    List.of("Page " + laid.page() + " of " + laid.pages())));
         }
-        if (current.hasNext()) {
-            inventory.setItem(NEXT, icon(Material.ARROW, "Next page", NamedTextColor.YELLOW, false, List.of()));
+        if (laid.page() < laid.pages() - 1) {
+            target.setItem(NEXT, button("next", Material.ARROW, "Next page", NamedTextColor.YELLOW, false,
+                    List.of("Page " + (laid.page() + 2) + " of " + laid.pages())));
         }
-        if (trail.size() > 1) {
-            inventory.setItem(UP, icon(Material.SPECTRAL_ARROW, "Back", NamedTextColor.YELLOW, false,
-                    List.of("Up to " + (trail.size() > 2 ? nameOf(listed, trail.get(trail.size() - 2)) : "all packs"))));
-            inventory.setItem(HOME, icon(Material.COMPASS, "All packs", NamedTextColor.YELLOW, false,
+        if (laid.trail().size() > 1) {
+            target.setItem(UP, button("up", Material.SPECTRAL_ARROW, "Back", NamedTextColor.YELLOW, false,
+                    List.of("Up to " + laid.upName())));
+            target.setItem(HOME, button("home", Material.COMPASS, "All packs", NamedTextColor.YELLOW, false,
                     List.of("Back to the first page")));
         }
         List<String> types = new ArrayList<>();
@@ -186,14 +304,15 @@ public final class ContentMenu implements InventoryHolder {
             types.add((option == type ? "» " : "  ") + (option == null ? "Everything" : label(option)));
         }
         types.add("Click to change");
-        inventory.setItem(TYPE, icon(type == null ? Material.HOPPER : tabIcon(type),
+        target.setItem(TYPE, button("filter", type == null ? Material.HOPPER : tabIcon(type),
                 "Showing: " + (type == null ? "everything" : label(type).toLowerCase(Locale.ROOT)),
                 NamedTextColor.GOLD, type != null, types));
+        target.setItem(CLOSE, button("close", Material.BARRIER, "Close", NamedTextColor.RED, false, List.of()));
 
         List<String> help = new ArrayList<>();
-        help.add(folder.path().isEmpty() ? (folders ? "All content packs" : "All content")
-                : "Folder: contents/" + folder.path());
-        help.add(current.total() + " entr" + (current.total() == 1 ? "y" : "ies") + ", " + PAGE_SIZE + " per page");
+        help.add(laid.folderPath().isEmpty() ? (menus.settings().folders() ? "All content packs" : "All content")
+                : "Folder: contents/" + laid.folderPath());
+        help.add(laid.total() + " entr" + (laid.total() == 1 ? "y" : "ies") + ", " + contentSlots.size() + " per page");
         if (shop != null) {
             help.add("Click an item: buy one");
             help.add("Shift-click: buy a stack");
@@ -203,25 +322,31 @@ public final class ContentMenu implements InventoryHolder {
         } else {
             help.add("Browsing only: taking items needs " + GIVE_PERMISSION);
         }
-        inventory.setItem(PAGE_INFO, icon(Material.BOOK, (folder.path().isEmpty() ? "Packs" : folder.name())
-                        + " - page " + (current.index() + 1) + " of " + current.count(),
-                NamedTextColor.AQUA, false, help));
-        inventory.setItem(CLOSE, icon(Material.BARRIER, "Close", NamedTextColor.RED, false, List.of()));
+        String where = laid.folderName() == null ? (shop != null ? "Shop" : "Categories")
+                : ContentMenus.words(laid.folderName());
+        target.setItem(PAGE_INFO, button("page", Material.BOOK, where + " - page " + (laid.page() + 1) + " of "
+                + laid.pages(), NamedTextColor.AQUA, false, help));
     }
+
+    // ---------------------------------------------------------------- clicks
 
     /** A click on {@code slot} of the menu itself. The listener has already cancelled it. */
     Outcome click(Player player, int slot, ClickType click) {
-        if (slot >= 0 && slot < PAGE_SIZE) {
-            Entry entry = shown[slot];
-            if (entry instanceof Entry.Folder folder && TAKING.contains(click)) {
-                trail.add(folder.node().path());
-                page = 0;
-            } else if (entry instanceof Entry.Item item) {
-                take(player, item.id(), click);
-                return Outcome.NOTHING;
-            } else {
-                return Outcome.NOTHING;
-            }
+        if (slot == CLOSE) {
+            return Outcome.CLOSE;
+        }
+        Entry entry = shown.get(slot);
+        if (entry instanceof Entry.Item item) {
+            // The page shown is the one clicked, even while the next is on its way.
+            take(player, item.id(), click);
+            return Outcome.NOTHING;
+        }
+        if (pending) {
+            return Outcome.NOTHING;
+        }
+        if (entry instanceof Entry.Folder folder && TAKING.contains(click)) {
+            trail.add(folder.path());
+            page = 0;
         } else if (slot == TYPE) {
             List<ContentType> cycle = typeCycle();
             int at = cycle.indexOf(type);
@@ -237,63 +362,17 @@ public final class ContentMenu implements InventoryHolder {
             page--;
         } else if (slot == NEXT && page < pages - 1) {
             page++;
-        } else if (slot == CLOSE) {
-            return Outcome.CLOSE;
         } else {
             return Outcome.NOTHING;
         }
-        player.playSound(player, Sound.UI_BUTTON_CLICK, 0.4f, 1f);
-        render(player);
+        player.playSound(player, slot == PREVIOUS || slot == NEXT ? Sound.ITEM_BOOK_PAGE_TURN : Sound.UI_BUTTON_CLICK,
+                0.5f, 1f);
+        request(player);
         return Outcome.NOTHING;
     }
 
-    /**
-     * The folder the trail ends at, in the tree as it is now: after a rebuild that emptied or moved
-     * a folder, the deepest one of the trail still there.
-     */
-    private ContentTree.Node currentFolder(List<CustomItem> listed) {
-        ContentTree.Node root = ContentTree.build(foldersOf(listed));
-        for (int i = trail.size() - 1; i > 0; i--) {
-            ContentTree.Node found = root.find(trail.get(i));
-            if (found != null) {
-                trail.subList(i + 1, trail.size()).clear();
-                return found;
-            }
-        }
-        trail.subList(1, trail.size()).clear();
-        return root;
-    }
-
-    /** Each item and its file's folder under contents/ - all in one, for a flat list. */
-    private Map<String, String> foldersOf(List<CustomItem> items) {
-        Map<String, String> folderOf = new LinkedHashMap<>();
-        for (CustomItem item : items) {
-            folderOf.put(item.id(), folders ? folderOf(item) : "");
-        }
-        return folderOf;
-    }
-
-    private String folderOf(CustomItem item) {
-        Path source = item.definition().source();
-        Path parent = source == null ? null : source.toAbsolutePath().normalize().getParent();
-        Path root = contentsDir.toAbsolutePath().normalize();
-        if (parent == null || !parent.startsWith(root)) {
-            return "";
-        }
-        return root.relativize(parent).toString().replace(parent.getFileSystem().getSeparator(), "/");
-    }
-
-    private String nameOf(List<CustomItem> listed, String path) {
-        ContentTree.Node node = ContentTree.build(foldersOf(listed)).find(path);
-        return node == null ? path : node.name();
-    }
-
-    private boolean listed(CustomItem item) {
-        return shop == null || item.definition().price() > 0;
-    }
-
     /** How many items of the shown type a folder holds, sub-folders included. */
-    private int count(ContentTree.Node node, Predicate<CustomItem> ofType) {
+    private static int count(ItemRegistry registry, ContentTree.Node node, Predicate<CustomItem> ofType) {
         int count = 0;
         for (String id : node.items()) {
             if (registry.get(id).filter(ofType).isPresent()) {
@@ -301,18 +380,20 @@ public final class ContentMenu implements InventoryHolder {
             }
         }
         for (ContentTree.Node child : node.folders()) {
-            count += count(child, ofType);
+            count += count(registry, child, ofType);
         }
         return count;
     }
 
     /** A folder: drawn as its first item, named after it, with what it holds underneath. */
-    private ItemStack folderIcon(ContentTree.Node node, Predicate<CustomItem> ofType) {
-        CustomItem first = firstItem(node, ofType);
-        ItemStack stack = first == null ? ItemStack.of(Material.CHEST) : factory.create(first, 1);
-        int items = count(node, ofType);
+    private static ItemStack folderIcon(ContentMenus menus, ContentTree.Node node, Predicate<CustomItem> ofType,
+                                        @Nullable ContentType type) {
+        CustomItem first = firstItem(menus.registry(), node, ofType);
+        ItemStack stack = first == null ? ItemStack.of(Material.CHEST) : menus.factory().create(first, 1);
+        int items = count(menus.registry(), node, ofType);
         stack.editMeta(meta -> {
-            meta.itemName(Component.text(node.name(), NamedTextColor.GOLD).decoration(TextDecoration.BOLD, true));
+            meta.itemName(Component.text(ContentMenus.words(node.name()), NamedTextColor.GOLD)
+                    .decoration(TextDecoration.BOLD, true));
             meta.customName(null);
             List<Component> lore = new ArrayList<>();
             lore.add(line(items + " " + (type == null ? "item" + (items == 1 ? "" : "s")
@@ -329,7 +410,8 @@ public final class ContentMenu implements InventoryHolder {
         return stack;
     }
 
-    private @Nullable CustomItem firstItem(ContentTree.Node node, Predicate<CustomItem> ofType) {
+    private static @Nullable CustomItem firstItem(ItemRegistry registry, ContentTree.Node node,
+                                                  Predicate<CustomItem> ofType) {
         for (String id : node.items()) {
             Optional<CustomItem> item = registry.get(id).filter(ofType);
             if (item.isPresent()) {
@@ -337,7 +419,7 @@ public final class ContentMenu implements InventoryHolder {
             }
         }
         for (ContentTree.Node child : node.folders()) {
-            CustomItem found = firstItem(child, ofType);
+            CustomItem found = firstItem(registry, child, ofType);
             if (found != null) {
                 return found;
             }
@@ -372,7 +454,7 @@ public final class ContentMenu implements InventoryHolder {
         Optional<CustomItem> item = registry.get(id);
         if (item.isEmpty()) {
             player.sendActionBar(Component.text(id + " is no longer loaded", NamedTextColor.RED));
-            render(player);
+            request(player);
             return;
         }
         int amount = click.isShiftClick() ? item.get().material().getMaxStackSize() : 1;
@@ -397,7 +479,7 @@ public final class ContentMenu implements InventoryHolder {
         Optional<CustomItem> item = registry.get(id);
         if (item.isEmpty() || item.get().definition().price() <= 0) {
             player.sendActionBar(Component.text(id + " is no longer for sale", NamedTextColor.RED));
-            render(player);
+            request(player);
             return;
         }
         int wanted = click.isShiftClick() ? item.get().material().getMaxStackSize() : 1;
@@ -432,7 +514,7 @@ public final class ContentMenu implements InventoryHolder {
     }
 
     /** The real stack, plus its id underneath the lore, so an admin can type it. */
-    private ItemStack display(CustomItem item) {
+    private static ItemStack display(ItemFactory factory, CustomItem item) {
         ItemStack stack = factory.create(item, 1);
         stack.editMeta(meta -> {
             List<Component> lore = meta.hasLore() ? new ArrayList<>(meta.lore()) : new ArrayList<>();
@@ -440,16 +522,35 @@ public final class ContentMenu implements InventoryHolder {
                 lore.add(Component.empty());
             }
             lore.add(line(item.id(), NamedTextColor.DARK_GRAY));
-            if (shop != null) {
-                lore.add(line("Price: " + shop.format(item.definition().price()), NamedTextColor.GOLD));
-            }
             meta.lore(lore);
         });
         return stack;
     }
 
+    /** A shop's price under the item: the economy is asked on the main thread, never the worker. */
+    private void priced(ItemStack stack, String id) {
+        registry.get(id).ifPresent(item -> stack.editMeta(meta -> {
+            List<Component> lore = meta.hasLore() ? new ArrayList<>(meta.lore()) : new ArrayList<>();
+            lore.add(line("Price: " + shop.format(item.definition().price()), NamedTextColor.GOLD));
+            meta.lore(lore);
+        }));
+    }
+
     private static Component line(String text, NamedTextColor colour) {
         return Component.text(text, colour).decoration(TextDecoration.ITALIC, false);
+    }
+
+    /**
+     * A button: over the book, a sheet of paper drawn as the plugin's own icon
+     * ({@code arkcontent:menu/<icon>}, in the pack); over vanilla's grey, {@code fallback}.
+     */
+    private ItemStack button(String icon, Material fallback, String name, NamedTextColor colour, boolean glint,
+                             List<String> lines) {
+        ItemStack stack = icon(textured ? Material.PAPER : fallback, name, colour, glint, lines);
+        if (textured) {
+            stack.editMeta(meta -> meta.setItemModel(new NamespacedKey("arkcontent", "menu/" + icon)));
+        }
+        return stack;
     }
 
     static ItemStack icon(Material material, String name, NamedTextColor colour, boolean glint, List<String> lines) {

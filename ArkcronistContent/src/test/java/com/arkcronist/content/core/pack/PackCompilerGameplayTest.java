@@ -77,6 +77,25 @@ class PackCompilerGameplayTest {
     }
 
     @Test
+    void thePluginsOwnIconsAreFlatItemModels() throws IOException {
+        Path png = temp.resolve("close.png");
+        Files.write(png, PackCompilerTest.png("close"));
+        Path pack = temp.resolve("pack");
+        PackCompiler.Result result = new PackCompiler(PackCompilerTest.SETTINGS).compile(pack, new PackCompiler.Input(
+                List.of(), Map.of(), Map.of(), List.of(), Map.of(), Map.of(), List.of(), false, List.of(), null,
+                List.of(new PackCompiler.Icon(loc("arkcontent:menu/close"), png))));
+        JsonObject definition = JsonParser.parseString(Files.readString(pack.resolve("assets/arkcontent/items/menu/close.json")))
+                .getAsJsonObject();
+        assertEquals("arkcontent:menu/close", definition.getAsJsonObject("model").get("model").getAsString());
+        JsonObject model = JsonParser.parseString(Files.readString(pack.resolve("assets/arkcontent/models/menu/close.json")))
+                .getAsJsonObject();
+        assertEquals("minecraft:item/generated", model.get("parent").getAsString());
+        assertEquals("arkcontent:menu/close", model.getAsJsonObject("textures").get("layer0").getAsString());
+        assertTrue(Files.exists(pack.resolve("assets/arkcontent/textures/menu/close.png")));
+        assertTrue(result.problems().isEmpty(), result.problems().toString());
+    }
+
+    @Test
     void noLiquidsLeaveTripwireAlone() throws IOException {
         Path pack = temp.resolve("pack");
         new PackCompiler(PackCompilerTest.SETTINGS).compile(pack, new PackCompiler.Input(List.of(), Map.of(), Map.of(),

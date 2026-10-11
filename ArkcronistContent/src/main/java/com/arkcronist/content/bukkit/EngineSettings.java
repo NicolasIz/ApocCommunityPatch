@@ -1,10 +1,14 @@
 package com.arkcronist.content.bukkit;
 
 import com.arkcronist.content.core.http.PackHttpServer;
+import com.arkcronist.content.core.menu.GuiPicture;
+import com.arkcronist.content.core.menu.SlotList;
 import com.arkcronist.content.core.net.PublicAddress;
 import com.arkcronist.content.core.pack.PackSettings;
 import com.arkcronist.content.core.upload.UploadSettings;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import org.bukkit.configuration.ConfigurationSection;
@@ -46,13 +50,33 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
 
     /**
      * The content browser: whether it is drawn over a picture of its own, which picture - any font
-     * image by name - and how wide that picture is drawn.
+     * image by name - and how its title and its entries sit on it.
      *
-     * @param folders show the contents/ folders as the menu's first level; false for one flat list
+     * @param backgroundWidth for a picture other than the plugin's own: how wide it is drawn
+     * @param backgroundX     for a picture other than the plugin's own: its left edge from the
+     *                        inventory's, negative for one wider than the chest
+     * @param folders         show the contents/ folders as the menu's first level; false for one flat list
+     * @param titleColour     the title's colour over the picture
+     * @param titleCentred    centre the title over the picture; false starts it where vanilla does
+     * @param contentSlots    which of the 45 upper slots show entries, in order - all of them for the
+     *                        plugin's book, whose margins lie outside the slots
      */
-    public record Menus(boolean textured, String background, int backgroundWidth, boolean folders) {
+    public record Menus(boolean textured, String background, int backgroundWidth, int backgroundX, boolean folders,
+                        TextColor titleColour, boolean titleCentred, List<Integer> contentSlots) {
 
-        public static final Menus DEFAULT = new Menus(true, "arkcontent:content_browser", 176, true);
+        public static final List<Integer> ALL_SLOTS = java.util.stream.IntStream.range(0, 45).boxed().toList();
+        public static final Menus DEFAULT = new Menus(true, "arkcontent:content_browser", 176, 0, true,
+                TextColor.color(0xE6CB98), true, ALL_SLOTS);
+
+        public Menus {
+            contentSlots = contentSlots.isEmpty() ? ALL_SLOTS : List.copyOf(contentSlots);
+        }
+
+        /** Where the picture is and how big: the plugin's own pictures know; any other is as configured. */
+        public GuiPicture picture() {
+            return GuiPicture.builtin(background)
+                    .orElse(new GuiPicture(background, backgroundWidth, 0, backgroundX, 0));
+        }
     }
 
     /**
@@ -299,16 +323,39 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
                         Math.max(0.1, Math.min(20, sanity.getDouble("max-millis-per-tick",
                                 Sanity.DEFAULT.maxMillisPerTick())))),
                 new FontImageText(fontImages.getBoolean("titles", true), fontImages.getBoolean("placeholders", true)),
-                new Menus(menus.getBoolean("textured", Menus.DEFAULT.textured()),
-                        menus.getString("background", Menus.DEFAULT.background()).trim(),
-                        Math.max(1, Math.min(512, menus.getInt("background-width", Menus.DEFAULT.backgroundWidth()))),
-                        menus.getBoolean("folders", Menus.DEFAULT.folders())),
+                readMenus(menus, logger),
                 new DoubleChests(Math.max(0, Math.min(2000, furniture.getInt("double-chest-animation-delay-ms",
                         DoubleChests.DEFAULT.animationDelayMillis())))),
                 new QuestBoards(boards.getString("background", QuestBoards.DEFAULT.background()).trim(),
                         Math.max(1, Math.min(512, boards.getInt("background-width", QuestBoards.DEFAULT.backgroundWidth()))),
                         Math.max(1, Math.min(45, boards.getInt("max-active", QuestBoards.DEFAULT.maxActive()))),
                         Math.max(2, Math.min(600, boards.getInt("save-seconds", QuestBoards.DEFAULT.saveSeconds())))));
+    }
+
+    private static Menus readMenus(ConfigurationSection menus, Logger logger) {
+        TextColor colour = Menus.DEFAULT.titleColour();
+        String raw = menus.getString("title-colour", menus.getString("title-color", colour.asHexString())).trim();
+        TextColor read = raw.startsWith("#") ? TextColor.fromHexString(raw) : NamedTextColor.NAMES.value(raw.toLowerCase(Locale.ROOT));
+        if (read != null) {
+            colour = read;
+        } else {
+            logger.warning("menus.title-colour '" + raw + "' is not #rrggbb or a colour name - using "
+                    + colour.asHexString());
+        }
+        String align = menus.getString("title-align", "centre").trim().toLowerCase(Locale.ROOT);
+        Object slots = menus.get("content-slots");
+        String slotText = slots instanceof List<?> list
+                ? String.join(",", list.stream().map(String::valueOf).toList())
+                : slots == null ? "0-44" : String.valueOf(slots);
+        List<String> problems = new ArrayList<>();
+        List<Integer> contentSlots = SlotList.parse(slotText, 44, problems);
+        problems.forEach(problem -> logger.warning("menus.content-slots: " + problem));
+        return new Menus(menus.getBoolean("textured", Menus.DEFAULT.textured()),
+                menus.getString("background", Menus.DEFAULT.background()).trim(),
+                Math.max(1, Math.min(512, menus.getInt("background-width", Menus.DEFAULT.backgroundWidth()))),
+                Math.max(-256, Math.min(256, menus.getInt("background-x", Menus.DEFAULT.backgroundX()))),
+                menus.getBoolean("folders", Menus.DEFAULT.folders()), colour,
+                !align.equals("left"), contentSlots);
     }
 
     private static Pack readPack(ConfigurationSection section, Logger logger) {

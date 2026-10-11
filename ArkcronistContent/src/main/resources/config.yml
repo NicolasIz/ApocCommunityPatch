@@ -217,13 +217,25 @@ menus:
   # sub-folders. false: one flat list, as before 1.9.
   folders: true
   # Draw the menu over a picture of its own: a font image, by name, behind
-  # the whole chest - a custom GUI. The plugin ships one; any font image of
-  # your packs works, e.g. one of ItemsAdder's GUIs.
+  # the whole chest - a custom GUI. The plugin ships a book with a spiral
+  # binding (arkcontent:content_browser), wider and taller than the chest and
+  # covering the player's slots too. Any font image of your packs works, e.g.
+  # one of ItemsAdder's GUIs.
   textured: true
   background: "arkcontent:content_browser"
-  # How wide the picture is drawn, up to its last column with a pixel in it:
-  # 176 for one that covers a chest inventory.
+  # For a picture other than the plugin's own: how wide it is drawn, up to
+  # its last column with a pixel in it, and where its left edge is from the
+  # inventory's (negative: further left). The plugin's book ignores both.
   background-width: 176
+  background-x: 0
+  # The title - "Categories", or the folder open - over the picture: its
+  # colour, and centred on the picture or "left" where vanilla starts it.
+  title-colour: "#E6CB98"
+  title-align: centre
+  # Which of the 45 upper slots show entries, in order. The book's margins
+  # lie outside the slots, so all of them; a picture whose frame covers the
+  # border slots can leave them blank, e.g. "10-16, 19-25, 28-34".
+  content-slots: "0-44"
 
 # ---------------------------------------------------------------------------
 #  Furniture

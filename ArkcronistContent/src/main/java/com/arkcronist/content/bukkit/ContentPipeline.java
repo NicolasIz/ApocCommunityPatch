@@ -34,6 +34,7 @@ import com.arkcronist.content.core.pack.ExternalPack;
 import com.arkcronist.content.core.pack.FontImages;
 import com.arkcronist.content.core.pack.ModelDataDispatch;
 import com.arkcronist.content.core.pack.PackArtifact;
+import com.arkcronist.content.core.menu.GuiPicture;
 import com.arkcronist.content.core.pack.PackCompiler;
 import com.arkcronist.content.core.pack.PackSource;
 import com.arkcronist.content.core.pack.PackZipper;
@@ -839,7 +840,7 @@ public final class ContentPipeline {
             PackCompiler.Result result = compiler.compile(packDir, new PackCompiler.Input(definitions, build.noteBlocks(),
                     build.emojis(), build.advancements().stream().map(AdvancementCompiler.Compiled::definition).toList(),
                     build.modelData(), build.liquids(), build.hudGlyphs(), settings.pack().negativeSpaces(),
-                    mergedPacks(), contentsDir));
+                    mergedPacks(), contentsDir, builtinIcons()));
             build.problems().addAll(result.problems());
             result.notes().forEach(note -> logger.info("[pack] " + note));
             return build;
@@ -1043,35 +1044,61 @@ public final class ContentPipeline {
         return "font_image:" + definition.fullId();
     }
 
-    /** The pictures this plugin draws its own menus over, as font images of namespace {@code arkcontent}. */
-    static final List<String> BUILTIN_GUIS = List.of("content_browser", "quest_board");
+    /** The icons of the plugin's own menu buttons, drawn as {@code arkcontent:menu/<name>}. */
+    static final List<String> MENU_ICONS = List.of("previous", "next", "up", "home", "filter", "close", "page");
 
     /**
-     * The plugin's own font images - the content browser's and the quest board's pictures - copied
-     * out of the jar into {@code data/builtin/textures/gui/} when missing or changed, so the pack
-     * draws them like any other. Each covers a chest inventory: 176 by 222, ascent 13.
+     * The plugin's own font images - the content browser's book and the quest board's parchment -
+     * copied out of the jar into {@code data/builtin/textures/gui/} when missing or changed, so the
+     * pack draws them like any other, each with the size and placement {@link GuiPicture} gives it.
      */
     private List<FontImageDefinition> builtinFontImages() throws IOException {
-        Path root = hudCharacterFile.getParent().resolve("builtin");
+        Path root = builtinRoot();
         List<FontImageDefinition> images = new ArrayList<>();
-        for (String name : BUILTIN_GUIS) {
-            String resource = "builtin/textures/gui/" + name + ".png";
-            byte[] bytes;
-            try (java.io.InputStream in = plugin.getResource(resource)) {
-                if (in == null) {
-                    continue;
-                }
-                bytes = in.readAllBytes();
+        for (GuiPicture picture : GuiPicture.BUILTIN) {
+            Path file = extract(root, "textures/gui/" + picture.name() + ".png");
+            if (file == null) {
+                continue;
             }
-            Path file = root.resolve("textures").resolve("gui").resolve(name + ".png");
-            if (!Files.isRegularFile(file) || !java.util.Arrays.equals(Files.readAllBytes(file), bytes)) {
-                Files.createDirectories(file.getParent());
-                Files.write(file, bytes);
-            }
-            images.add(new FontImageDefinition("arkcontent", name, new ResourceLocation("arkcontent", "gui/" + name),
-                    com.arkcronist.content.core.menu.MenuTitle.FULL_ASCENT, 222, null, root, file));
+            images.add(new FontImageDefinition("arkcontent", picture.name(),
+                    new ResourceLocation("arkcontent", "gui/" + picture.name()), picture.ascent(), picture.height(), null,
+                    root, file));
         }
         return images;
+    }
+
+    /** The menu buttons' icons, out of the jar the same way, for the pack's {@code arkcontent:menu/<name>}. */
+    private List<PackCompiler.Icon> builtinIcons() throws IOException {
+        Path root = builtinRoot();
+        List<PackCompiler.Icon> icons = new ArrayList<>();
+        for (String name : MENU_ICONS) {
+            Path file = extract(root, "textures/menu/" + name + ".png");
+            if (file != null) {
+                icons.add(new PackCompiler.Icon(new ResourceLocation("arkcontent", "menu/" + name), file));
+            }
+        }
+        return icons;
+    }
+
+    private Path builtinRoot() {
+        return hudCharacterFile.getParent().resolve("builtin");
+    }
+
+    /** Copies {@code builtin/<relative>} out of the jar under {@code root} when missing or changed. */
+    private @Nullable Path extract(Path root, String relative) throws IOException {
+        byte[] bytes;
+        try (java.io.InputStream in = plugin.getResource("builtin/" + relative)) {
+            if (in == null) {
+                return null;
+            }
+            bytes = in.readAllBytes();
+        }
+        Path file = root.resolve(relative);
+        if (!Files.isRegularFile(file) || !java.util.Arrays.equals(Files.readAllBytes(file), bytes)) {
+            Files.createDirectories(file.getParent());
+            Files.write(file, bytes);
+        }
+        return file;
     }
 
     /**

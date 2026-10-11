@@ -2539,44 +2539,67 @@ mensajes del plugin.
 ```
 filas 1-5   subcarpetas (su primer ítem como icono, en dorado, con cuántos ítems y carpetas tiene)
             y después los ítems: el ItemStack real de ItemFactory, con su item_model, nombre y lore
-fila 6      [Previous] [Back] [Showing: ...] [All packs] [<carpeta> - page n of m] [ ] [ ] [Close] [Next]
+fila 6      [◄ Previous] [Back] [All packs] [Showing: ...] [✖ Close] [<carpeta> - page n of m] [ ] [ ] [Next ►]
 ```
 
-- **Carpetas.** El árbol sale de la carpeta del archivo de cada ítem relativa a `contents/`. Una
-  cadena de carpetas con una sola subcarpeta y ningún ítem se pliega en una (un paquete importado
-  como `dragones_epicos/configs/items/` es un solo clic). «Back» sube un nivel, «All packs» vuelve a
-  la raíz; tras una recompilación el menú abierto vuelve a buscar la carpeta en la que estaba.
-- **Filtro.** «Showing» alterna entre todo, solo ítems, bloques, muebles, cultivos o líquidos; una
-  carpeta se lista mientras tenga alguno de ellos.
-- **Título con textura (Custom GUI).** Detrás del cofre se dibuja una imagen PNG completa, una font
-  image, con espacios negativos: el título empieza a 8 px del borde del inventario, así que va
-  `espacio(-8)`, el carácter de la imagen (que avanza su ancho + 1), `espacio(8 - (ancho + 1))` y
-  después el texto. El carácter va en blanco, para que el color del título no la tiña, y el texto en
-  el gris de vanilla (#404040). La imagen tiene 176 × 222 px y se declara con `ascent` 13 y `height`
-  222, de modo que tapa entero un cofre de 6 filas. El plugin trae dos (`arkcontent:content_browser`
-  y `arkcontent:quest_board`, en `textures/gui/` del pack); sirve cualquier font image de los packs,
-  también las de ItemsAdder.
+### El libro (1.9.2)
+
+El menú se dibuja sobre un **libro de anillas**, al estilo del libro de categorías de ItemsAdder:
+tapas de cuero con un filete dorado, una página de pergamino con la espiral roja a la izquierda, una
+cinta oscura arriba con el título, y debajo el inventario del jugador tallado en el cuero.
+
+- **Una sola imagen, más grande que el cofre.** `arkcontent:content_browser` mide 196 × 246 px: 10 px
+  más ancha que el cofre por cada lado y 22 px más alta por arriba, y llega hasta abajo, de modo que
+  tapa también las casillas del jugador. Es **opaca en todo el rectángulo del cofre** (el gris de
+  vanilla no asoma por ningún píxel) y **transparente fuera**, en las esquinas redondeadas, donde se
+  ve el mundo. Se declara con `ascent` 35 (13 + 22) y `height` 246, y el título lleva
+  `espacio(-18)` + el carácter (avanza 197) + `espacio(-179)` para que el texto empiece donde siempre.
+  Un test comprueba píxel a píxel que la imagen es opaca sobre los 176 × 222 del cofre y
+  transparente en sus cuatro esquinas.
+- **Las 45 entradas, dentro de la página.** Los márgenes, la espiral y el cuero quedan fuera de las
+  casillas, así que las 45 de arriba muestran contenido sin pisar el marco. Para un fondo propio cuyo
+  marco sí cubra casillas, `content-slots` dice cuáles usar (`"10-16, 19-25, 28-34"` deja libres los
+  bordes); la página tiene entonces tantas entradas como casillas se den.
+- **El título**, «Categories» en la raíz (o «Shop») y el nombre de la carpeta abierta dentro
+  («Dragones Epicos»), va en `#E6CB98` y **centrado** sobre la cinta: su ancho se mide con las
+  anchuras de la fuente por defecto y se coloca con espacios del rango U+F801 (negativos) y U+F821
+  (positivos). Como un título con imagen y colores no se puede cambiar en un inventario abierto
+  (Paper solo admite texto plano), entrar en otra carpeta abre un inventario nuevo con su título;
+  pasar de página no.
+- **Botones con icono propio.** Anterior y Siguiente en los extremos de la fila de abajo, el cierre
+  —un sello de lacre con una cruz— en la casilla central (49), y Atrás, Todo, Filtro y Página entre
+  ellos. Son ítems `paper` con `item_model` `arkcontent:menu/<icono>`, cuyos modelos y texturas de
+  16 × 16 mete el plugin en el pack. Sin libro (`textured: false`) vuelven las flechas, la brújula y la
+  barrera de vanilla, y el cristal gris de relleno.
+- **Las páginas se preparan en `ArkContent-Worker`.** Al pulsar, el hilo principal solo copia dónde
+  está el menú (carpeta, filtro, página) y se lo pasa al worker, que calcula el árbol de carpetas
+  —una vez por recompilación, y luego lo reutiliza—, lo que contiene la carpeta del tipo mostrado y
+  las ItemStacks de la página. El tick siguiente, el hilo principal las pone en el inventario: eso
+  sí tiene que ser en el hilo principal, porque Paper no deja tocar inventarios desde otro. Mientras
+  una página está en camino se ignoran más pasos de página (dos clics seguidos no se saltan una), y
+  si llegan dos respuestas gana la más nueva. El precio de la tienda se pide a la economía en el
+  hilo principal, nunca en el worker.
 
 ```yaml
 menus:
   folders: true                        # false: una sola lista, como antes de 1.9
   textured: true
   background: "arkcontent:content_browser"
-  background-width: 176                # hasta su última columna con algún píxel
+  background-width: 176                # solo para un fondo propio: su ancho dibujado
+  background-x: 0                      # solo para un fondo propio: su borde izquierdo
+  title-colour: "#E6CB98"
+  title-align: centre                  # o left, donde lo empieza vanilla
+  content-slots: "0-44"
 ```
+
+El fondo puede ser cualquier font image de los packs, también las de ItemsAdder; para esos,
+`background-width` y `background-x` dicen cómo colocarlo (el libro del plugin los ignora, así que un
+`config.yml` de 1.9.0 con `background-width: 176` sigue funcionando).
 
 Cada casilla muestra el ítem tal como es —el cliente dibuja su modelo 3D en la casilla— con su id
 debajo del lore. Con `arkcontent.give`, clic toma uno y mayúsculas+clic una pila, siempre al
 inventario principal (si no cabe, se dice; nunca se tira al suelo). Sin ese permiso el menú es solo
 para mirar.
-
-**Verificado (v1.9)** con un bot contra el servidor de prueba, con los 1609 ítems cargados: el título
-llega como `U+F808 U+F006 U+F80C U+F80A U+F808 U+F801` en blanco + «Custom content» en #404040, y el
-pack lleva `assets/arkcontent/textures/gui/content_browser.png` con su proveedor de fuente (ascent 13,
-height 222, U+F006). La raíz lista 41 carpetas; `dragones_epicos` abre sus ítems («dragones_epicos -
-page 1 of 13»), «Next» pasa a la página 2 de 13, «Back» vuelve a la raíz, y el filtro de muebles deja
-solo `demo`. La imagen detrás del cofre no se ha podido ver en un cliente real: lo verificado es el
-texto exacto del título y la fuente del pack.
 
 Nada sale del menú de otra forma. Se cancela **todo** clic y arrastre mientras está abierto, en el
 menú y en el inventario del jugador debajo (mayúsculas+clic, teclas numéricas, Q, doble clic para
@@ -2585,6 +2608,24 @@ por si otro plugin lo descancelara. El ítem que se entrega es siempre una pila 
 `ItemFactory`, resuelta por id contra el registro en ese momento, nunca la de la casilla. Una
 recompilación refresca los menús abiertos, y al deshabilitar el plugin se cierran (sin su listener
 serían un cofre normal lleno de ítems).
+
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (v1.9.2, el libro)
+
+Con un bot de mineflayer y los 1609 ítems del servidor de prueba cargados:
+
+| Prueba | Resultado |
+|---|---|
+| Pack | `assets/arkcontent/textures/gui/content_browser.png` de 196 × 246 en la fuente por defecto con `ascent` 35 y `height` 246 (U+F006); el pergamino del tablón sigue en 13 y 222; los 7 iconos con su definición de ítem, su modelo `item/generated` y su textura |
+| Título | Llega `U+F809 U+F802` + U+F006 + `U+F80C U+F80A U+F809 U+F803` en blanco y, tras `U+F82A U+F829 U+F826`, «Categories» en `#E6CB98`; en `dragones_epicos`, «Dragones Epicos» tras `U+F82A U+F827` |
+| Botones | Fila de abajo: `arkcontent:menu/filter` en 48, `close` en 49, `page` en 50 («Categories - page 1 of 1»); dentro de una carpeta, también `up` (46), `home` (47) y `next` (53) |
+| Carpetas | La raíz lista 41 carpetas; «Dragones Epicos» (560 ítems) abre una ventana nueva con su título, 45 entradas, «page 1 of 13» |
+| Páginas | Del paquete del clic a la página nueva: 61, 50, 45 y 43 ms (un tick); dos «Next» enviados a la vez avanzan una página, no dos |
+| Sin `arkcontent.give` | Con el menú abierto se le quita el op al bot y se envían 24 clics en crudo sobre un ítem y sobre su propio inventario: izquierdo, derecho, mayúsculas (los dos), las 9 teclas numéricas, cambio a la otra mano, clic central, Q y Ctrl+Q, un arrastre completo, doble clic para recoger, mayúsculas sobre su inventario y clic fuera. Su inventario en el servidor sigue vacío (`[]`) y hay los mismos 7 ítems sueltos alrededor antes y después (restos de pruebas anteriores): no se ha soltado nada |
+| Con permiso | Un clic normal de un op da una pila nueva del ítem (unas botas de Abyssor), como debe |
+| Tienda | `/arkcontent shop` abre «Shop» con la carpeta Demo; dentro, el rubí con «Price: $250» |
+
+La imagen del libro no se ha podido ver en un cliente real: lo verificado son los caracteres exactos
+que recibe, la fuente y los archivos del pack, y la imagen misma píxel a píxel en los tests.
 
 ## 8. Extender
 
@@ -2720,6 +2761,13 @@ con `join-classpath: true` para ver sus clases.
   guardan). La recompensa en dinero necesita Vault con un plugin de economía; sin él, el aviso se
   entrega igual, y se avisa en consola y al jugador de que no se pudo pagar. El aspecto del pergamino y del tablón en un
   cliente real no se ha podido ver aquí.
+- 1.9.2, libro: sobresale 22 px por encima del cofre, así que en una ventana muy baja para su escala
+  de interfaz (menos de 266 px de alto a esa escala) se recorta por arriba. El centrado del título
+  usa las anchuras de la fuente por defecto; una letra fuera del ASCII se cuenta como su letra base y
+  puede quedar a un píxel. Los iconos de los botones y el libro necesitan el pack: sin él, los botones
+  se ven como un modelo que falta. Entrar en una carpeta reabre el inventario (es como Paper deja
+  cambiar un título con imagen). Mientras el worker está ocupado con una recompilación, la página
+  pedida espera a que termine.
 - 1.8, red: la IP descubierta es por la que la máquina **sale** a internet; en un nodo con varias IPs
   puede no ser por la que **entran** los jugadores. Ahí, `http.public-address` (o un `server-ip`
   público) manda. Un puerto de respaldo solo sirve si el hosting lo redirige.
