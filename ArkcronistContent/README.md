@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.0.2.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.0.3.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -844,7 +844,7 @@ emojis:                         # en cualquier archivo de contenido
     type: custom_furniture
     furniture:
       interactable: seat
-      seat-height: 0.6          # dónde queda el que se sienta, en bloques sobre el suelo
+      seat-height: 0.6          # la superficie del asiento, en bloques sobre el suelo
 ```
 
 Clic derecho sobre el mueble (también a través de un soporte `LIGHT`, siguiendo la línea de visión):
@@ -853,6 +853,16 @@ lo monta con la postura vanilla de ir sentado, mirando hacia donde mira el muebl
 levanta: el asiento desaparece y el jugador queda de pie sobre el mueble, no dentro de su barrera.
 Si ya hay alguien sentado se avisa. El asiento nunca se guarda con el chunk; romper el mueble,
 desconectarse o apagar el plugin también lo retiran.
+
+**Altura (3.0.3).** El `ItemDisplay` va justo a `seat-height`. Al montar, el cliente pone los pies
+del jugador 0,6 bloques por debajo de la entidad (el punto de enganche del jugador), y en la postura
+de ir sentado la parte de abajo de los muslos queda a esa misma altura sobre los pies: los muslos
+se apoyan en la superficie del asiento. Hasta 3.0.2 la entidad iba 0,6 más arriba, que dejaba los
+pies a la altura del asiento y al jugador flotando 0,6 bloques por encima. Los `seat-height` de los
+muebles no cambian: siempre han sido la altura de la superficie (el banco largo, 8,5 px = 0,53; el
+taburete de rubí, 0,6). El cepo de la guillotina pasa de `kneel-height: 0.2` a `0.35` para que la
+cabeza quede en el agujero (a 1,41 bloques); un `furniture.yml` de ejemplo que no hayas tocado se
+actualiza solo al arrancar.
 
 En un mueble más alto que su asiento (un trono de 1×2, el cepo de la guillotina) la cabeza del que
 se sienta queda dentro de la barrera de arriba: el daño por asfixia de quien está sentado en uno de
@@ -1283,7 +1293,7 @@ tu warp o tu tienda. Cada comando ejecutado queda en la consola, con quién y d�
         impact-ms: 250        # desde ahí hasta que llega abajo (por defecto, lo que dura drop)
         reset-after: 3        # segundos abajo antes de subirla
         lever: {across: 1, up: 0}   # el bloque de la palanca (por defecto, el de abajo a la derecha)
-        kneel-height: 0.2
+        kneel-height: 0.35   # donde apoya los muslos: con 0.35 la cabeza queda en el agujero del cepo
         victim: occupant      # o user: cae sobre quien tira de la palanca
         respect-pvp: true
         impact-sound: minecraft:block.anvil.land
@@ -1323,7 +1333,7 @@ de la sesión (`bot/medieval195.js`, `guillo195.js`, `deaths195.js`).
 |---|---|
 | Actualización desde 1.9.2 | «Added 63 example file(s)»: `contents/medieval_props/` creado; 1669 ítems (60 más) |
 | `showcase medieval_props` | 60 muebles, 97 filas en la base de datos (6 de la guillotina, 6 del puesto); 15 ticks, el más lento 4,7-14,9 ms (antes de repartirlo por ticks: 59 ms en uno) |
-| Asientos | silla: sentado a 0,55 + 0,6; trono: clic en el bloque de arriba sienta abajo, 3 s sentado con salud 20 (sin asfixia), se levanta delante |
+| Asientos | silla: sentado a 0,55 + 0,6 (desde 3.0.3, a 0,55: ver *Altura*); trono: clic en el bloque de arriba sienta abajo, 3 s sentado con salud 20 (sin asfixia), se levanta delante |
 | Bebida | jarra de cerveza: `white_ash` a 0,45 bloques, 4 paquetes en 4,2 s (cada 20 ticks); al beber, Speed 600 ticks y «¡Salud!»; otro clic: «Not yet: 9s» |
 | Caldero | `campfire_cosy_smoke` + `bubble_pop`, 14-16 paquetes en 3 s (cada 8 ticks) |
 | Carteles | banco, taberna, herrería, mapa: su mensaje en el chat y la línea en consola `medieval_props:cartel_banco at world 131,-60,97 (Tester): console: /minecraft:tellraw Tester ...`; campana: `block.bell.use`; buzón (como jugador): «You do not have any mail.» |

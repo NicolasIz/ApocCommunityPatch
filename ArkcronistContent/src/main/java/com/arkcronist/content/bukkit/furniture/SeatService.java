@@ -33,13 +33,6 @@ import java.util.UUID;
  */
 public final class SeatService {
 
-    /**
-     * Riding puts the sitter's position this far below the seat entity - the rider's own attachment
-     * point, as the client places it - so the seat entity goes this much above the sitting height.
-     * Measured on 1.21.8.
-     */
-    static final double RIDER_OFFSET = 0.6;
-
     private final Plugin plugin;
     private final NamespacedKey seatTag;
     /** The seat on each support block, by world and position. */
@@ -76,7 +69,11 @@ public final class SeatService {
             existing.remove();
         }
 
-        Location at = sitting.clone().add(0, RIDER_OFFSET, 0);
+        // The seat entity goes at the height of the seat itself. Riding puts the sitter's feet 0.6
+        // below it - a player's own attachment point - and in the riding pose that is how far the
+        // underside of their thighs is above their feet: they rest on the seat. Up to 3.0.2 the
+        // entity went 0.6 higher, which put the feet there and left the sitter floating above it.
+        Location at = sitting.clone();
         at.setYaw(yaw);
         at.setPitch(0f);
         long anchor = BlockKey.pack(support.getX(), support.getY(), support.getZ());

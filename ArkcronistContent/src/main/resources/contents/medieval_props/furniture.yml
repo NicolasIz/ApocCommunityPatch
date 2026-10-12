@@ -1007,7 +1007,7 @@ items:
         impact-ms: 250
         reset-after: 3
         lever: {across: 1, up: 0}
-        kneel-height: 0.2
+        kneel-height: 0.35
         victim: occupant
         respect-pvp: true
         impact-sound: minecraft:block.anvil.land

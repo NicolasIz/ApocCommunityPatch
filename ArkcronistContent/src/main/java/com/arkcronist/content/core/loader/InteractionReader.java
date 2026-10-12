@@ -269,7 +269,7 @@ final class InteractionReader {
             problems.add(at + "'respect-pvp' should be true or false; using true");
         }
         return new Placement.Guillotine(drop, reset, delay, impact, resetTicks, across, up,
-                (float) decimal(settings, "kneel-height", 0.2, 0, 2, at, problems), victim.equals("user"), respectPvp,
+                (float) decimal(settings, "kneel-height", 0.35, 0, 2, at, problems), victim.equals("user"), respectPvp,
                 commandList(settings.get("commands"), at + "commands: ", problems),
                 particles(settings.get("impact-particles"), at + "impact-particles: ", problems),
                 orDefault(soundOrNull(settings, "impact-sound", at, problems), "minecraft:block.anvil.land"));

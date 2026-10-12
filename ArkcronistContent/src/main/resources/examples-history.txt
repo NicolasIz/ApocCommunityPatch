@@ -80,3 +80,5 @@ contents/medieval_props/models/furniture/yunque_herrero.json 39579a3b1abf0286905
 # 1.7.0-1.9.6: the HUDs placed by hand, and the liquids before glow and mobs
 contents/demo/huds.yml 7c13c0e3c974ca48d96d447f4e37e0f82217bcb9
 contents/demo/liquids.yml 5a473a0f8be0f59b43ef815556a1984e04619156
+# 1.9.6-3.0.2: the guillotine's kneel height, set for the seats that floated 0.6 too high
+contents/medieval_props/furniture.yml 5087fcf4b6dcf60fce99beeb3a9df18a016eae84
