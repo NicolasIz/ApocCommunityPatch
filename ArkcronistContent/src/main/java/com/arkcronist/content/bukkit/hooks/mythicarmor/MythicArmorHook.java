@@ -52,8 +52,11 @@ public final class MythicArmorHook implements Listener {
             return;
         }
         MythicArmorAPI api = Bukkit.getServicesManager().load(MythicArmorAPI.class);
-        if (api == null && Bukkit.getPluginManager().getPlugin("MythicArmor") instanceof MythicArmorAPI direct) {
-            api = direct;
+        // Named MythicArmor or, in some of its builds, MythicArmors.
+        for (String name : new String[]{"MythicArmor", "MythicArmors"}) {
+            if (api == null && Bukkit.getPluginManager().getPlugin(name) instanceof MythicArmorAPI direct) {
+                api = direct;
+            }
         }
         File root = api == null ? null : api.getPackRoot();
         if (root == null || !root.exists()) {

@@ -156,6 +156,12 @@ dependencies:
       load: AFTER
       required: false
       join-classpath: true
+    # The same plugin, as some of its builds are named (plugins/MythicArmors/): without its classes
+    # on the classpath the hook does not start.
+    MythicArmors:
+      load: AFTER
+      required: false
+      join-classpath: true
     # Placeholders for TAB, DeluxeMenus and others: registered as this plugin enables.
     PlaceholderAPI:
       load: BEFORE

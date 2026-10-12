@@ -39,6 +39,7 @@ import com.arkcronist.content.core.pack.PackArtifact;
 import com.arkcronist.content.core.pack.PackCompiler;
 import com.arkcronist.content.core.pack.PackSource;
 import com.arkcronist.content.core.pack.PackZipper;
+import com.arkcronist.content.core.pack.WornAssets;
 import com.arkcronist.content.core.quest.QuestDefinition;
 import com.arkcronist.content.core.upload.PackUploader;
 import com.arkcronist.content.core.upload.UploadSettings;
@@ -290,6 +291,11 @@ public final class ContentPipeline {
                          List<HudGlyph> hudGlyphs, List<FontImageDefinition> fontImageDefinitions,
                          FontImages fontImages, List<String> problems, int files, PackArtifact artifact,
                          Hosted hosted, Extras extras) {
+
+        Build withItems(Map<String, CustomItem> items) {
+            return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
+                    liquids, huds, hudGlyphs, fontImageDefinitions, fontImages, problems, files, artifact, hosted, extras);
+        }
 
         Build withNoteBlocks(Map<String, NoteBlockState> noteBlocks) {
             return new Build(items, noteBlocks, emojiDefinitions, emojis, advancements, modelData, hudDefinitions,
@@ -592,6 +598,7 @@ public final class ContentPipeline {
                 .thenApplyAsync(this::assignLiquidStates, worker)
                 .thenApplyAsync(this::assignHudCharacters, worker)
                 .thenApplyAsync(this::compilePack, worker)
+                .thenApplyAsync(this::linkWornAssets, worker)
                 .thenApplyAsync(this::bedrock, worker)
                 .thenComposeAsync(this::zipPack, worker)
                 .thenApplyAsync(this::hashPack, worker)
@@ -957,6 +964,92 @@ public final class ContentPipeline {
         }
     }
 
+    /**
+     * Armour that says nothing about how it is worn, worn as the equipment asset of the same name
+     * the built pack has - the 3D pieces MythicArmor draws a set with, for the set an ItemsAdder
+     * pack only had the icons of - and helmets with a 3D model for the head, as that model. Read
+     * from the built pack, so whatever drew a piece wins as it does there; see {@link WornAssets}.
+     */
+    private Build linkWornAssets(Build build) {
+        try {
+            List<ItemDefinition> definitions = build.items().values().stream().map(CustomItem::definition).toList();
+            WornAssets.Result result = WornAssets.link(definitions, builtEquipmentAssets(), this::builtFile);
+            if (!result.linked().isEmpty()) {
+                logger.info("[armor] " + result.linked().size() + " armour piece(s) with no equipment section, worn"
+                        + " as the pack's equipment asset of the same name: " + sample(result.linked()) + ".");
+            }
+            if (!result.onHead().isEmpty()) {
+                logger.info("[armor] " + result.onHead().size() + " helmet(s) worn as their 3D model: "
+                        + sample(result.onHead()) + ".");
+            }
+            if (!result.ambiguous().isEmpty()) {
+                logger.info("[armor] " + result.ambiguous().size() + " armour piece(s) fit several equipment assets"
+                        + " and are worn as their material; give each an equipment section to choose: "
+                        + sample(result.ambiguous()) + ".");
+            }
+            if (result.equipment().isEmpty()) {
+                return build;
+            }
+            Map<String, CustomItem> items = new LinkedHashMap<>(build.items());
+            result.equipment().forEach((id, equipment) -> items.computeIfPresent(id, (key, item) ->
+                    new CustomItem(item.definition().withEquipment(equipment), item.material(), item.displayName(),
+                            item.lore())));
+            return build.withItems(items);
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
+        }
+    }
+
+    /** Every {@code assets/<ns>/equipment/<name>.json} of the built pack, as {@code <ns>:<name>}. */
+    private List<ResourceLocation> builtEquipmentAssets() throws IOException {
+        Path assets = packDir.resolve("assets");
+        List<ResourceLocation> found = new ArrayList<>();
+        if (!Files.isDirectory(assets)) {
+            return found;
+        }
+        List<Path> namespaces;
+        try (Stream<Path> list = Files.list(assets)) {
+            namespaces = list.filter(Files::isDirectory).sorted().toList();
+        }
+        for (Path namespace : namespaces) {
+            Path equipment = namespace.resolve("equipment");
+            if (!Files.isDirectory(equipment) || !ResourceLocation.isValidNamespace(namespace.getFileName().toString())) {
+                continue;
+            }
+            try (Stream<Path> walk = Files.walk(equipment)) {
+                for (Path file : walk.filter(Files::isRegularFile).sorted().toList()) {
+                    String relative = equipment.relativize(file).toString().replace('\\', '/');
+                    if (relative.endsWith(".json")) {
+                        String path = relative.substring(0, relative.length() - ".json".length());
+                        if (ResourceLocation.isValidPath(path)) {
+                            found.add(new ResourceLocation(namespace.getFileName().toString(), path));
+                        }
+                    }
+                }
+            }
+        }
+        return found;
+    }
+
+    /** A file of the built pack by its path in it; null when there is none. */
+    private @Nullable byte[] builtFile(String path) {
+        Path file = packDir.resolve(path).normalize();
+        if (!file.startsWith(packDir) || !Files.isRegularFile(file)) {
+            return null;
+        }
+        try {
+            return Files.readAllBytes(file);
+        } catch (IOException unreadable) {
+            return null;
+        }
+    }
+
+    /** The first few of a list, for one log line. */
+    private static String sample(List<String> lines) {
+        return lines.size() <= 8 ? String.join(", ", lines)
+                : String.join(", ", lines.subList(0, 8)) + " and " + (lines.size() - 8) + " more";
+    }
+
     // ---------------------------------------------------------------- 3.0: Bedrock
 
     /**
@@ -1076,18 +1169,8 @@ public final class ContentPipeline {
         build.emojis().forEach((emoji, character) -> emojis.add(new BedrockConverter.EmojiSpec(character, emoji.texture())));
         Set<Integer> blockStates = new java.util.HashSet<>(NoteBlockAllocator.read(noteBlockStateFile).values());
         build.noteBlocks().values().forEach(state -> blockStates.add(state.index()));
-        Path root = packDir;
-        return new BedrockConverter.Input(path -> {
-            Path file = root.resolve(path).normalize();
-            if (!file.startsWith(root) || !Files.isRegularFile(file)) {
-                return null;
-            }
-            try {
-                return Files.readAllBytes(file);
-            } catch (IOException unreadable) {
-                return null;
-            }
-        }, items, blocks, liquids, furniture, emojis, StableAllocator.read(carrierFile), blockStates);
+        return new BedrockConverter.Input(this::builtFile, items, blocks, liquids, furniture, emojis,
+                StableAllocator.read(carrierFile), blockStates);
     }
 
     private CompletableFuture<Build> zipPack(Build build) {
@@ -1221,6 +1304,8 @@ public final class ContentPipeline {
     private Report publish(Build build, long started) {
         plugin.itemFactory().modelData(build.modelData());
         registry.replace(build.items().values());
+        // Stacks made before - a piece worn as its material until this build matched it with an asset.
+        plugin.stackRepair().repairOnline();
         List<CustomBlock> customBlocks = new ArrayList<>();
         for (Map.Entry<String, NoteBlockState> entry : build.noteBlocks().entrySet()) {
             CustomItem item = build.items().get(entry.getKey());

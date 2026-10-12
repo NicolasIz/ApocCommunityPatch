@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.0.1.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.0.2.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -1445,6 +1445,41 @@ which is not in demo`); `model` fuera de la cabeza (se ignora); `model` y `asset
 cabeza (gana el asset, que es lo que el cliente dibujaría); `model` sin `resource`; o un modelo que
 no está en `models/`.
 
+**Piezas sin `equipment:` (3.0.2).** Una armadura sin sección `equipment:` se llevaba como su
+material: una `NETHERITE_CHESTPLATE`, de netherita. Es lo que pasa con las piezas que trae un pack
+generado de ItemsAdder (`/arkcontent import`), que solo tiene sus iconos: un set cuyo aspecto 3D
+pone otro plugin —MythicArmor dibuja la Darksteel Knight con
+`mythicarmor:darksteel_knight_armor_chest_piece`— no tiene nada que lo una a
+`darksteel:darksteel_knight_chestplate_item` salvo el nombre. Así que en cada recompilación, a cada
+pieza sin `equipment:` se le busca en el pack ya compilado el asset de equipo que se llama igual:
+
+- de los dos nombres se quitan las palabras que solo dicen qué pieza es (`helmet`, `casco`,
+  `chestplate`, `chest`, `peto`, `leggings`, `legs`, `grebas`, `boots`, `feet`, `botas`…) o que es
+  armadura (`item`, `piece`, `armor`, `armadura`, `set`…), y lo que queda tiene que coincidir:
+  `darksteel_knight`. Un nivel como `t2` cuenta (`cleric_chestplate_t2` →
+  `cleric_armor_t2_chest_piece`, no `cleric_armor_chest_piece`);
+- un asset con el nombre de un hueco solo se lleva en ese hueco; uno sin hueco (el de todo el set,
+  `astralion_armadura`) en cualquiera;
+- si encajan varios: primero el que nombra el hueco, después el del namespace del ítem; si aun así
+  quedan varios, la pieza se queda como estaba y la consola lo dice.
+
+Un casco sin asset cuyo modelo es 3D (`elements`) y dice cómo va en la cabeza (`display.head`) se
+lleva como ese modelo: el casco de la Darksteel. El cuero se deja en paz: su aspecto depende del
+color de la stack, que el pack no dice. En consola, cada recompilación lo resume:
+
+```
+[armor] 3 armour piece(s) with no equipment section, worn as the pack's equipment asset of the same name: darksteel:darksteel_knight_boots_item -> mythicarmor:darksteel_knight_armor_feet_piece, ...
+[armor] 1 helmet(s) worn as their 3D model: darksteel:darksteel_knight_helmet.
+```
+
+Las stacks que ya tienen los jugadores se ponen al día al entrar, al ponerse la pieza y después de
+cada recompilación para los que están conectados (solo el aspecto: nombre, lore y encantamientos no
+se tocan). Para que una pieza siga siendo de netherita, o se lleve con otro asset, escríbele su
+`equipment:` (por ejemplo `slot: CHEST` y `asset: minecraft:netherite`): una pieza con sección
+propia nunca se toca. Verificado en el servidor de prueba con las piezas importadas de la Darksteel
+Knight: de 1674 ítems se enlazan exactamente las tres del cuerpo y el casco, y una pechera hecha con
+3.0.1 se pone al día en cuanto se la pone el jugador.
+
 **Actualizar desde una versión anterior.** El pack de ejemplo se copia entero solo cuando
 `contents/` no existe. Para que lo nuevo llegue también a un servidor que ya lo tenía, cada versión
 agrupa los ejemplos que añadió (1.1: cultivos y emojis; 1.3: `furniture.yml` con el cofre y la cama;
@@ -2221,7 +2256,7 @@ gancho. `/arkcontent info` muestra cuáles están activos (`Hooks: MythicMobs, .
 |---|---|---|
 | MythicMobs | después de este | lee sus mobs al habilitarse y pregunta entonces por `arkcontent{...}`: hay que estar escuchando ya |
 | ModelEngine | antes de este | su API tiene que estar lista antes de que carguen los muebles del mundo |
-| MythicArmor | después de este | genera su primer pack al habilitarse |
+| MythicArmor (o MythicArmors) | después de este | genera su primer pack al habilitarse |
 | PlaceholderAPI | antes de este | la expansión se registra al habilitarse este plugin |
 | ShopGUI+ | después de este | pide los proveedores de ítems al habilitarse (`ShopGUIPlusPostEnableEvent`) |
 | Iris | antes de este | genera mundos; su servicio de datos tiene que estar en marcha |
@@ -2471,6 +2506,14 @@ Si MythicArmor también envía su propio pack a los jugadores, **desactívalo** 
 el nuestro ya lo lleva, y con dos packs el que queda encima puede tapar los shaders del otro.
 En la consola, `Merging the MythicArmor resource pack from <carpeta> into ours.` confirma que se
 ha fusionado.
+
+Algunas versiones del plugin se llaman `MythicArmors` (su carpeta es `plugins/MythicArmors/`). Con
+un nombre que no fuera el que declara `paper-plugin.yml`, Paper no deja ver sus clases y el gancho no
+arranca; desde 3.0.2 se declaran los dos.
+
+Las piezas que da MythicArmor (`/mythicarmor give <jugador> <set> <pieza>`) ya llevan su asset. Las
+del mismo set importadas de ItemsAdder no lo llevaban, y por eso se veían de netherita; desde 3.0.2
+se les pone solo, por el nombre (sección 4, *Piezas sin `equipment:`*).
 
 ### PlaceholderAPI, TAB y DeluxeMenus
 

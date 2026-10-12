@@ -5,6 +5,7 @@ import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.definition.ResourceLocation;
 import com.arkcronist.content.core.furniture.Footprint;
+import com.arkcronist.content.core.pack.ItemModels;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -525,44 +526,12 @@ public final class BedrockConverter {
         }
         try {
             JsonElement root = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8));
-            String found = root.isJsonObject() ? firstModel(root.getAsJsonObject().get("model"), 0) : null;
+            String found = root.isJsonObject() ? ItemModels.firstModel(root.getAsJsonObject().get("model")) : null;
             return found == null ? null : ResourceLocation.parse(found, "minecraft");
         } catch (RuntimeException broken) {
             problems.add("Bedrock: the item definition " + definition + " could not be read (" + broken.getMessage() + ")");
             return null;
         }
-    }
-
-    private static @Nullable String firstModel(@Nullable JsonElement node, int depth) {
-        if (node == null || !node.isJsonObject() || depth > 8) {
-            return null;
-        }
-        JsonObject object = node.getAsJsonObject();
-        String type = object.has("type") ? object.get("type").getAsString() : "";
-        if ((type.equals("minecraft:model") || type.equals("model")) && object.has("model")
-                && object.get("model").isJsonPrimitive()) {
-            return object.get("model").getAsString();
-        }
-        // A select, condition or range dispatch: what it draws by default, else its first branch.
-        for (String key : new String[]{"fallback", "on_false", "on_true"}) {
-            String found = firstModel(object.get(key), depth + 1);
-            if (found != null) {
-                return found;
-            }
-        }
-        for (String list : new String[]{"cases", "entries", "models"}) {
-            if (object.get(list) instanceof com.google.gson.JsonArray array) {
-                for (JsonElement entry : array) {
-                    JsonElement inner = entry.isJsonObject() && entry.getAsJsonObject().has("model")
-                            ? entry.getAsJsonObject().get("model") : entry;
-                    String found = firstModel(inner, depth + 1);
-                    if (found != null) {
-                        return found;
-                    }
-                }
-            }
-        }
-        return null;
     }
 
     private @Nullable JsonObject modelJson(ResourceLocation location) {

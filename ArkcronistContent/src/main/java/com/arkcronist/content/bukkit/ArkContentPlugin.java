@@ -30,6 +30,7 @@ import com.arkcronist.content.bukkit.hud.HudRegistry;
 import com.arkcronist.content.bukkit.hud.HudService;
 import com.arkcronist.content.bukkit.item.ItemFactory;
 import com.arkcronist.content.bukkit.item.ItemRegistry;
+import com.arkcronist.content.bukkit.item.StackRepairListener;
 import com.arkcronist.content.bukkit.liquid.LiquidListener;
 import com.arkcronist.content.bukkit.liquid.LiquidRegistry;
 import com.arkcronist.content.bukkit.liquid.LiquidService;
@@ -107,6 +108,7 @@ public final class ArkContentPlugin extends JavaPlugin {
     private EngineSettings settings;
     private ItemRegistry items;
     private ItemFactory itemFactory;
+    private StackRepairListener stackRepair;
     private BlockRegistry blocks;
     private EmojiRegistry emojis;
     private DatabaseManager database;
@@ -161,6 +163,7 @@ public final class ArkContentPlugin extends JavaPlugin {
 
         this.items = new ItemRegistry();
         this.itemFactory = new ItemFactory(this, items);
+        this.stackRepair = new StackRepairListener(this, itemFactory);
         this.blocks = new BlockRegistry();
         this.emojis = new EmojiRegistry();
         this.database = new DatabaseManager(getDataFolder().toPath().resolve("data").resolve("world_content.db"),
@@ -228,6 +231,7 @@ public final class ArkContentPlugin extends JavaPlugin {
 
         PluginManager plugins = getServer().getPluginManager();
         plugins.registerEvents(new PackDeliveryListener(delivery, settings, getLogger()), this);
+        plugins.registerEvents(stackRepair, this);
         plugins.registerEvents(new ItemUseListener(itemFactory), this);
         plugins.registerEvents(new ItemCombatListener(itemFactory), this);
         plugins.registerEvents(new WorldInterceptionListener(itemFactory), this);
@@ -484,6 +488,11 @@ public final class ArkContentPlugin extends JavaPlugin {
 
     public ItemFactory itemFactory() {
         return itemFactory;
+    }
+
+    /** Brings the stacks players carry up to date with their items. */
+    public StackRepairListener stackRepair() {
+        return stackRepair;
     }
 
     /** Every loaded custom block, by id and by note block state. */
