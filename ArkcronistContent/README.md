@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.0.0.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.0.1.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -2456,10 +2456,21 @@ sus piezas (`MythicArmorAPI#getItems`) y dónde generó su pack, pero no tiene n
 registrar armaduras desde fuera. Inyectar las armaduras de este plugin en su registro no es posible.
 
 Lo que sí hace el gancho es que sus armaduras se vean con **un único pack**: cada vez que
-MythicArmor genera el suyo (`MythicArmorGeneratePackEvent`), los `assets/` de esa carpeta se
-fusionan en el nuestro y se recompila. Si una ruta existe en los dos, gana la nuestra y se avisa en
-consola. Si MythicArmor también envía su propio pack a los jugadores, desactívalo en su
-configuración para que no reciban dos.
+MythicArmor genera el suyo (`MythicArmorGeneratePackEvent`), esa carpeta se fusiona en el nuestro
+—sus `assets/` y sus overlays, que llevan los shaders con los que dibuja en 3D pecheras, pantalones
+y botas— y se recompila. Si en un arranque MythicArmor no vuelve a generar su pack (no hay evento),
+una vez arrancado el servidor se toma el último que generó, a través de su API.
+
+Su pack **gana a las copias de sus archivos** que traigan otros packs fusionados: una exportación de
+ItemsAdder en `packs/` hecha con un MythicArmor anterior trae shaders `entity.vsh`/`entity.fsh`
+antiguos en las mismas rutas, y con ellos las piezas del cuerpo no se dibujan (el casco sí, porque
+es un modelo normal). Si una ruta está en los dos, el pack de MythicArmor manda; frente a los
+archivos propios de este plugin, ganan los nuestros y se avisa en consola.
+
+Si MythicArmor también envía su propio pack a los jugadores, **desactívalo** en su configuración:
+el nuestro ya lo lleva, y con dos packs el que queda encima puede tapar los shaders del otro.
+En la consola, `Merging the MythicArmor resource pack from <carpeta> into ours.` confirma que se
+ha fusionado.
 
 ### PlaceholderAPI, TAB y DeluxeMenus
 

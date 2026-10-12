@@ -160,6 +160,9 @@ public final class HookManager {
                 () -> new MythicArmorHook(plugin, plugin.pipeline()));
         if (mythicArmor != null) {
             listen(mythicArmor);
+            // The first tick comes once every plugin has enabled: MythicArmor has generated its pack by
+            // then, or kept the one it had.
+            plugin.getServer().getScheduler().runTask(plugin, mythicArmor::mergeCurrent);
         }
 
         // Loads before this plugin; registered at once, so TAB and DeluxeMenus find it from the start.

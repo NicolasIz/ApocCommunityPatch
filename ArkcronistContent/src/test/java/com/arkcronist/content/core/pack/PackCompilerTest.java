@@ -240,6 +240,28 @@ class PackCompilerTest {
         assertTrue(result.problems().stream().anyMatch(p -> p.startsWith("Missing pack: no assets folder")));
     }
 
+    /**
+     * MythicArmor's 3D chestplates, leggings and boots are drawn by its shaders from data in its
+     * armor textures: an ItemsAdder export taken with an older MythicArmor holds older shaders at the
+     * same paths, and those must not win. The pack MythicArmor generates as it runs comes first,
+     * whatever the names sort to.
+     */
+    @Test
+    void aPackAnotherPluginGeneratesWinsOverOlderCopiesOfItsFiles() throws IOException {
+        Path live = temp.resolve("plugins/MythicArmor/pack");
+        write(live, "assets/minecraft/shaders/core/entity.vsh", "// MythicArmor 5.13");
+        write(live, "assets/mythicarmor/equipment/knight_chest_piece.json", "{ \"layers\": {} }");
+        Path export = temp.resolve("packs/generated");
+        write(export, "assets/minecraft/shaders/core/entity.vsh", "// MythicArmor 5.9, in an old export");
+        Path pack = temp.resolve("pack");
+
+        new PackCompiler(SETTINGS).compile(pack, List.of(), Map.of(),
+                List.of(new ExternalPack("0-old-export", export), new ExternalPack("zz MythicArmor", live, true)));
+
+        assertEquals("// MythicArmor 5.13", Files.readString(pack.resolve("assets/minecraft/shaders/core/entity.vsh")));
+        assertTrue(Files.exists(pack.resolve("assets/mythicarmor/equipment/knight_chest_piece.json")));
+    }
+
     @Test
     void anotherPluginsPackCannotLinkToFilesOutsideIt() throws IOException {
         write(temp, "server/secret.txt", "password");

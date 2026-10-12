@@ -261,7 +261,11 @@ public final class PackCompiler {
         // not reported missing when one of them has it.
         List<PackSource> sources = new ArrayList<>();
         try {
-            for (ExternalPack pack : input.externalPacks().stream().sorted(Comparator.comparing(ExternalPack::name)).toList()) {
+            // A pack another plugin generates as it runs comes first, so its files win over the copies of
+            // them an older export holds; then by name, the same order on every build.
+            for (ExternalPack pack : input.externalPacks().stream()
+                    .sorted(Comparator.comparing((ExternalPack each) -> !each.live()).thenComparing(ExternalPack::name))
+                    .toList()) {
                 sources.add(PackSource.open(pack));
             }
             return compile(packDir, input, sources);
@@ -1392,6 +1396,9 @@ public final class PackCompiler {
                 if (place("assets/" + namespace + "/textures/" + path + ".png", Files.readAllBytes(icon.png()), origin)) {
                     textures++;
                 }
+                // Not in a block/ or item/ folder, so not on the blocks atlas by itself: without this the
+                // menu's buttons were the magenta and black squares (1.9.2 to 3.0.0).
+                drawnByModel(icon.id());
             }
         }
 

@@ -165,6 +165,10 @@ class PackCompilerGameplayTest {
         assertEquals("minecraft:item/generated", model.get("parent").getAsString());
         assertEquals("arkcontent:menu/close", model.getAsJsonObject("textures").get("layer0").getAsString());
         assertTrue(Files.exists(pack.resolve("assets/arkcontent/textures/menu/close.png")));
+        // menu/ is not a folder the client puts on the blocks atlas by itself: without this source the
+        // buttons were drawn as missing textures, which only a real client shows.
+        String atlas = Files.readString(pack.resolve("assets/minecraft/atlases/blocks.json"));
+        assertTrue(atlas.contains("\"arkcontent:menu/close\""), atlas);
         assertTrue(result.problems().isEmpty(), result.problems().toString());
     }
 
