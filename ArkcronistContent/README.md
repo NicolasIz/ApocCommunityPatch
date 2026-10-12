@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.0.3.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.0.4.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -2016,6 +2016,26 @@ cortos (la munición de un arma), que se centran sin desplazar las barras.
 lo que diga `consume` (un material o el id de un ítem de este plugin) y se escriben cada
 `huds.save-seconds` y al salir. Para cambiarlos a mano, `/arkcontent hud <jugador> <hud> set|add|take <n>`.
 
+**Jugadores de Bedrock (3.0.4).** Bedrock no dibuja fuentes del pack ni espacios negativos, así que
+a un jugador que entra por Geyser no se le envían los iconos. Si el HUD tiene `bedrock:`, se le
+envía su barra como texto, en la misma barra de acción:
+
+```yaml
+  sed:
+    # ...
+    bedrock: "<aqua>Sed <bar>"          # MiniMessage: <bar>, <value> y <max>
+  vida:
+    # ...
+    bedrock: "<red>Vida <bar> <white><value>"
+```
+
+`<bar>` son tantos caracteres como `segments`: `■` por segmento lleno (en el color que tenga el
+texto en ese punto; medio segmento cuenta como lleno) y `□` gris oscuro por segmento vacío.
+`<value>` y `<max>` salen con un decimal como mucho (`20`, `7.5`). Los HUD de la barra de acción que
+tienen `bedrock:` van uno tras otro, separados por dos espacios, en el orden en que se cargan:
+archivo por archivo y, dentro de cada uno, como están escritos (ese es también el orden en que se
+dibujan en Java). Sin `bedrock:`, un HUD no se le muestra a un jugador de Bedrock, como hasta 3.0.3.
+
 #### Qué se ha verificado en un servidor Paper 1.21.8 real (v1.7, HUDs)
 
 | Qué | Resultado |
@@ -2050,6 +2070,18 @@ generado, con el ancho y el `ascent` de cada glifo, como los calcula el cliente.
 
 Cómo se ve en un cliente real no se ha podido comprobar: no hay cliente con el pack. Las posiciones
 salen de las cuentas del propio cliente, no de una captura.
+
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (3.0.4, HUD de madera y Bedrock)
+
+Cuatro HUD anclados con iconos de 9×9 (`spacing: -2`, un riel cada 8 px) y `bedrock:`; los de
+ejemplo de `contents/demo/huds.yml`, que ocupan las mismas filas, quitados.
+
+| Qué | Resultado |
+|---|---|
+| Caracteres | 12 iconos en U+F01C–U+F027, guardados en `data/hud_characters.json`; `ascent` 4 en la fila 2 y −6 en la fila 1 |
+| Barra de acción de un bot de Java, descodificada con la fuente del pack | ancho neto 0; vida y escudo de −91 a −10, a 59 y 69 px del borde inferior; sed y maná de +10 a +91, a 59 y 69; 19 px libres en el centro |
+| Valores | escudo 4 de 10 con Absorción II; sed 6 de 10 llenándose desde la derecha; maná de AuraSkills 10 de 10 |
+| Bot de Bedrock por Geyser 2.8.4 | recibe `Vida ■■■■■■■■■■ 20  Escudo □□□□□□□□□□  Sed ■■■■■■■■■■  Maná ■■■■■■■■■■ 20`; con sed 13 y Absorción II, `Sed ■■■■■■■□□□` y `Escudo ■■■■□□□□□□` |
 
 ### Jugadores de Bedrock (Geyser) — 3.0
 
@@ -2112,7 +2144,7 @@ recibe nunca uno de esos estados. Se reenvían al cargar el chunk, tras tocar un
 
 **Lo que Bedrock no puede dibujar se le da en texto.** A un jugador de Bedrock no se le envía el pack
 Java (Geyser le manda el `.mcpack` al conectar); las barras del HUD no se le envían (no hay espacios
-negativos); el minijuego le llega como texto con colores; y los títulos de los menús le llegan con
+negativos) salvo como texto, si el HUD tiene `bedrock:` (3.0.4); el minijuego le llega como texto con colores; y los títulos de los menús le llegan con
 sus palabras, sin las imágenes ni los espacios que los colocan.
 
 `/arkcontent bedrock` dice cuántos ítems, bloques y portadores recibió Geyser, cuántos jugadores de
