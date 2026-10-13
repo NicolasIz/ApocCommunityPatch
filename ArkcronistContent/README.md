@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.0.5.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.0.6.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -2016,31 +2016,6 @@ cortos (la munición de un arma), que se centran sin desplazar las barras.
 lo que diga `consume` (un material o el id de un ítem de este plugin) y se escriben cada
 `huds.save-seconds` y al salir. Para cambiarlos a mano, `/arkcontent hud <jugador> <hud> set|add|take <n>`.
 
-**Jugadores de Bedrock (3.0.4).** Bedrock no dibuja fuentes del pack ni espacios negativos, así que
-a un jugador que entra por Geyser no se le envían los iconos. Si el HUD tiene `bedrock:`, se le
-envía su barra como texto, en la misma barra de acción:
-
-```yaml
-  sed:
-    # ...
-    bedrock: "<aqua>Sed <bar>"          # MiniMessage: <bar>, <value> y <max>
-  vida:
-    # ...
-    bedrock: "<red>Vida <bar> <white><value>"
-```
-
-`<bar>` son tantos caracteres como `segments`: `■` por segmento lleno (en el color que tenga el
-texto en ese punto; medio segmento cuenta como lleno) y `□` gris oscuro por segmento vacío.
-`<value>` y `<max>` salen con un decimal como mucho (`20`, `7.5`). Los HUD de la barra de acción que
-tienen `bedrock:` van uno tras otro, separados por dos espacios, en el orden en que se cargan:
-archivo por archivo y, dentro de cada uno, como están escritos (ese es también el orden en que se
-dibujan en Java). Sin `bedrock:`, un HUD no se le muestra a un jugador de Bedrock, como hasta 3.0.3.
-
-Desde 3.0.5, `bedrock:` llega a los jugadores de Bedrock aunque el HUD tenga `action-bar: false`. Así,
-un servidor que dibuja su HUD de Java con otro plugin (BetterHud) puede apagar las barras de este en
-Java, seguir dándoselas a ese plugin por `%arkcontent_hud_<id>_value%` / `_max` y que los jugadores
-de Bedrock, a los que BetterHud no dibuja nada, sigan teniendo el texto.
-
 #### Qué se ha verificado en un servidor Paper 1.21.8 real (v1.7, HUDs)
 
 | Qué | Resultado |
@@ -2075,18 +2050,6 @@ generado, con el ancho y el `ascent` de cada glifo, como los calcula el cliente.
 
 Cómo se ve en un cliente real no se ha podido comprobar: no hay cliente con el pack. Las posiciones
 salen de las cuentas del propio cliente, no de una captura.
-
-#### Qué se ha verificado en un servidor Paper 1.21.8 real (3.0.4, HUD de madera y Bedrock)
-
-Cuatro HUD anclados con iconos de 9×9 (`spacing: -2`, un riel cada 8 px) y `bedrock:`; los de
-ejemplo de `contents/demo/huds.yml`, que ocupan las mismas filas, quitados.
-
-| Qué | Resultado |
-|---|---|
-| Caracteres | 12 iconos en U+F01C–U+F027, guardados en `data/hud_characters.json`; `ascent` 4 en la fila 2 y −6 en la fila 1 |
-| Barra de acción de un bot de Java, descodificada con la fuente del pack | ancho neto 0; vida y escudo de −91 a −10, a 59 y 69 px del borde inferior; sed y maná de +10 a +91, a 59 y 69; 19 px libres en el centro |
-| Valores | escudo 4 de 10 con Absorción II; sed 6 de 10 llenándose desde la derecha; maná de AuraSkills 10 de 10 |
-| Bot de Bedrock por Geyser 2.8.4 | recibe `Vida ■■■■■■■■■■ 20  Escudo □□□□□□□□□□  Sed ■■■■■■■■■■  Maná ■■■■■■■■■■ 20`; con sed 13 y Absorción II, `Sed ■■■■■■■□□□` y `Escudo ■■■■□□□□□□` |
 
 ### Jugadores de Bedrock (Geyser) — 3.0
 
@@ -2149,7 +2112,7 @@ recibe nunca uno de esos estados. Se reenvían al cargar el chunk, tras tocar un
 
 **Lo que Bedrock no puede dibujar se le da en texto.** A un jugador de Bedrock no se le envía el pack
 Java (Geyser le manda el `.mcpack` al conectar); las barras del HUD no se le envían (no hay espacios
-negativos) salvo como texto, si el HUD tiene `bedrock:` (3.0.4); el minijuego le llega como texto con colores; y los títulos de los menús le llegan con
+negativos); el minijuego le llega como texto con colores; y los títulos de los menús le llegan con
 sus palabras, sin las imágenes ni los espacios que los colocan.
 
 `/arkcontent bedrock` dice cuántos ítems, bloques y portadores recibió Geyser, cuántos jugadores de
@@ -2586,9 +2549,10 @@ reescribiendo. En la consola: `BetterHud built its resource pack: N file(s), mer
   mete en su pack los sprites transparentes que ocultan el HUD vanilla.
 - **El HUD de este plugin.** Si BetterHud oculta los corazones y la comida vanilla, las barras
   ancladas a ellos se quedan flotando: pon `action-bar: false` en tus HUD y muéstralos dentro de
-  BetterHud con `%arkcontent_hud_<id>_value%` / `_max` (BetterHud lee PlaceholderAPI). Con
-  `bedrock:` siguen llegando como texto a los jugadores de Bedrock, a los que BetterHud no dibuja
-  nada (`disable-to-bedrock-player`).
+  BetterHud con `%arkcontent_hud_<id>_value%` / `_max` (BetterHud lee PlaceholderAPI). A los
+  jugadores de Bedrock BetterHud no les dibuja nada (`disable-to-bedrock-player`).
+- **3.0.6.** El texto para Bedrock de 3.0.4 y 3.0.5 (`bedrock:`) se ha quitado: el HUD de este
+  plugin vuelve a ser el de 3.0.3. Una clave `bedrock:` que quede en un `huds.yml` no hace nada.
 - **TAB y el marcador.** BetterHud no toca el marcador lateral ni la lista de TAB (cabecera, pie,
   nombres). Sí usa una bossbar: las de TAB siguen saliendo, pero BetterHud oculta la textura de las
   barras del color de `shader.yml` (`bar-color`), así que no uses ese color en las de TAB.
@@ -2607,7 +2571,6 @@ que el shader no define (una macro que pone el cliente) se lee entera, como ante
 | BetterHud 1.14.1 con la configuración de PrimeHUD v2 (sin `shaders/` ni `build/`) | arranca; genera su pack (1312 archivos) y el gancho lo fusiona: 25 402 archivos, 46 MB |
 | Conflictos | el `rendertype_text.vsh` de la exportación de ItemsAdder cede ante el de BetterHud; el shader de 1.21.6+ de BetterHud ya no se marca como roto |
 | Bot de Java | recibe un solo pack (el de este plugin); la bossbar de BetterHud se actualiza unas 20 veces por segundo con 14 fuentes suyas; ninguna barra de acción de este plugin, con `action-bar: false` |
-| Bot de Bedrock por Geyser | recibe la línea de texto de `bedrock:` (vida, escudo, sed, maná) |
 
 ### PlaceholderAPI, TAB y DeluxeMenus
 

@@ -36,16 +36,6 @@ class HudTest {
     }
 
     @Test
-    void aPlainBarForBedrockCountsAHalfSegmentAsFilled() {
-        assertEquals(10, HudRenderer.plainFilled(20, 20, 10));
-        assertEquals(10, HudRenderer.plainFilled(19.9, 20, 10), "nine full and a half: ten marks");
-        assertEquals(4, HudRenderer.plainFilled(7, 20, 10));
-        assertEquals(1, HudRenderer.plainFilled(1, 20, 10), "anything left shows");
-        assertEquals(0, HudRenderer.plainFilled(0, 20, 10));
-        assertEquals(0, HudRenderer.plainFilled(5, 0, 10), "no max, nothing to show");
-    }
-
-    @Test
     void aBarIsFullOnlyWhenTheValueIs() {
         assertEquals(20, HudRenderer.halves(20, 20, 10));
         assertEquals(19, HudRenderer.halves(19.99, 20, 10));

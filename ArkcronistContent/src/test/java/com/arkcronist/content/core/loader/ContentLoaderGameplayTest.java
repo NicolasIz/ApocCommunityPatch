@@ -226,7 +226,6 @@ class ContentLoaderGameplayTest {
                     icons: { full: hud/shield }
                     anchor: above-health
                     value: { stat: absorption }
-                    bedrock: "<gold>Shield <bar> <white><value>/<max>"
                   mana:
                     icons: { full: hud/shield }
                     anchor: { at: above-food, row: 1, nudge: [2, 1] }
@@ -249,12 +248,10 @@ class ContentLoaderGameplayTest {
         assertEquals(-16, shield.ascent(), "computed from the anchor");
         assertTrue(shield.actionBar(), "an anchored bar goes on the action bar unless it says otherwise");
         assertEquals(new HudDefinition.Source.Stat("absorption", 0), shield.source());
-        assertEquals("<gold>Shield <bar> <white><value>/<max>", shield.bedrock(), "3.0.4: what Bedrock players read");
         HudDefinition mana = report.huds().stream().filter(hud -> hud.id().equals("mana")).findFirst().orElseThrow();
         assertEquals(new HudAnchor(HudAnchor.Kind.ABOVE_FOOD, 1, 2, 1), mana.anchor());
         assertEquals(-5, mana.ascent(), "row 1 is 10 up, nudged 1 more");
         assertEquals(new HudDefinition.Source.Stat("auraskills:mana", 0), mana.source());
-        assertEquals(null, mana.bedrock(), "without one, Bedrock players are not shown it");
         HudDefinition high = report.huds().stream().filter(hud -> hud.id().equals("high")).findFirst().orElseThrow();
         assertEquals(2, high.anchor().row(), "brought down to the highest row a 9 px icon can reach");
         assertProblem(report.problems(), "demo:high", "row 9 is too high");

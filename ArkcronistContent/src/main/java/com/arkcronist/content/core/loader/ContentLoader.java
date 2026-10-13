@@ -1723,13 +1723,9 @@ public final class ContentLoader {
                     number(stored, "per-second", 0, -1_000_000, 1_000_000, prefix, problems),
                     number(stored, "empty-damage", 0, 0, 1000, prefix, problems), consume);
         }
-        String bedrock = text(section, "bedrock", prefix, problems);
-        if (bedrock != null && bedrock.isBlank()) {
-            bedrock = null;
-        }
         // A bar placed against the vanilla HUD is meant for the action bar, unless it says otherwise.
         return new HudDefinition(namespace, id, full, half, empty, height, ascent, segments, spacing, offset, source,
-                flag(section, "action-bar", anchor != null, prefix, problems), sourceRoot, file, anchor, bedrock);
+                flag(section, "action-bar", anchor != null, prefix, problems), sourceRoot, file, anchor);
     }
 
     /**

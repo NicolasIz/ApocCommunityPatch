@@ -35,8 +35,6 @@ public final class ActionBars {
     private volatile Function<Player, Component> bars = player -> null;
     /** 3.0: players whose client draws no custom font - Bedrock players - and see no bars. */
     private volatile java.util.function.Predicate<Player> plain = player -> false;
-    /** 3.0.4: what those players see instead of the bars - plain text - or null for nothing. */
-    private volatile Function<Player, Component> plainBars = player -> null;
 
     /** @param tick the server's current tick */
     public ActionBars(LongSupplier tick) {
@@ -47,15 +45,9 @@ public final class ActionBars {
         this.bars = bars;
     }
 
-    /** 3.0.4: the bars as plain text, for the players {@link #plainFor} names. */
-    public void plainBars(Function<Player, Component> plainBars) {
-        this.plainBars = plainBars;
-    }
-
     /**
-     * Players who are sent no bars: their client has no negative spaces to place them with. They
-     * get the bars' plain text instead, if the HUDs give one; a message or a minigame's frame still
-     * reaches them, as the plain text it is for them.
+     * Players who are sent no bars: their client has no negative spaces to place them with. A
+     * message or a minigame's frame still reaches them, as the plain text it is for them.
      */
     public void plainFor(java.util.function.Predicate<Player> plain) {
         this.plain = plain;
@@ -86,10 +78,9 @@ public final class ActionBars {
     public void send(Player player) {
         Component overlay = overlays.get(player.getUniqueId());
         boolean plainText = plain.test(player);
-        Component bar = plainText ? plainBars.apply(player) : bars.apply(player);
+        Component bar = plainText ? null : bars.apply(player);
         if (overlay != null) {
-            // Plain text has no spaces to lay one over the other: side by side.
-            bar = bar == null ? overlay : plainText ? overlay.append(Component.text("  ")).append(bar) : overlay.append(bar);
+            bar = bar == null ? overlay : overlay.append(bar);
         }
         Flash flash = flashes.get(player.getUniqueId());
         if (flash != null && flash.until() < tick.getAsLong()) {

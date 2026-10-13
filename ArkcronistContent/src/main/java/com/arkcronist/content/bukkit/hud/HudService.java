@@ -3,15 +3,11 @@ package com.arkcronist.content.bukkit.hud;
 import com.arkcronist.content.bukkit.EngineSettings;
 import com.arkcronist.content.core.hud.HudDefinition;
 import com.arkcronist.content.core.hud.HudLayout;
-import com.arkcronist.content.core.hud.HudRenderer;
 import com.arkcronist.content.core.hud.Spaces;
 import com.arkcronist.content.core.storage.DatabaseManager;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.ShadowColor;
-import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.GameMode;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.damage.DamageSource;
@@ -21,9 +17,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -88,7 +82,6 @@ public final class HudService {
         this.logger = plugin.getLogger();
         this.placeholders = placeholders;
         actionBars.bars(this::actionBar);
-        actionBars.plainBars(this::plainActionBar);
     }
 
     public void start() {
@@ -314,44 +307,8 @@ public final class HudService {
                 : Component.text(text.toString(), NamedTextColor.WHITE).shadowColor(ShadowColor.none());
     }
 
-    /**
-     * 3.0.4: the HUDs as a Bedrock player sees them - their {@code bedrock} text, one after another -
-     * or null when none has one. Bedrock draws no custom font and no negative spaces, so each bar is
-     * plain characters: {@code ■} for a filled segment, {@code □} for an empty one. 3.0.5: whether or
-     * not the HUD is on the Java action bar - a server that draws its Java HUD with another plugin
-     * (BetterHud) turns {@code action-bar} off and still gives Bedrock players the text.
-     */
-    private @Nullable Component plainActionBar(Player player) {
-        List<Component> parts = new ArrayList<>();
-        for (HudLayout hud : registry.all()) {
-            if (hud.definition().bedrock() != null) {
-                parts.add(plain(player, hud));
-            }
-        }
-        return parts.isEmpty() ? null : Component.join(JoinConfiguration.separator(Component.text("  ")), parts);
-    }
-
-    /** One HUD's Bedrock text for a player. Any thread. */
-    Component plain(OfflinePlayer player, HudLayout hud) {
-        double[] value = valueAndMax(player, hud);
-        int segments = hud.definition().segments();
-        int filled = HudRenderer.plainFilled(value[0], value[1], segments);
-        Component bar = Component.text("\u25A0".repeat(filled))
-                .append(Component.text("\u25A1".repeat(segments - filled), NamedTextColor.DARK_GRAY));
-        return MiniMessage.miniMessage().deserialize(hud.definition().bedrock(),
-                Placeholder.component("bar", bar),
-                Placeholder.unparsed("value", amount(value[0])),
-                Placeholder.unparsed("max", amount(value[1])));
-    }
-
-    /** 18 for 18.0, 7.5 for 7.5: what a player reads. */
-    static String amount(double value) {
-        double rounded = Math.round(value * 10) / 10.0;
-        return rounded == Math.rint(rounded) ? String.valueOf((long) rounded) : String.valueOf(rounded);
-    }
-
     private void sendBars() {
-        if (registry.all().stream().noneMatch(hud -> hud.definition().actionBar() || hud.definition().bedrock() != null)) {
+        if (registry.all().stream().noneMatch(hud -> hud.definition().actionBar())) {
             return;
         }
         for (Player player : plugin.getServer().getOnlinePlayers()) {

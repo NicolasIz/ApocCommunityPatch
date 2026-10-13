@@ -46,14 +46,6 @@ public final class HudRenderer {
     }
 
     /**
-     * 3.0.4: how many of a bar's segments a plain-text bar - Bedrock's, with no icons - shows filled:
-     * a half segment counts as filled, so a bar with anything left in it never reads empty.
-     */
-    public static int plainFilled(double value, double max, int segments) {
-        return (halves(value, max, segments) + 1) / 2;
-    }
-
-    /**
      * The text of a bar.
      *
      * @param spacing pixels between icons, besides the font's own one

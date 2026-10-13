@@ -16,7 +16,7 @@ public final class HudRegistry {
     private volatile Map<String, HudLayout> byBareId = Map.of();
 
     public void replace(List<HudLayout> huds) {
-        Map<String, HudLayout> ids = new java.util.LinkedHashMap<>();
+        Map<String, HudLayout> ids = new HashMap<>();
         Map<String, HudLayout> bare = new HashMap<>();
         Map<String, Integer> bareCount = new HashMap<>();
         for (HudLayout hud : huds) {
@@ -29,8 +29,7 @@ public final class HudRegistry {
                 bare.remove(id);
             }
         });
-        // In the order they were loaded: file by file, then as written - the order they are drawn in.
-        this.byId = java.util.Collections.unmodifiableMap(ids);
+        this.byId = Map.copyOf(ids);
         this.byBareId = Map.copyOf(bare);
     }
 
