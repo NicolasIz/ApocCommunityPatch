@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.0.6.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.0.7.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -2512,6 +2512,20 @@ ItemsAdder en `packs/` hecha con un MythicArmor anterior trae shaders `entity.vs
 antiguos en las mismas rutas, y con ellos las piezas del cuerpo no se dibujan (el casco sí, porque
 es un modelo normal). Si una ruta está en los dos, el pack de MythicArmor manda; frente a los
 archivos propios de este plugin, ganan los nuestros y se avisa en consola.
+
+Desde 3.0.7 esas copias perdidas no salen archivo por archivo: una exportación que se tragó el pack
+entero de MythicArmor daba un `WARN ... is already supplied by MythicArmor pack` por cada textura
+(más de 900 en un servidor real). Ahora es una sola línea de información por pack, con el total y
+tres ejemplos, y no cuenta como problema:
+
+```
+[pack] packs/generated_5 pack: 917 file(s) are copies of ones MythicArmor pack builds as it runs,
+       with other content - its versions are kept (assets/mythicarmor/textures/...)
+```
+
+Vale igual para cualquier pack vivo (BetterHud, 3.0.5). Cuando chocan dos packs copiados en disco, o
+un pack con archivos de este plugin, sí es un problema, pero también una línea por pareja de packs
+con el número de archivos.
 
 Si MythicArmor también envía su propio pack a los jugadores, **desactívalo** en su configuración:
 el nuestro ya lo lleva, y con dos packs el que queda encima puede tapar los shaders del otro.

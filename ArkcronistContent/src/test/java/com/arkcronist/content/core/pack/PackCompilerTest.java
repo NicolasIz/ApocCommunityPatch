@@ -262,6 +262,55 @@ class PackCompilerTest {
         assertTrue(Files.exists(pack.resolve("assets/mythicarmor/equipment/knight_chest_piece.json")));
     }
 
+    /**
+     * 3.0.7: an ItemsAdder export that took MythicArmor's pack in holds a copy of each of its
+     * textures; every one the live pack has with other bytes was a warning of its own (over 900 on a
+     * real server). Now it is one note for the pair, and nothing counted as a problem.
+     */
+    @Test
+    void copiesOfALivePacksFilesAreOneNoteNotAProblemEach() throws IOException {
+        Path live = temp.resolve("plugins/MythicArmor/pack");
+        Path export = temp.resolve("packs/generated_5");
+        for (int i = 0; i < 5; i++) {
+            write(live, "assets/mythicarmor/textures/entity/equipment/humanoid/knight_chest_piece_" + i + ".png", png("live" + i));
+            write(export, "assets/mythicarmor/textures/entity/equipment/humanoid/knight_chest_piece_" + i + ".png", png("copy" + i));
+        }
+        Path pack = temp.resolve("pack");
+
+        PackCompiler.Result result = new PackCompiler(SETTINGS).compile(pack, List.of(), Map.of(),
+                List.of(new ExternalPack("packs/generated_5", export), new ExternalPack("MythicArmor", live, true)));
+
+        assertArrayEquals(png("live3"), Files.readAllBytes(
+                pack.resolve("assets/mythicarmor/textures/entity/equipment/humanoid/knight_chest_piece_3.png")));
+        assertEquals(List.of(), result.problems());
+        assertEquals(1, result.notes().size(), result.notes().toString());
+        String note = result.notes().get(0);
+        assertTrue(note.startsWith("packs/generated_5 pack: 5 file(s) are copies of ones MythicArmor pack builds"), note);
+        assertTrue(note.contains("knight_chest_piece_0.png, ") && note.endsWith("...)"), note);
+    }
+
+    /** Two packs kept on disk that disagree on many files: still a problem, but one line for the pair. */
+    @Test
+    void clashesBetweenTwoCopiedPacksAreOneProblemPerPair() throws IOException {
+        Path first = temp.resolve("packs/a");
+        Path second = temp.resolve("packs/b");
+        for (int i = 0; i < 4; i++) {
+            write(first, "assets/shared/textures/item/thing_" + i + ".png", png("a" + i));
+            write(second, "assets/shared/textures/item/thing_" + i + ".png", png("b" + i));
+        }
+        write(second, "assets/shared/textures/item/same.png", png("same"));
+        write(first, "assets/shared/textures/item/same.png", png("same"));
+        Path pack = temp.resolve("pack");
+
+        PackCompiler.Result result = new PackCompiler(SETTINGS).compile(pack, List.of(), Map.of(),
+                List.of(new ExternalPack("a", first), new ExternalPack("b", second)));
+
+        assertEquals(1, result.problems().size(), result.problems().toString());
+        assertTrue(result.problems().get(0).startsWith("b pack: 4 file(s) are already supplied by a pack with different"
+                + " content - keeping the first (assets/shared/textures/item/thing_0.png, "), result.problems().get(0));
+        assertArrayEquals(png("a2"), Files.readAllBytes(pack.resolve("assets/shared/textures/item/thing_2.png")));
+    }
+
     @Test
     void anotherPluginsPackCannotLinkToFilesOutsideIt() throws IOException {
         write(temp, "server/secret.txt", "password");

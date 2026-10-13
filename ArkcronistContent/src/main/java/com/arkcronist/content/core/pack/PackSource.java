@@ -54,6 +54,8 @@ public final class PackSource implements Closeable {
     private final List<String> problems = new ArrayList<>();
     private final Map<String, JsonObject> overlays = new LinkedHashMap<>();
     private @Nullable SortedSet<String> files;
+    /** 3.0.7: built by a plugin as it runs ({@link ExternalPack#live()}), not a copy kept on disk. */
+    private boolean live;
 
     private PackSource(String name, @Nullable Path folder, @Nullable ZipFile zip, String prefix) {
         this.name = name;
@@ -88,12 +90,18 @@ public final class PackSource implements Closeable {
             empty.files = Collections.emptySortedSet();
             return empty;
         }
+        source.live = pack.live();
         source.readOverlays();
         return source;
     }
 
     public String name() {
         return name;
+    }
+
+    /** Whether a plugin builds this pack as it runs: its files are the current ones. */
+    public boolean live() {
+        return live;
     }
 
     /** What could not be read, without the pack's name. */

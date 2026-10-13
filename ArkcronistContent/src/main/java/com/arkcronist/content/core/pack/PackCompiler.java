@@ -306,6 +306,7 @@ public final class PackCompiler {
         for (PackSource source : sources) {
             run.merge(source);
         }
+        run.reportClashes();
         run.atlas();
         run.overlayShared();
         run.checkShaders(shaders);
@@ -343,6 +344,12 @@ public final class PackCompiler {
         /** This plugin's own version of each shared file ({@link JsonMerge}), before any pack was merged in. */
         private final Map<String, byte[]> own = new HashMap<>();
         private boolean merging;
+        /**
+         * 3.0.7: the files a merged pack could not place because another source had them first, by
+         * that pack and that source - reported a line per pair, not per file: an ItemsAdder export
+         * holding MythicArmor's whole pack made one warning per texture, over 900.
+         */
+        private final Map<List<String>, List<String>> clashes = new LinkedHashMap<>();
 
         Run(Path packDir, List<PackSource> sources) {
             this.packDir = packDir;
@@ -1357,8 +1364,11 @@ public final class PackCompiler {
             String owner = placed.putIfAbsent(relative, origin);
             if (owner != null) {
                 if (!Arrays.equals(Files.readAllBytes(target), bytes)) {
-                    problems.add(origin + ": " + relative + " is already supplied by " + owner
-                            + " with different content - keeping the first");
+                    if (merging) {
+                        clashes.computeIfAbsent(List.of(origin, owner), pair -> new ArrayList<>()).add(relative);
+                    } else {
+                        problems.add(clash(origin, relative, owner));
+                    }
                 }
                 return false;
             }
@@ -1368,6 +1378,41 @@ public final class PackCompiler {
                 own.put(relative, bytes);
             }
             return true;
+        }
+
+        private static String clash(String origin, String relative, String owner) {
+            return origin + ": " + relative + " is already supplied by " + owner + " with different content - keeping the first";
+        }
+
+        /**
+         * 3.0.7: one line for each merged pack and the source that had its files first. Where that
+         * source is a pack a plugin builds as it runs (MythicArmor's, BetterHud's) and the merged one
+         * a copy kept on disk (an ItemsAdder export that took that plugin's pack in), the copy losing
+         * is the point of merging the live pack first, so it is only noted; anything else is a problem.
+         */
+        void reportClashes() {
+            Set<String> live = new HashSet<>();
+            for (PackSource source : sources) {
+                if (source.live()) {
+                    live.add(source.name() + " pack");
+                }
+            }
+            for (Map.Entry<List<String>, List<String>> entry : clashes.entrySet()) {
+                String origin = entry.getKey().get(0);
+                String owner = entry.getKey().get(1);
+                List<String> files = entry.getValue();
+                String examples = String.join(", ", files.subList(0, Math.min(3, files.size())))
+                        + (files.size() > 3 ? "..." : "");
+                if (live.contains(owner) && !live.contains(origin)) {
+                    notes.add(origin + ": " + files.size() + " file(s) are copies of ones " + owner + " builds as"
+                            + " it runs, with other content - its versions are kept (" + examples + ")");
+                } else if (files.size() == 1) {
+                    problems.add(clash(origin, files.get(0), owner));
+                } else {
+                    problems.add(origin + ": " + files.size() + " file(s) are already supplied by " + owner
+                            + " with different content - keeping the first (" + examples + ")");
+                }
+            }
         }
 
         /** The plugin's own flat icons: an item definition, a model and its texture each. */
