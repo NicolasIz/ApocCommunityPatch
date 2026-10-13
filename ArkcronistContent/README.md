@@ -2519,7 +2519,7 @@ entero de MythicArmor daba un `WARN ... is already supplied by MythicArmor pack`
 tres ejemplos, y no cuenta como problema:
 
 ```
-[pack] packs/generated_5 pack: 917 file(s) are copies of ones MythicArmor pack builds as it runs,
+[pack] packs/generated_5 pack: <N> file(s) are copies of ones MythicArmor pack builds as it runs,
        with other content - its versions are kept (assets/mythicarmor/textures/...)
 ```
 
