@@ -165,6 +165,13 @@ public final class HookManager {
             plugin.getServer().getScheduler().runTask(plugin, mythicArmor::mergeCurrent);
         }
 
+        // 3.0.5: BetterHud's pack, merged into ours each time BetterHud builds it.
+        Listener betterHud = create("BetterHud", "kr.toxicity.hud.api.bukkit.event.PluginReloadedEvent",
+                () -> new com.arkcronist.content.bukkit.hooks.betterhud.BetterHudHook(plugin, plugin.pipeline()));
+        if (betterHud != null) {
+            listen(betterHud);
+        }
+
         // Loads before this plugin; registered at once, so TAB and DeluxeMenus find it from the start.
         PlaceholderApiHook placeholderApi = create("PlaceholderAPI", "me.clip.placeholderapi.expansion.PlaceholderExpansion",
                 () -> PlaceholderApiHook.register(plugin.getPluginMeta().getVersion(), plugin.emojis(), plugin.items(),

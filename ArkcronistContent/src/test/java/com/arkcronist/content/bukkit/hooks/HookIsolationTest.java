@@ -41,7 +41,7 @@ class HookIsolationTest {
                 "com.sk89q.worldedit.internal.registry.InputParser", "com.sk89q.worldguard.WorldGuard",
                 "com.github.retrooper.packetevents.PacketEvents", "org.geysermc.geyser.api.GeyserApi",
                 "net.luckperms.api.LuckPermsProvider", "me.angeschossen.lands.api.LandsIntegration",
-                "com.palmergames.bukkit.towny.TownyAPI")) {
+                "com.palmergames.bukkit.towny.TownyAPI", "kr.toxicity.hud.api.bukkit.event.PluginReloadedEvent")) {
             assertThrows(ClassNotFoundException.class, () -> Class.forName(foreign), foreign);
         }
     }

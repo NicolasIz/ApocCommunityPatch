@@ -273,7 +273,9 @@ public final class ShaderCheck {
             if (!program && !rel.endsWith(".glsl")) {
                 continue;
             }
-            String code = COMMENTS.matcher(text).replaceAll(" ");
+            // 3.0.5: only what the preprocessor keeps - BetterHud writes one shader for every client
+            // version, the 1.21.4 declarations in the #else of an #if SHADER_VERSION >= 3.
+            String code = active(COMMENTS.matcher(text).replaceAll(" "));
             List<String> broken = new ArrayList<>();
             if (program && !firstDirectiveIsVersion(code)) {
                 broken.add("its first line is not #version, which the client's compiler needs");
@@ -328,6 +330,236 @@ public final class ShaderCheck {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    private static final Pattern DIRECTIVE = Pattern.compile("^\\s*#\\s*(define|undef|ifdef|ifndef|if|elif|else|endif)\\b(.*)$");
+    private static final Pattern DEFINE = Pattern.compile("\\s*(\\w+)(?:\\s+(.*))?");
+
+    /**
+     * 3.0.5: the code the preprocessor keeps, as far as the shader itself says: {@code #define}s of
+     * whole numbers, and {@code #if}, {@code #ifdef}, {@code #ifndef}, {@code #elif}, {@code #else},
+     * {@code #endif} on them. A condition on anything else - a macro the client defines for some
+     * pipelines, a function-like macro - is not known here: both of its branches are kept, as all of
+     * a shader was before. Dropped lines become empty ones.
+     */
+    static String active(String code) {
+        Map<String, Long> macros = new java.util.HashMap<>();
+        java.util.Set<String> unknownMacros = new java.util.HashSet<>();
+        // Per open #if: 1 this branch is taken, 0 it is not, -1 not known; and whether one was taken already.
+        java.util.Deque<int[]> stack = new java.util.ArrayDeque<>();
+        StringBuilder out = new StringBuilder(code.length());
+        for (String line : code.split("\n", -1)) {
+            Matcher directive = DIRECTIVE.matcher(line);
+            boolean live = stack.stream().noneMatch(level -> level[0] == 0);
+            if (!directive.matches()) {
+                out.append(live ? line : "").append('\n');
+                continue;
+            }
+            String kind = directive.group(1);
+            String rest = directive.group(2).trim();
+            switch (kind) {
+                case "define" -> {
+                    if (live) {
+                        Matcher define = DEFINE.matcher(rest);
+                        if (define.matches() && !rest.contains("(")) {
+                            Long value = define.group(2) == null ? Long.valueOf(1) : number(define.group(2).trim());
+                            if (value != null) {
+                                macros.put(define.group(1), value);
+                                unknownMacros.remove(define.group(1));
+                            } else {
+                                macros.remove(define.group(1));
+                                unknownMacros.add(define.group(1));
+                            }
+                        }
+                    }
+                    out.append(live ? line : "").append('\n');
+                }
+                case "undef" -> {
+                    if (live) {
+                        macros.remove(rest);
+                        unknownMacros.remove(rest);
+                    }
+                    out.append('\n');
+                }
+                case "if", "ifdef", "ifndef" -> {
+                    int known = kind.equals("if") ? evaluate(rest, macros, unknownMacros)
+                            : defined(rest, macros, unknownMacros, kind.equals("ifndef"));
+                    stack.push(new int[]{known, known == 1 ? 1 : 0});
+                    out.append('\n');
+                }
+                case "elif" -> {
+                    int[] level = stack.peek();
+                    if (level != null) {
+                        if (level[1] == 1) {
+                            level[0] = 0;
+                        } else {
+                            int known = evaluate(rest, macros, unknownMacros);
+                            level[0] = level[0] == -1 && known != 1 ? -1 : known;
+                            if (known == 1) {
+                                level[1] = 1;
+                            }
+                        }
+                    }
+                    out.append('\n');
+                }
+                case "else" -> {
+                    int[] level = stack.peek();
+                    if (level != null) {
+                        level[0] = level[0] == -1 ? -1 : level[1] == 1 ? 0 : 1;
+                        level[1] = 1;
+                    }
+                    out.append('\n');
+                }
+                default -> {
+                    if (!stack.isEmpty()) {
+                        stack.pop();
+                    }
+                    out.append('\n');
+                }
+            }
+        }
+        return out.toString();
+    }
+
+    private static int defined(String name, Map<String, Long> macros, java.util.Set<String> unknownMacros, boolean negate) {
+        String macro = name.trim();
+        if (macros.containsKey(macro) || unknownMacros.contains(macro)) {
+            return negate ? 0 : 1;
+        }
+        // Not defined by the shader - the client may define it, for some pipelines.
+        return -1;
+    }
+
+    /** 1 true, 0 false, -1 not known: whole numbers, macros defined here, comparisons, !, &&, ||, (). */
+    private static int evaluate(String expression, Map<String, Long> macros, java.util.Set<String> unknownMacros) {
+        try {
+            Long value = new Expression(expression, macros).parse();
+            return value == null ? -1 : value != 0 ? 1 : 0;
+        } catch (RuntimeException unknown) {
+            return -1;
+        }
+    }
+
+    private static Long number(String text) {
+        try {
+            return Long.decode(text.replaceAll("[uUlL]+$", ""));
+        } catch (NumberFormatException notANumber) {
+            return null;
+        }
+    }
+
+    /** A recursive-descent reading of a #if expression; null for anything not known here. */
+    private static final class Expression {
+        private final String text;
+        private final Map<String, Long> macros;
+        private int at;
+
+        Expression(String text, Map<String, Long> macros) {
+            this.text = text;
+            this.macros = macros;
+        }
+
+        Long parse() {
+            Long value = or();
+            skip();
+            return at == text.length() ? value : null;
+        }
+
+        private Long or() {
+            Long left = and();
+            while (take("||")) {
+                Long right = and();
+                left = left == null || right == null ? (left != null && left != 0 || right != null && right != 0 ? 1L : null)
+                        : (left != 0 || right != 0 ? 1L : 0L);
+            }
+            return left;
+        }
+
+        private Long and() {
+            Long left = comparison();
+            while (take("&&")) {
+                Long right = comparison();
+                left = left == null || right == null ? (left != null && left == 0 || right != null && right == 0 ? 0L : null)
+                        : (left != 0 && right != 0 ? 1L : 0L);
+            }
+            return left;
+        }
+
+        private Long comparison() {
+            Long left = unary();
+            for (String op : new String[]{">=", "<=", "==", "!=", ">", "<"}) {
+                if (take(op)) {
+                    Long right = unary();
+                    if (left == null || right == null) {
+                        return null;
+                    }
+                    return switch (op) {
+                        case ">=" -> left >= right ? 1L : 0L;
+                        case "<=" -> left <= right ? 1L : 0L;
+                        case "==" -> left.equals(right) ? 1L : 0L;
+                        case "!=" -> !left.equals(right) ? 1L : 0L;
+                        case ">" -> left > right ? 1L : 0L;
+                        default -> left < right ? 1L : 0L;
+                    };
+                }
+            }
+            return left;
+        }
+
+        private Long unary() {
+            skip();
+            if (take("!")) {
+                Long value = unary();
+                return value == null ? null : value == 0 ? 1L : 0L;
+            }
+            if (take("(")) {
+                Long value = or();
+                if (!take(")")) {
+                    throw new IllegalStateException("unbalanced");
+                }
+                return value;
+            }
+            int start = at;
+            while (at < text.length() && (Character.isLetterOrDigit(text.charAt(at)) || text.charAt(at) == '_')) {
+                at++;
+            }
+            String word = text.substring(start, at);
+            if (word.isEmpty()) {
+                throw new IllegalStateException("nothing to read at " + at);
+            }
+            if (word.equals("defined")) {
+                boolean paren = take("(");
+                skip();
+                int nameStart = at;
+                while (at < text.length() && (Character.isLetterOrDigit(text.charAt(at)) || text.charAt(at) == '_')) {
+                    at++;
+                }
+                String name = text.substring(nameStart, at);
+                if (paren && !take(")")) {
+                    throw new IllegalStateException("unbalanced");
+                }
+                return macros.containsKey(name) ? Long.valueOf(1) : null;
+            }
+            if (Character.isDigit(word.charAt(0))) {
+                return number(word);
+            }
+            return macros.get(word);
+        }
+
+        private boolean take(String token) {
+            skip();
+            if (text.startsWith(token, at)) {
+                at += token.length();
+                return true;
+            }
+            return false;
+        }
+
+        private void skip() {
+            while (at < text.length() && Character.isWhitespace(text.charAt(at))) {
+                at++;
             }
         }
     }

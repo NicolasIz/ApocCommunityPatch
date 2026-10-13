@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'com.arkcronist'
-version = '3.0.4'
+version = '3.0.5'
 description = 'Custom items from YAML, drawn by a resource pack the plugin compiles, zips, hashes and serves itself.'
 
 java {
@@ -27,6 +27,8 @@ sourceSets {
     scoreApi
     // DeluxeMenus publishes no API artifact; its item hook interface is copied from 1.14.1.
     deluxemenusApi
+    // BetterHud's API is only in its plugin jar; the event the hook listens to is copied from 1.14.1.
+    betterhudApi
 }
 
 configurations {
@@ -39,6 +41,7 @@ configurations {
     mmoitemsApiCompileOnly.extendsFrom paperApi
     scoreApiCompileOnly.extendsFrom paperApi
     deluxemenusApiCompileOnly.extendsFrom paperApi
+    betterhudApiCompileOnly.extendsFrom paperApi
 }
 
 // Paper's API comes from Paper's repository, or from libs/ when a local copy is there - for a
@@ -283,6 +286,7 @@ dependencies {
     compileOnly('org.betonquest:betonquest:3.2.0:shaded') { transitive = false }
     compileOnly('fr.xephi:authme:5.7.0') { transitive = false }
     compileOnly sourceSets.deluxemenusApi.output
+    compileOnly sourceSets.betterhudApi.output
     // 3.0: protection for liquids and guns in lands and towns, and LuckPerms prefixes with emojis.
     compileOnly('com.github.angeschossen:LandsAPI:7.25.4') { transitive = false }
     compileOnly('com.palmergames.bukkit.towny:towny:0.101.2.7') { transitive = false }

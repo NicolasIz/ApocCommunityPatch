@@ -315,14 +315,16 @@ public final class HudService {
     }
 
     /**
-     * 3.0.4: the action-bar HUDs as a Bedrock player sees them - their {@code bedrock} text, one
-     * after another - or null when none has one. Bedrock draws no custom font and no negative spaces,
-     * so each bar is plain characters: {@code ■} for a filled segment, {@code □} for an empty one.
+     * 3.0.4: the HUDs as a Bedrock player sees them - their {@code bedrock} text, one after another -
+     * or null when none has one. Bedrock draws no custom font and no negative spaces, so each bar is
+     * plain characters: {@code ■} for a filled segment, {@code □} for an empty one. 3.0.5: whether or
+     * not the HUD is on the Java action bar - a server that draws its Java HUD with another plugin
+     * (BetterHud) turns {@code action-bar} off and still gives Bedrock players the text.
      */
     private @Nullable Component plainActionBar(Player player) {
         List<Component> parts = new ArrayList<>();
         for (HudLayout hud : registry.all()) {
-            if (hud.definition().actionBar() && hud.definition().bedrock() != null) {
+            if (hud.definition().bedrock() != null) {
                 parts.add(plain(player, hud));
             }
         }
@@ -349,7 +351,7 @@ public final class HudService {
     }
 
     private void sendBars() {
-        if (registry.all().stream().noneMatch(hud -> hud.definition().actionBar())) {
+        if (registry.all().stream().noneMatch(hud -> hud.definition().actionBar() || hud.definition().bedrock() != null)) {
             return;
         }
         for (Player player : plugin.getServer().getOnlinePlayers()) {

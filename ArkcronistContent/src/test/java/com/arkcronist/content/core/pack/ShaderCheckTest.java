@@ -76,6 +76,65 @@ class ShaderCheckTest {
         assertEquals(Set.of(), report.drop(), "keep only reports");
     }
 
+    /** 3.0.5: BetterHud's text shader, one file for every version: only the branch the defines pick is read. */
+    @Test
+    void onlyThePreprocessorsBranchIsRead() {
+        String path = "assets/minecraft/shaders/core/rendertype_text.fsh";
+        String betterHud = """
+                #version 150
+                #define SHADER_VERSION 3
+                #moj_import <fog.glsl>
+                #if SHADER_VERSION >= 3
+                #moj_import <dynamictransforms.glsl>
+                in float sphericalVertexDistance;
+                #else
+                uniform vec4 ColorModulator;uniform float FogStart;
+                in float vertexDistance;
+                #endif
+                uniform sampler2D Sampler0;
+                void main() {}
+                """;
+        Report current = ShaderCheck.check(Map.of(path, betterHud), Mode.DROP_BROKEN);
+        assertTrue(current.findings().stream().noneMatch(f -> f.severity() == Severity.BROKEN), current.findings().toString());
+        assertEquals(Set.of(), current.drop(), "drop-broken keeps a shader that is fine on this client");
+
+        Report old = ShaderCheck.check(Map.of(path, betterHud.replace("#define SHADER_VERSION 3", "#define SHADER_VERSION 2")),
+                Mode.KEEP);
+        assertTrue(old.findings().stream().anyMatch(f -> f.severity() == Severity.BROKEN
+                && f.message().contains("ColorModulator")), "with the old branch taken, it is broken");
+
+        // A macro the client may define for a pipeline is not known here: both branches are read.
+        Report unknown = ShaderCheck.check(Map.of(path, betterHud.replace("#if SHADER_VERSION >= 3", "#ifdef ALPHA_CUTOUT")),
+                Mode.KEEP);
+        assertTrue(unknown.findings().stream().anyMatch(f -> f.severity() == Severity.BROKEN));
+    }
+
+    @Test
+    void ifElifElseAndNestingPickOneBranch() {
+        String code = """
+                #define A 2
+                #define C
+                #if A == 1
+                one
+                #elif A == 2 && defined(C)
+                two
+                #if 0
+                hidden
+                #else
+                nested
+                #endif
+                #else
+                other
+                #endif
+                after
+                """;
+        String kept = ShaderCheck.active(code).replaceAll("\\s+", " ").trim();
+        assertEquals("#define A 2 #define C two nested after", kept);
+        // A macro the shader does not define may be the client's: both branches are kept.
+        assertEquals("maybe otherwise", ShaderCheck.active("#ifdef APPLY_TEXTURE_MATRIX\nmaybe\n#else\notherwise\n#endif\n")
+                .replaceAll("\\s+", " ").trim());
+    }
+
     /**
      * GameTime in terrain - an animated liquid surface, say - is fine: the client binds Globals to
      * any shader that declares it. A block it never fills - one only clouds are given - is reported.

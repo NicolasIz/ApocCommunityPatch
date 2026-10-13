@@ -162,6 +162,11 @@ dependencies:
       load: AFTER
       required: false
       join-classpath: true
+    # 3.0.5: loads after this plugin, so the pack it builds as it enables is heard and merged.
+    BetterHud:
+      load: AFTER
+      required: false
+      join-classpath: true
     # Placeholders for TAB, DeluxeMenus and others: registered as this plugin enables.
     PlaceholderAPI:
       load: BEFORE

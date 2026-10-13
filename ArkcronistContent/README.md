@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.0.4.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.0.5.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -2036,6 +2036,11 @@ tienen `bedrock:` van uno tras otro, separados por dos espacios, en el orden en 
 archivo por archivo y, dentro de cada uno, como están escritos (ese es también el orden en que se
 dibujan en Java). Sin `bedrock:`, un HUD no se le muestra a un jugador de Bedrock, como hasta 3.0.3.
 
+Desde 3.0.5, `bedrock:` llega a los jugadores de Bedrock aunque el HUD tenga `action-bar: false`. Así,
+un servidor que dibuja su HUD de Java con otro plugin (BetterHud) puede apagar las barras de este en
+Java, seguir dándoselas a ese plugin por `%arkcontent_hud_<id>_value%` / `_max` y que los jugadores
+de Bedrock, a los que BetterHud no dibuja nada, sigan teniendo el texto.
+
 #### Qué se ha verificado en un servidor Paper 1.21.8 real (v1.7, HUDs)
 
 | Qué | Resultado |
@@ -2299,6 +2304,7 @@ gancho. `/arkcontent info` muestra cuáles están activos (`Hooks: MythicMobs, .
 | MythicMobs | después de este | lee sus mobs al habilitarse y pregunta entonces por `arkcontent{...}`: hay que estar escuchando ya |
 | ModelEngine | antes de este | su API tiene que estar lista antes de que carguen los muebles del mundo |
 | MythicArmor (o MythicArmors) | después de este | genera su primer pack al habilitarse |
+| BetterHud (3.0.5) | después de este | genera su pack al habilitarse; hay que estar escuchando ya |
 | PlaceholderAPI | antes de este | la expansión se registra al habilitarse este plugin |
 | ShopGUI+ | después de este | pide los proveedores de ítems al habilitarse (`ShopGUIPlusPostEnableEvent`) |
 | Iris | antes de este | genera mundos; su servicio de datos tiene que estar en marcha |
@@ -2556,6 +2562,52 @@ arranca; desde 3.0.2 se declaran los dos.
 Las piezas que da MythicArmor (`/mythicarmor give <jugador> <set> <pieza>`) ya llevan su asset. Las
 del mismo set importadas de ItemsAdder no lo llevaban, y por eso se veían de netherita; desde 3.0.2
 se les pone solo, por el nombre (sección 4, *Piezas sin `equipment:`*).
+
+### BetterHud (3.0.5)
+
+BetterHud dibuja su HUD (y los packs hechos para él, como PrimeHUD) con un resource pack propio:
+sus fuentes, sus imágenes y un shader de texto (`rendertype_text`) que coloca cada pieza en
+cualquier punto de la pantalla, sobre una **bossbar**. No envía ese pack a nadie salvo que lo
+aloje él mismo (`enable-self-host`). El gancho lo mete en el nuestro: cada vez que BetterHud lo
+genera (al arrancar y con `/hud reload`) avisa con `PluginReloadedEvent` y entrega los archivos;
+se escriben en `data/betterhud/<hora>/`, se fusionan como pack vivo (gana a las copias de las
+mismas rutas en otros packs fusionados, como el `rendertype_text` de una exportación de
+ItemsAdder; los archivos propios de este plugin siguen ganando) y el pack se recompila. No hace
+falta `pack.merge` ni copiar su carpeta `build`, y no se lee nunca una carpeta que BetterHud esté
+reescribiendo. En la consola: `BetterHud built its resource pack: N file(s), merged into ours.`
+
+- **Versión.** BetterHud 2.x está compilado para Java 25: en un servidor 1.21.8 con Java 21 no
+  carga (`UnsupportedClassVersionError`). La 1.14.1 sí, y su shader de texto ya lleva la rama de
+  1.21.6+ (`#if SHADER_VERSION >= 3`, bloques de uniforms).
+- **Packs de terceros (PrimeHUD v2).** Copia sus `huds/`, `layouts/`, `images/`, `texts/`,
+  `heads/`, `backgrounds/`, `assets/`, `config.yml` y `shader.yml`, pero **no** su `shaders/` ni
+  su `build/`: son de 1.21.4 o anteriores (uniforms sueltos, archivos `.json` de programa) y en
+  1.21.8 no compilan o no se leen. Su carpeta `Resourcepack/` tampoco hace falta: BetterHud ya
+  mete en su pack los sprites transparentes que ocultan el HUD vanilla.
+- **El HUD de este plugin.** Si BetterHud oculta los corazones y la comida vanilla, las barras
+  ancladas a ellos se quedan flotando: pon `action-bar: false` en tus HUD y muéstralos dentro de
+  BetterHud con `%arkcontent_hud_<id>_value%` / `_max` (BetterHud lee PlaceholderAPI). Con
+  `bedrock:` siguen llegando como texto a los jugadores de Bedrock, a los que BetterHud no dibuja
+  nada (`disable-to-bedrock-player`).
+- **TAB y el marcador.** BetterHud no toca el marcador lateral ni la lista de TAB (cabecera, pie,
+  nombres). Sí usa una bossbar: las de TAB siguen saliendo, pero BetterHud oculta la textura de las
+  barras del color de `shader.yml` (`bar-color`), así que no uses ese color en las de TAB.
+
+`pack.shaders` (3.0.5) lee cada shader como lo haría el preprocesador del cliente: `#define`,
+`#if`, `#ifdef`, `#ifndef`, `#elif`, `#else` y `#endif` sobre números y macros que el propio shader
+define. Así, el `#else` con las declaraciones de 1.21.4 de un shader escrito para varias versiones
+(el de BetterHud) no se cuenta como roto, y `drop-broken` no lo quita. Una condición sobre algo
+que el shader no define (una macro que pone el cliente) se lee entera, como antes.
+
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (3.0.5, BetterHud + PrimeHUD v2)
+
+| Qué | Resultado |
+|---|---|
+| BetterHud 2.0.0 en Java 21 | no carga: compilado para Java 25 |
+| BetterHud 1.14.1 con la configuración de PrimeHUD v2 (sin `shaders/` ni `build/`) | arranca; genera su pack (1312 archivos) y el gancho lo fusiona: 25 402 archivos, 46 MB |
+| Conflictos | el `rendertype_text.vsh` de la exportación de ItemsAdder cede ante el de BetterHud; el shader de 1.21.6+ de BetterHud ya no se marca como roto |
+| Bot de Java | recibe un solo pack (el de este plugin); la bossbar de BetterHud se actualiza unas 20 veces por segundo con 14 fuentes suyas; ninguna barra de acción de este plugin, con `action-bar: false` |
+| Bot de Bedrock por Geyser | recibe la línea de texto de `bedrock:` (vida, escudo, sed, maná) |
 
 ### PlaceholderAPI, TAB y DeluxeMenus
 

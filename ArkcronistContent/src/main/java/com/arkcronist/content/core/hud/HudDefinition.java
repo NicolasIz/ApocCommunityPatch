@@ -33,7 +33,8 @@ import java.util.Map;
  *                  then follow from it; null for the ascent and offset as written
  * @param bedrock   3.0.4: how a player whose client has no custom font - Bedrock, through Geyser - sees
  *                  it on the action bar: MiniMessage with {@code <bar>}, {@code <value>} and
- *                  {@code <max>}; null to show them nothing
+ *                  {@code <max>}; null to show them nothing. 3.0.5: sent to them whether or not
+ *                  {@code actionBar} is on
  */
 public record HudDefinition(String namespace, String id, ResourceLocation full, @Nullable ResourceLocation half,
                             @Nullable ResourceLocation empty, int height, int ascent, int segments, int spacing,
