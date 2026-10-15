@@ -291,7 +291,71 @@ public final class FurnitureService {
         if (furniture.animated() == null) {
             attachModelEngine(root, furniture);
         }
+        lightAbove(anchor, furniture, furniture.light());
         return true;
+    }
+
+    /**
+     * 3.1: a barrier is opaque to light, so a lamp or a brazier standing on barriers gives its light
+     * from a light block just above its top block - when that is free; one there already is set.
+     */
+    private static void lightAbove(Block anchor, Placement.Furniture furniture, int level) {
+        if (furniture.support() != Placement.Support.BARRIER || furniture.light() <= 0) {
+            return;
+        }
+        Block cell = anchor.getRelative(0, furniture.footprint().height(), 0);
+        if (cell.getType().isAir() || cell.getType() == Material.LIGHT) {
+            if (level <= 0) {
+                cell.setType(Material.AIR, false);
+                return;
+            }
+            cell.setType(Material.LIGHT, false);
+            if (cell.getBlockData() instanceof Light light) {
+                light.setLevel(level);
+                cell.setBlockData(light, false);
+            }
+        }
+    }
+
+    /** 3.1: whether a piece that gives light has it on - true for one whose light block could not be placed. */
+    public boolean lit(ItemDisplay root) {
+        Block anchor = anchor(root);
+        Optional<Placement.Furniture> furniture = definition(anchor);
+        if (furniture.isEmpty() || furniture.get().light() <= 0) {
+            return true;
+        }
+        Block cell = furniture.get().support() == Placement.Support.LIGHT ? anchor
+                : anchor.getRelative(0, furniture.get().footprint().height(), 0);
+        return !(cell.getBlockData() instanceof Light light) || light.getLevel() > 0;
+    }
+
+    /**
+     * 3.1: puts a piece's light out, or lights it again - the light block above a barrier piece, or
+     * the light support itself, kept as a light block of level 0 so the piece is still found by it.
+     * What it is now stays in the world: nothing else needs saving.
+     *
+     * @return whether it is lit now; false also for a piece that gives no light
+     */
+    public boolean toggleLight(Piece piece) {
+        Optional<Placement.Furniture> furniture = definition(piece.anchor());
+        if (furniture.isEmpty() || furniture.get().light() <= 0) {
+            return false;
+        }
+        Placement.Furniture spec = furniture.get();
+        if (spec.support() == Placement.Support.LIGHT) {
+            boolean lit = piece.anchor().getBlockData() instanceof Light light && light.getLevel() > 0;
+            for (Block part : partsOf(piece.anchor())) {
+                if (part.getBlockData() instanceof Light light) {
+                    light.setLevel(lit ? 0 : spec.light());
+                    part.setBlockData(light, false);
+                }
+            }
+            return !lit;
+        }
+        Block cell = piece.anchor().getRelative(0, spec.footprint().height(), 0);
+        boolean lit = cell.getBlockData() instanceof Light light && light.getLevel() > 0;
+        lightAbove(piece.anchor(), spec, lit ? 0 : spec.light());
+        return !lit;
     }
 
     /** The way a piece placed by {@code player} will face: towards them, or south. */
@@ -1221,6 +1285,17 @@ public final class FurnitureService {
             }
             root.remove();
         }
+        sweep(parts, root);
+        Block lightAnchor = root != null ? anchor(root) : block;
+        registry.get(id).map(CustomItem::placement).filter(Placement.Furniture.class::isInstance)
+                .map(Placement.Furniture.class::cast)
+                .ifPresent(spec -> {
+                    // 3.1: the light a barrier piece gave from the block above it goes with it.
+                    Block above = lightAnchor.getRelative(0, spec.footprint().height(), 0);
+                    if (spec.support() == Placement.Support.BARRIER && spec.light() > 0 && above.getType() == Material.LIGHT) {
+                        above.setType(Material.AIR, false);
+                    }
+                });
         FurnitureTransformStore own = transforms;
         List<int[]> positions = new ArrayList<>(parts.size());
         for (Block part : parts) {
@@ -1238,6 +1313,41 @@ public final class FurnitureService {
         store.removeAll(block.getWorld().getUID(), positions);
         if (dropItem) {
             registry.get(id).ifPresent(item -> block.getWorld().dropItemNaturally(centre(block), items.create(item, 1)));
+        }
+    }
+
+    /**
+     * 3.1: any other display of this plugin in the piece's blocks that stands for the same blocks -
+     * a second root a crash or an earlier version left, or one from before displays named their
+     * support - goes with the piece, instead of staying in the air once it is broken. A neighbour's
+     * display reaching into these blocks names its own support, and stays.
+     */
+    private void sweep(List<Block> parts, @Nullable Entity removed) {
+        Set<Long> keys = new HashSet<>();
+        for (Block part : parts) {
+            keys.add(BlockKey.pack(part.getX(), part.getY(), part.getZ()));
+        }
+        for (Block part : parts) {
+            for (Entity entity : part.getWorld().getNearbyEntities(org.bukkit.util.BoundingBox.of(part).expand(0.5),
+                    candidate -> candidate instanceof ItemDisplay)) {
+                if (entity.equals(removed) || !entity.isValid()) {
+                    continue;
+                }
+                PersistentDataContainer data = entity.getPersistentDataContainer();
+                if (!data.has(furnitureTag)) {
+                    continue;
+                }
+                Long anchor = data.get(anchorTag, PersistentDataType.LONG);
+                boolean here = anchor != null ? keys.contains(anchor)
+                        : keys.contains(BlockKey.pack(entity.getLocation().getBlockX(), entity.getLocation().getBlockY(),
+                        entity.getLocation().getBlockZ()));
+                if (!here) {
+                    continue;
+                }
+                animations.stop(entity.getUniqueId());
+                bones(entity).forEach(Entity::remove);
+                entity.remove();
+            }
         }
     }
 

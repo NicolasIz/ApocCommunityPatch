@@ -87,6 +87,8 @@ public final class AmbienceService {
     private Map<String, List<Resolved>> particles = Map.of();
     /** Until which tick each player may not take from each piece again. */
     private final Map<UUID, Map<UUID, Integer>> cooldowns = new HashMap<>();
+    /** Tells this plugin's own items apart, which no forge or fire cooks; null until it is set. */
+    private @Nullable java.util.function.Predicate<org.bukkit.inventory.ItemStack> custom;
     private final Set<String> warned = new HashSet<>();
     private final ExecutorService thread;
     private @Nullable BukkitTask loop;
@@ -173,6 +175,10 @@ public final class AmbienceService {
             }
             Placement.Ambience spec = ambience.get(emitter.id());
             if ((now + emitter.phase()) % spec.intervalTicks() != 0) {
+                continue;
+            }
+            // 3.1: candles put out by a click do not burn on.
+            if (spec.toggleLight() && server.getEntity(emitter.root()) instanceof ItemDisplay root && !furniture.lit(root)) {
                 continue;
             }
             if (due == null) {
@@ -318,6 +324,35 @@ public final class AmbienceService {
         if (!spec.clickable()) {
             return;
         }
+        // 3.1: what the piece does with the hand comes first - a forge melts the ore held out to it,
+        // a fire roasts the meat - and is never held back by the wait between two drinks.
+        org.bukkit.inventory.ItemStack held = player.getInventory().getItemInMainHand();
+        if (spec.cook() != null && !(custom != null && custom.test(held))) {
+            org.bukkit.inventory.ItemStack cooked = Cooking.cook(player, spec.cook());
+            if (cooked != null) {
+                Location fire = piece.anchor().getLocation().add(0.5, 1.0, 0.5);
+                fire.getWorld().playSound(fire, org.bukkit.Sound.BLOCK_FIRE_EXTINGUISH, 0.6f, 1.4f);
+                player.sendActionBar(Component.text("+1 " + cooked.getType().getKey().getKey().replace('_', ' '),
+                        NamedTextColor.GOLD));
+                burst(piece, spec.clickParticles());
+                return;
+            }
+            if (spec.station() == null && spec.potions().isEmpty() && spec.message() == null) {
+                player.sendActionBar(Component.text(held.getType().isAir() ? "Hold out something to cook"
+                        : "This does not cook " + held.getType().getKey().getKey().replace('_', ' '), NamedTextColor.GRAY));
+                return;
+            }
+        }
+        // 3.1: a workstation opens on every click.
+        if (spec.station() != null) {
+            openStation(player, piece, spec.station());
+            if (spec.sound() != null) {
+                Location centre = piece.anchor().getLocation().add(0.5, 0.5, 0.5);
+                centre.getWorld().playSound(centre, spec.sound(), 0.8f, 1f);
+            }
+            burst(piece, spec.clickParticles());
+            return;
+        }
         int now = plugin.getServer().getCurrentTick();
         Map<UUID, Integer> mine = cooldowns.computeIfAbsent(player.getUniqueId(), ignored -> new HashMap<>());
         Integer until = mine.get(piece.root().getUniqueId());
@@ -329,6 +364,10 @@ public final class AmbienceService {
         if (spec.cooldownTicks() > 0) {
             mine.put(piece.root().getUniqueId(), now + spec.cooldownTicks());
         }
+        if (spec.toggleLight()) {
+            furniture.toggleLight(piece);
+        }
+        burst(piece, spec.clickParticles());
         for (Placement.Effect effect : spec.potions()) {
             PotionEffectType type = effectType(item.id(), effect.type());
             if (type != null) {
@@ -341,6 +380,45 @@ public final class AmbienceService {
         }
         if (spec.message() != null) {
             player.sendMessage(MiniMessage.miniMessage().deserialize(spec.message().replace("%player%", player.getName())));
+        }
+    }
+
+    /** 3.1: what is one of this plugin's own items - a forge or a fire leaves those alone. */
+    public void useCustomItems(java.util.function.Predicate<org.bukkit.inventory.ItemStack> custom) {
+        this.custom = custom;
+    }
+
+    /** 3.1: the vanilla workstation a piece stands for, opened for {@code player} - no block needed. */
+    @SuppressWarnings("deprecation")
+    private static void openStation(Player player, FurnitureService.Piece piece, String station) {
+        switch (station) {
+            case "crafting" -> player.openWorkbench(null, true);
+            case "anvil" -> player.openAnvil(null, true);
+            case "grindstone" -> player.openGrindstone(null, true);
+            case "smithing" -> player.openSmithingTable(null, true);
+            case "stonecutter" -> player.openStonecutter(null, true);
+            case "loom" -> player.openLoom(null, true);
+            case "cartography" -> player.openCartographyTable(null, true);
+            // At the piece: the bookshelves around it count, as for an enchanting table.
+            case "enchanting" -> player.openEnchanting(piece.anchor().getLocation(), true);
+            default -> {
+            }
+        }
+    }
+
+    /** 3.1: particles drawn once, around the piece, for everyone near enough. */
+    private void burst(FurnitureService.Piece piece, List<Placement.Particles> specs) {
+        Location base = piece.root().getLocation();
+        for (Placement.Particles spec : specs) {
+            Particle type = particle(furniture.furnitureId(piece.root()), spec.particle());
+            if (type == null) {
+                continue;
+            }
+            double[] offset = PieceAxes.offset(base.getYaw(), spec.x(), spec.y(), spec.z());
+            type.builder().location(base.getWorld(), base.getX() + offset[0], piece.anchor().getY() + offset[1],
+                            base.getZ() + offset[2])
+                    .count(spec.count()).offset(spec.spread(), spec.spread(), spec.spread()).extra(spec.speed())
+                    .receivers(32, true).spawn();
         }
     }
 

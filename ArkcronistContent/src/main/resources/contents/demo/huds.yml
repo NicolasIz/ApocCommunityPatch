@@ -12,6 +12,18 @@
 #
 #  or on the action bar, sent by the plugin: action-bar: true.
 #
+#  (3.1) With BetterHud and PlaceholderAPI installed, BetterHud draws the bars
+#  that would go on the action bar instead, as HUDs of its own, in the same
+#  place (they are written to BetterHud's folder: huds/arkcontent.yml...), so
+#  they sit with the rest of its HUD - PrimeHUD's, say. On one HUD:
+#
+#     betterhud: false                          keep it on the action bar
+#     betterhud: { gui: [0, 0], pixel: [60, 120] }  move it, in BetterHud's
+#                 terms: percent of the screen, then pixels right and down
+#                 from there to the middle of the bar's top edge
+#
+#  and huds.betterhud: false in config.yml keeps them all on the action bar.
+#
 #    icons     textures/hud/<name>.png; half and empty are optional
 #    height    icon height in font pixels (a chat line is 9)
 #    anchor    (2.0) where it sits against the vanilla HUD, to the pixel at

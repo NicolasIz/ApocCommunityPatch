@@ -269,10 +269,16 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
      *
      * @param actionBarTicks how often bars shown on the action bar are sent again
      * @param saveSeconds    how often changed HUD values are written to the database
+     * @param betterHud      3.1: with BetterHud and PlaceholderAPI installed, BetterHud draws the bars that
+     *                       would go on the action bar; a HUD's own {@code betterhud:} decides for it
      */
-    public record Huds(int actionBarTicks, int saveSeconds) {
+    public record Huds(int actionBarTicks, int saveSeconds, boolean betterHud) {
 
-        public static final Huds DEFAULT = new Huds(20, 30);
+        public static final Huds DEFAULT = new Huds(20, 30, true);
+
+        public Huds(int actionBarTicks, int saveSeconds) {
+            this(actionBarTicks, saveSeconds, true);
+        }
     }
 
     /**
@@ -325,7 +331,8 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
                         Math.max(1, Math.min(200, liquids.getInt("contact-ticks", 10))),
                         Math.max(1, Math.min(4, liquids.getInt("chunk-reach", 1)))),
                 new Huds(Math.max(2, Math.min(60, huds.getInt("action-bar-ticks", 20))),
-                        Math.max(5, Math.min(3600, huds.getInt("save-seconds", 30)))),
+                        Math.max(5, Math.min(3600, huds.getInt("save-seconds", 30))),
+                        huds.getBoolean("betterhud", true)),
                 new Sanity(sanity.getBoolean("enabled", Sanity.DEFAULT.enabled()),
                         Math.max(10, Math.min(86_400, sanity.getInt("interval-seconds", Sanity.DEFAULT.intervalSeconds()))),
                         Math.max(0.1, Math.min(20, sanity.getDouble("max-millis-per-tick",

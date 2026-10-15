@@ -61,6 +61,9 @@ public final class HudService {
     /** AuraSkills' mana and max mana of a player; null without AuraSkills. Main thread. */
     private final java.util.function.Function<Player, double[]> mana;
     private final Set<UUID> changed = ConcurrentHashMap.newKeySet();
+    /** 3.1: HUDs BetterHud draws, by full id: not on the action bar while it runs. */
+    private volatile Set<String> elsewhere = Set.of();
+    private volatile java.util.function.BooleanSupplier drawing = () -> false;
     private BukkitTask secondly;
     private BukkitTask bars;
     private long seconds;
@@ -294,11 +297,26 @@ public final class HudService {
         return hud.render(value[0], value[1]);
     }
 
+    /**
+     * 3.1: the HUDs another plugin draws from now on, by full id - BetterHud's - left off the action
+     * bar while {@code drawing} says that plugin runs: one that failed to start leaves them here.
+     */
+    public void drawnElsewhere(Set<String> fullIds, java.util.function.BooleanSupplier drawing) {
+        this.elsewhere = Set.copyOf(fullIds);
+        this.drawing = drawing;
+    }
+
+    /** Whether this plugin draws a HUD on the action bar itself. */
+    private boolean onActionBar(HudLayout hud) {
+        return hud.definition().actionBar()
+                && !(elsewhere.contains(hud.definition().fullId()) && drawing.getAsBoolean());
+    }
+
     /** Every action-bar HUD of a player's, in one component; null when there is none. */
     private @Nullable Component actionBar(Player player) {
         StringBuilder text = new StringBuilder();
         for (HudLayout hud : registry.all()) {
-            if (hud.definition().actionBar()) {
+            if (onActionBar(hud)) {
                 text.append(render(player, hud));
             }
         }
@@ -308,7 +326,7 @@ public final class HudService {
     }
 
     private void sendBars() {
-        if (registry.all().stream().noneMatch(hud -> hud.definition().actionBar())) {
+        if (registry.all().stream().noneMatch(this::onActionBar)) {
             return;
         }
         for (Player player : plugin.getServer().getOnlinePlayers()) {

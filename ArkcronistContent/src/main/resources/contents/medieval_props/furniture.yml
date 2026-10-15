@@ -16,6 +16,16 @@
 #    guillotine - kneel in the stocks with a right click on the frame; a right
 #               click on the lever drops the blade on whoever kneels there
 #
+#  3.1, under effect: on-click - every piece does something now:
+#    station: crafting | anvil | grindstone | smithing | stonecutter | loom |
+#             cartography | enchanting - opens that vanilla workstation
+#    cook: furnace | blast | smoker | campfire - what the player holds is
+#             cooked by those recipes, one per click (the forge melts ore,
+#             the fires roast meat); with a station too, an empty hand opens it
+#    toggle-light: true - puts the piece's light out, or lights it again
+#    particles: [...] - drawn once at each click
+#  A 'light' on a BARRIER support shines from the block just above the piece.
+#
 #  Every piece is a Java model under models/furniture/ with its own texture,
 #  painted for it, under textures/furniture/; the guillotine is a Blockbench
 #  model with the animations drop_blade and reset_blade.
@@ -371,7 +381,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Fogata con asador'
     lore:
-      - '<gray>Clic derecho: ambiente.'
+      - '<gray>Clic derecho con carne o pescado crudo: lo asas.'
     resource:
       model: 'furniture/fogata_asador'
     furniture:
@@ -384,12 +394,16 @@ items:
           - {particle: 'campfire_cosy_smoke', offset: [0.0, 0.375, 0.0], count: 1, spread: 0.1, speed: 0.01}
           - {particle: 'small_flame', offset: [0.0, 0.188, 0.0], count: 2, spread: 0.15, speed: 0.0}
         range: 24
+        on-click:
+          cook: 'campfire'
+          sound: 'minecraft:block.campfire.crackle'
+          cooldown: 0
 
   brasero:
     type: 'custom_furniture'
     display-name: '<#c8a165>Brasero'
     lore:
-      - '<gray>Clic derecho: ambiente.'
+      - '<gray>Clic derecho con comida cruda: la cocinas en las brasas.'
     resource:
       model: 'furniture/brasero'
     furniture:
@@ -402,12 +416,16 @@ items:
           - {particle: 'flame', offset: [0.0, 0.812, 0.0], count: 2, spread: 0.15, speed: 0.01}
           - {particle: 'smoke', offset: [0.0, 1.0, 0.0], count: 1, spread: 0.1, speed: 0.01}
         range: 24
+        on-click:
+          cook: 'campfire'
+          sound: 'minecraft:block.fire.ambient'
+          cooldown: 0
 
   candelabro_mesa:
     type: 'custom_furniture'
     display-name: '<#c8a165>Candelabro de mesa'
     lore:
-      - '<gray>Clic derecho: ambiente.'
+      - '<gray>Clic derecho: enciende o apaga las velas.'
     resource:
       model: 'furniture/candelabro_mesa'
     furniture:
@@ -421,6 +439,10 @@ items:
           - {particle: 'small_flame', offset: [0.0, 0.953, 0.0], count: 1, spread: 0.05, speed: 0.0}
           - {particle: 'small_flame', offset: [-0.234, 0.828, 0.0], count: 1, spread: 0.05, speed: 0.0}
         range: 24
+        on-click:
+          toggle-light: true
+          sound: 'minecraft:block.candle.extinguish'
+          cooldown: 0.5
 
   pozo_deseos:
     type: 'custom_furniture'
@@ -431,21 +453,27 @@ items:
       model: 'furniture/pozo_deseos'
     furniture:
       support: 'BARRIER'
+      # The well of a square: six blocks by six on its paving, drawn at twice its model's size.
       size:
-        width: 1
+        width: 6
         height: 2
+        depth: 6
+      display:
+        scale: 2.0
+        translation: [0, 2.5, 0]
       interactable: 'effect'
       effect:
         interval: 20
         particles:
-          - {particle: 'dripping_water', offset: [0.0, 0.594, 0.0], count: 2, spread: 0.15, speed: 0.0}
+          - {particle: 'dripping_water', offset: [0.0, 1.6, 0.0], count: 2, spread: 0.2, speed: 0.0}
+          - {particle: 'splash', offset: [0.0, 0.95, 0.0], count: 3, spread: 0.9, speed: 0.0}
         on-click:
           potions:
             - 'luck 300 0'
           sound: 'minecraft:entity.player.splash'
           cooldown: 60
           message: '<aqua>Lanzas una moneda y pides un deseo...'
-        range: 24
+        range: 40
 
   alambique:
     type: 'custom_furniture'
@@ -474,28 +502,42 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Forja'
     lore:
-      - '<gray>Clic derecho: ambiente.'
+      - '<gray>Clic derecho con mineral o metal en bruto: lo fundes.'
+      - '<gray>Con la mano vacía: mesa de herrería.'
     resource:
       model: 'furniture/forja'
     furniture:
       support: 'BARRIER'
+      light: 15
+      # Three blocks across, two back and three up. A model reaches two blocks up at most, so
+      # this one is drawn a block low and raised by the translation.
       size:
-        width: 1
-        height: 2
+        width: 3
+        height: 3
+        depth: 2
+      display:
+        translation: [0, 1, 0]
       interactable: 'effect'
       effect:
         interval: 4
         particles:
-          - {particle: 'flame', offset: [0.0, 0.75, 0.0], count: 2, spread: 0.3, speed: 0.01}
-          - {particle: 'lava', offset: [0.0, 0.688, 0.0], count: 1, spread: 0.2, speed: 0.0}
-          - {particle: 'large_smoke', offset: [0.0, 2.0, -0.312], count: 1, spread: 0.1, speed: 0.02}
-        range: 24
+          - {particle: 'flame', offset: [-0.312, 1.031, 0.0], count: 2, spread: 0.35, speed: 0.01}
+          - {particle: 'lava', offset: [-0.312, 0.969, 0.0], count: 1, spread: 0.3, speed: 0.0}
+          - {particle: 'small_flame', offset: [-0.25, 0.3, 0.9], count: 1, spread: 0.2, speed: 0.0}
+          - {particle: 'campfire_cosy_smoke', offset: [-0.312, 3.0, -0.312], count: 1, spread: 0.1, speed: 0.02}
+        range: 32
+        on-click:
+          cook: 'blast'
+          station: 'smithing'
+          sound: 'minecraft:block.anvil.use'
+          cooldown: 0
 
   horno_pan:
     type: 'custom_furniture'
     display-name: '<#c8a165>Horno de pan'
     lore:
-      - '<gray>Clic derecho: bebe.'
+      - '<gray>Clic derecho con comida cruda: la horneas.'
+      - '<gray>Con la mano vacía: pan recién hecho.'
     resource:
       model: 'furniture/horno_pan'
     furniture:
@@ -510,6 +552,7 @@ items:
           - {particle: 'smoke', offset: [-0.219, 1.75, -0.156], count: 1, spread: 0.05, speed: 0.02}
           - {particle: 'small_flame', offset: [0.0, 0.312, 0.438], count: 1, spread: 0.15, speed: 0.0}
         on-click:
+          cook: 'smoker'
           potions:
             - 'saturation 1 4'
           sound: 'minecraft:entity.generic.eat'
@@ -801,7 +844,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Mesa de taberna'
     lore:
-      - '<gray>Decoración medieval.'
+      - '<gray>Clic derecho: mesa de trabajo.'
     resource:
       model: 'furniture/mesa_taberna'
     furniture:
@@ -809,22 +852,34 @@ items:
       size:
         width: 2
         height: 1
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'crafting'
+          sound: 'minecraft:block.wood.hit'
+          cooldown: 0
 
   mesa_redonda:
     type: 'custom_furniture'
     display-name: '<#c8a165>Mesa redonda'
     lore:
-      - '<gray>Decoración medieval.'
+      - '<gray>Clic derecho: mesa de trabajo.'
     resource:
       model: 'furniture/mesa_redonda'
     furniture:
       support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'crafting'
+          sound: 'minecraft:block.wood.hit'
+          cooldown: 0
 
   mesa_banquete:
     type: 'custom_furniture'
     display-name: '<#c8a165>Mesa de banquete'
     lore:
-      - '<gray>Decoración medieval.'
+      - '<gray>Clic derecho: mesa de trabajo.'
     resource:
       model: 'furniture/mesa_banquete'
     furniture:
@@ -832,12 +887,18 @@ items:
       size:
         width: 3
         height: 1
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'crafting'
+          sound: 'minecraft:block.wood.hit'
+          cooldown: 0
 
   armero:
     type: 'custom_furniture'
     display-name: '<#c8a165>Armero'
     lore:
-      - '<gray>Decoración medieval.'
+      - '<gray>Clic derecho: guarda tus armas.'
     resource:
       model: 'furniture/armero'
     furniture:
@@ -845,32 +906,47 @@ items:
       size:
         width: 1
         height: 2
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Armero'
 
   yunque_herrero:
     type: 'custom_furniture'
     display-name: '<#c8a165>Yunque del herrero'
     lore:
-      - '<gray>Decoración medieval.'
+      - '<gray>Clic derecho: yunque (reparar y renombrar).'
     resource:
       model: 'furniture/yunque_herrero'
     furniture:
       support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'anvil'
+          sound: 'minecraft:block.anvil.use'
+          cooldown: 0
 
   piedra_afilar:
     type: 'custom_furniture'
     display-name: '<#c8a165>Piedra de afilar'
     lore:
-      - '<gray>Decoración medieval.'
+      - '<gray>Clic derecho: piedra de afilar (quitar encantamientos).'
     resource:
       model: 'furniture/piedra_afilar'
     furniture:
       support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'grindstone'
+          sound: 'minecraft:block.grindstone.use'
+          cooldown: 0
 
   maniqui_armadura:
     type: 'custom_furniture'
     display-name: '<#c8a165>Maniquí con armadura'
     lore:
-      - '<gray>Decoración medieval.'
+      - '<gray>Clic derecho: guarda una armadura.'
     resource:
       model: 'furniture/maniqui_armadura'
     furniture:
@@ -878,12 +954,15 @@ items:
       size:
         width: 1
         height: 2
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Maniquí de armadura'
 
   estandarte_rojo:
     type: 'custom_furniture'
     display-name: '<#c8a165>Estandarte rojo'
     lore:
-      - '<gray>Decoración medieval.'
+      - '<gray>Clic derecho: jura lealtad al estandarte.'
     resource:
       model: 'furniture/estandarte_rojo'
     furniture:
@@ -891,12 +970,21 @@ items:
       size:
         width: 1
         height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions: ['strength 60 0']
+          sound: 'minecraft:item.armor.equip_leather'
+          cooldown: 120
+          message: '<red>Juras lealtad a la corona roja: tu brazo se hace más fuerte.'
+          particles:
+            - {particle: 'crimson_spore', offset: [0.0, 1.6, 0.0], count: 24, spread: 0.4, speed: 0.0}
 
   estandarte_azul:
     type: 'custom_furniture'
     display-name: '<#c8a165>Estandarte azul'
     lore:
-      - '<gray>Decoración medieval.'
+      - '<gray>Clic derecho: jura lealtad al estandarte.'
     resource:
       model: 'furniture/estandarte_azul'
     furniture:
@@ -904,12 +992,21 @@ items:
       size:
         width: 1
         height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions: ['resistance 60 0']
+          sound: 'minecraft:item.armor.equip_leather'
+          cooldown: 120
+          message: '<blue>El estandarte azul te cubre: resistes mejor los golpes.'
+          particles:
+            - {particle: 'warped_spore', offset: [0.0, 1.6, 0.0], count: 24, spread: 0.4, speed: 0.0}
 
   carro_heno:
     type: 'custom_furniture'
     display-name: '<#c8a165>Carro de heno'
     lore:
-      - '<gray>Decoración medieval.'
+      - '<gray>Clic derecho para sentarte en el heno.'
     resource:
       model: 'furniture/carro_heno'
     furniture:
@@ -917,12 +1014,14 @@ items:
       size:
         width: 2
         height: 1
+      interactable: 'seat'
+      seat-height: 0.9
 
   puesto_mercado:
     type: 'custom_furniture'
     display-name: '<#c8a165>Puesto de mercado'
     lore:
-      - '<gray>Decoración medieval.'
+      - '<gray>Clic derecho: la mercancía del puesto.'
     resource:
       model: 'furniture/puesto_mercado'
     furniture:
@@ -930,12 +1029,15 @@ items:
       size:
         width: 3
         height: 2
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Puesto del mercado'
 
   abrevadero:
     type: 'custom_furniture'
     display-name: '<#c8a165>Abrevadero'
     lore:
-      - '<gray>Decoración medieval.'
+      - '<gray>Clic derecho: bebe agua fresca.'
     resource:
       model: 'furniture/abrevadero'
     furniture:
@@ -943,12 +1045,21 @@ items:
       size:
         width: 2
         height: 1
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions: ['regeneration 4 0']
+          sound: 'minecraft:entity.generic.drink'
+          cooldown: 20
+          message: '<aqua>Bebes agua fresca del abrevadero.'
+          particles:
+            - {particle: 'splash', offset: [0.0, 0.7, 0.0], count: 16, spread: 0.4, speed: 0.0}
 
   farol_hierro:
     type: 'custom_furniture'
     display-name: '<#c8a165>Farol de hierro'
     lore:
-      - '<gray>Ilumina la plaza.'
+      - '<gray>Clic derecho: enciende o apaga el farol.'
     resource:
       model: 'furniture/farol_hierro'
     furniture:
@@ -957,27 +1068,46 @@ items:
       size:
         width: 1
         height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          toggle-light: true
+          sound: 'minecraft:block.lantern.place'
+          cooldown: 0.5
 
   lampara_aceite:
     type: 'custom_furniture'
     display-name: '<#c8a165>Lámpara de aceite'
     lore:
-      - '<gray>Ilumina la plaza.'
+      - '<gray>Clic derecho: enciende o apaga la lámpara.'
     resource:
       model: 'furniture/lampara_aceite'
     furniture:
       support: 'LIGHT'
       light: 10
+      interactable: 'effect'
+      effect:
+        on-click:
+          toggle-light: true
+          sound: 'minecraft:block.lantern.place'
+          cooldown: 0.5
 
   pila_lena:
     type: 'custom_furniture'
     display-name: '<#c8a165>Pila de leña'
     lore:
-      - '<gray>Decoración medieval.'
+      - '<gray>Clic derecho: guarda leña.'
     resource:
       model: 'furniture/pila_lena'
     furniture:
       support: 'BARRIER'
+      size:
+        width: 3
+        height: 2
+        depth: 2
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Pila de leña'
 
   # The guillotine of the square: a frame two blocks wide and three high. The
   # left block (as you face it) holds the stocks: a right click there kneels

@@ -51,7 +51,8 @@ public sealed interface Placement {
      * A piece of furniture: an invisible support block, and an item display on it that draws the
      * model.
      *
-     * @param light         light level of a {@link Support#LIGHT} support, 0-15
+     * @param light         light level of a {@link Support#LIGHT} support, 0-15; since 3.1 also of a
+     *                      {@link Support#BARRIER} one, given by a light block just above the piece
      * @param facePlayer    turn to face whoever placed it, snapped to the nearest quarter turn
      * @param modelEngineId a ModelEngine blueprint to draw it with instead, when ModelEngine is
      *                      installed; null to always use the item display
@@ -206,18 +207,40 @@ public sealed interface Placement {
      * @param sound         played by a right click; null for none
      * @param cooldownTicks how long one player waits between two clicks on one piece
      * @param message       MiniMessage shown above the hotbar on a click; null for none
+     * @param station       3.1: a click opens this vanilla workstation, one of {@link #STATIONS}; null
+     *                      for none
+     * @param cook          3.1: a click with something in hand that this kind of cooking turns into
+     *                      something else ({@link #COOKING}: a furnace's, a blast furnace's, a
+     *                      smoker's, a campfire's recipes) cooks one of it, there and then - instead
+     *                      of opening the station; null for none
+     * @param toggleLight   3.1: a click puts its light out, or lights it again
+     * @param clickParticles 3.1: particles drawn once at each click
      */
     record Ambience(List<Particles> particles, int intervalTicks, int range, List<Effect> potions,
-                    String sound, int cooldownTicks, String message) {
+                    String sound, int cooldownTicks, String message, String station, String cook,
+                    boolean toggleLight, List<Particles> clickParticles) {
+
+        /** The workstations a click can open, as {@code station:} names them. */
+        public static final List<String> STATIONS = List.of("crafting", "anvil", "grindstone", "smithing",
+                "stonecutter", "loom", "cartography", "enchanting");
+        /** The kinds of cooking {@code cook:} can do, by the vanilla block whose recipes they use. */
+        public static final List<String> COOKING = List.of("furnace", "blast", "smoker", "campfire");
 
         public Ambience {
             particles = List.copyOf(particles);
             potions = List.copyOf(potions);
+            clickParticles = clickParticles == null ? List.of() : List.copyOf(clickParticles);
+        }
+
+        public Ambience(List<Particles> particles, int intervalTicks, int range, List<Effect> potions,
+                        String sound, int cooldownTicks, String message) {
+            this(particles, intervalTicks, range, potions, sound, cooldownTicks, message, null, null, false, List.of());
         }
 
         /** Whether a right click does anything: a piece with only particles leaves the click alone. */
         public boolean clickable() {
-            return !potions.isEmpty() || sound != null || message != null;
+            return !potions.isEmpty() || sound != null || message != null || station != null || cook != null
+                    || toggleLight || !clickParticles.isEmpty();
         }
     }
 

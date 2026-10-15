@@ -1331,6 +1331,9 @@ public final class ContentPipeline {
         }
         plugin.liquidRegistry().replace(liquids);
         plugin.hudRegistry().replace(build.huds());
+        if (plugin.betterHudBars() != null) {
+            plugin.betterHudBars().publish(build.huds());
+        }
         if (plugin.minigames() != null) {
             plugin.minigames().glyphs(build.extras().minigame());
         }

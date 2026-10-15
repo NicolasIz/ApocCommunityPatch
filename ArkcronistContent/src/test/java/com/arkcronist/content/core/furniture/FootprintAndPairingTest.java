@@ -48,7 +48,27 @@ class FootprintAndPairingTest {
         assertEquals(List.of("[0, 0, 0]", "[0, 0, -1]"), offsets(wardrobe, 270));
         assertTrue(Footprint.SINGLE.single());
         assertFalse(wardrobe.single());
-        assertThrows(IllegalArgumentException.class, () -> new Footprint(6, 1));
+        assertThrows(IllegalArgumentException.class, () -> new Footprint(7, 1));
+    }
+
+    /**
+     * 3.1: a well six blocks square runs back from the row it was placed on - away from whoever
+     * placed it - and its model is centred on all six rows.
+     */
+    @Test
+    void aDeepFootprintRunsBackFromTheFrontRow() {
+        Footprint well = new Footprint(6, 2, 6);
+        assertEquals(72, well.blocks());
+        assertEquals(72, well.offsets(0).stream().map(Arrays::toString).distinct().count());
+        // Facing south, back is north (-z): every block is at z 0 or less, from -5 to 0.
+        assertTrue(well.offsets(0).stream().allMatch(o -> o[2] <= 0 && o[2] >= -5));
+        assertTrue(well.offsets(0).stream().allMatch(o -> o[0] >= -2 && o[0] <= 3));
+        // Half a block right for the even width, two and a half back.
+        assertArrayEquals(new double[] {0.5, -2.5}, well.centreShift(0), 1e-9);
+        // Facing west, back is east.
+        assertArrayEquals(new double[] {2.5, 0.5}, well.centreShift(90), 1e-9);
+        assertEquals(new Footprint(3, 2), new Footprint(3, 2, 1));
+        assertThrows(IllegalArgumentException.class, () -> new Footprint(1, 1, 7));
     }
 
     @Test

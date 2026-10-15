@@ -76,16 +76,22 @@ class MedievalPropsTest {
     void sixtyPiecesOfEveryKind() throws IOException {
         Map<String, Placement.Furniture> props = props();
         assertEquals(60, props.size());
-        assertEquals(13, count(props, furniture -> furniture.seat() != null), "seats");
-        assertEquals(15, count(props, furniture -> furniture.ambience() != null), "effects");
+        assertEquals(14, count(props, furniture -> furniture.seat() != null), "seats");
+        assertEquals(25, count(props, furniture -> furniture.ambience() != null), "effects");
         assertEquals(10, count(props, furniture -> furniture.commands() != null), "command signs");
-        assertEquals(6, count(props, furniture -> furniture.storage() != null), "storage");
+        assertEquals(10, count(props, furniture -> furniture.storage() != null), "storage");
+        // 3.1: every one of the sixty does something on a right click.
+        props.forEach((id, furniture) -> assertTrue(furniture.interactive(), id + " does something on a click"));
         assertEquals(1, count(props, furniture -> furniture.guillotine() != null), "the guillotine");
         assertEquals(5, count(props, furniture -> furniture.support() == Placement.Support.LIGHT), "lights");
 
         assertEquals(new Footprint(2, 1), props.get("banco_largo").footprint());
         assertEquals(new Footprint(1, 2), props.get("trono_real").footprint());
         assertEquals(new Footprint(3, 2), props.get("puesto_mercado").footprint());
+        // 3.1: the big three - the forge, the well of a square and the woodpile.
+        assertEquals(new Footprint(3, 3, 2), props.get("forja").footprint());
+        assertEquals(new Footprint(6, 2, 6), props.get("pozo_deseos").footprint());
+        assertEquals(new Footprint(3, 2, 2), props.get("pila_lena").footprint());
         assertEquals(15, props.get("farol_hierro").light());
         assertEquals(54, props.get("tonel_vino").storage().slots());
     }
@@ -98,14 +104,38 @@ class MedievalPropsTest {
         assertEquals("minecraft:entity.generic.drink", ale.sound());
         assertTrue(props.get("jarra_cerveza").interactive());
         Placement.Ambience brazier = props.get("brasero").ambience();
-        assertFalse(brazier.clickable(), "a brazier is not drunk");
-        assertFalse(props.get("brasero").interactive());
+        assertTrue(brazier.potions().isEmpty(), "a brazier is not drunk");
+        assertEquals("campfire", brazier.cook(), "3.1: it roasts what is held out to it");
         for (Map.Entry<String, Placement.Furniture> prop : props.entrySet()) {
             Placement.Ambience ambience = prop.getValue().ambience();
             if (ambience != null) {
-                assertFalse(ambience.particles().isEmpty(), prop.getKey() + " gives off particles");
+                assertTrue(!ambience.particles().isEmpty() || ambience.clickable(), prop.getKey() + " does something");
             }
         }
+    }
+
+    /** 3.1: workstations, a forge that melts ore and opens a smithing table, fires that cook, lamps that go out. */
+    @Test
+    void theWorkingPiecesWorkAndTheLampsGoOut() throws IOException {
+        Map<String, Placement.Furniture> props = props();
+        for (String table : List.of("mesa_taberna", "mesa_redonda", "mesa_banquete")) {
+            assertEquals("crafting", props.get(table).ambience().station(), table);
+        }
+        assertEquals("anvil", props.get("yunque_herrero").ambience().station());
+        assertEquals("grindstone", props.get("piedra_afilar").ambience().station());
+        Placement.Furniture forge = props.get("forja");
+        assertEquals("blast", forge.ambience().cook());
+        assertEquals("smithing", forge.ambience().station());
+        assertEquals(15, forge.light(), "a forge on barriers lights the square from above");
+        assertTrue(forge.ambience().particles().stream().noneMatch(p -> p.particle().equals("large_smoke")),
+                "no black smoke squares over the forge");
+        assertEquals("campfire", props.get("fogata_asador").ambience().cook());
+        assertEquals("smoker", props.get("horno_pan").ambience().cook());
+        for (String lamp : List.of("farol_hierro", "lampara_aceite", "candelabro_mesa")) {
+            assertTrue(props.get(lamp).ambience().toggleLight(), lamp);
+            assertTrue(props.get(lamp).light() > 0, lamp);
+        }
+        assertFalse(props.get("abrevadero").ambience().clickParticles().isEmpty(), "the trough splashes");
     }
 
     /** The signs only greet: from the console, with the player's name filled in, and namespaced commands. */

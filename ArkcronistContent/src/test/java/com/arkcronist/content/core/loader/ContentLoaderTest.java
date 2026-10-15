@@ -103,7 +103,7 @@ class ContentLoaderTest {
         assertTrue(problems.stream().anyMatch(p -> p.contains("no_look") && p.contains("chests stay single")), problems.toString());
         assertTrue(problems.stream().anyMatch(p -> p.contains("barrier_double") && p.contains("support: CHEST")), problems.toString());
         assertTrue(problems.stream().anyMatch(p -> p.contains("tall_chest") && p.contains("BARRIER or LIGHT")), problems.toString());
-        assertTrue(problems.stream().anyMatch(p -> p.contains("huge") && p.contains("1 to 5")), problems.toString());
+        assertTrue(problems.stream().anyMatch(p -> p.contains("huge") && p.contains("1 to 6")), problems.toString());
         assertTrue(problems.stream().anyMatch(p -> p.contains("huge") && p.contains("board-title")), problems.toString());
     }
 
@@ -409,12 +409,13 @@ class ContentLoaderTest {
 
         Placement.Furniture furniture = (Placement.Furniture) report.items().get(0).placement();
         assertEquals(Placement.Support.BARRIER, furniture.support());
-        assertEquals(0, furniture.light());
+        // 3.1: a barrier piece gives its light from the block above it, so the level is kept, clamped.
+        assertEquals(15, furniture.light());
         assertEquals("NONE", furniture.display().transform());
         assertEquals(Placement.Vec3.ONE, furniture.display().scale());
         assertEquals("BARRIER", report.items().get(0).material());
-        // material, support, light out of range, light on a barrier, transform, scale
-        assertEquals(6, report.problems().size(), report.problems().toString());
+        // material, support, light out of range, transform, scale
+        assertEquals(5, report.problems().size(), report.problems().toString());
     }
 
     @Test

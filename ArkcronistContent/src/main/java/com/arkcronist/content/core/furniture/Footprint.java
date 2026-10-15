@@ -10,30 +10,38 @@ import java.util.List;
  *
  * <p>The width runs across the piece's front - from the left of someone looking at it to their
  * right - centred on the block it was placed on (one block further right for an even width), the
- * height runs up from it, and the depth is one block. The model is authored centred on the
- * footprint, front to the north, like other furniture.</p>
+ * height runs up from it, and the depth (3.1) runs back from it, away from whoever placed it. The
+ * model is authored centred on the footprint, front to the north, like other furniture.</p>
  *
- * @param width  blocks across the front, 1-5
- * @param height blocks up, 1-5
+ * @param width  blocks across the front, 1-6
+ * @param height blocks up, 1-6
+ * @param depth  blocks back from the front, 1-6
  */
-public record Footprint(int width, int height) {
+public record Footprint(int width, int height, int depth) {
 
-    public static final Footprint SINGLE = new Footprint(1, 1);
-    public static final int MAX = 5;
+    public static final Footprint SINGLE = new Footprint(1, 1, 1);
+    /** 3.1: six, for a square's well; five before. */
+    public static final int MAX = 6;
 
     public Footprint {
-        if (width < 1 || width > MAX || height < 1 || height > MAX) {
-            throw new IllegalArgumentException("a footprint is 1 to " + MAX + " blocks each way, not " + width + "x" + height);
+        if (width < 1 || width > MAX || height < 1 || height > MAX || depth < 1 || depth > MAX) {
+            throw new IllegalArgumentException("a footprint is 1 to " + MAX + " blocks each way, not " + width + "x"
+                    + height + "x" + depth);
         }
     }
 
+    /** One block deep, as every footprint was before 3.1. */
+    public Footprint(int width, int height) {
+        this(width, height, 1);
+    }
+
     public boolean single() {
-        return width == 1 && height == 1;
+        return width == 1 && height == 1 && depth == 1;
     }
 
     /** How many blocks it covers. */
     public int blocks() {
-        return width * height;
+        return width * height * depth;
     }
 
     /**
@@ -43,15 +51,18 @@ public record Footprint(int width, int height) {
      */
     public List<int[]> offsets(float yaw) {
         int[] right = right(yaw);
+        int[] back = back(yaw);
         int first = -(width - 1) / 2;
         List<int[]> offsets = new ArrayList<>();
         offsets.add(new int[] {0, 0, 0});
-        for (int up = 0; up < height; up++) {
-            for (int across = first; across < first + width; across++) {
-                if (up == 0 && across == 0) {
-                    continue;
+        for (int behind = 0; behind < depth; behind++) {
+            for (int up = 0; up < height; up++) {
+                for (int across = first; across < first + width; across++) {
+                    if (behind == 0 && up == 0 && across == 0) {
+                        continue;
+                    }
+                    offsets.add(new int[] {right[0] * across + back[0] * behind, up, right[1] * across + back[1] * behind});
                 }
-                offsets.add(new int[] {right[0] * across, up, right[1] * across});
             }
         }
         return offsets;
@@ -63,8 +74,16 @@ public record Footprint(int width, int height) {
      */
     public double[] centreShift(float yaw) {
         int[] right = right(yaw);
+        int[] back = back(yaw);
         double across = -(width - 1) / 2 + (width - 1) / 2.0;
-        return new double[] {right[0] * across, right[1] * across};
+        double behind = (depth - 1) / 2.0;
+        return new double[] {right[0] * across + back[0] * behind, right[1] * across + back[1] * behind};
+    }
+
+    /** 3.1: away from someone looking at the front of a piece turned to {@code yaw}, {dx, dz}. */
+    public static int[] back(float yaw) {
+        int[] right = right(yaw);
+        return new int[] {right[1], -right[0]};
     }
 
     /**

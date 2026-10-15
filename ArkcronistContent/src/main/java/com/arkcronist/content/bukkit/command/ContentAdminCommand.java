@@ -123,6 +123,16 @@ public final class ContentAdminCommand {
                                                                 DoubleArgumentType.getDouble(context, "amount"))))))))
                 .then(Commands.literal("liquids").requires(ContentAdminCommand::admin).executes(this::liquids))
                 .then(Commands.literal("bedrock").requires(ContentAdminCommand::admin).executes(this::bedrock))
+                .then(Commands.literal("legacy").requires(ContentAdminCommand::admin)
+                        .executes(context -> legacy(context, false, 32))
+                        .then(Commands.argument("radius", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 256))
+                                .executes(context -> legacy(context, false,
+                                        com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "radius"))))
+                        .then(Commands.literal("remove")
+                                .executes(context -> legacy(context, true, 32))
+                                .then(Commands.argument("radius", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 256))
+                                        .executes(context -> legacy(context, true,
+                                                com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "radius"))))))
                 .then(Commands.literal("integrity").requires(ContentAdminCommand::admin)
                         .executes(this::integrity)
                         .then(Commands.literal("now").executes(this::integrityNow))
@@ -539,6 +549,40 @@ public final class ContentAdminCommand {
                         + " %d storage(s) recovered, %d piece(s) placed before 2.0 given their facing.",
                 audit.piecesRemoved(), audit.piecesRedrawn(), audit.displaysRemoved(), audit.rowsPurged(),
                 audit.liquidsPurged(), audit.storageRecovered(), audit.piecesAdopted()), NamedTextColor.GRAY));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    /**
+     * 3.1: the furniture ItemsAdder left around the player, counted by item; with {@code remove},
+     * taken away with the barriers it stood on.
+     */
+    private int legacy(CommandContext<CommandSourceStack> context, boolean remove, int radius) {
+        CommandSender sender = context.getSource().getSender();
+        if (!(context.getSource().getExecutor() instanceof org.bukkit.entity.Player player)) {
+            sender.sendMessage(Component.text("Run it as a player: it looks around where you stand.", NamedTextColor.RED));
+            return 0;
+        }
+        List<com.arkcronist.content.bukkit.furniture.LegacyFurniture.Piece> pieces =
+                plugin.legacy().around(player.getLocation(), radius);
+        if (pieces.isEmpty()) {
+            sender.sendMessage(Component.text("No furniture left by ItemsAdder within " + radius + " blocks"
+                    + " (in loaded chunks).", NamedTextColor.GREEN));
+            return Command.SINGLE_SUCCESS;
+        }
+        java.util.Map<String, Integer> byId = new java.util.TreeMap<>();
+        for (var piece : pieces) {
+            byId.merge(piece.id() == null || piece.id().isEmpty() ? "(no id)" : piece.id(), 1, Integer::sum);
+            if (remove) {
+                plugin.legacy().remove(piece, null, false);
+            }
+        }
+        sender.sendMessage(Component.text(pieces.size() + " piece(s) of furniture left by ItemsAdder within " + radius
+                + " blocks" + (remove ? " - removed, with the barriers they stood on." : ":"), NamedTextColor.GOLD));
+        byId.forEach((id, count) -> sender.sendMessage(Component.text("  " + id + " x" + count, NamedTextColor.GRAY)));
+        if (!remove) {
+            sender.sendMessage(Component.text("A punch at one, or breaking its barrier, takes it away and drops its item;"
+                    + " /arkcontent legacy remove " + radius + " takes them all.", NamedTextColor.GRAY));
+        }
         return Command.SINGLE_SUCCESS;
     }
 

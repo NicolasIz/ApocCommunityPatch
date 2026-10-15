@@ -260,6 +260,43 @@ class ContentLoaderGameplayTest {
         assertProblem(report.problems(), "demo:wrong", "unknown stat 'luck'");
     }
 
+    /** 3.1: 'betterhud:' - kept on the action bar, handed to BetterHud, or handed over at a place of its own. */
+    @Test
+    void hudsSayWhetherBetterHudDrawsThem() throws IOException {
+        write("demo/textures/hud/shield.png", "png");
+        write("demo/huds.yml", """
+                huds:
+                  left_alone:
+                    icons: { full: hud/shield }
+                    anchor: above-health
+                    value: { stat: absorption }
+                  kept:
+                    icons: { full: hud/shield }
+                    anchor: above-health
+                    value: { stat: absorption }
+                    betterhud: false
+                  placed:
+                    icons: { full: hud/shield }
+                    value: { stat: absorption }
+                    betterhud: { gui: [0, 0], pixel: [45, 172] }
+                  odd:
+                    icons: { full: hud/shield }
+                    value: { stat: absorption }
+                    betterhud: { pixel: 12 }
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+
+        Map<String, HudDefinition> huds = report.huds().stream()
+                .collect(java.util.stream.Collectors.toMap(HudDefinition::id, hud -> hud));
+        assertNull(huds.get("left_alone").betterHud(), "config.yml decides");
+        assertEquals(HudDefinition.BetterHud.OFF, huds.get("kept").betterHud());
+        assertEquals(new HudDefinition.BetterHud(true, new HudDefinition.Spot(0, 0), new HudDefinition.Spot(45, 172)),
+                huds.get("placed").betterHud());
+        assertEquals(HudDefinition.BetterHud.ON, huds.get("odd").betterHud(), "drawn by BetterHud, where it was");
+        assertProblem(report.problems(), "demo:odd", "'betterhud.pixel' should be [x, y]");
+    }
+
     @Test
     void aLiquidWithoutALookIsRefused() throws IOException {
         write("demo/liquids.yml", """

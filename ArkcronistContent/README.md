@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.0.8.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.1.0.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -1083,11 +1083,16 @@ tallado con cresta en arco, y un piecero más bajo. Ambos siguen dentro de las m
 ```yaml
     furniture:
       support: BARRIER                # o LIGHT
-      size: {width: 3, height: 2}     # o size: 3x2; de 1 a 5 en cada sentido
+      size: {width: 3, height: 2}     # o size: 3x2; de 1 a 6 en cada sentido
+      # 3.1: también hacia atrás: size: {width: 6, height: 2, depth: 6}, o size: 6x2x6
 ```
 
 El mueble ocupa `width` bloques a lo largo de su frente, centrados en donde se coloca (con un ancho
-par, sobra uno a la derecha de quien lo mira), y `height` hacia arriba. Cada bloque lleva su soporte
+par, sobra uno a la derecha de quien lo mira), `height` hacia arriba y (3.1) `depth` hacia atrás,
+alejándose de quien lo coloca; el modelo se dibuja centrado en todo ese volumen. Un modelo Java solo
+llega de -16 a 32 en cada eje (tres bloques): uno más alto o más ancho se dibuja más pequeño y se
+agranda con `display.scale` (el pozo de 6×6 va a escala 2), o se baja un bloque y se sube con
+`display.translation` (la forja de tres de alto). Cada bloque lleva su soporte
 invisible, sólido con `BARRIER`, y todos quedan registrados y vinculados al mismo display: clicar o
 golpear cualquiera de ellos es clicar el mueble, y romper uno lo rompe entero. Antes de colocarlo
 (`BlockPlaceEvent`, prioridad `HIGH`) se comprueba que todos esos bloques estén libres y que las
@@ -1212,14 +1217,37 @@ Al actualizar desde la 1.9.5, los archivos del pack que no habías cambiado (el 
 61 modelos) se sustituyen solos por los nuevos, y las 60 texturas se añaden; lo que hubieras editado
 se queda como está. El `medieval_atlas.png` de la 1.9.5 deja de usarse y puede borrarse.
 
+**3.1: los 60 hacen algo con clic derecho, y tres son grandes.** Las mesas abren una mesa de trabajo,
+el yunque un yunque, la piedra de afilar una afiladora; el armero, el maniquí, el puesto de mercado y
+la pila de leña guardan cosas; los estandartes dan fuerza o resistencia; el carro de heno es un
+asiento; el abrevadero cura y salpica; los faroles, lámparas y candelabros se apagan y se encienden.
+La fogata y el brasero asan lo que se les acerca en la mano (`cook: campfire`), el horno de pan
+hornea (`smoker`), y la **forja** funde mineral y metal en bruto (`blast`: hierro, oro, cobre, chatarra
+antigua) o, con la mano vacía, abre una mesa de herrería. La forja ocupa ahora **3×3×2** (ancho, alto,
+fondo) con una textura nueva a doble densidad (piedra con hollín, ladrillo, brasas que brillan por la
+boca del hogar, fuelle de cuero, cubo de temple) y alumbra la plaza con luz 15 encima; el **pozo de
+los deseos** ocupa **6×6** sobre su enlosado, con brocal octogonal, tejadillo, torno y cubo; la **pila
+de leña** es de **3×2×2**. Las piezas de estos tres que ya estuvieran colocadas conservan sus bloques
+de antes: rómpelas y vuelve a ponerlas para que ocupen su tamaño nuevo. Sus modelos y texturas se
+actualizan solos si no los habías editado.
+
+| Clave en `on-click:` (3.1) | Qué hace |
+|---|---|
+| `station: crafting` | abre una mesa de trabajo; también `anvil`, `grindstone`, `smithing`, `stonecutter`, `loom`, `cartography`, `enchanting` |
+| `cook: blast` | cocina lo que el jugador tiene en la mano con las recetas del servidor: `furnace`, `blast`, `smoker` o `campfire`; da la experiencia de la receta. Sin nada cocinable en la mano pasa a `station` (si hay) o lo dice |
+| `toggle-light: true` | apaga y enciende la luz del mueble (y sus partículas) |
+| `particles: [...]` | una ráfaga al clicar, además de las de siempre |
+
+`light:` funciona ahora también con `support: BARRIER`: la luz va en el bloque libre justo encima del
+mueble (si está libre), así que un mueble sólido puede alumbrar.
+
 | Tipo | Muebles | Clic derecho |
 |---|---|---|
-| `seat` (13) | sillas de taberna, taburetes, banco largo y de iglesia (2×1), trono (1×2), tocón, fardo, sillón… | sentarse |
-| `effect` (15) | jarras de cerveza e hidromiel, copa, licor, barril con grifo, calderos (estofado, pociones, bruja), fogata, brasero, candelabro, pozo, alambique, forja, horno | partículas siempre; los que se beben dan efectos de poción |
+| `seat` (14) | sillas de taberna, taburetes, banco largo y de iglesia (2×1), trono (1×2), tocón, fardo, sillón, carro de heno… | sentarse |
+| `effect` (25) | jarras, copa, licor, barril con grifo, calderos, fogata y brasero (asan), candelabro, faroles y lámparas (se apagan), pozo (6×6), alambique, forja (3×3×2: funde y abre la mesa de herrería), horno (hornea), mesas (mesa de trabajo), yunque, piedra de afilar, estandartes, abrevadero | partículas; según el mueble: pociones, estación, cocinar o luz |
 | `command` (10) | carteles de banco, taberna, herrería, mercado, establo, alquimista y posada, campana, buzón, mapa | ejecuta sus comandos |
-| `storage` (6) | barril, caja, baúl, estantería de botellas, tonel de vino (54 huecos), saco | abre su inventario |
+| `storage` (10) | barril, caja, baúl, estantería de botellas, tonel de vino (54 huecos), saco, armero, maniquí, puesto de mercado (3×2), pila de leña (3×2×2) | abre su inventario |
 | `guillotine` (1) | `guillotina_plaza`, 2×3 | cepo: arrodillarse · palanca: dejar caer la hoja |
-| decoración (15) | mesas, armero, yunque, piedra de afilar, maniquí, estandartes, carro, puesto de mercado (3×2), abrevadero, faroles (`LIGHT` 15), leña… | — |
 
 Para verlos todos de golpe: `/arkcontent showcase medieval_props` los coloca en filas delante de quien
 lo ejecuta, mirándole —cuatro por tick, para no frenar el servidor—, y dice cuánto tardó el tick más
@@ -2562,10 +2590,9 @@ reescribiendo. En la consola: `BetterHud built its resource pack: N file(s), mer
   su `build/`: son de 1.21.4 o anteriores (uniforms sueltos, archivos `.json` de programa) y en
   1.21.8 no compilan o no se leen. Su carpeta `Resourcepack/` tampoco hace falta: BetterHud ya
   mete en su pack los sprites transparentes que ocultan el HUD vanilla.
-- **El HUD de este plugin.** Si BetterHud oculta los corazones y la comida vanilla, las barras
-  ancladas a ellos se quedan flotando: pon `action-bar: false` en tus HUD y muéstralos dentro de
-  BetterHud con `%arkcontent_hud_<id>_value%` / `_max` (BetterHud lee PlaceholderAPI). A los
-  jugadores de Bedrock BetterHud no les dibuja nada (`disable-to-bedrock-player`).
+- **El HUD de este plugin.** Desde 3.1 BetterHud dibuja las barras de este plugin él mismo: ver
+  *Las barras de este plugin, dibujadas por BetterHud (3.1)* más abajo. A los jugadores de Bedrock
+  BetterHud no les dibuja nada (`disable-to-bedrock-player`).
 - **3.0.6.** El texto para Bedrock de 3.0.4 y 3.0.5 (`bedrock:`) se ha quitado: el HUD de este
   plugin vuelve a ser el de 3.0.3. Una clave `bedrock:` que quede en un `huds.yml` no hace nada.
 - **TAB y el marcador.** BetterHud no toca el marcador lateral ni la lista de TAB (cabecera, pie,
@@ -2577,6 +2604,46 @@ reescribiendo. En la consola: `BetterHud built its resource pack: N file(s), mer
 define. Así, el `#else` con las declaraciones de 1.21.4 de un shader escrito para varias versiones
 (el de BetterHud) no se cuenta como roto, y `drop-broken` no lo quita. Una condición sobre algo
 que el shader no define (una macro que pone el cliente) se lee entera, como antes.
+
+#### Las barras de este plugin, dibujadas por BetterHud (3.1)
+
+Con BetterHud y PlaceholderAPI instalados, las barras que irían en la barra de acción (las de
+`huds:` con `anchor`, o con `action-bar: true`: la sed, el maná y el escudo del ejemplo) las dibuja
+**BetterHud**, como HUDs suyos, junto al resto de su HUD (el de PrimeHUD, por ejemplo), y dejan de
+salir en la barra de acción. Sin configurar nada:
+
+- En cada recarga se escriben en la carpeta de BetterHud, todos con nombre `arkcontent`:
+  `assets/arkcontent/<pack>_<id>_bar.png` y `_empty.png` (la barra llena y la vacía, hechas con
+  los mismos iconos y la misma separación que en la barra de acción), `images/arkcontent.yml`,
+  `layouts/arkcontent.yml` y `huds/arkcontent.yml`. Cada HUD lleva `default: true` (lo ven todos los
+  jugadores sin tocar el `config.yml` de BetterHud). No los edites: se reescriben; cambia el
+  `huds.yml` de este plugin.
+- La barra llena es una imagen `listener` de BetterHud con `class: placeholder`, que lee
+  `(number)papi:arkcontent_hud_<id>_value` y `_max` y enseña la parte que toca, por medias
+  piezas si la barra tiene icono de mitad. La de la sed se vacía por la izquierda, como la comida.
+- Si los archivos cambiaron y BetterHud ya estaba en marcha, se ejecuta `hud reload`; BetterHud
+  rehace su pack y el gancho lo fusiona en el nuestro. Si no cambiaron, no se recarga nada.
+  En la consola: `BetterHud draws 3 HUD bar(s) of this plugin's: mana, shield, thirst
+  (BetterHud/huds/arkcontent.yml).`
+- **Dónde.** En el mismo sitio que en la barra de acción: medido desde el centro del borde inferior
+  (`gui: 50, 100`), contra la hotbar. BetterHud sube todos los HUD 54 píxeles (la altura de la
+  hotbar) mientras su `config.yml` tenga `disable-legacy-offset: false`, como lo trae PrimeHUD: el
+  plugin lo lee y los baja otro tanto. Si cambias esa opción, recarga este plugin
+  (`/arkcontent reload`) para que recoloque las barras.
+- BetterHud centra cada imagen en su `x` (un `align:` en ella no cambia nada en 2.0.0): el plugin
+  suma la mitad del ancho de la barra para que su borde izquierdo quede donde estaba.
+- Para moverlas, en el HUD: `betterhud: { gui: [0, 0], pixel: [60, 120] }`, en los términos de
+  BetterHud: porcentaje de pantalla, y luego píxeles a la derecha y hacia abajo hasta el centro del
+  borde de arriba de la barra. Aquí no se compensa nada. `betterhud: false` deja ese HUD en la barra de acción, y `huds.betterhud: false` en el
+  `config.yml` de este plugin los deja todos ahí. Sin PlaceholderAPI no se pasan a BetterHud.
+- Un HUD cuyos iconos son texturas de otro pack (no de su carpeta) se queda en la barra de acción,
+  con un aviso.
+
+| Cliente 1.21.8 real, BetterHud 2.0.0 + PrimeHUD v2 (3.1) | Resultado |
+|---|---|
+| Primera carga con `value: "papi:..."` | BetterHud: `this type is not a number`; con `(number)papi:...` carga |
+| `hud reload` tras escribir | `Reload successful!`, sin errores; el pack de BetterHud se fusiona en el nuestro |
+| Captura del cliente | escudo, maná (estrellas) y sed (gotas) dibujados por BetterHud con sus valores: 4 de 20 de absorción, 55 de 100, 13 de 20 vaciándose por la izquierda |
 
 #### BetterHud 2.0.0, ItemsAdder y un pack que el cliente rechaza (3.0.8)
 
@@ -3257,6 +3324,27 @@ Con un pack generado de ItemsAdder de 22.127 archivos en dos zips (40 namespaces
   recompilación, un bot recibe el pack con su hash (y la descarga coincide con él), y los ítems dados
   llevan `item_model` (`dragones_epicos:voltharion_yelmo`...) y su nombre. En el pack servido siguen
   sus 2231 sprites del atlas, sus 124 estados de note block y sus 36.384 entradas de CMD.
+
+### Muebles que ItemsAdder dejó colocados (3.1)
+
+Los muebles que se colocaron mientras ItemsAdder estaba instalado siguen en el mundo cuando se quita:
+su modelo es una entidad (un item display, o un soporte de armadura o un marco con el ítem) que dibuja
+el pack importado, a menudo sobre barreras y con una caja de interacción, y nadie los gestionaba:
+romper la barrera dejaba el modelo flotando (también el caldero de una versión anterior). Ahora se
+reconocen por lo que su ítem aún lleva (`custom_data: {itemsadder: {namespace, id}}`) o por una
+clave de ItemsAdder en la entidad, y se quitan enteros:
+
+- Romper una de sus barreras (o golpearla en supervivencia) quita el modelo, su caja de interacción
+  y las demás barreras de la pieza (hasta 12 juntas, a 3 bloques como mucho: un muro de barreras no
+  es un mueble).
+- Golpear la caja de interacción o el modelo hace lo mismo.
+- En supervivencia suelta el ítem de este plugin con ese id, si existe (los importados con
+  `/arkcontent import` conservan el id de ItemsAdder); en creativo no suelta nada.
+- `/arkcontent legacy [radio]` cuenta los que quedan cerca, por id, y `/arkcontent legacy remove
+  [radio]` los quita (radio por defecto 32, solo en chunks cargados).
+
+Los muebles de este plugin no se tocan: llevan su propia marca. Además, al colocar un mueble se
+retira cualquier display suyo que hubiera quedado huérfano en esos bloques.
 
 ### Font images: menús escritos para ItemsAdder (`:offset_N:`, `%img_nombre%`)
 

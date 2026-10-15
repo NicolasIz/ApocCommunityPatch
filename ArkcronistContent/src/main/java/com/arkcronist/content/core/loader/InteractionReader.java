@@ -32,7 +32,8 @@ final class InteractionReader {
     /**
      * {@code effect:} - {@code particles} drawn every {@code interval} ticks for players within
      * {@code range} blocks, and {@code on-click}: {@code potions}, {@code sound}, {@code cooldown}
-     * (seconds) and {@code message}.
+     * (seconds) and {@code message}; and since 3.1 {@code station} (a workstation it opens),
+     * {@code cook} (what it cooks out of the hand), {@code toggle-light} and {@code particles}.
      */
     static @Nullable Placement.Ambience ambience(@Nullable Map<?, ?> section, String prefix, List<String> problems) {
         if (section == null) {
@@ -47,6 +48,10 @@ final class InteractionReader {
         String sound = null;
         int cooldown = 0;
         String message = null;
+        String station = null;
+        String cook = null;
+        boolean toggleLight = false;
+        List<Placement.Particles> clickParticles = List.of();
         Object raw = section.get("on-click");
         if (raw instanceof Map<?, ?> click) {
             String clickAt = at + "on-click: ";
@@ -54,14 +59,40 @@ final class InteractionReader {
             sound = sound(click, clickAt, problems);
             cooldown = (int) Math.round(decimal(click, "cooldown", 3, 0, 3600, clickAt, problems) * 20);
             message = string(click, "message");
+            station = choice(click, "station", Placement.Ambience.STATIONS, clickAt, problems);
+            cook = choice(click, "cook", Placement.Ambience.COOKING, clickAt, problems);
+            Object toggle = click.get("toggle-light");
+            if (toggle instanceof Boolean flag) {
+                toggleLight = flag;
+            } else if (toggle != null) {
+                problems.add(clickAt + "'toggle-light' should be true or false");
+            }
+            clickParticles = particles(click.get("particles"), clickAt + "particles: ", problems);
         } else if (raw != null) {
             problems.add(at + "'on-click' should be a section with potions, sound, cooldown and message");
         }
-        if (particles.isEmpty() && potions.isEmpty() && sound == null && message == null) {
+        if (particles.isEmpty() && potions.isEmpty() && sound == null && message == null && station == null
+                && cook == null && !toggleLight && clickParticles.isEmpty()) {
             problems.add(at + "has neither particles nor anything on a click; nothing would happen");
             return null;
         }
-        return new Placement.Ambience(particles, interval, range, potions, sound, cooldown, message);
+        return new Placement.Ambience(particles, interval, range, potions, sound, cooldown, message, station, cook,
+                toggleLight, clickParticles);
+    }
+
+    /** One of {@code allowed}, lower case, or null when the key is not there or names something else. */
+    private static @Nullable String choice(Map<?, ?> section, String key, List<String> allowed, String prefix,
+                                           List<String> problems) {
+        String value = string(section, key);
+        if (value == null) {
+            return null;
+        }
+        String lower = value.trim().toLowerCase(Locale.ROOT);
+        if (!allowed.contains(lower)) {
+            problems.add(prefix + "'" + key + "' should be one of " + String.join(", ", allowed) + ", not '" + value + "'");
+            return null;
+        }
+        return lower;
     }
 
     static List<Placement.Particles> particles(@Nullable Object raw, String prefix, List<String> problems) {

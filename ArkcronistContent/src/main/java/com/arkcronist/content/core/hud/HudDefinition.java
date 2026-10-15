@@ -31,17 +31,48 @@ import java.util.Map;
  * @param actionBar also show it on the action bar, sent by the plugin
  * @param anchor    2.0: where on the screen it sits, against the vanilla HUD - its ascent and offset
  *                  then follow from it; null for the ascent and offset as written
+ * @param betterHud 3.1: whether BetterHud draws it, and where; null to leave it to {@code huds.betterhud}
+ *                  in config.yml - with BetterHud installed, a bar on the action bar is drawn by it
  */
 public record HudDefinition(String namespace, String id, ResourceLocation full, @Nullable ResourceLocation half,
                             @Nullable ResourceLocation empty, int height, int ascent, int segments, int spacing,
                             int offset, Source source, boolean actionBar, Path sourceRoot, Path file,
-                            @Nullable HudAnchor anchor) {
+                            @Nullable HudAnchor anchor, @Nullable BetterHud betterHud) {
 
     public HudDefinition(String namespace, String id, ResourceLocation full, @Nullable ResourceLocation half,
                          @Nullable ResourceLocation empty, int height, int ascent, int segments, int spacing,
                          int offset, Source source, boolean actionBar, Path sourceRoot, Path file) {
         this(namespace, id, full, half, empty, height, ascent, segments, spacing, offset, source, actionBar, sourceRoot,
-                file, null);
+                file, null, null);
+    }
+
+    public HudDefinition(String namespace, String id, ResourceLocation full, @Nullable ResourceLocation half,
+                         @Nullable ResourceLocation empty, int height, int ascent, int segments, int spacing,
+                         int offset, Source source, boolean actionBar, Path sourceRoot, Path file,
+                         @Nullable HudAnchor anchor) {
+        this(namespace, id, full, half, empty, height, ascent, segments, spacing, offset, source, actionBar, sourceRoot,
+                file, anchor, null);
+    }
+
+    /**
+     * 3.1: {@code betterhud:} - a bar BetterHud draws, as one of its own HUDs, instead of this
+     * plugin's action bar: {@code false} keeps it on the action bar, {@code true} hands it over,
+     * and {@code { gui: [x, y], pixel: [x, y] }} hands it over at a place of its own - BetterHud's
+     * percentages of the screen and pixels from there. Without a place it stays where its anchor
+     * (or its ascent and offset) put it.
+     *
+     * @param drawn whether BetterHud draws it
+     * @param gui   BetterHud's {@code gui}: percent across and down the screen; null for where it was
+     * @param pixel BetterHud's {@code pixel}: pixels right and down from there; null for where it was
+     */
+    public record BetterHud(boolean drawn, @Nullable Spot gui, @Nullable Spot pixel) {
+
+        public static final BetterHud OFF = new BetterHud(false, null, null);
+        public static final BetterHud ON = new BetterHud(true, null, null);
+    }
+
+    /** Two numbers: across, then down. */
+    public record Spot(int x, int y) {
     }
 
     /** The icons a HUD uses, by name: full, then half and empty if it has them. */

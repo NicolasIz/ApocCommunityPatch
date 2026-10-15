@@ -196,6 +196,11 @@ huds:
   # How often, in seconds, changed HUD values (thirst...) are written to SQLite.
   # They are written as a player leaves too.
   save-seconds: 30
+  # 3.1: with BetterHud and PlaceholderAPI installed, BetterHud draws the bars
+  # that would go on the action bar, as HUDs of its own (written to its folder:
+  # huds/arkcontent.yml and the rest), so they sit with the rest of its HUD.
+  # false keeps them on the action bar; 'betterhud:' on one HUD decides for it.
+  betterhud: true
 
 # ---------------------------------------------------------------------------
 #  Font images: menus written for ItemsAdder

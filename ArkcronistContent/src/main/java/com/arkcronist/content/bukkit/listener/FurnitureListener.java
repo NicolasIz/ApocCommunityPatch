@@ -3,6 +3,7 @@ package com.arkcronist.content.bukkit.listener;
 import com.arkcronist.content.bukkit.furniture.AmbienceService;
 import com.arkcronist.content.bukkit.furniture.CommandSigns;
 import com.arkcronist.content.bukkit.furniture.FurnitureService;
+import com.arkcronist.content.bukkit.furniture.LegacyFurniture;
 import com.arkcronist.content.bukkit.furniture.GuillotineService;
 import com.arkcronist.content.bukkit.furniture.SeatService;
 import com.arkcronist.content.bukkit.furniture.StorageService;
@@ -21,6 +22,7 @@ import org.bukkit.Material;
 import org.bukkit.Tag;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.ItemDisplay;
@@ -88,6 +90,8 @@ public final class FurnitureListener implements Listener {
     private @Nullable AmbienceService ambience;
     private @Nullable CommandSigns signs;
     private @Nullable GuillotineService guillotines;
+    /** 3.1: furniture ItemsAdder left in the world; null until it is set. */
+    private @Nullable LegacyFurniture legacy;
 
     /** What a right click on a quest board does. */
     public interface QuestBoardOpener {
@@ -97,6 +101,11 @@ public final class FurnitureListener implements Listener {
     /** Who opens quest boards. */
     public void useBoards(QuestBoardOpener boards) {
         this.boards = boards;
+    }
+
+    /** Who knows the furniture ItemsAdder left behind, so breaking it takes its model too. */
+    public void useLegacy(LegacyFurniture legacy) {
+        this.legacy = legacy;
     }
 
     /** Who hands out drinks, runs command signs and drops guillotine blades. */
@@ -143,7 +152,8 @@ public final class FurnitureListener implements Listener {
             if (!free) {
                 event.setCancelled(true);
                 player.sendActionBar(Component.text("Not enough room: this needs " + spec.footprint().width() + " x "
-                        + spec.footprint().height() + " free blocks", NamedTextColor.RED));
+                        + spec.footprint().height() + (spec.footprint().depth() > 1 ? " x " + spec.footprint().depth() : "")
+                        + " free blocks (across, up" + (spec.footprint().depth() > 1 ? ", back" : "") + ")", NamedTextColor.RED));
                 return;
             }
             if (!protection.check(player, part, Interaction.PLACE)) {
@@ -400,6 +410,11 @@ public final class FurnitureListener implements Listener {
         Optional<Block> target = clicked != null && furniture.identify(clicked).isPresent()
                 ? Optional.of(clicked)
                 : furniture.clickedThrough(event.getPlayer(), clicked);
+        if (target.isEmpty() && clicked != null && clicked.getType() == Material.BARRIER && legacy != null
+                && legacy.pieceAt(clicked).isPresent()) {
+            // 3.1: a barrier ItemsAdder's furniture stands on - unbreakable in survival, like ours.
+            target = Optional.of(clicked);
+        }
         if (target.isEmpty() || FurnitureService.isVanillaBlock(target.get().getType())) {
             // Nothing here, or a chest or bed: mined like the vanilla block it is.
             return;
@@ -432,11 +447,64 @@ public final class FurnitureListener implements Listener {
     public void onBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
         Player player = event.getPlayer();
-        furniture.identify(block).ifPresent(id -> {
+        Optional<String> id = furniture.identify(block);
+        if (id.isPresent()) {
             furniture.partsOf(block).forEach(seats::release);
             storage.broken(block);
-            furniture.remove(block, id, player.getGameMode() != GameMode.CREATIVE);
-        });
+            furniture.remove(block, id.get(), player.getGameMode() != GameMode.CREATIVE);
+        } else if (legacy != null) {
+            // 3.1: ItemsAdder's furniture: its model and its other barriers go with this block. In
+            // creative the block can already be air here, so a piece standing in the barriers next
+            // to it (one of several blocks) is looked for there too.
+            Optional<LegacyFurniture.Piece> piece = legacy.pieceAt(block);
+            for (BlockFace face : new BlockFace[] {BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST,
+                    BlockFace.UP, BlockFace.DOWN}) {
+                Block next = block.getRelative(face);
+                if (piece.isPresent()) {
+                    break;
+                }
+                if (next.getType() == Material.BARRIER && furniture.identify(next).isEmpty()) {
+                    piece = legacy.pieceAt(next);
+                }
+            }
+            piece.ifPresent(found -> legacy.remove(found, block, player.getGameMode() != GameMode.CREATIVE));
+        }
+    }
+
+    /**
+     * 3.1: a punch at what ItemsAdder's furniture is made of - its interaction box, or an armour
+     * stand holding its item - takes the piece away, as a punch at its barrier does; protection
+     * plugins decide through the {@link BlockBreakEvent} of the block it stands in. A hit on an
+     * interaction box reaches plugins only as this damage event.
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onLegacyAttack(org.bukkit.event.entity.EntityDamageByEntityEvent event) {
+        if (legacy == null || !(event.getDamager() instanceof Player player)) {
+            return;
+        }
+        GameMode mode = player.getGameMode();
+        if (mode != GameMode.SURVIVAL && mode != GameMode.CREATIVE) {
+            return;
+        }
+        Optional<LegacyFurniture.Piece> piece = legacy.pieceOf(event.getEntity());
+        if (piece.isEmpty()) {
+            return;
+        }
+        event.setCancelled(true);
+        Block block = event.getEntity().getLocation().getBlock();
+        if (!protection.check(player, block, Interaction.BREAK)) {
+            return;
+        }
+        if (block.getType() == Material.BARRIER) {
+            // Standing in its own barrier: broken as that block, and onBreak takes the piece with it.
+            BlockBreakEvent breakEvent = new BlockBreakEvent(block, player);
+            breakEvent.setDropItems(false);
+            if (breakEvent.callEvent()) {
+                block.setType(Material.AIR);
+            }
+        } else {
+            legacy.remove(piece.get(), null, mode != GameMode.CREATIVE);
+        }
     }
 
     // HIGHEST: this breaks blocks itself, so it runs as late as it can while the list may still be

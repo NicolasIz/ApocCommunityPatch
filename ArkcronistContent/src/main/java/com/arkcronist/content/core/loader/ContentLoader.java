@@ -908,8 +908,9 @@ public final class ContentLoader {
             problems.add(prefix + "'light' must be 0-15; using " + clamped);
             light = clamped;
         }
-        if (support != Placement.Support.LIGHT && section.containsKey("light")) {
-            problems.add(prefix + "'light' only applies to a LIGHT support");
+        // 3.1: a barrier support gives its light from the block above the piece, when that is free.
+        if (support != Placement.Support.LIGHT && support != Placement.Support.BARRIER && section.containsKey("light")) {
+            problems.add(prefix + "'light' only applies to a LIGHT or BARRIER support");
             light = 0;
         }
 
@@ -1003,7 +1004,8 @@ public final class ContentLoader {
 
     /**
      * {@code size:} the blocks a piece stands on - {@code {width: 3, height: 2}}, or {@code 3x2} -
-     * one invisible support each. Only barrier and light supports can be more than one block.
+     * one invisible support each; since 3.1 also {@code depth}, or {@code 6x2x6}. Only barrier and
+     * light supports can be more than one block.
      */
     private static Footprint footprint(Map<?, ?> section, Placement.Support support, String prefix,
                                        List<String> problems) {
@@ -1013,29 +1015,34 @@ public final class ContentLoader {
         }
         int width;
         int height;
+        int depth;
         if (raw instanceof Map<?, ?> size) {
             width = size.get("width") instanceof Number number ? number.intValue() : 1;
             height = size.get("height") instanceof Number number ? number.intValue() : 1;
+            depth = size.get("depth") instanceof Number number ? number.intValue() : 1;
         } else {
             String[] parts = String.valueOf(raw).trim().toLowerCase(Locale.ROOT).split("x");
             try {
                 width = Integer.parseInt(parts[0].trim());
                 height = parts.length > 1 ? Integer.parseInt(parts[1].trim()) : 1;
+                depth = parts.length > 2 ? Integer.parseInt(parts[2].trim()) : 1;
             } catch (NumberFormatException exception) {
-                problems.add(prefix + "'size' should be {width: <n>, height: <n>} or <width>x<height>, not '" + raw + "'");
+                problems.add(prefix + "'size' should be {width: <n>, height: <n>, depth: <n>} or <width>x<height>[x<depth>],"
+                        + " not '" + raw + "'");
                 return Footprint.SINGLE;
             }
         }
-        if (width < 1 || height < 1 || width > Footprint.MAX || height > Footprint.MAX) {
+        if (width < 1 || height < 1 || depth < 1 || width > Footprint.MAX || height > Footprint.MAX || depth > Footprint.MAX) {
             problems.add(prefix + "'size' is 1 to " + Footprint.MAX + " blocks each way, not " + width + "x" + height
-                    + "; using 1x1");
+                    + "x" + depth + "; using 1x1");
             return Footprint.SINGLE;
         }
-        if ((width > 1 || height > 1) && support != Placement.Support.BARRIER && support != Placement.Support.LIGHT) {
+        if ((width > 1 || height > 1 || depth > 1) && support != Placement.Support.BARRIER
+                && support != Placement.Support.LIGHT) {
             problems.add(prefix + "only a BARRIER or LIGHT support can be more than one block; 'size' is ignored");
             return Footprint.SINGLE;
         }
-        return new Footprint(width, height);
+        return new Footprint(width, height, depth);
     }
 
     /** {@code interactable: medieval_bulletin_board}: the title over its notices, {@code board-title}. */
@@ -1725,7 +1732,46 @@ public final class ContentLoader {
         }
         // A bar placed against the vanilla HUD is meant for the action bar, unless it says otherwise.
         return new HudDefinition(namespace, id, full, half, empty, height, ascent, segments, spacing, offset, source,
-                flag(section, "action-bar", anchor != null, prefix, problems), sourceRoot, file, anchor);
+                flag(section, "action-bar", anchor != null, prefix, problems), sourceRoot, file, anchor,
+                betterHud(section.get("betterhud"), prefix, problems));
+    }
+
+    /**
+     * 3.1: {@code betterhud:} - {@code true}, {@code false}, or {@code { gui: [x, y], pixel: [x, y] }}
+     * for a place of its own on BetterHud's screen. Null when it is not there: config.yml decides.
+     */
+    private static HudDefinition.BetterHud betterHud(Object node, String prefix, List<String> problems) {
+        if (node == null) {
+            return null;
+        }
+        if (node instanceof Boolean drawn) {
+            return drawn ? HudDefinition.BetterHud.ON : HudDefinition.BetterHud.OFF;
+        }
+        if (!(node instanceof Map<?, ?> section)) {
+            problems.add(prefix + "'betterhud' should be true, false or { gui: [x, y], pixel: [x, y] }; left to"
+                    + " config.yml");
+            return null;
+        }
+        if (Boolean.FALSE.equals(section.get("enabled"))) {
+            return HudDefinition.BetterHud.OFF;
+        }
+        return new HudDefinition.BetterHud(true, spot(section, "gui", -100, 200, prefix, problems),
+                spot(section, "pixel", -4096, 4096, prefix, problems));
+    }
+
+    private static HudDefinition.Spot spot(Map<?, ?> section, String key, int min, int max, String prefix,
+                                           List<String> problems) {
+        Object node = section.get(key);
+        if (node == null) {
+            return null;
+        }
+        if (node instanceof List<?> pair && pair.size() == 2 && pair.get(0) instanceof Number x
+                && pair.get(1) instanceof Number y) {
+            return new HudDefinition.Spot(Math.max(min, Math.min(max, x.intValue())),
+                    Math.max(min, Math.min(max, y.intValue())));
+        }
+        problems.add(prefix + "'betterhud." + key + "' should be [x, y]; left where the bar was");
+        return null;
     }
 
     /**

@@ -124,6 +124,7 @@ public final class ArkContentPlugin extends JavaPlugin {
     private SeatService seats;
     private StorageService storage;
     private FurnitureService furniture;
+    private com.arkcronist.content.bukkit.furniture.LegacyFurniture legacy;
     private AmbienceService ambience;
     private AnimationPlayer animations;
     private Protection protection;
@@ -136,6 +137,7 @@ public final class ArkContentPlugin extends JavaPlugin {
     private GunService guns;
     private final LiquidRegistry liquidRegistry = new LiquidRegistry();
     private final HudRegistry hudRegistry = new HudRegistry();
+    private com.arkcronist.content.bukkit.hooks.betterhud.BetterHudBars betterHudBars;
     private final FontImageRegistry fontImages = new FontImageRegistry();
     private LiquidService liquids;
     private HudService huds;
@@ -220,6 +222,15 @@ public final class ArkContentPlugin extends JavaPlugin {
         this.huds = new HudService(this, hudRegistry, database, actionBars, settings.huds(), hooks::placeholders,
                 hooks::auraSkillsMana);
         hooks.addPlaceholders(huds::placeholder);
+        // 3.1: BetterHud draws the bars that would go on the action bar - reading them through PlaceholderAPI.
+        org.bukkit.plugin.Plugin betterHud = getServer().getPluginManager().getPlugin("BetterHud");
+        if (betterHud != null && hooks.active().contains("PlaceholderAPI")) {
+            this.betterHudBars = new com.arkcronist.content.bukkit.hooks.betterhud.BetterHudBars(this, hudRegistry,
+                    huds, settings.huds().betterHud(), betterHud.getDataFolder().toPath());
+        } else if (betterHud != null) {
+            getLogger().info("BetterHud is installed without PlaceholderAPI, which it would read the HUD bars through:"
+                    + " they stay on the action bar.");
+        }
         this.minigames = new com.arkcronist.content.bukkit.minigame.MinigameService(this, items, itemFactory,
                 blockService, protection, database, actionBars, pipeline.mainThread());
         com.arkcronist.content.bukkit.cosmetic.CosmeticRenderer cosmeticRenderer = hooks.packetCosmetics();
@@ -243,7 +254,10 @@ public final class ArkContentPlugin extends JavaPlugin {
         FurnitureListener furnitureListener = new FurnitureListener(this, furniture, seats, storage, protection,
                 itemFactory);
         furnitureListener.useBoards(questBoards::open);
+        this.legacy = new com.arkcronist.content.bukkit.furniture.LegacyFurniture(this, items, itemFactory);
+        furnitureListener.useLegacy(legacy);
         this.ambience = new AmbienceService(this, items, furniture);
+        ambience.useCustomItems(stack -> itemFactory.identify(stack).isPresent());
         furniture.onRootAppeared(ambience::track);
         CommandSigns signs = new CommandSigns(this);
         furnitureListener.useInteractions(ambience, signs, new GuillotineService(this, furniture, seats, signs));
@@ -534,6 +548,11 @@ public final class ArkContentPlugin extends JavaPlugin {
         return ambience;
     }
 
+    /** 3.1: furniture ItemsAdder placed and left behind. */
+    public com.arkcronist.content.bukkit.furniture.LegacyFurniture legacy() {
+        return legacy;
+    }
+
     public FurnitureService furniture() {
         return furniture;
     }
@@ -596,6 +615,11 @@ public final class ArkContentPlugin extends JavaPlugin {
     /** HUD values and bars. Null before enable. */
     public HudService huds() {
         return huds;
+    }
+
+    /** 3.1: BetterHud drawing the HUD bars; null without BetterHud and PlaceholderAPI. */
+    public @org.jetbrains.annotations.Nullable com.arkcronist.content.bukkit.hooks.betterhud.BetterHudBars betterHudBars() {
+        return betterHudBars;
     }
 
     /** The action bar, shared by HUD bars and short messages. Null before enable. */
