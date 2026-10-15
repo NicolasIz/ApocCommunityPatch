@@ -2644,6 +2644,8 @@ salir en la barra de acción. Sin configurar nada:
 | Primera carga con `value: "papi:..."` | BetterHud: `this type is not a number`; con `(number)papi:...` carga |
 | `hud reload` tras escribir | `Reload successful!`, sin errores; el pack de BetterHud se fusiona en el nuestro |
 | Captura del cliente | escudo, maná (estrellas) y sed (gotas) dibujados por BetterHud con sus valores: 4 de 20 de absorción, 55 de 100, 13 de 20 vaciándose por la izquierda |
+| Posición, con `disable-legacy-offset: false` | sin compensar salían 54 px más arriba y 40 a la izquierda; compensadas, el maná empieza en el borde izquierdo de la hotbar (centro − 91) y la sed acaba en el derecho (centro + 91), a 59 px del borde inferior, y el escudo a 69 |
+| Arranque con los archivos ya escritos e iguales | no se recarga BetterHud ni se reescribe nada |
 
 #### BetterHud 2.0.0, ItemsAdder y un pack que el cliente rechaza (3.0.8)
 
