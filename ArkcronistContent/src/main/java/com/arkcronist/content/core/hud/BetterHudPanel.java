@@ -72,15 +72,20 @@ public final class BetterHudPanel {
             Map<String, Object> images = merged(betterHud.resolve("images"));
             Map<String, Object> layouts = merged(betterHud.resolve("layouts"));
             Map<String, Object> huds = merged(betterHud.resolve("huds"));
-            return find(images, layouts, huds, file -> size(betterHud.resolve("assets").resolve(file)));
+            return find(images, layouts, huds, shown(betterHud.resolve("config.yml")),
+                    file -> size(betterHud.resolve("assets").resolve(file)));
         } catch (IOException | YAMLException | ClassCastException failure) {
             return Optional.empty();
         }
     }
 
-    /** As {@link #find(Path)}, from BetterHud's files already read; {@code size} gives an asset's {width, height}. */
+    /**
+     * As {@link #find(Path)}, from BetterHud's files already read; {@code shown} are the HUDs its
+     * config.yml gives every player ({@code default-hud}), and {@code size} gives an asset's
+     * {width, height}.
+     */
     static Optional<Panel> find(Map<String, Object> images, Map<String, Object> layouts, Map<String, Object> huds,
-                                java.util.function.Function<String, int[]> size) {
+                                java.util.Set<String> shown, java.util.function.Function<String, int[]> size) {
         Map<String, int[]> at = new HashMap<>();
         Map<String, String> layoutOf = new HashMap<>();
         for (Map.Entry<String, Object> layout : layouts.entrySet()) {
@@ -120,17 +125,24 @@ public final class BetterHudPanel {
         if (step == 0) {
             step = DEFAULT_STEP;
         }
-        HudDefinition.Spot[] place = placeOf(huds, layoutOf.get("health_bar"));
+        HudDefinition.Spot[] place = placeOf(huds, layoutOf.get("health_bar"), shown);
         if (place == null) {
             return Optional.empty();
         }
         return Optional.of(new Panel(place[0], place[1], health[0], hunger[0], rows.last() + step, step, frameSize[0]));
     }
 
-    /** The {@code gui} and {@code pixel} of the HUD that shows a layout: {@code gui:} and {@code pixel:}, or {@code x}/{@code y}. */
-    private static @Nullable HudDefinition.Spot[] placeOf(Map<String, Object> huds, String layout) {
-        for (Object hud : huds.values()) {
-            if (!(hud instanceof Map<?, ?> body) || !(body.get("layouts") instanceof Map<?, ?> list)) {
+    /**
+     * The {@code gui} and {@code pixel} of the HUD that shows a layout - {@code gui:} and
+     * {@code pixel:}, or {@code x}/{@code y} - preferring one players are given: listed in
+     * {@code default-hud} or {@code default: true}. BetterHud's own example HUD ({@code test_hud})
+     * uses the same layout names as PrimeHUD's and is left in the folder, unshown.
+     */
+    private static @Nullable HudDefinition.Spot[] placeOf(Map<String, Object> huds, String layout,
+                                                          java.util.Set<String> shown) {
+        HudDefinition.Spot[] fallback = null;
+        for (Map.Entry<String, Object> hud : new java.util.TreeMap<>(huds).entrySet()) {
+            if (!(hud.getValue() instanceof Map<?, ?> body) || !(body.get("layouts") instanceof Map<?, ?> list)) {
                 continue;
             }
             for (Object entry : list.values()) {
@@ -141,11 +153,35 @@ public final class BetterHudPanel {
                     HudDefinition.Spot pixel = used.get("pixel") instanceof Map<?, ?> p
                             ? new HudDefinition.Spot(integer(p.get("x")), integer(p.get("y")))
                             : new HudDefinition.Spot(0, 0);
-                    return new HudDefinition.Spot[]{gui, pixel};
+                    HudDefinition.Spot[] place = new HudDefinition.Spot[]{gui, pixel};
+                    if (shown.contains(hud.getKey()) || Boolean.TRUE.equals(body.get("default"))) {
+                        return place;
+                    }
+                    if (fallback == null) {
+                        fallback = place;
+                    }
                 }
             }
         }
-        return null;
+        return fallback;
+    }
+
+    /** The HUDs BetterHud's config.yml gives every player: its {@code default-hud} list. */
+    static java.util.Set<String> shown(Path config) {
+        if (!Files.isRegularFile(config)) {
+            return java.util.Set.of();
+        }
+        try (Reader reader = Files.newBufferedReader(config, StandardCharsets.UTF_8)) {
+            Object loaded = new Yaml(new SafeConstructor(new LoaderOptions())).load(reader);
+            if (loaded instanceof Map<?, ?> map && map.get("default-hud") instanceof List<?> list) {
+                java.util.Set<String> names = new java.util.HashSet<>();
+                list.forEach(name -> names.add(String.valueOf(name)));
+                return names;
+            }
+        } catch (IOException | YAMLException unreadable) {
+            // Without it, any HUD that shows the layout will do.
+        }
+        return java.util.Set.of();
     }
 
     private static int integer(Object value) {

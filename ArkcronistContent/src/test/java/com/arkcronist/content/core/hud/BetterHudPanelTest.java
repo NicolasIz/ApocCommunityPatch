@@ -73,6 +73,20 @@ class BetterHudPanelTest {
                       x: 0
                       y: 0
                 """);
+        // BetterHud's own example HUD, left in the folder and not shown, uses the same layout.
+        write("huds/default-hud.yml", """
+                test_hud:
+                  layouts:
+                    1:
+                      name: health
+                      gui: { x: 35, y: 100 }
+                      pixel: { x: 0, y: -80 }
+                """);
+        write("config.yml", """
+                default-hud:
+                  - health
+                  - hunger
+                """);
         // This plugin's own files are not BetterHud's bars.
         write("layouts/arkcontent.yml", """
                 arkcontent_demo_mana:
@@ -86,7 +100,7 @@ class BetterHudPanelTest {
     void primeHudsBarsAreFound() throws IOException {
         primeHudLike(12);
         BetterHudPanel.Panel panel = BetterHudPanel.find(folder).orElseThrow();
-        assertEquals(new HudDefinition.Spot(0, 0), panel.gui(), "the HUD's legacy x and y");
+        assertEquals(new HudDefinition.Spot(0, 0), panel.gui(), "the shown HUD's legacy x and y, not test_hud's");
         assertEquals(new HudDefinition.Spot(0, 0), panel.pixel());
         assertEquals(45, panel.left());
         assertEquals(115, panel.right());
