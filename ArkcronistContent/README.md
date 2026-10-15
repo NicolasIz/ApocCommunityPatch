@@ -2650,8 +2650,9 @@ debajo de las suyas.
   barras y cuánto miden.
 - **Dónde.** La que va del lado de la comida (`anchor` en `food` o `above-food`: la sed) va en la
   columna de la comida, y las demás (maná, escudo) en la de la vida. Empiezan en la fila siguiente
-  a la de armadura y aire de PrimeHUD, con su mismo paso (15 píxeles), en el mismo HUD (`gui` y
-  `pixel` de su HUD de vida), así que su `disable-legacy-offset` las mueve a la vez.
+  a la de armadura y aire de PrimeHUD, con su mismo paso (15 píxeles), en el mismo sitio que su HUD
+  de vida (`gui` y `pixel` del HUD que la muestra, el de `default-hud`, no el `test_hud` de ejemplo
+  de BetterHud), así que su `disable-legacy-offset` las mueve a la vez.
 - **Por HUD**, en `betterhud:`:
   - `icon: hud/thirst_small` es el icono pequeño, de unos 7×6. Sin él se usa el icono lleno reducido.
   - `color: "#1c9ec0"` es el color de la barra. Sin él se toma el del icono.
@@ -2674,6 +2675,8 @@ debajo de las suyas.
 | Captura del cliente | escudo, maná (estrellas) y sed (gotas) dibujados por BetterHud con sus valores: 4 de 20 de absorción, 55 de 100, 13 de 20 vaciándose por la izquierda |
 | Posición, con `disable-legacy-offset: false` | sin compensar salían 54 px más arriba y 40 a la izquierda; compensadas, el maná empieza en el borde izquierdo de la hotbar (centro − 91) y la sed acaba en el derecho (centro + 91), a 59 px del borde inferior, y el escudo a 69 |
 | Arranque con los archivos ya escritos e iguales | no se recarga BetterHud ni se reescribe nada |
+| 3.1.1, captura del cliente con PrimeHUD | maná (morado, 55 %) y sed (turquesa, 25 %) en la fila de debajo de la de armadura y aire, escudo (dorado, solo con absorción) en la siguiente, con el mismo marco, borde, interior y corte que las barras de PrimeHUD; la sed parpadea en blanco (≤ 30 %) |
+| 3.1.1, carpeta con el `default-hud.yml` de ejemplo de BetterHud (`test_hud`, no mostrado) | se toma el HUD que sí se muestra (`default-hud` de su `config.yml`); antes las barras quedaban fuera de la pantalla |
 
 #### BetterHud 2.0.0, ItemsAdder y un pack que el cliente rechaza (3.0.8)
 
