@@ -92,7 +92,8 @@ class ShaderCheckTest {
                 in float vertexDistance;
                 #endif
                 uniform sampler2D Sampler0;
-                void main() {}
+                out vec4 fragColor;
+                void main() { fragColor = ColorModulator; }
                 """;
         Report current = ShaderCheck.check(Map.of(path, betterHud), Mode.DROP_BROKEN);
         assertTrue(current.findings().stream().noneMatch(f -> f.severity() == Severity.BROKEN), current.findings().toString());
@@ -107,6 +108,72 @@ class ShaderCheckTest {
         Report unknown = ShaderCheck.check(Map.of(path, betterHud.replace("#if SHADER_VERSION >= 3", "#ifdef ALPHA_CUTOUT")),
                 Mode.KEEP);
         assertTrue(unknown.findings().stream().anyMatch(f -> f.severity() == Severity.BROKEN));
+    }
+
+    /**
+     * 3.0.8: BetterHud 2.0.0, with PrimeHUD's template or its own, wrote this fragment shader for
+     * 1.21.6 and later clients - declarations on one line, the first a sampler. A real 1.21.8 client
+     * stops at "'FogColor' redeclared" and "no function with name 'linear_fog'" and drops every
+     * server pack; the check read only the first declaration of a line and said nothing.
+     */
+    @Test
+    void aShaderWrittenOnOneLineIsReadWholeAndItsCompileErrorsNamed() {
+        String path = "assets/minecraft/shaders/core/rendertype_text.fsh";
+        String oneLine = "#version 150\n#moj_import <fog.glsl>\n"
+                + "uniform sampler2D Sampler0;uniform vec4 ColorModulator;uniform float FogStart;uniform float FogEnd;"
+                + "uniform vec4 FogColor;in float vertexDistance;in vec4 vertexColor;in vec2 texCoord0;out vec4 fragColor;"
+                + "void main() {vec4 color = texture(Sampler0, texCoord0) * vertexColor * ColorModulator;"
+                + "fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);}\n";
+
+        Report report = ShaderCheck.check(Map.of(path, oneLine), Mode.KEEP);
+
+        assertEquals(1, report.findings().size(), report.findings().toString());
+        Finding finding = report.findings().get(0);
+        assertEquals(Severity.BROKEN, finding.severity());
+        assertTrue(finding.message().contains("'uniform vec4 ColorModulator;' on its own"), finding.message());
+        assertTrue(finding.message().contains("'FogColor' redeclared"), finding.message());
+        assertTrue(finding.message().contains("it calls linear_fog(), which <minecraft:fog.glsl> had until 1.21.5"),
+                finding.message());
+    }
+
+    /**
+     * 3.0.8: BetterHud 1.14.1's text shader declares {@code uniform vec3 ChunkOffset;} and never reads
+     * it. Unset, it changes nothing - a real 1.21.8 client draws with it - so it is not reported, and
+     * drop-broken does not take a working shader out.
+     */
+    @Test
+    void aLooseUniformThatIsNeverReadIsNotReported() {
+        String path = "assets/minecraft/shaders/core/rendertype_text.vsh";
+        String unused = "#version 150\n#moj_import <projection.glsl>\n#moj_import <dynamictransforms.glsl>\n"
+                + "in vec3 Position;uniform sampler2D Sampler0;uniform vec3 ChunkOffset;out vec2 texCoord0;"
+                + "void main() {gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);}\n";
+
+        Report report = ShaderCheck.check(Map.of(path, unused), Mode.DROP_BROKEN);
+
+        assertTrue(report.findings().stream().noneMatch(f -> f.severity() == Severity.BROKEN), report.findings().toString());
+        assertEquals(Set.of(), report.drop());
+
+        Report used = ShaderCheck.check(Map.of(path, unused.replace("vec4(Position, 1.0)", "vec4(Position + ChunkOffset, 1.0)")),
+                Mode.KEEP);
+        assertTrue(used.findings().stream().anyMatch(f -> f.message().contains("ChunkOffset")), used.findings().toString());
+    }
+
+    /** A function of the old includes that the shader, or a pack include the client loads, defines itself is fine. */
+    @Test
+    void anOldFunctionTheShaderDefinesItselfIsNotReported() {
+        String path = "assets/minecraft/shaders/core/rendertype_text.fsh";
+        String own = """
+                #version 150
+                #moj_import <fog.glsl>
+                in vec4 vertexColor;
+                out vec4 fragColor;
+                vec4 linear_fog(vec4 color, float distance, float start, float end, vec4 fog) { return color; }
+                void main() { fragColor = linear_fog(vertexColor, 0.0, 0.0, 1.0, vertexColor); }
+                """;
+
+        Report report = ShaderCheck.check(Map.of(path, own), Mode.KEEP);
+
+        assertTrue(report.findings().stream().noneMatch(f -> f.message().contains("linear_fog")), report.findings().toString());
     }
 
     @Test

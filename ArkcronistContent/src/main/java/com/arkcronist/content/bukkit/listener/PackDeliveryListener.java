@@ -2,12 +2,14 @@ package com.arkcronist.content.bukkit.listener;
 
 import com.arkcronist.content.bukkit.EngineSettings;
 import com.arkcronist.content.bukkit.pack.PackDelivery;
+import com.arkcronist.content.core.pack.ShaderCheck;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerResourcePackStatusEvent;
 
+import java.util.List;
 import java.util.logging.Logger;
 
 /**
@@ -57,10 +59,26 @@ public final class PackDeliveryListener implements Listener {
                                 + " upload.verify on, /arkcontent reload checks the link and uploads again if it is gone.";
                     });
             case FAILED_RELOAD -> logger.warning(player + " downloaded the resource pack but could not"
-                    + " apply it. The client log names the file it rejected.");
+                    + " apply it. " + reloadCause(delivery.suspects()));
             case DECLINED -> logger.info(player + " declined the resource pack.");
             default -> {
             }
         }
+    }
+
+    /**
+     * 3.0.8: what to look at when a client fails to apply the pack. One shader its compiler rejects
+     * is enough - and the client then drops every pack the server sent, not only the broken one.
+     */
+    static String reloadCause(List<String> brokenShaders) {
+        String log = "The client's own log (logs/latest.log, after 'Reloading ResourceManager') names the file it"
+                + " rejected.";
+        if (brokenShaders.isEmpty()) {
+            return log;
+        }
+        return "This build keeps " + brokenShaders.size() + " shader(s) a " + ShaderCheck.clientVersion()
+                + " client cannot use - the likely cause: " + String.join(", ", brokenShaders.subList(0,
+                Math.min(4, brokenShaders.size()))) + (brokenShaders.size() > 4 ? "..." : "")
+                + ". Fix them where they come from, or set pack.shaders: drop-broken to leave them out. " + log;
     }
 }

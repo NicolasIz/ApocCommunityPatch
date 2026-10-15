@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
+import java.util.List;
 import java.util.function.Predicate;
 import java.util.Objects;
 import java.util.UUID;
@@ -44,6 +45,7 @@ public final class PackDelivery {
     private final AtomicReference<Live> current = new AtomicReference<>();
 
     private volatile Predicate<Player> waiting = player -> false;
+    private volatile List<String> suspects = List.of();
     private volatile Predicate<Player> elsewhere = player -> false;
 
     public PackDelivery(EngineSettings settings) {
@@ -71,6 +73,19 @@ public final class PackDelivery {
         Live previous = current.getAndSet(new Live(artifact, url));
         return previous == null || !previous.artifact().sha1Hex().equals(artifact.sha1Hex())
                 || !Objects.equals(previous.url(), url);
+    }
+
+    /**
+     * 3.0.8: the shaders in the live pack that the client cannot use (path and the pack it came from),
+     * the first place to look when a player's client downloads the pack and fails to apply it.
+     */
+    public void suspects(List<String> brokenShaders) {
+        suspects = List.copyOf(brokenShaders);
+    }
+
+    /** See {@link #suspects(List)}. Any thread. */
+    public List<String> suspects() {
+        return suspects;
     }
 
     /** The URL players are sent for the live pack, or null when there is nothing to send. */

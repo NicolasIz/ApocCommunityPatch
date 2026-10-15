@@ -102,7 +102,16 @@ public final class ShaderCheck {
 
     private static final Pattern IMPORT = Pattern.compile("#moj_import\\s*[<\"]([^>\"]+)[>\"]");
     private static final Pattern BLOCK = Pattern.compile("uniform\\s+(\\w+)\\s*\\{[^}]*}\\s*;?", Pattern.DOTALL);
-    private static final Pattern LOOSE = Pattern.compile("(?m)^\\s*uniform\\s+(?!sampler|isampler|usampler)(\\w+)\\s+(\\w+)\\s*(?:\\[[^\\]]*\\])?\\s*;");
+    // 3.0.8: also after a ; { or } on the same line - BetterHud writes a shader's declarations on one.
+    private static final Pattern LOOSE = Pattern.compile("(?m)(?:^|(?<=[;{}]))\\s*uniform\\s+(?!sampler|isampler|usampler)(\\w+)\\s+(\\w+)\\s*(?:\\[[^\\]]*\\])?\\s*;");
+    /**
+     * 3.0.8: functions the vanilla includes had until 1.21.5 and the {@link #clientVersion()} ones do
+     * not (fog went to uniform blocks and two distances in 1.21.6): a shader written for 1.21.5 or
+     * older that calls one does not compile, and the client then refuses the whole pack.
+     */
+    private static final Map<String, String> REMOVED_FUNCTIONS = Map.of(
+            "linear_fog", "fog.glsl", "linear_fog_fade", "fog.glsl", "fog_distance", "fog.glsl",
+            "minecraft_sample_lightmap", "light.glsl");
     private static final Pattern COMMENTS = Pattern.compile("//[^\\n]*|/\\*.*?\\*/", Pattern.DOTALL);
 
     private static final Facts FACTS = Facts.load();
@@ -307,10 +316,32 @@ public final class ShaderCheck {
             while (loose.find()) {
                 String name = loose.group(2);
                 String block = blockOf(name);
+                if (block != null && used.contains(block) && shaders.keySet().stream()
+                        .noneMatch(other -> other.endsWith("assets/minecraft/shaders/include/" + includeOf(block)))) {
+                    // 3.0.8: the import declares it already - a compile error, not just a wrong drawing.
+                    broken.add("it declares 'uniform " + loose.group(1) + " " + name + ";' although the " + block
+                            + " block it imports (<minecraft:" + includeOf(block) + ">) already declares " + name
+                            + " - the client cannot compile it ('" + name + "' redeclared) and refuses the whole pack");
+                    continue;
+                }
+                if (!Pattern.compile("\\b" + name + "\\b").matcher(outsideBlocks.substring(loose.end())).find()
+                        && !Pattern.compile("\\b" + name + "\\b").matcher(outsideBlocks.substring(0, loose.start())).find()) {
+                    // 3.0.8: declared and never read (BetterHud's ChunkOffset): unset and harmless.
+                    continue;
+                }
                 broken.add("it declares 'uniform " + loose.group(1) + " " + name + ";' on its own - since 1.21.5 the"
                         + " client sets only uniform blocks and samplers"
                         + (block != null ? ", and " + name + " is in the " + block + " block (#moj_import <minecraft:"
                         + includeOf(block) + ">)" : "") + "; written for 1.21.4 or older, it draws wrong or fails");
+            }
+            for (Map.Entry<String, String> removed : REMOVED_FUNCTIONS.entrySet()) {
+                String name = removed.getKey();
+                if (Pattern.compile("\\b" + name + "\\s*\\(").matcher(code).find() && !defines(code, name)
+                        && shaders.values().stream().noneMatch(other -> defines(other, name))) {
+                    broken.add("it calls " + name + "(), which <minecraft:" + removed.getValue() + "> had until 1.21.5"
+                            + " and the " + FACTS.version() + " one does not - the client cannot compile it and refuses"
+                            + " the whole pack");
+                }
             }
             if (!broken.isEmpty()) {
                 findings.add(new Finding(path, Severity.BROKEN, String.join("; ", broken)));
@@ -611,6 +642,11 @@ public final class ShaderCheck {
             return path.substring(0, path.length() - 4) + ".vsh";
         }
         return path;
+    }
+
+    /** Whether {@code code} defines a function called {@code name}: a return type, the name, a parameter list and a body. */
+    private static boolean defines(String code, String name) {
+        return Pattern.compile("\\b\\w+\\s+" + name + "\\s*\\([^)]*\\)\\s*\\{").matcher(code).find();
     }
 
     /** Where a shader file sits: the overlay it is in (or ""), its namespace, its path under shaders/. */

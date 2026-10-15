@@ -93,13 +93,18 @@ public final class PackCompiler {
      *                          item that ran into it
      * @param notes             what the pack was given that its sources did not say, such as sound
      *                          names given their namespace
+     * @param brokenShaders     3.0.8: the shaders left in the pack that a client of the checked version
+     *                          cannot use ({@link ShaderCheck.Severity#BROKEN}), each as "path (source)":
+     *                          the first suspects when a client downloads the pack and fails to apply it
      */
     public record Result(int itemDefinitions, int models, int textures, int customBlockStates,
-                         int glyphs, int externalFiles, int sounds, List<String> problems, List<String> notes) {
+                         int glyphs, int externalFiles, int sounds, List<String> problems, List<String> notes,
+                         List<String> brokenShaders) {
 
         public Result {
             problems = List.copyOf(problems);
             notes = List.copyOf(notes);
+            brokenShaders = List.copyOf(brokenShaders);
         }
     }
 
@@ -313,7 +318,7 @@ public final class PackCompiler {
         run.soundNames(fixSoundNames);
         run.overlayEntries(settings.mcmeta());
         return new Result(run.itemDefinitions, run.models, run.textures, run.customBlockStates,
-                run.glyphs, run.externalFiles, run.sounds, run.problems, run.notes);
+                run.glyphs, run.externalFiles, run.sounds, run.problems, run.notes, run.brokenShaders);
     }
 
     /** State for one compile. */
@@ -324,6 +329,7 @@ public final class PackCompiler {
         private final List<PackSource> sources;
         private final List<String> problems = new ArrayList<>();
         private final List<String> notes = new ArrayList<>();
+        private final List<String> brokenShaders = new ArrayList<>();
         /** Pack-relative path of each file written, and the item it was written for. */
         private final Map<String, String> placed = new HashMap<>();
         /** Source files already followed, so shared parents and cycles are read once. */
@@ -350,6 +356,11 @@ public final class PackCompiler {
          * holding MythicArmor's whole pack made one warning per texture, over 900.
          */
         private final Map<List<String>, List<String>> clashes = new LinkedHashMap<>();
+        /**
+         * 3.0.8: what the packs plugins build as they run supply, by {@link #program} of the path inside
+         * the pack or overlay, and which of them supplies it - merged first, so known before any copy.
+         */
+        private final Map<String, String> liveSupplied = new HashMap<>();
 
         Run(Path packDir, List<PackSource> sources) {
             this.packDir = packDir;
@@ -897,9 +908,24 @@ public final class PackCompiler {
 
         private void mergeFiles(PackSource source, String origin) throws IOException {
             for (String file : source.files()) {
+                String inner = PackSource.inner(file);
+                if (source.live()) {
+                    liveSupplied.putIfAbsent(program(inner), origin);
+                } else if (PackSource.overlayOf(file) != null && !JsonMerge.mergeable(inner)) {
+                    // 3.0.8: the client lays overlays over the root in pack.mcmeta's order, the last
+                    // on top, and a copied pack's overlays are listed after a live pack's: an
+                    // ItemsAdder export's ia_overlay_1_21_6_to_11 text shader was the one a 1.21.8
+                    // client drew BetterHud's HUD with, so BetterHud moved nothing and PrimeHUD was
+                    // drawn off the screen. What a live pack supplies, in its root or its overlays,
+                    // a copy does not bring back in an overlay of its own - a shader with its other half.
+                    String live = liveSupplied.get(program(inner));
+                    if (live != null) {
+                        clashes.computeIfAbsent(List.of(origin, live), pair -> new ArrayList<>()).add(file);
+                        continue;
+                    }
+                }
                 byte[] theirs = source.read(file);
                 String owner = placed.get(file);
-                String inner = PackSource.inner(file);
                 if (owner != null && JsonMerge.mergeable(inner)) {
                     Path target = packDir.resolve(file);
                     JsonMerge.Result merged = JsonMerge.merge(inner, Files.readAllBytes(target), theirs);
@@ -1077,6 +1103,9 @@ public final class PackCompiler {
                 String owner = placed.getOrDefault(finding.path(), "a merged pack");
                 problems.add("shader " + finding.path() + " (" + owner + "), " + finding.severity().name().toLowerCase(
                         java.util.Locale.ROOT) + " on " + ShaderCheck.clientVersion() + ": " + finding.message());
+                if (finding.severity() == ShaderCheck.Severity.BROKEN && !report.drop().contains(finding.path())) {
+                    brokenShaders.add(finding.path() + " (" + owner + ")");
+                }
             }
             for (String path : report.drop()) {
                 Files.deleteIfExists(packDir.resolve(path));
@@ -1380,6 +1409,19 @@ public final class PackCompiler {
             return true;
         }
 
+        /**
+         * A path inside a pack or overlay, with a shader's .vsh, .fsh and .json standing for one
+         * program: a live pack that supplies one half of {@code rendertype_text} keeps a copy's other
+         * half from being paired with it.
+         */
+        static String program(String inner) {
+            java.util.regex.Matcher shader = SHADER_PROGRAM.matcher(inner);
+            return shader.matches() ? shader.group(1) : inner;
+        }
+
+        private static final java.util.regex.Pattern SHADER_PROGRAM =
+                java.util.regex.Pattern.compile("(assets/[^/]+/shaders/(?:core|program)/.+)\\.(?:vsh|fsh|json)");
+
         private static String clash(String origin, String relative, String owner) {
             return origin + ": " + relative + " is already supplied by " + owner + " with different content - keeping the first";
         }
@@ -1405,7 +1447,8 @@ public final class PackCompiler {
                         + (files.size() > 3 ? "..." : "");
                 if (live.contains(owner) && !live.contains(origin)) {
                     notes.add(origin + ": " + files.size() + " file(s) are copies of ones " + owner + " builds as"
-                            + " it runs, with other content - its versions are kept (" + examples + ")");
+                            + " it runs (at the same path, or in an overlay of its own) - its versions are kept,"
+                            + " the copies left out (" + examples + ")");
                 } else if (files.size() == 1) {
                     problems.add(clash(origin, files.get(0), owner));
                 } else {

@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.0.7.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.0.8.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -2555,7 +2555,8 @@ reescribiendo. En la consola: `BetterHud built its resource pack: N file(s), mer
 
 - **Versión.** BetterHud 2.x está compilado para Java 25: en un servidor 1.21.8 con Java 21 no
   carga (`UnsupportedClassVersionError`). La 1.14.1 sí, y su shader de texto ya lleva la rama de
-  1.21.6+ (`#if SHADER_VERSION >= 3`, bloques de uniforms).
+  1.21.6+ (`#if SHADER_VERSION >= 3`, bloques de uniforms). Con Java 25 la 2.0.0 carga, pero su
+  shader de texto **no compila en clientes 1.21.6 a 1.21.11**: ver más abajo (3.0.8).
 - **Packs de terceros (PrimeHUD v2).** Copia sus `huds/`, `layouts/`, `images/`, `texts/`,
   `heads/`, `backgrounds/`, `assets/`, `config.yml` y `shader.yml`, pero **no** su `shaders/` ni
   su `build/`: son de 1.21.4 o anteriores (uniforms sueltos, archivos `.json` de programa) y en
@@ -2576,6 +2577,55 @@ reescribiendo. En la consola: `BetterHud built its resource pack: N file(s), mer
 define. Así, el `#else` con las declaraciones de 1.21.4 de un shader escrito para varias versiones
 (el de BetterHud) no se cuenta como roto, y `drop-broken` no lo quita. Una condición sobre algo
 que el shader no define (una macro que pone el cliente) se lee entera, como antes.
+
+#### BetterHud 2.0.0, ItemsAdder y un pack que el cliente rechaza (3.0.8)
+
+Un cliente que descarga el pack y no lo aplica (`... downloaded the resource pack but could not apply
+it`, estado `FAILED_RELOAD`) casi siempre ha encontrado un shader que no compila. Entonces el cliente
+**quita todos los packs del servidor**, no solo el roto: ni fuentes, ni modelos, ni HUD (texto en
+cuadros, ítems morados y negros). Se reprodujo con un cliente 1.21.8 real, sin pantalla (Xvfb y
+Mesa), con la configuración de un servidor real (PrimeHUD v2 sobre BetterHud 2.0.0, una exportación
+de ItemsAdder y MythicArmor):
+
+- **BetterHud 2.0.0** numera sus overlays `SHADER_VERSION` 0, 1, 2 y 3 (`betterhud_1_21_2`, `_1_21_4`,
+  `_1_21_6`, `_26_1`), pero su plantilla (`plugins/BetterHud/shaders/text.vsh` y `text.fsh`, y también
+  la vieja de PrimeHUD) solo usa la sintaxis de 1.21.6 con `#if SHADER_VERSION >= 3`. El overlay que
+  carga un cliente 1.21.6–1.21.11 lleva el 2, toma la rama de 1.21.4 y el cliente dice
+  `` `FogColor' redeclared `` y `no function with name 'linear_fog'`. Arreglo, uno de los dos:
+  - BetterHud **1.14.1** (carga en Java 21 y en 25), borrando la carpeta `plugins/BetterHud/shaders/`
+    para que escriba la suya; o
+  - BetterHud 2.0.0, borrando `plugins/BetterHud/shaders/` para que escriba sus plantillas, y
+    cambiando en `text.vsh` y `text.fsh` las cuatro líneas `#if SHADER_VERSION >= 3` por
+    `#if SHADER_VERSION >= 2`; después `/hud reload`.
+- **El shader de ItemsAdder tapaba el de BetterHud.** El cliente pone los overlays sobre la raíz en el
+  orden de `pack.mcmeta`, el último encima, y los de una exportación copiada van después de los de un
+  pack vivo: el `rendertype_text.vsh` de `ia_overlay_1_21_6_to_11` era el que dibujaba, BetterHud no
+  movía nada y PrimeHUD quedaba fuera de la pantalla aunque el pack se aplicara. Desde 3.0.8, lo que
+  da un pack vivo (en su raíz o en sus overlays) no lo vuelve a traer el overlay de un pack copiado; un
+  shader va entero, con su otra mitad. Las listas JSON compartidas (fuentes, atlas) se siguen uniendo.
+  Sale en la nota de las copias: `packs/generated_4 pack: 4 file(s) are copies of ones BetterHud pack
+  builds as it runs (at the same path, or in an overlay of its own) ...`.
+- **`pack.shaders` lo ve ahora.** BetterHud escribe las declaraciones en una sola línea y el revisor
+  solo leía la primera de cada línea (aquí `uniform sampler2D Sampler0;`, correcta): decía `0
+  finding(s)`. Ahora lee la línea entera, dice que un uniform suelto que un bloque importado ya declara
+  no compila (`'FogColor' redeclared`), y que una llamada a `linear_fog`, `linear_fog_fade`,
+  `fog_distance` o `minecraft_sample_lightmap` (funciones de los includes de vanilla hasta 1.21.5)
+  tampoco. Un uniform suelto que el shader declara y nunca lee (el `ChunkOffset` de BetterHud 1.14.1)
+  ya no se cuenta: sin rellenar no cambia nada, y `drop-broken` no debe quitar un shader que funciona.
+- **El aviso nombra al sospechoso.** Si la build tiene shaders rotos, el `FAILED_RELOAD` los dice:
+  `This build keeps 1 shader(s) a 1.21.8 client cannot use - the likely cause:
+  betterhud_1_21_6/assets/minecraft/shaders/core/rendertype_text.fsh (BetterHud pack). Fix them where
+  they come from, or set pack.shaders: drop-broken to leave them out.` Con `drop-broken` el pack se
+  aplica, aunque el HUD de ese shader no se dibuje bien: arreglarlo en su origen es lo bueno.
+
+| Cliente 1.21.8 real (Mesa llvmpipe), Paper 1.21.8 en Java 25 | Resultado |
+|---|---|
+| Pack de BetterHud 2.0.0 con la plantilla de PrimeHUD, solo | `Caught error loading resourcepacks`: `FogColor` redeclarado, sin `linear_fog` |
+| Igual con la plantilla propia de BetterHud 2.0.0 | el mismo error |
+| BetterHud 1.14.1, 3.0.7 (overlay de ItemsAdder encima) | el pack se aplica, PrimeHUD no se ve: el `rendertype_text.vsh` cargado es el de `ia_overlay_1_21_6_to_11` |
+| BetterHud 1.14.1, 3.0.8 | se aplica y PrimeHUD se ve en una captura del cliente: perfil, barras, coordenadas, Vote Party, Job, hotbar |
+| BetterHud 2.0.0 con la plantilla corregida (`>= 2`), 3.0.8 | se aplica y PrimeHUD se ve igual |
+| Revisor sobre el pack de BetterHud 2.0.0 | marca `rendertype_text.fsh`: `ColorModulator` suelto, `FogColor` redeclarado, `linear_fog()` |
 
 #### Qué se ha verificado en un servidor Paper 1.21.8 real (3.0.5, BetterHud + PrimeHUD v2)
 

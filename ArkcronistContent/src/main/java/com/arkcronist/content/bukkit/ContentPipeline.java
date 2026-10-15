@@ -354,18 +354,24 @@ public final class ContentPipeline {
      * @param minigame    the minigame's glyphs, once given characters; null with no minigame defined
      * @param bedrock     the content made for Bedrock players; null without Geyser
      * @param bedrockPack where its resource pack was written
+     * @param brokenShaders 3.0.8: the shaders the pack keeps that the client cannot use, named when a
+     *                      player's client fails to apply it
      */
     record Extras(@Nullable MinigameRenderer.Glyphs minigame, @Nullable BedrockConverter.Build bedrock,
-                  @Nullable Path bedrockPack) {
+                  @Nullable Path bedrockPack, List<String> brokenShaders) {
 
-        static final Extras NONE = new Extras(null, null, null);
+        static final Extras NONE = new Extras(null, null, null, List.of());
 
         Extras withMinigame(@Nullable MinigameRenderer.Glyphs minigame) {
-            return new Extras(minigame, bedrock, bedrockPack);
+            return new Extras(minigame, bedrock, bedrockPack, brokenShaders);
         }
 
         Extras withBedrock(BedrockConverter.Build bedrock, Path bedrockPack) {
-            return new Extras(minigame, bedrock, bedrockPack);
+            return new Extras(minigame, bedrock, bedrockPack, brokenShaders);
+        }
+
+        Extras withBrokenShaders(List<String> brokenShaders) {
+            return new Extras(minigame, bedrock, bedrockPack, List.copyOf(brokenShaders));
         }
     }
 
@@ -958,7 +964,7 @@ public final class ContentPipeline {
                     mergedPacks(), contentsDir, builtinIcons()));
             build.problems().addAll(result.problems());
             result.notes().forEach(note -> logger.info("[pack] " + note));
-            return build;
+            return build.withExtras(build.extras().withBrokenShaders(result.brokenShaders()));
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
@@ -1348,6 +1354,7 @@ public final class ContentPipeline {
         // A failed upload leaves the live pack alone: its link still works, the new one would not.
         boolean changed = !(hosted.keepPrevious() && delivery.live() != null)
                 && delivery.publish(build.artifact(), url);
+        delivery.suspects(build.extras().brokenShaders());
         if (changed) {
             delivery.sendAll(plugin.getServer().getOnlinePlayers());
         }

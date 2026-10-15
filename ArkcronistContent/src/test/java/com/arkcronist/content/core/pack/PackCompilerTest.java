@@ -289,6 +289,41 @@ class PackCompilerTest {
         assertTrue(note.contains("knight_chest_piece_0.png, ") && note.endsWith("...)"), note);
     }
 
+    /**
+     * 3.0.8: overlays are laid over the root in pack.mcmeta's order, the last on top, and a copied
+     * pack's are listed after a live one's - so an ItemsAdder export's 1.21.6+ text shader was the one
+     * a 1.21.8 client drew BetterHud's HUD with, and PrimeHUD stayed off the screen. What a live pack
+     * supplies, a copy's overlay no longer brings back: the whole shader program, both halves; other
+     * overlay files, and the shared JSON lists, as before.
+     */
+    @Test
+    void aCopiedPacksOverlayDoesNotReplaceWhatALivePackSupplies() throws IOException {
+        Path live = temp.resolve("plugins/ArkcronistContent/data/betterhud/1");
+        write(live, "pack.mcmeta", "{\"pack\": {\"pack_format\": 64, \"description\": \"\"}, \"overlays\": {\"entries\": ["
+                + "{\"formats\": [56, 99], \"directory\": \"betterhud_1_21_6\"}]}}");
+        write(live, "betterhud_1_21_6/assets/minecraft/shaders/core/rendertype_text.vsh", "// BetterHud vsh");
+        Path export = temp.resolve("packs/generated_5");
+        write(export, "pack.mcmeta", "{\"pack\": {\"pack_format\": 64, \"description\": \"\"}, \"overlays\": {\"entries\": ["
+                + "{\"formats\": [63, 64], \"directory\": \"ia_overlay_1_21_6_to_11\"}]}}");
+        write(export, "ia_overlay_1_21_6_to_11/assets/minecraft/shaders/core/rendertype_text.vsh", "// ItemsAdder vsh");
+        write(export, "ia_overlay_1_21_6_to_11/assets/minecraft/shaders/core/rendertype_text.fsh", "// ItemsAdder fsh");
+        write(export, "ia_overlay_1_21_6_to_11/assets/lk/textures/item/helmet.png", png("helmet"));
+        write(export, "ia_overlay_1_21_6_to_11/assets/minecraft/font/default.json", "{\"providers\": []}");
+        Path pack = temp.resolve("pack");
+
+        PackCompiler.Result result = new PackCompiler(SETTINGS).compile(pack, List.of(), Map.of(),
+                List.of(new ExternalPack("packs/generated_5", export), new ExternalPack("BetterHud", live, true)));
+
+        assertEquals("// BetterHud vsh", Files.readString(pack.resolve("betterhud_1_21_6/assets/minecraft/shaders/core/rendertype_text.vsh")));
+        assertFalse(Files.exists(pack.resolve("ia_overlay_1_21_6_to_11/assets/minecraft/shaders/core/rendertype_text.vsh")));
+        assertFalse(Files.exists(pack.resolve("ia_overlay_1_21_6_to_11/assets/minecraft/shaders/core/rendertype_text.fsh")),
+                "the other half goes with it: BetterHud's vertex shader is not paired with ItemsAdder's fragment shader");
+        assertTrue(Files.exists(pack.resolve("ia_overlay_1_21_6_to_11/assets/lk/textures/item/helmet.png")));
+        assertTrue(Files.exists(pack.resolve("ia_overlay_1_21_6_to_11/assets/minecraft/font/default.json")));
+        assertTrue(result.notes().stream().anyMatch(note -> note.startsWith("packs/generated_5 pack: 2 file(s) are copies of"
+                + " ones BetterHud pack builds as it runs")), result.notes().toString());
+    }
+
     /** Two packs kept on disk that disagree on many files: still a problem, but one line for the pair. */
     @Test
     void clashesBetweenTwoCopiedPacksAreOneProblemPerPair() throws IOException {

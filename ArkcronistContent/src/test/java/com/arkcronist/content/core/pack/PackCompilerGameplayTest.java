@@ -127,7 +127,7 @@ class PackCompilerGameplayTest {
         PackCompilerTest.write(demo, "shaders/core/terrain.vsh",
                 terrain.replace("#moj_import <minecraft:fog.glsl>", "#moj_import <minecraft:fog.glsl>\n#moj_import <demo:tint.glsl>"));
         PackCompilerTest.write(demo, "shaders/include/tint.glsl", "#version 150\nvec4 tint(vec4 c) { return c; }\n");
-        PackCompilerTest.write(demo, "shaders/core/rendertype_translucent.vsh", "#version 150\nuniform mat4 ModelViewMat;\nvoid main() {}\n");
+        PackCompilerTest.write(demo, "shaders/core/rendertype_translucent.vsh", "#version 150\nin vec3 Position;\nuniform mat4 ModelViewMat;\nvoid main() { gl_Position = ModelViewMat * vec4(Position, 1.0); }\n");
         PackCompilerTest.write(demo, "shaders/readme.txt", "notes");
         Path pack = temp.resolve("pack");
 
