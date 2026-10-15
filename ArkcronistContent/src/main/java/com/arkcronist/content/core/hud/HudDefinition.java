@@ -57,18 +57,35 @@ public record HudDefinition(String namespace, String id, ResourceLocation full, 
     /**
      * 3.1: {@code betterhud:} - a bar BetterHud draws, as one of its own HUDs, instead of this
      * plugin's action bar: {@code false} keeps it on the action bar, {@code true} hands it over,
-     * and {@code { gui: [x, y], pixel: [x, y] }} hands it over at a place of its own - BetterHud's
-     * percentages of the screen and pixels from there. Without a place it stays where its anchor
-     * (or its ascent and offset) put it.
+     * and a section says how: {@code { gui: [x, y], pixel: [x, y] }} puts it at a place of its own,
+     * in BetterHud's terms; without one it stays where its anchor put it - or, 3.1.1, in a row of
+     * its own under BetterHud's health and hunger bars, drawn as they are (PrimeHUD's).
      *
-     * @param drawn whether BetterHud draws it
-     * @param gui   BetterHud's {@code gui}: percent across and down the screen; null for where it was
-     * @param pixel BetterHud's {@code pixel}: pixels right and down from there; null for where it was
+     * @param drawn     whether BetterHud draws it; null for {@code huds.betterhud} in config.yml
+     * @param gui       BetterHud's {@code gui}: percent across and down the screen; null for where it was
+     * @param pixel     BetterHud's {@code pixel}: pixels right and down from there; null for where it was
+     * @param icon      3.1.1: the small icon a bar drawn as BetterHud's status bars shows at its left end
+     *                  (about 7 x 6); null for the full icon, made smaller
+     * @param color     3.1.1: that bar's colour, 0xRRGGBB; null for its icon's
+     * @param hideEmpty 3.1.1: drawn only while its value is above 0, as PrimeHUD's armour bar
+     * @param warnBelow 3.1.1: at or under this percent of its max it blinks, as PrimeHUD's low health;
+     *                  0 for never
      */
-    public record BetterHud(boolean drawn, @Nullable Spot gui, @Nullable Spot pixel) {
+    public record BetterHud(@Nullable Boolean drawn, @Nullable Spot gui, @Nullable Spot pixel,
+                            @Nullable ResourceLocation icon, @Nullable Integer color, boolean hideEmpty,
+                            int warnBelow) {
 
-        public static final BetterHud OFF = new BetterHud(false, null, null);
-        public static final BetterHud ON = new BetterHud(true, null, null);
+        public static final BetterHud OFF = new BetterHud(false, null, null, null, null, false, 0);
+        public static final BetterHud ON = new BetterHud(true, null, null, null, null, false, 0);
+
+        public BetterHud(boolean drawn, @Nullable Spot gui, @Nullable Spot pixel) {
+            this(drawn, gui, pixel, null, null, false, 0);
+        }
+
+        /** Whether it has a place of its own on BetterHud's screen. */
+        public boolean placed() {
+            return gui != null || pixel != null;
+        }
     }
 
     /** Two numbers: across, then down. */

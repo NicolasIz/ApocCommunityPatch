@@ -1733,14 +1733,17 @@ public final class ContentLoader {
         // A bar placed against the vanilla HUD is meant for the action bar, unless it says otherwise.
         return new HudDefinition(namespace, id, full, half, empty, height, ascent, segments, spacing, offset, source,
                 flag(section, "action-bar", anchor != null, prefix, problems), sourceRoot, file, anchor,
-                betterHud(section.get("betterhud"), prefix, problems));
+                betterHud(section.get("betterhud"), namespace, sourceRoot, prefix, problems));
     }
 
     /**
-     * 3.1: {@code betterhud:} - {@code true}, {@code false}, or {@code { gui: [x, y], pixel: [x, y] }}
-     * for a place of its own on BetterHud's screen. Null when it is not there: config.yml decides.
+     * 3.1: {@code betterhud:} - {@code true}, {@code false}, or a section: {@code enabled},
+     * {@code gui: [x, y]} and {@code pixel: [x, y]} for a place of its own on BetterHud's screen, and
+     * (3.1.1) {@code icon}, {@code color}, {@code hide-empty} and {@code warn-below} for a bar drawn as
+     * BetterHud's status bars. Null when it is not there: config.yml decides.
      */
-    private static HudDefinition.BetterHud betterHud(Object node, String prefix, List<String> problems) {
+    private static HudDefinition.BetterHud betterHud(Object node, String namespace, Path sourceRoot, String prefix,
+                                                     List<String> problems) {
         if (node == null) {
             return null;
         }
@@ -1748,15 +1751,31 @@ public final class ContentLoader {
             return drawn ? HudDefinition.BetterHud.ON : HudDefinition.BetterHud.OFF;
         }
         if (!(node instanceof Map<?, ?> section)) {
-            problems.add(prefix + "'betterhud' should be true, false or { gui: [x, y], pixel: [x, y] }; left to"
-                    + " config.yml");
+            problems.add(prefix + "'betterhud' should be true, false or a section such as { gui: [x, y], pixel: [x, y] };"
+                    + " left to config.yml");
             return null;
         }
-        if (Boolean.FALSE.equals(section.get("enabled"))) {
-            return HudDefinition.BetterHud.OFF;
+        Boolean drawn = section.get("enabled") instanceof Boolean enabled ? enabled : null;
+        ResourceLocation icon = location(section, "icon", namespace, prefix + "betterhud ", problems);
+        if (icon != null && icon.namespace().equals(namespace) && !Files.isRegularFile(texturePath(sourceRoot, icon))) {
+            problems.add(prefix + "betterhud icon textures/" + icon.path() + ".png is not in " + sourceRoot.getFileName()
+                    + "; using the full icon, made smaller");
+            icon = null;
         }
-        return new HudDefinition.BetterHud(true, spot(section, "gui", -100, 200, prefix, problems),
-                spot(section, "pixel", -4096, 4096, prefix, problems));
+        Integer color = null;
+        Object rawColor = section.get("color");
+        if (rawColor != null) {
+            String text = String.valueOf(rawColor).trim();
+            if (text.matches("#?[0-9a-fA-F]{6}")) {
+                color = Integer.parseInt(text.replace("#", ""), 16);
+            } else {
+                problems.add(prefix + "'betterhud.color' should be like \"#1c9ec0\"; using its icon's colour");
+            }
+        }
+        return new HudDefinition.BetterHud(drawn, spot(section, "gui", -100, 200, prefix, problems),
+                spot(section, "pixel", -4096, 4096, prefix, problems), icon, color,
+                flag(section, "hide-empty", false, prefix, problems),
+                (int) number(section, "warn-below", 0, 0, 100, prefix, problems));
     }
 
     private static HudDefinition.Spot spot(Map<?, ?> section, String key, int min, int max, String prefix,

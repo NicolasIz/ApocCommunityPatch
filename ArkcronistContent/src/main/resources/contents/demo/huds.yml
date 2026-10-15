@@ -13,14 +13,22 @@
 #  or on the action bar, sent by the plugin: action-bar: true.
 #
 #  (3.1) With BetterHud and PlaceholderAPI installed, BetterHud draws the bars
-#  that would go on the action bar instead, as HUDs of its own, in the same
-#  place (they are written to BetterHud's folder: huds/arkcontent.yml...), so
-#  they sit with the rest of its HUD - PrimeHUD's, say. On one HUD:
+#  that would go on the action bar instead, as HUDs of its own (written to
+#  BetterHud's folder: huds/arkcontent.yml...), so the screen has one HUD.
+#  (3.1.1) Where BetterHud already draws status bars - PrimeHUD's health and
+#  hunger bars - these are drawn as more of them, in rows under them: a frame
+#  in the bar's colour with its small icon, filled as far as the value goes.
+#  Elsewhere they stay where the anchor puts them. On one HUD:
 #
 #     betterhud: false                          keep it on the action bar
-#     betterhud: { gui: [0, 0], pixel: [60, 120] }  move it, in BetterHud's
-#                 terms: percent of the screen, then pixels right and down
-#                 from there to the middle of the bar's top edge
+#     betterhud:
+#       icon: hud/thirst_small                  its icon there (about 7 x 6)
+#       color: "#1c9ec0"                        its colour there
+#       warn-below: 30                          blink at 30% or less
+#       hide-empty: true                        only shown while above 0
+#       gui: [0, 0]                             a place of its own, in
+#       pixel: [60, 120]                        BetterHud's terms (percent of
+#                 the screen, then pixels to the middle of the bar's top edge)
 #
 #  and huds.betterhud: false in config.yml keeps them all on the action bar.
 #
@@ -63,6 +71,7 @@ huds:
     anchor: { at: above-food, row: 1 }
     segments: 10
     spacing: -1
+    betterhud: { icon: hud/thirst_small, color: "#1c9ec0", warn-below: 30 }
     value:
       start: 20
       max: 20
@@ -81,6 +90,7 @@ huds:
     anchor: { at: above-health, row: 1 }
     segments: 10
     spacing: -2
+    betterhud: { icon: hud/mana_small, color: "#8a3fd6" }
     value:
       start: 100
       max: 100
@@ -94,4 +104,5 @@ huds:
     anchor: { at: above-health, row: 2 }
     segments: 10
     spacing: -2
+    betterhud: { icon: hud/shield_small, color: "#d9a520", hide-empty: true }
     value: { stat: absorption, max: 20 }

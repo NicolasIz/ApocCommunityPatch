@@ -93,3 +93,5 @@ contents/medieval_props/models/furniture/pila_lena.json 3cbb21b37a864b1c32c8fbe9
 contents/medieval_props/textures/furniture/pila_lena.png 32d199b5171830631ae1a9c5acfc5add9ef2f1bb
 # 2.0.0-3.0.8: the HUDs before 3.1 said BetterHud could draw them
 contents/demo/huds.yml d437098b5aa998ecafdbfd8dfc0f9d0423b0fabf
+# 3.1.0: the HUDs before 3.1.1 drew them as BetterHud's status bars
+contents/demo/huds.yml 6d1fb667392eb28a60570251beefbc06f397cf76

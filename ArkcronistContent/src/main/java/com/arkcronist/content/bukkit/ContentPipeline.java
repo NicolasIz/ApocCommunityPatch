@@ -138,8 +138,8 @@ public final class ContentPipeline {
      * The examples each later version added. A server that already has a contents/ folder gets
      * these on upgrade (see {@link ExampleUpdates}); a new one gets them with the rest.
      */
-    private static final Map<String, List<String>> ADDED_EXAMPLES = Map.of(
-            "1.1.0", List.of(
+    private static final Map<String, List<String>> ADDED_EXAMPLES = Map.ofEntries(
+            Map.entry("1.1.0", List.of(
                     "contents/demo/crops.yml",
                     "contents/demo/textures/item/ruby_seeds.png",
                     "contents/demo/textures/crop/ruby_stage_0.png",
@@ -148,13 +148,13 @@ public final class ContentPipeline {
                     "contents/demo/textures/crop/ruby_stage_3.png",
                     "contents/demo/emojis.yml",
                     "contents/demo/textures/emoji/ruby.png",
-                    "contents/demo/textures/emoji/heart.png"),
-            "1.3.0", List.of(
+                    "contents/demo/textures/emoji/heart.png")),
+            Map.entry("1.3.0", List.of(
                     "contents/demo/furniture.yml",
                     "contents/demo/models/furniture/ruby_chest.bbmodel",
                     "contents/demo/models/furniture/ruby_bed.json",
-                    "contents/demo/textures/furniture/ruby_bed.png"),
-            "1.4.0", List.of(
+                    "contents/demo/textures/furniture/ruby_bed.png")),
+            Map.entry("1.4.0", List.of(
                     "contents/demo/armor.yml",
                     "contents/demo/textures/entity/equipment/humanoid/ruby_armor.png",
                     "contents/demo/textures/entity/equipment/humanoid_leggings/ruby_armor.png",
@@ -163,11 +163,11 @@ public final class ContentPipeline {
                     "contents/demo/textures/item/ruby_leggings.png",
                     "contents/demo/textures/item/ruby_boots.png",
                     "contents/demo/models/item/ruby_helmet_worn.json",
-                    "contents/demo/textures/item/ruby_helmet_worn.png"),
-            "1.5.0", List.of(
+                    "contents/demo/textures/item/ruby_helmet_worn.png")),
+            Map.entry("1.5.0", List.of(
                     "contents/demo/advancements.yml",
-                    "contents/demo/textures/gui/advancements/ruby.png"),
-            "1.7.0", List.of(
+                    "contents/demo/textures/gui/advancements/ruby.png")),
+            Map.entry("1.7.0", List.of(
                     "contents/demo/guns.yml",
                     "contents/demo/textures/item/ruby_pistol.png",
                     "contents/demo/textures/item/ruby_shotgun.png",
@@ -185,36 +185,41 @@ public final class ContentPipeline {
                     "contents/demo/textures/hud/thirst_empty.png",
                     "contents/demo/textures/hud/mana_full.png",
                     "contents/demo/textures/hud/mana_half.png",
-                    "contents/demo/textures/hud/mana_empty.png"),
-            "1.9.0", List.of(
+                    "contents/demo/textures/hud/mana_empty.png")),
+            Map.entry("1.9.0", List.of(
                     "contents/demo/models/furniture/ruby_chest_double.bbmodel",
                     "contents/demo/quest_board.yml",
                     "contents/demo/models/furniture/medieval_bulletin_board.json",
-                    "contents/demo/textures/furniture/medieval_bulletin_board.png"),
-            "1.9.5", Stream.of(
+                    "contents/demo/textures/furniture/medieval_bulletin_board.png")),
+            Map.entry("1.9.5", Stream.of(
                             Stream.of("contents/medieval_props/furniture.yml",
                                     "contents/medieval_props/models/furniture/guillotina_plaza.bbmodel",
                                     "contents/medieval_props/models/furniture/guillotina_plaza_icon.json",
                                     "contents/medieval_props/textures/furniture/guillotina_plaza.png"),
                             MEDIEVAL_PROPS.stream().map(id -> "contents/medieval_props/models/furniture/" + id + ".json"),
                             MEDIEVAL_PROPS.stream().map(id -> "contents/medieval_props/textures/furniture/" + id + ".png"))
-                    .flatMap(Function.identity()).toList(),
+                    .flatMap(Function.identity()).toList()),
             // 1.9.6 gave each prop a texture of its own: to a pack 1.9.5 already set up, these are new.
-            "1.9.6", Stream.concat(Stream.of("contents/medieval_props/textures/furniture/guillotina_plaza.png"),
-                    MEDIEVAL_PROPS.stream().map(id -> "contents/medieval_props/textures/furniture/" + id + ".png")).toList(),
+            Map.entry("1.9.6", Stream.concat(Stream.of("contents/medieval_props/textures/furniture/guillotina_plaza.png"),
+                    MEDIEVAL_PROPS.stream().map(id -> "contents/medieval_props/textures/furniture/" + id + ".png")).toList()),
             // 2.0 anchors the demo HUDs (huds.yml is brought up to date by its hash) and adds a shield bar.
-            "2.0.0", List.of(
+            Map.entry("2.0.0", List.of(
                     "contents/demo/textures/hud/shield_full.png",
                     "contents/demo/textures/hud/shield_half.png",
-                    "contents/demo/textures/hud/shield_empty.png"),
+                    "contents/demo/textures/hud/shield_empty.png")),
             // 3.0: a rare ore and a fishing rod with the HUD minigame, and a backpack worn on the back.
-            "3.0.0", List.of(
+            Map.entry("3.0.0", List.of(
                     "contents/demo/minigames.yml",
                     "contents/demo/textures/block/star_ore.png",
                     "contents/demo/textures/item/master_rod.png",
                     "contents/medieval_props/cosmetics.yml",
                     "contents/medieval_props/models/cosmetic/mochila_viaje.json",
-                    "contents/medieval_props/textures/cosmetic/mochila_viaje.png"));
+                    "contents/medieval_props/textures/cosmetic/mochila_viaje.png")),
+            // 3.1.1: small icons for the bars drawn as BetterHud's status bars.
+            Map.entry("3.1.1", List.of(
+                    "contents/demo/textures/hud/thirst_small.png",
+                    "contents/demo/textures/hud/mana_small.png",
+                    "contents/demo/textures/hud/shield_small.png")));
 
     /** Copied into contents/ the first time the plugin starts. */
     private static final List<String> EXAMPLES = Stream.concat(FIRST_EXAMPLES.stream(),

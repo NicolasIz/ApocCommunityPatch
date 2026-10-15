@@ -283,6 +283,14 @@ class ContentLoaderGameplayTest {
                     icons: { full: hud/shield }
                     value: { stat: absorption }
                     betterhud: { pixel: 12 }
+                  styled:
+                    icons: { full: hud/shield }
+                    value: { stat: absorption }
+                    betterhud: { enabled: true, icon: hud/shield, color: "#d9a520", warn-below: 30, hide-empty: true }
+                  wrong_style:
+                    icons: { full: hud/shield }
+                    value: { stat: absorption }
+                    betterhud: { icon: hud/nothing, color: gold }
                 """);
 
         LoadReport report = new ContentLoader().load(contents);
@@ -291,10 +299,22 @@ class ContentLoaderGameplayTest {
                 .collect(java.util.stream.Collectors.toMap(HudDefinition::id, hud -> hud));
         assertNull(huds.get("left_alone").betterHud(), "config.yml decides");
         assertEquals(HudDefinition.BetterHud.OFF, huds.get("kept").betterHud());
-        assertEquals(new HudDefinition.BetterHud(true, new HudDefinition.Spot(0, 0), new HudDefinition.Spot(45, 172)),
-                huds.get("placed").betterHud());
-        assertEquals(HudDefinition.BetterHud.ON, huds.get("odd").betterHud(), "drawn by BetterHud, where it was");
+        assertEquals(new HudDefinition.BetterHud(null, new HudDefinition.Spot(0, 0), new HudDefinition.Spot(45, 172),
+                null, null, false, 0), huds.get("placed").betterHud(), "a section: config.yml still decides");
+        assertTrue(huds.get("placed").betterHud().placed());
+        assertEquals(new HudDefinition.BetterHud(null, null, null, null, null, false, 0), huds.get("odd").betterHud());
         assertProblem(report.problems(), "demo:odd", "'betterhud.pixel' should be [x, y]");
+        // 3.1.1: drawn as BetterHud's status bars.
+        HudDefinition.BetterHud styled = huds.get("styled").betterHud();
+        assertEquals(Boolean.TRUE, styled.drawn());
+        assertEquals("demo:hud/shield", styled.icon().toString());
+        assertEquals(0xD9A520, styled.color());
+        assertEquals(30, styled.warnBelow());
+        assertTrue(styled.hideEmpty());
+        assertNull(huds.get("wrong_style").betterHud().icon());
+        assertNull(huds.get("wrong_style").betterHud().color());
+        assertProblem(report.problems(), "demo:wrong_style", "betterhud icon textures/hud/nothing.png is not in");
+        assertProblem(report.problems(), "demo:wrong_style", "'betterhud.color' should be like");
     }
 
     @Test

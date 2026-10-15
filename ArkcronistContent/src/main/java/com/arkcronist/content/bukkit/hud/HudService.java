@@ -335,7 +335,8 @@ public final class HudService {
     }
 
     /**
-     * {@code hud_<id>}, {@code hud_<id>_value}, {@code hud_<id>_max} and {@code space_<pixels>}.
+     * {@code hud_<id>}, {@code hud_<id>_value}, {@code hud_<id>_max}, {@code hud_<id>_percent} (3.1.1,
+     * 0-100) and {@code space_<pixels>}.
      * Any thread.
      */
     public @Nullable String placeholder(@Nullable OfflinePlayer player, String params) {
@@ -351,7 +352,7 @@ public final class HudService {
         }
         String rest = params.substring("hud_".length());
         String part = "";
-        for (String suffix : new String[]{"_value", "_max"}) {
+        for (String suffix : new String[]{"_value", "_max", "_percent"}) {
             if (rest.endsWith(suffix) && registry.find(rest).isEmpty()) {
                 part = suffix;
                 rest = rest.substring(0, rest.length() - suffix.length());
@@ -368,6 +369,10 @@ public final class HudService {
         return switch (part) {
             case "_value" -> format(valueAndMax(player, hud)[0]);
             case "_max" -> format(valueAndMax(player, hud)[1]);
+            case "_percent" -> {
+                double[] value = valueAndMax(player, hud);
+                yield String.valueOf(value[1] <= 0 ? 0 : Math.round(Math.max(0, Math.min(1, value[0] / value[1])) * 100));
+            }
             default -> render(player, hud);
         };
     }

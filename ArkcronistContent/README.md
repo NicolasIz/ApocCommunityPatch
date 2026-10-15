@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.1.0.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.1.1.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -2638,6 +2638,34 @@ salir en la barra de acción. Sin configurar nada:
   `config.yml` de este plugin los deja todos ahí. Sin PlaceholderAPI no se pasan a BetterHud.
 - Un HUD cuyos iconos son texturas de otro pack (no de su carpeta) se queda en la barra de acción,
   con un aviso.
+
+**3.1.1: un solo HUD.** Si BetterHud ya dibuja barras de estado (las de PrimeHUD: imágenes
+`health_bar` y `hunger_bar` de 12 píxeles de alto en sus `layouts/`), las barras de este plugin no
+salen aparte junto a la hotbar: se dibujan **como más barras de esas**, en el mismo panel, en filas
+debajo de las suyas.
+
+- **Aspecto.** Igual que las de PrimeHUD: marco del mismo ancho, borde claro con las esquinas
+  recortadas, interior oscuro translúcido, el icono pequeño a la izquierda, y encima el relleno de su
+  color con el hueco del icono. El dibujo es del plugin; de PrimeHUD solo se lee dónde están sus
+  barras y cuánto miden.
+- **Dónde.** La que va del lado de la comida (`anchor` en `food` o `above-food`: la sed) va en la
+  columna de la comida, y las demás (maná, escudo) en la de la vida. Empiezan en la fila siguiente
+  a la de armadura y aire de PrimeHUD, con su mismo paso (15 píxeles), en el mismo HUD (`gui` y
+  `pixel` de su HUD de vida), así que su `disable-legacy-offset` las mueve a la vez.
+- **Por HUD**, en `betterhud:`:
+  - `icon: hud/thirst_small` es el icono pequeño, de unos 7×6. Sin él se usa el icono lleno reducido.
+  - `color: "#1c9ec0"` es el color de la barra. Sin él se toma el del icono.
+  - `warn-below: 30` hace que parpadee al 30 % o menos, como la vida baja de PrimeHUD. Usa el
+    placeholder nuevo `%arkcontent_hud_<id>_percent%` (de 0 a 100).
+  - `hide-empty: true` hace que solo salga mientras valga más de 0, como la armadura de PrimeHUD.
+    El ejemplo lo usa en el escudo.
+  - Un HUD con `gui:`/`pixel:` propios sigue saliendo como fila de iconos donde se diga.
+- **Los ejemplos** traen los tres iconos pequeños (`textures/hud/*_small.png`, que se añaden solos
+  al actualizar) y el `huds.yml` con esas claves. Si no habías tocado el `huds.yml`, se actualiza
+  solo. Si lo habías editado, añade a mano `betterhud: { icon: ..., color: ... }`; sin eso salen igual
+  como barras de PrimeHUD, con el icono reducido y el color del icono.
+- Sin barras de estado en BetterHud (su configuración por defecto, u otro pack), todo sigue como en
+  3.1: filas de iconos donde las ponía la barra de acción.
 
 | Cliente 1.21.8 real, BetterHud 2.0.0 + PrimeHUD v2 (3.1) | Resultado |
 |---|---|

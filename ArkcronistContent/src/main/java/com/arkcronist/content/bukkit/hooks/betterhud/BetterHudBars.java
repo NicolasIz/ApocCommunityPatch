@@ -4,6 +4,7 @@ import com.arkcronist.content.bukkit.hud.HudRegistry;
 import com.arkcronist.content.bukkit.hud.HudService;
 import com.arkcronist.content.core.definition.ResourceLocation;
 import com.arkcronist.content.core.hud.BetterHudExport;
+import com.arkcronist.content.core.hud.BetterHudPanel;
 import com.arkcronist.content.core.hud.HudDefinition;
 import com.arkcronist.content.core.hud.HudLayout;
 import org.bukkit.plugin.Plugin;
@@ -34,6 +35,9 @@ import java.util.stream.Stream;
  * pack again, which {@link BetterHudHook} merges into this plugin's. Unchanged files mean no reload,
  * so the rebuild that merge starts ends there. With no bar to hand over, the files are removed.</p>
  *
+ * <p>3.1.1: where BetterHud already has status bars (PrimeHUD's), this plugin's are drawn as more of
+ * them, under them - see {@link BetterHudPanel}.</p>
+ *
  * <p>BetterHud reads the values through PlaceholderAPI: without it the bars stay on the action bar.</p>
  */
 public final class BetterHudBars {
@@ -61,7 +65,9 @@ public final class BetterHudBars {
         for (HudLayout layout : layouts.stream()
                 .sorted(Comparator.comparing((HudLayout hud) -> hud.definition().fullId())).toList()) {
             HudDefinition hud = layout.definition();
-            boolean wanted = hud.betterHud() != null ? hud.betterHud().drawn() : enabled && hud.actionBar();
+            HudDefinition.BetterHud own = hud.betterHud();
+            // true or false says so; a betterhud: section asks for it as far as config.yml allows.
+            boolean wanted = own != null && own.drawn() != null ? own.drawn() : enabled && (hud.actionBar() || own != null);
             if (!wanted) {
                 continue;
             }
@@ -75,7 +81,12 @@ public final class BetterHudBars {
         plugin.getServer().getScheduler().runTaskAsynchronously(plugin, () -> {
             boolean changed;
             try {
-                changed = write(BetterHudExport.files(bars, legacyOffset()));
+                BetterHudPanel.Panel panel = BetterHudPanel.find(folder).orElse(null);
+                changed = write(BetterHudExport.files(bars, legacyOffset(), panel));
+                if (changed && panel != null && !bars.isEmpty()) {
+                    plugin.getLogger().info("BetterHud has status bars (health_bar, hunger_bar): this plugin's are drawn"
+                            + " as more of them, from y " + panel.firstRow() + " down.");
+                }
             } catch (IOException | RuntimeException failure) {
                 plugin.getLogger().warning("Could not write the HUD bars into BetterHud's folder (" + failure
                         + "): they are drawn on the action bar instead.");
@@ -116,9 +127,11 @@ public final class BetterHudBars {
             BufferedImage full = icon(hud, hud.full());
             BufferedImage half = hud.half() == null ? null : icon(hud, hud.half());
             BufferedImage empty = hud.empty() == null ? null : icon(hud, hud.empty());
+            BufferedImage small = hud.betterHud() == null || hud.betterHud().icon() == null ? null
+                    : icon(hud, hud.betterHud().icon());
             String placeholder = registry.find(hud.id()).filter(found -> found == layout).isPresent()
                     ? hud.id() : hud.fullId();
-            return new BetterHudExport.Bar(layout, placeholder, full, half, empty);
+            return new BetterHudExport.Bar(layout, placeholder, full, half, empty, small);
         } catch (IOException failure) {
             if (warned.add(hud.fullId())) {
                 plugin.getLogger().warning("HUD " + hud.fullId() + " stays on the action bar: " + failure.getMessage());

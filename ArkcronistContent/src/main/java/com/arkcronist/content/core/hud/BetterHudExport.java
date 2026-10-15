@@ -18,6 +18,11 @@ import java.util.Map;
  * a server whose HUD is BetterHud's (PrimeHUD and the like) has the thirst, mana and shield bars
  * drawn by the same hand as its hearts.
  *
+ * <p>3.1.1: where BetterHud already draws status bars - PrimeHUD's health and hunger bars, found by
+ * {@link BetterHudPanel} - each bar is drawn as one more of them ({@link PanelArt}), in rows under
+ * them, so the screen has one HUD and not two. Otherwise, or for a bar given a place of its own, as
+ * follows.</p>
+ *
  * <p>For each bar: two images, the bar full and the bar empty, made from its own icons laid out as
  * the action bar lays them out; BetterHud's {@code listener} image shows as much of the full one as
  * the bar's value is of its max - by halves when the bar has half icons - read through PlaceholderAPI
@@ -56,10 +61,16 @@ public final class BetterHudExport {
 
     /**
      * A bar to hand over: its layout, the name its placeholders know it by (its bare id, or
-     * {@code namespace:id} when two namespaces share it), and its icons as images.
+     * {@code namespace:id} when two namespaces share it), and its icons as images - with, 3.1.1, the
+     * small one its {@code betterhud: icon} names for a bar drawn as BetterHud's status bars.
      */
     public record Bar(HudLayout hud, String placeholder, BufferedImage full, @Nullable BufferedImage half,
-                      @Nullable BufferedImage empty) {
+                      @Nullable BufferedImage empty, @Nullable BufferedImage small) {
+
+        public Bar(HudLayout hud, String placeholder, BufferedImage full, @Nullable BufferedImage half,
+                   @Nullable BufferedImage empty) {
+            this(hud, placeholder, full, half, empty, null);
+        }
     }
 
     /** Where a bar is drawn on BetterHud's screen. */
@@ -76,14 +87,16 @@ public final class BetterHudExport {
      * then to be removed.
      */
     public static Map<String, byte[]> files(List<Bar> bars) throws IOException {
-        return files(bars, false);
+        return files(bars, false, null);
     }
 
     /**
      * As {@link #files(List)}, for a BetterHud whose {@code disable-legacy-offset} is
-     * {@code legacyOffset ? false : true}.
+     * {@code legacyOffset ? false : true}, and whose own status bars are {@code panel} (null for none):
+     * a bar without a place of its own is then drawn as one more of them, in a row under them.
      */
-    public static Map<String, byte[]> files(List<Bar> bars, boolean legacyOffset) throws IOException {
+    public static Map<String, byte[]> files(List<Bar> bars, boolean legacyOffset, @Nullable BetterHudPanel.Panel panel)
+            throws IOException {
         Map<String, byte[]> files = new LinkedHashMap<>();
         if (bars.isEmpty()) {
             return files;
@@ -91,60 +104,186 @@ public final class BetterHudExport {
         StringBuilder images = new StringBuilder(HEADER);
         StringBuilder layouts = new StringBuilder(HEADER);
         StringBuilder huds = new StringBuilder(HEADER);
+        Map<Bar, int[]> slots = panel == null ? Map.of() : slots(bars, panel);
+        boolean blank = false;
         for (Bar bar : bars) {
-            HudDefinition hud = bar.hud().definition();
-            String name = name(hud);
-            String file = hud.namespace() + "_" + hud.id();
-            int step = step(bar.hud());
-            BufferedImage full = strip(bar.full(), hud.height(), step, hud.segments());
-            files.put(ASSETS + file + "_bar.png", png(full));
-            boolean background = bar.empty() != null;
-            if (background) {
-                files.put(ASSETS + file + "_empty.png", png(strip(bar.empty(), hud.height(), step, hud.segments())));
-                images.append('\n').append(name).append("_empty:\n")
-                        .append("  type: single\n")
-                        .append("  file: ").append(quote(NAME + "/" + file + "_empty.png")).append('\n');
+            int[] slot = slots.get(bar);
+            if (slot != null) {
+                blank |= status(bar, panel, slot, files, images, layouts, huds);
+            } else {
+                icons(bar, legacyOffset, files, images, layouts, huds);
             }
-            images.append('\n').append(name).append(":\n")
-                    .append("  type: listener\n")
-                    .append("  file: ").append(quote(NAME + "/" + file + "_bar.png")).append('\n')
-                    .append("  split: ").append(bar.half() != null ? hud.segments() * 2 : hud.segments()).append('\n')
-                    .append("  split-type: ").append(fromRight(hud) ? "right" : "left").append('\n')
-                    .append("  setting:\n")
-                    .append("    listener:\n")
-                    .append("      class: placeholder\n")
-                    .append("      value: ").append(quote("(number)papi:" + NAME + "_hud_" + bar.placeholder() + "_value"))
-                    .append('\n')
-                    .append("      max: ").append(quote("(number)papi:" + NAME + "_hud_" + bar.placeholder() + "_max"))
-                    .append('\n');
-            layouts.append('\n').append(name).append(":\n").append("  images:\n");
-            int index = 1;
-            if (background) {
-                layouts.append("    ").append(index++).append(":\n")
-                        .append("      name: ").append(name).append("_empty\n")
-                        .append("      x: 0\n      y: 0\n");
-            }
-            layouts.append("    ").append(index).append(":\n")
-                    .append("      name: ").append(name).append('\n')
-                    .append("      x: 0\n      y: 0\n")
-                    .append("      layer: 1\n");
-            Place place = place(bar.hud(), legacyOffset, full.getWidth());
-            huds.append('\n').append(name).append(":\n")
-                    .append("  default: true\n")
-                    .append("  layouts:\n")
-                    .append("    1:\n")
-                    .append("      name: ").append(name).append('\n')
-                    .append("      gui:\n")
-                    .append("        x: ").append(place.gui().x()).append('\n')
-                    .append("        y: ").append(place.gui().y()).append('\n')
-                    .append("      pixel:\n")
-                    .append("        x: ").append(place.pixel().x()).append('\n')
-                    .append("        y: ").append(place.pixel().y()).append('\n');
+        }
+        if (blank) {
+            files.put(ASSETS + "blank.png", png(PanelArt.blank(panel.width())));
         }
         files.put(FILES.get(0), images.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
         files.put(FILES.get(1), layouts.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
         files.put(FILES.get(2), huds.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
         return files;
+    }
+
+    /**
+     * 3.1.1: where each bar without a place of its own goes in the panel, {x, y}: a bar on the food
+     * side (its anchor's) in the right column, the hunger bar's, any other in the left one, the
+     * health bar's; down each column by anchor row, then id, one row each.
+     */
+    static Map<Bar, int[]> slots(List<Bar> bars, BetterHudPanel.Panel panel) {
+        Map<Bar, int[]> slots = new LinkedHashMap<>();
+        java.util.Comparator<Bar> order = java.util.Comparator
+                .comparingInt((Bar bar) -> bar.hud().definition().anchor() == null ? 0 : bar.hud().definition().anchor().row())
+                .thenComparing(bar -> bar.hud().definition().fullId());
+        for (boolean right : new boolean[]{false, true}) {
+            List<Bar> column = bars.stream()
+                    .filter(bar -> bar.hud().definition().betterHud() == null || !bar.hud().definition().betterHud().placed())
+                    .filter(bar -> right == (bar.hud().definition().anchor() != null && bar.hud().definition().anchor().right()))
+                    .sorted(order).toList();
+            for (int i = 0; i < column.size(); i++) {
+                slots.put(column.get(i), new int[]{right ? panel.right() : panel.left(), panel.row(i)});
+            }
+        }
+        return slots;
+    }
+
+    /**
+     * 3.1.1: a bar as one of BetterHud's status bars: its frame, its fill shown as far as its value
+     * goes, and - when it warns - a blink while it runs low; hidden while empty when it says so.
+     *
+     * @return whether it blinks, and needs the blank half of a blink
+     */
+    private static boolean status(Bar bar, BetterHudPanel.Panel panel, int[] slot, Map<String, byte[]> files,
+                                  StringBuilder images, StringBuilder layouts, StringBuilder huds) throws IOException {
+        HudDefinition hud = bar.hud().definition();
+        HudDefinition.BetterHud own = hud.betterHud();
+        String name = name(hud);
+        String file = hud.namespace() + "_" + hud.id();
+        BufferedImage icon = bar.small() != null ? bar.small() : bar.full();
+        int color = own != null && own.color() != null ? own.color() : PanelArt.colour(bar.full());
+        int width = panel.width();
+        files.put(ASSETS + file + "_frame.png", png(PanelArt.frame(width, color, icon)));
+        files.put(ASSETS + file + "_fill.png", png(PanelArt.fill(width, color, icon)));
+        boolean warns = own != null && own.warnBelow() > 0;
+        boolean hides = own != null && own.hideEmpty();
+        String placeholder = "(number)papi:" + NAME + "_hud_" + bar.placeholder();
+        images.append('\n').append(name).append("_frame:\n")
+                .append("  type: single\n")
+                .append("  file: ").append(quote(NAME + "/" + file + "_frame.png")).append('\n');
+        images.append('\n').append(name).append(":\n")
+                .append("  type: listener\n")
+                .append("  file: ").append(quote(NAME + "/" + file + "_fill.png")).append('\n')
+                .append("  split: ").append(Math.max(1, (width - 2) / 2)).append('\n')
+                .append("  split-type: left\n")
+                .append("  setting:\n")
+                .append("    listener:\n")
+                .append("      class: placeholder\n")
+                .append("      value: ").append(quote(placeholder + "_value")).append('\n')
+                .append("      max: ").append(quote(placeholder + "_max")).append('\n');
+        if (warns) {
+            files.put(ASSETS + file + "_shine.png", png(PanelArt.shine(width, icon)));
+            images.append('\n').append(name).append("_shine:\n")
+                    .append("  type: sequence\n")
+                    .append("  files:\n")
+                    .append("    - ").append(quote(NAME + "/" + file + "_shine.png:10")).append('\n')
+                    .append("    - ").append(quote(NAME + "/blank.png:10")).append('\n');
+        }
+        String shown = hides ? condition(placeholder + "_value", "0", ">") : null;
+        String low = warns ? condition(placeholder + "_percent", String.valueOf(own.warnBelow()), "<=") : null;
+        layouts.append('\n').append(name).append(":\n").append("  images:\n");
+        image(layouts, 1, name + "_frame", slot, shown == null ? List.of() : List.of(shown));
+        // The fill a pixel right of and below its frame, as PrimeHUD places its own.
+        image(layouts, 2, name, new int[]{slot[0] + 1, slot[1] + 1}, shown == null ? List.of() : List.of(shown));
+        if (warns) {
+            image(layouts, 3, name + "_shine", slot, shown == null ? List.of(low) : List.of(low, shown));
+        }
+        huds.append('\n').append(name).append(":\n")
+                .append("  default: true\n")
+                .append("  layouts:\n")
+                .append("    1:\n")
+                .append("      name: ").append(name).append('\n')
+                .append("      gui:\n")
+                .append("        x: ").append(panel.gui().x()).append('\n')
+                .append("        y: ").append(panel.gui().y()).append('\n')
+                .append("      pixel:\n")
+                .append("        x: ").append(panel.pixel().x()).append('\n')
+                .append("        y: ").append(panel.pixel().y()).append('\n');
+        return warns;
+    }
+
+    /** One image of a layout, at {@code slot}, shown while every one of {@code conditions} holds. */
+    private static void image(StringBuilder layouts, int index, String name, int[] slot, List<String> conditions) {
+        layouts.append("    ").append(index).append(":\n")
+                .append("      name: ").append(name).append('\n')
+                .append("      x: ").append(slot[0]).append('\n')
+                .append("      y: ").append(slot[1]).append('\n');
+        if (!conditions.isEmpty()) {
+            layouts.append("      conditions:\n");
+            for (int i = 0; i < conditions.size(); i++) {
+                layouts.append("        ").append(i + 1).append(":\n").append(conditions.get(i));
+                if (i < conditions.size() - 1) {
+                    layouts.append("          gate: and\n");
+                }
+            }
+        }
+    }
+
+    /** A condition of BetterHud's on a number: {@code first operation second}, as its layouts write it. */
+    private static String condition(String first, String number, String operation) {
+        return "          first: " + quote(first) + "\n"
+                + "          second: \"'(number)" + number + "'\"\n"
+                + "          operation: '" + operation + "'\n";
+    }
+
+    /** 3.1: a bar as a row of its own icons, where the action bar drew it. */
+    private static void icons(Bar bar, boolean legacyOffset, Map<String, byte[]> files, StringBuilder images,
+                              StringBuilder layouts, StringBuilder huds) throws IOException {
+        HudDefinition hud = bar.hud().definition();
+        String name = name(hud);
+        String file = hud.namespace() + "_" + hud.id();
+        int step = step(bar.hud());
+        BufferedImage full = strip(bar.full(), hud.height(), step, hud.segments());
+        files.put(ASSETS + file + "_bar.png", png(full));
+        boolean background = bar.empty() != null;
+        if (background) {
+            files.put(ASSETS + file + "_empty.png", png(strip(bar.empty(), hud.height(), step, hud.segments())));
+            images.append('\n').append(name).append("_empty:\n")
+                    .append("  type: single\n")
+                    .append("  file: ").append(quote(NAME + "/" + file + "_empty.png")).append('\n');
+        }
+        images.append('\n').append(name).append(":\n")
+                .append("  type: listener\n")
+                .append("  file: ").append(quote(NAME + "/" + file + "_bar.png")).append('\n')
+                .append("  split: ").append(bar.half() != null ? hud.segments() * 2 : hud.segments()).append('\n')
+                .append("  split-type: ").append(fromRight(hud) ? "right" : "left").append('\n')
+                .append("  setting:\n")
+                .append("    listener:\n")
+                .append("      class: placeholder\n")
+                .append("      value: ").append(quote("(number)papi:" + NAME + "_hud_" + bar.placeholder() + "_value"))
+                .append('\n')
+                .append("      max: ").append(quote("(number)papi:" + NAME + "_hud_" + bar.placeholder() + "_max"))
+                .append('\n');
+        layouts.append('\n').append(name).append(":\n").append("  images:\n");
+        int index = 1;
+        if (background) {
+            layouts.append("    ").append(index++).append(":\n")
+                    .append("      name: ").append(name).append("_empty\n")
+                    .append("      x: 0\n      y: 0\n");
+        }
+        layouts.append("    ").append(index).append(":\n")
+                .append("      name: ").append(name).append('\n')
+                .append("      x: 0\n      y: 0\n")
+                .append("      layer: 1\n");
+        Place place = place(bar.hud(), legacyOffset, full.getWidth());
+        huds.append('\n').append(name).append(":\n")
+                .append("  default: true\n")
+                .append("  layouts:\n")
+                .append("    1:\n")
+                .append("      name: ").append(name).append('\n')
+                .append("      gui:\n")
+                .append("        x: ").append(place.gui().x()).append('\n')
+                .append("        y: ").append(place.gui().y()).append('\n')
+                .append("      pixel:\n")
+                .append("        x: ").append(place.pixel().x()).append('\n')
+                .append("        y: ").append(place.pixel().y()).append('\n');
     }
 
     /**
