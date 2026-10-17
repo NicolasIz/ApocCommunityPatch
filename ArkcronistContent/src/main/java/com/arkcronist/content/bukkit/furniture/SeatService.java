@@ -76,7 +76,13 @@ public final class SeatService {
         sit(player, support, sitting, yaw);
         Entity seat = seatAt(support);
         if (seat != null && seat.equals(player.getVehicle())) {
-            hide(player, piece);
+            // A tick later: the click that sat them down was cancelled, and the server sends the
+            // clicked block back to their client after that - as the barrier it is.
+            plugin.getServer().getScheduler().runTask(plugin, () -> {
+                if (player.isOnline() && seat.isValid() && seat.equals(player.getVehicle())) {
+                    hide(player, piece);
+                }
+            });
         }
     }
 

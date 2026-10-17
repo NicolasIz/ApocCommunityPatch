@@ -664,7 +664,8 @@ public final class ContentAdminCommand {
         String what = describe(target);
         String id = plugin.furniture().furnitureId(target);
         if (id != null && !plugin.furniture().isLeftOver(target)) {
-            sender.sendMessage(Component.text(what + " is a piece of " + id + " that is still standing: break it to take"
+            sender.sendMessage(Component.text(Character.toUpperCase(what.charAt(0)) + what.substring(1) + " is a piece of "
+                    + id + " that is still standing: break it to take"
                     + " it away.", NamedTextColor.YELLOW));
             return 0;
         }
@@ -733,7 +734,8 @@ public final class ContentAdminCommand {
                 : " showing " + shown.getType().getKey().getKey()
                 + (shown.hasItemMeta() && shown.getItemMeta().hasItemModel()
                 ? " (" + shown.getItemMeta().getItemModel() + ")" : "");
-        return "a " + entity.getType().getKey().getKey().replace('_', ' ') + item + " at " + at.getBlockX() + " "
+        String type = entity.getType().getKey().getKey().replace('_', ' ');
+        return ("aeiou".indexOf(type.charAt(0)) >= 0 ? "an " : "a ") + type + item + " at " + at.getBlockX() + " "
                 + at.getBlockY() + " " + at.getBlockZ();
     }
 

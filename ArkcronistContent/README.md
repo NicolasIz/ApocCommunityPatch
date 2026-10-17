@@ -336,7 +336,8 @@ items:
     furniture:
       support: BARRIER          # BARRIER (sólido) o LIGHT (atravesable, puede iluminar)
       light: 0                  # solo LIGHT: nivel 0-15
-      face-player: true         # mira hacia quien lo coloca, en pasos de 90°
+      face-player: true         # mira hacia quien lo coloca, en pasos de 90° (3.2: hacia donde
+                                # está, no hacia donde mira)
       display:
         transform: NONE         # contexto de display del modelo (NONE, FIXED, HEAD, GUI...)
         translation: [0, 0, 0]  # bloques, desde el centro del bloque
@@ -864,11 +865,31 @@ taburete de rubí, 0,6). El cepo de la guillotina pasa de `kneel-height: 0.2` a 
 cabeza quede en el agujero (a 1,41 bloques); un `furniture.yml` de ejemplo que no hayas tocado se
 actualiza solo al arrancar.
 
-En un mueble más alto que su asiento (un trono de 1×2, el cepo de la guillotina) la cabeza del que
+En un mueble más alto que su asiento (un trono, el cepo de la guillotina) la cabeza del que
 se sienta queda dentro de la barrera de arriba: el daño por asfixia de quien está sentado en uno de
 estos asientos se cancela (la barrera es invisible, no se ve nada raro). Al levantarse de uno así se
 le deja delante del mueble, hacia donde mira, si hay sitio, y si no encima de todo él. Un clic en el
-bloque de arriba de un trono sienta en el de abajo; un banco de 2×1 sienta a uno en cada bloque.
+bloque de arriba de un mueble alto sienta en el de abajo; un banco de 2×1 sienta a uno en cada bloque.
+
+**Un asiento en el centro (3.2).** Un mueble grande con un solo sitio, como el trono de 3×3×2, lleva
+`seat-at: [lado, adelante]`: un único asiento en el centro del mueble, desplazado esos bloques (a la
+derecha de quien se sienta, y hacia el frente), a `seat-height` sobre el suelo. Se clique el bloque
+que se clique, se sienta ahí. Sin `seat-at`, como antes: uno por bloque.
+
+```yaml
+      size: {width: 3, height: 3, depth: 2}
+      interactable: seat
+      seat-height: 1.0          # 3.2: hasta 3 bloques
+      seat-at: [0, -0.2]        # en el centro, 0,2 bloques hacia el respaldo
+```
+
+**La cámara en tercera persona (3.2).** Con F5, la cámara se aleja del jugador hasta que choca con
+el primer bloque sólido, y las barreras de un trono o del marco de la guillotina rodean la cabeza del
+que está sentado: la cámara se quedaba pegada a su cara. Ahora, mientras alguien está sentado o
+arrodillado, **solo a su cliente** se le muestran como aire las barreras de ese mueble
+(`sendBlockChanges`, un tick después de sentarse para que no las pise el reenvío del bloque clicado).
+Puede alejar la cámara y verse sentado. Los demás siguen chocando con ellas, y al levantarse, al
+romperse el mueble, al salir o al apagar el plugin se le vuelven a mostrar.
 
 ### Muebles con almacenamiento
 
@@ -1089,7 +1110,10 @@ tallado con cresta en arco, y un piecero más bajo. Ambos siguen dentro de las m
 
 El mueble ocupa `width` bloques a lo largo de su frente, centrados en donde se coloca (con un ancho
 par, sobra uno a la derecha de quien lo mira), `height` hacia arriba y (3.1) `depth` hacia atrás,
-alejándose de quien lo coloca; el modelo se dibuja centrado en todo ese volumen. Un modelo Java solo
+alejándose de quien lo coloca; el modelo se dibuja centrado en todo ese volumen. **3.2:** el frente
+mira hacia **donde está** quien lo coloca, redondeado a 90°, no hacia donde mira: colocado desde un
+lado mirando al frente, se gira hacia ese lado. Solo si está justo encima (a menos de un tercio de
+bloque del centro) decide hacia dónde mira, como antes. Un modelo Java solo
 llega de -16 a 32 en cada eje (tres bloques): uno más alto o más ancho se dibuja más pequeño y se
 agranda con `display.scale` (el pozo de 6×6 va a escala 2), o se baja un bloque y se sube con
 `display.translation` (la forja de tres de alto). Cada bloque lleva su soporte
@@ -1231,6 +1255,53 @@ de leña** es de **3×2×2**. Las piezas de estos tres que ya estuvieran colocad
 de antes: rómpelas y vuelve a ponerlas para que ocupen su tamaño nuevo. Sus modelos y texturas se
 actualizan solos si no los habías editado.
 
+**3.2: el trono, el horno de pan y el mapa, grandes.**
+
+- **Trono real, 3×3×2.** Sobre un estrado de dos escalones de piedra con alfombra roja de ribete
+  dorado: sillón de roble oscuro con cojín de terciopelo capitoné, reposabrazos con pomos de oro,
+  respaldo alto con panel de terciopelo enmarcado en oro, corona con un rubí en lo alto, y un
+  estandarte con corona a cada lado. Un solo asiento en el centro, a un bloque de altura
+  (`seat-at`); ver *La cámara en tercera persona*.
+- **Horno de pan, 3×2×2.** Cúpula de barro escalonada sobre una base de piedra, boca encendida en
+  un arco con clave, leña apilada en un hueco de la base, puerta de ceniza de hierro, chimenea
+  detrás, hogazas en la repisa, un saco de harina y la pala apoyada al lado. Da luz 12, echa humo
+  por la chimenea y chispas por la boca, y hornea igual que antes.
+- **Mapa del reino, 6×4** (a escala 2): dos postes y un travesaño con tejadillo, un tablero
+  enmarcado con tachuelas de latón y una repisa con tintero y pergamino. El **dibujo es una textura
+  aparte**, `textures/furniture/mapa_mural_mapa.png` (320×176), que el plugin dibuja **a partir del
+  mundo del servidor**:
+  - `/arkcontent map spawn` dibuja los alrededores del spawn del mundo en el que estás (desde
+    consola, del primer mundo).
+  - `/arkcontent map` dibuja alrededor de donde estás.
+  - Un número al final es el radio en bloques a lo ancho, de 40 a 640 (por defecto 160: 320×176
+    bloques, un bloque por píxel). Con más radio, hasta 4 bloques por píxel (1280×704).
+  - Cada píxel es el bloque más alto de esa columna con su color de mapa vanilla, más claro donde el
+    terreno sube hacia el norte y más oscuro donde baja, y el agua más oscura cuanto más honda. Todo
+    sobre pergamino: colores tirando a sepia, grano, bordes tostados, doble marco de tinta, rosa de
+    los vientos con el norte en rojo arriba a la derecha y una cruz roja en el spawn.
+  - Los chunks se cargan sin generar ninguno (lo que nadie ha explorado queda en pergamino); de cada
+    uno se toma una instantánea en el hilo principal, y la lectura, el dibujo y el PNG van fuera de
+    él. Después se recompila el pack y se manda a los jugadores conectados.
+  - Si cambia el spawn, vuelve a lanzarlo. Mientras no lo lances, el tablero trae un mapa inventado.
+    El dibujo es tuyo: al actualizar no se toca.
+
+Los modelos, las texturas y el `furniture.yml` de ejemplo se actualizan solos si no los habías
+editado, y el dibujo del mapa se añade. Si los tuyos ya estaban colocados con su tamaño de antes
+(1×2), rómpelos y vuelve a ponerlos.
+
+| Cliente 1.21.8 real y bots, Paper 1.21.8 (3.2) | Resultado |
+|---|---|
+| Actualización desde 3.1.1 | «Updated 7 example file(s) you had not changed» (el `furniture.yml` y los modelos y texturas de los tres) y «Added 1 example file(s)» (el dibujo del mapa) |
+| Colocar el horno desde un lado (de pie al este, mirando al oeste) | se gira hacia el este, hacia quien lo coloca; trono y mapa colocados de frente miran al sur |
+| Los tres en el cliente | con su textura, sin errores de modelo en el registro del cliente; humo por la chimenea del horno |
+| `/arkcontent map spawn` (mundo plano de pruebas) | 320×176 bloques de 204 chunks en un segundo; pack recompilado y enviado; el tablero muestra la hierba, las plataformas grises, lo no explorado en pergamino, la rosa y la cruz en el spawn |
+| Sentarse en el trono | asiento en (x + 0,5, y + 1, centro − 0,2): en el centro, un bloque arriba; el que se sienta ve las 18 barreras como aire y el otro jugador las sigue viendo; al levantarse queda delante y las vuelve a ver |
+| Primera versión (sin el tick de espera) | el bloque clicado volvía a llegar como barrera (17 de 18): el servidor lo reenvía tras cancelar el clic |
+| Tercera persona en el trono (F5) | detrás: se ve el respaldo entero desde la distancia normal; delante: el jugador sentado en el trono, de cuerpo entero |
+| Guillotina | arrodillado ve 0 de sus 6 barreras, otro jugador las 6; al levantarse, las 6 |
+| `legacy look` | quita el display sin marcas al que se mira y deja el de al lado; mirando al trono: «... is a piece of medieval_props:trono_real that is still standing» |
+| Horno y mapa con clic | «Pan recién horneado.»; «[Mapa] Estás en la plaza del reino, en ...» |
+
 | Clave en `on-click:` (3.1) | Qué hace |
 |---|---|
 | `station: crafting` | abre una mesa de trabajo; también `anvil`, `grindstone`, `smithing`, `stonecutter`, `loom`, `cartography`, `enchanting` |
@@ -1243,9 +1314,9 @@ mueble (si está libre), así que un mueble sólido puede alumbrar.
 
 | Tipo | Muebles | Clic derecho |
 |---|---|---|
-| `seat` (14) | sillas de taberna, taburetes, banco largo y de iglesia (2×1), trono (1×2), tocón, fardo, sillón, carro de heno… | sentarse |
-| `effect` (25) | jarras, copa, licor, barril con grifo, calderos, fogata y brasero (asan), candelabro, faroles y lámparas (se apagan), pozo (6×6), alambique, forja (3×3×2: funde y abre la mesa de herrería), horno (hornea), mesas (mesa de trabajo), yunque, piedra de afilar, estandartes, abrevadero | partículas; según el mueble: pociones, estación, cocinar o luz |
-| `command` (10) | carteles de banco, taberna, herrería, mercado, establo, alquimista y posada, campana, buzón, mapa | ejecuta sus comandos |
+| `seat` (14) | sillas de taberna, taburetes, banco largo y de iglesia (2×1), trono (3×3×2 desde 3.2, un asiento en el centro), tocón, fardo, sillón, carro de heno… | sentarse |
+| `effect` (25) | jarras, copa, licor, barril con grifo, calderos, fogata y brasero (asan), candelabro, faroles y lámparas (se apagan), pozo (6×6), alambique, forja (3×3×2: funde y abre la mesa de herrería), horno de pan (3×2×2 desde 3.2: hornea), mesas (mesa de trabajo), yunque, piedra de afilar, estandartes, abrevadero | partículas; según el mueble: pociones, estación, cocinar o luz |
+| `command` (10) | carteles de banco, taberna, herrería, mercado, establo, alquimista y posada, campana, buzón, mapa (6×4 desde 3.2, con el spawn dibujado) | ejecuta sus comandos |
 | `storage` (10) | barril, caja, baúl, estantería de botellas, tonel de vino (54 huecos), saco, armero, maniquí, puesto de mercado (3×2), pila de leña (3×2×2) | abre su inventario |
 | `guillotine` (1) | `guillotina_plaza`, 2×3 | cepo: arrodillarse · palanca: dejar caer la hoja |
 
@@ -3375,6 +3446,12 @@ clave de ItemsAdder en la entidad, y se quitan enteros:
   `/arkcontent import` conservan el id de ItemsAdder); en creativo no suelta nada.
 - `/arkcontent legacy [radio]` cuenta los que quedan cerca, por id, y `/arkcontent legacy remove
   [radio]` los quita (radio por defecto 32, solo en chunks cargados).
+- **3.2: `/arkcontent legacy look`** quita el modelo al que **miras** (hasta 8 bloques, también si
+  está dentro de una barrera): un display, un soporte de armadura, un marco o una caja de interacción.
+  Sirve para los que ya no llevan nada que diga de quién son, como los que quedan flotando si se
+  borró antes la estructura de ItemsAdder (su ítem ya no lleva `itemsadder`). Si es una pieza de
+  ItemsAdder reconocible, se quita entera, con sus barreras. Un mueble de este plugin que sigue en
+  pie no se quita así (se dice cuál es): para eso, rómpelo.
 
 Los muebles de este plugin no se tocan: llevan su propia marca. Además, al colocar un mueble se
 retira cualquier display suyo que hubiera quedado huérfano en esos bloques.
@@ -3605,8 +3682,8 @@ con `join-classpath: true` para ver sus clases.
   uno; para granjas enormes, eso son muchas entidades de display (baratas, pero entidades).
 - Emojis: se reemplazan en el chat; en carteles y libros funcionan si se escribe el carácter (o se
   pega desde `/emojis`), no la palabra clave.
-- Asientos: uno por mueble, con la altura fija de `seat-height`. Un mueble es asiento, contenedor o
-  ninguno de los dos, no ambos.
+- Asientos: uno por bloque del mueble (o uno en su centro con `seat-at`), con la altura fija de
+  `seat-height`. Un mueble es asiento, contenedor o ninguno de los dos, no ambos.
 - Muebles con almacenamiento: las tolvas no los alimentan ni los vacían (con soporte barrera no hay
   contenedor; con soporte cofre se bloquean a propósito, porque el contenido vive en la base de
   datos).
