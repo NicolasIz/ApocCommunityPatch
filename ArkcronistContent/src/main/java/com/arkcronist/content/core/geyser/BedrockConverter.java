@@ -5,6 +5,7 @@ import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.definition.ResourceLocation;
 import com.arkcronist.content.core.furniture.Footprint;
 import com.arkcronist.content.core.pack.ItemModels;
+import com.arkcronist.content.core.pack.PngReader;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -15,7 +16,6 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -171,6 +171,8 @@ public final class BedrockConverter {
     private final Map<String, String> itemTextures = new TreeMap<>();
     private final Map<ResourceLocation, String> terrainKeys = new HashMap<>();
     private final Map<ResourceLocation, BufferedImage> images = new HashMap<>();
+    /** 3.3.1: sprites the atlases give another name, by that name; null until first needed. */
+    private @Nullable Map<ResourceLocation, ResourceLocation> spriteAliases;
     private final Map<ResourceLocation, JsonObject> models = new HashMap<>();
     private final List<JsonObject> flipbooks = new ArrayList<>();
 
@@ -333,6 +335,8 @@ public final class BedrockConverter {
     private Map<String, Integer> furniture(List<BedrockBlock> blocks, List<Carrier> carriers) {
         Map<String, List<Object[]>> wanted = new LinkedHashMap<>();
         Map<String, List<String>> keysByPiece = new TreeMap<>();
+        // Said only of pieces that reach Bedrock players: of one left out, nothing is drawn anyway.
+        Map<String, List<String>> cellWarnings = new LinkedHashMap<>();
         for (FurnitureSpec piece : input.furniture()) {
             if (input.skipped(piece.id())) {
                 continue;
@@ -350,8 +354,7 @@ public final class BedrockConverter {
             }
             for (Map.Entry<FurnitureLayout.Cell, List<BedrockCube>> cell : new TreeMap<>(layout.cells()).entrySet()) {
                 if (!BedrockGeometry.fits(cell.getValue())) {
-                    problems.add(piece.id() + " on Bedrock: a turned cube reaches more than 7 pixels out of its block "
-                            + cell.getKey().key() + " - that block of it may not be drawn");
+                    cellWarnings.computeIfAbsent(piece.id(), ignored -> new ArrayList<>()).add(cell.getKey().key());
                 }
                 Map<String, Material> materials = new LinkedHashMap<>();
                 String base = name(piece.id()) + "_" + cellName(cell.getKey());
@@ -371,6 +374,13 @@ public final class BedrockConverter {
         Set<Integer> reserved = new HashSet<>();
         input.blockStates().forEach(state -> reserved.add(NoteBlockState.CAPACITY - state));
         CarrierPlan plan = planCarriers(keysByPiece, mirroredPrevious, reserved, 1, NoteBlockState.CAPACITY - 2);
+        cellWarnings.forEach((piece, cells) -> {
+            if (!plan.leftOut().containsKey(piece)) {
+                problems.add(piece + " on Bedrock: a turned cube reaches more than 7 pixels out of its "
+                        + (cells.size() == 1 ? "block " + cells.get(0) : cells.size() + " blocks " + String.join(" ", cells))
+                        + " - " + (cells.size() == 1 ? "that block" : "those blocks") + " of it may not be drawn");
+            }
+        });
         if (!plan.leftOut().isEmpty()) {
             int total = plan.leftOut().values().stream().mapToInt(Integer::intValue).sum();
             List<String> named = new ArrayList<>();
@@ -518,7 +528,8 @@ public final class BedrockConverter {
             if (image == null) {
                 problems.add("Bedrock: texture " + location + " is not in the pack");
             } else {
-                byte[] mcmeta = input.pack().read("assets/" + location.namespace() + "/textures/" + location.path()
+                ResourceLocation file = textureFile(location);
+                byte[] mcmeta = input.pack().read("assets/" + file.namespace() + "/textures/" + file.path()
                         + ".png.mcmeta");
                 if (mcmeta != null && image.getHeight() > image.getWidth()) {
                     files.put(path + ".png", png(image));
@@ -649,15 +660,67 @@ public final class BedrockConverter {
         });
     }
 
+    /**
+     * 3.3.1: the texture file a model's texture name stands for. Usually the same name; but an atlas
+     * can give a sprite a name of its own - ItemsAdder's generated packs name every texture so
+     * ({@code "ia:143"} for {@code arkespadas:item/mitica_eclipse}) - and the models use that name.
+     */
+    private ResourceLocation textureFile(ResourceLocation sprite) {
+        if (input.pack().read("assets/" + sprite.namespace() + "/textures/" + sprite.path() + ".png") != null) {
+            return sprite;
+        }
+        if (spriteAliases == null) {
+            spriteAliases = spriteAliases(input.pack());
+        }
+        return spriteAliases.getOrDefault(sprite, sprite);
+    }
+
+    /** Every renamed sprite of the blocks and items atlases: a {@code single} source with a {@code sprite}. */
+    static Map<ResourceLocation, ResourceLocation> spriteAliases(PackFiles pack) {
+        Map<ResourceLocation, ResourceLocation> aliases = new HashMap<>();
+        for (String atlas : List.of("blocks", "items")) {
+            byte[] bytes = pack.read("assets/minecraft/atlases/" + atlas + ".json");
+            if (bytes == null) {
+                continue;
+            }
+            try {
+                JsonElement sources = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8))
+                        .getAsJsonObject().get("sources");
+                if (sources == null || !sources.isJsonArray()) {
+                    continue;
+                }
+                for (JsonElement entry : sources.getAsJsonArray()) {
+                    if (!entry.isJsonObject()) {
+                        continue;
+                    }
+                    JsonObject source = entry.getAsJsonObject();
+                    String type = source.has("type") ? source.get("type").getAsString().replace("minecraft:", "") : "";
+                    if (type.equals("single") && source.has("resource") && source.has("sprite")) {
+                        try {
+                            aliases.putIfAbsent(ResourceLocation.parse(source.get("sprite").getAsString(), "minecraft"),
+                                    ResourceLocation.parse(source.get("resource").getAsString(), "minecraft"));
+                        } catch (RuntimeException badName) {
+                            // One name the client would not take either: the rest still count.
+                        }
+                    }
+                }
+            } catch (RuntimeException unreadable) {
+                // An atlas that is not JSON names nothing: the textures keep their own names.
+            }
+        }
+        return aliases;
+    }
+
     private @Nullable BufferedImage image(ResourceLocation location) {
         if (images.containsKey(location)) {
             return images.get(location);
         }
         BufferedImage image = null;
-        byte[] bytes = input.pack().read("assets/" + location.namespace() + "/textures/" + location.path() + ".png");
+        ResourceLocation file = textureFile(location);
+        byte[] bytes = input.pack().read("assets/" + file.namespace() + "/textures/" + file.path() + ".png");
         if (bytes != null) {
             try {
-                image = ImageIO.read(new ByteArrayInputStream(bytes));
+                image = PngReader.read(bytes);
             } catch (IOException broken) {
                 problems.add("Bedrock: " + location + " could not be read as a PNG");
             }

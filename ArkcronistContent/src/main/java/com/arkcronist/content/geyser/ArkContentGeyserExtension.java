@@ -61,8 +61,8 @@ public final class ArkContentGeyserExtension implements Extension {
     @Subscribe
     public void onDefineResourcePacks(GeyserDefineResourcePacksEvent event) {
         try {
-            Path pack = dataFolder().resolve(GeyserExport.PACK);
-            if (Files.isRegularFile(pack)) {
+            Path pack = find(GeyserExport.PACK);
+            if (pack != null) {
                 registration().pack(event, pack);
             } else {
                 logger().warning("[bedrock] No " + GeyserExport.PACK + " in " + dataFolder() + ": Bedrock players get no"
@@ -83,6 +83,21 @@ public final class ArkContentGeyserExtension implements Extension {
         }
     }
 
+    /**
+     * 3.3.1: one of the two files, in this extension's folder - or where it lands when the server's
+     * whole output/bedrock/ folder, or its geyser-extension/ folder, is copied in instead.
+     */
+    private @Nullable Path find(String name) {
+        for (Path folder : new Path[]{dataFolder(), dataFolder().resolve("geyser-extension"),
+                dataFolder().resolve("bedrock").resolve("geyser-extension")}) {
+            Path file = folder.resolve(name);
+            if (Files.isRegularFile(file)) {
+                return file;
+            }
+        }
+        return null;
+    }
+
     private GeyserRegistration registration() {
         return new GeyserRegistration(logger()::info, logger()::warning);
     }
@@ -93,8 +108,8 @@ public final class ArkContentGeyserExtension implements Extension {
             return content;
         }
         read = true;
-        Path file = dataFolder().resolve(GeyserExport.FILE);
-        if (!Files.isRegularFile(file)) {
+        Path file = find(GeyserExport.FILE);
+        if (file == null) {
             logger().warning("[bedrock] No " + GeyserExport.FILE + " in " + dataFolder() + ": no custom items, blocks"
                     + " or furniture for Bedrock players. Copy both files of the Paper server's"
                     + " plugins/ArkcronistContent/output/bedrock/geyser-extension/ there and restart Geyser.");
@@ -103,7 +118,7 @@ public final class ArkContentGeyserExtension implements Extension {
         try {
             content = GeyserExport.read(Files.readString(file, StandardCharsets.UTF_8));
             logger().info("[bedrock] Read " + content.items().size() + " item(s) and " + content.blocks().size()
-                    + " block(s) from " + file.getFileName() + ".");
+                    + " block(s) from " + dataFolder().relativize(file) + ".");
         } catch (IOException | RuntimeException failure) {
             logger().error("[bedrock] Could not read " + file + ": " + failure);
         }

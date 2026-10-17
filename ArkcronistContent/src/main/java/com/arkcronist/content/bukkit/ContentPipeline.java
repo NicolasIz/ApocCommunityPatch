@@ -1142,6 +1142,7 @@ public final class ContentPipeline {
             if (!Files.isRegularFile(pack)) {
                 Files.write(pack, bedrock.pack());
             }
+            removeOldPacks(pack);
             build.problems().addAll(bedrock.problems());
             if (!geyserHere) {
                 exportForProxy(bedrock);
@@ -1166,6 +1167,29 @@ public final class ContentPipeline {
             return build;
         }
     }
+
+    /**
+     * 3.3.1: the .mcpacks of builds before this one, one more each time the content changed - all
+     * but this build's and the one Geyser took as it started, which it keeps reading until it stops.
+     */
+    private void removeOldPacks(Path current) {
+        Path held = bedrockReady.isDone() && !bedrockReady.isCompletedExceptionally() ? bedrockReady.join().pack() : null;
+        try (var files = Files.list(bedrockDir)) {
+            for (Path file : files.toList()) {
+                if (OLD_PACK.matcher(file.getFileName().toString()).matches() && !file.equals(current) && !file.equals(held)) {
+                    try {
+                        Files.deleteIfExists(file);
+                    } catch (IOException inUse) {
+                        // Still open somewhere: the next build tries again.
+                    }
+                }
+            }
+        } catch (IOException unreadable) {
+            logger.fine("[bedrock] Could not look for old packs in " + bedrockDir + ": " + unreadable);
+        }
+    }
+
+    private static final java.util.regex.Pattern OLD_PACK = java.util.regex.Pattern.compile("arkcontent-[0-9a-f]{12}\\.mcpack");
 
     /**
      * 3.3: for a Geyser on a proxy, the items and blocks it is to be told and the .mcpack, as the

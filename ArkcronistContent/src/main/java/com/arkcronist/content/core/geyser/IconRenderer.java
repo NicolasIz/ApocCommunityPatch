@@ -6,7 +6,9 @@ import org.joml.Matrix3f;
 import org.joml.Vector3f;
 
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -35,14 +37,28 @@ public final class IconRenderer {
         if (model.elements().isEmpty()) {
             return null;
         }
+        List<Face> faces = faces(model, textures);
+        BufferedImage drawn = draw(faces);
+        if (drawn != null || faces.isEmpty()) {
+            return drawn;
+        }
+        // 3.3.1: a model drawn away from its own block - a cosmetic worn on the back, put in place
+        // by a display translation this does not carry over - misses the frame: centred on what it
+        // covers, and made smaller if it does not fit, it is drawn after all.
+        fit(faces);
+        return draw(faces);
+    }
+
+    /** One face to draw: its corner, +u and +v turned into the icon's frame, and what covers it. */
+    private record Face(Vector3f[] corners, float[] uv, BufferedImage image, float shade) {
+    }
+
+    private static List<Face> faces(JavaModel model, Function<ResourceLocation, BufferedImage> textures) {
         float[] rotation = model.guiRotation();
         Matrix3f turn = new Matrix3f().rotationXYZ((float) Math.toRadians(rotation[0]),
                 (float) Math.toRadians(rotation[1]), (float) Math.toRadians(rotation[2]));
         float scale = model.guiScale() <= 0 ? 0.625f : model.guiScale();
-        int[] colour = new int[DRAW * DRAW];
-        float[] depth = new float[DRAW * DRAW];
-        Arrays.fill(depth, Float.NEGATIVE_INFINITY);
-        boolean drew = false;
+        List<Face> faces = new ArrayList<>();
         for (JavaModel.Element element : model.elements()) {
             Matrix3f own = element.rotated() ? ownTurn(element) : null;
             for (Map.Entry<JavaModel.Face, JavaModel.FaceTexture> face : element.faces().entrySet()) {
@@ -51,8 +67,7 @@ public final class IconRenderer {
                     continue;
                 }
                 Vector3f[] corners = corners(face.getKey(), element.from(), element.to());
-                for (int i = 0; i < corners.length; i++) {
-                    Vector3f corner = corners[i];
+                for (Vector3f corner : corners) {
                     if (own != null) {
                         corner.sub(element.origin()[0], element.origin()[1], element.origin()[2]);
                         own.transform(corner);
@@ -61,10 +76,48 @@ public final class IconRenderer {
                     corner.sub(8, 8, 8).div(16).mul(scale);
                     turn.transform(corner);
                 }
-                drew |= fill(corners, face.getValue().uv(), image, shade(face.getKey()), colour, depth);
+                faces.add(new Face(corners, face.getValue().uv(), image, shade(face.getKey())));
             }
         }
+        return faces;
+    }
+
+    private static @Nullable BufferedImage draw(List<Face> faces) {
+        int[] colour = new int[DRAW * DRAW];
+        float[] depth = new float[DRAW * DRAW];
+        Arrays.fill(depth, Float.NEGATIVE_INFINITY);
+        boolean drew = false;
+        for (Face face : faces) {
+            drew |= fill(face.corners(), face.uv(), face.image(), face.shade(), colour, depth);
+        }
         return drew ? halve(colour) : null;
+    }
+
+    /** Moves the faces so what they cover is centred in the frame, and shrinks them to nine tenths of it if larger. */
+    private static void fit(List<Face> faces) {
+        float minX = Float.POSITIVE_INFINITY;
+        float minY = Float.POSITIVE_INFINITY;
+        float maxX = Float.NEGATIVE_INFINITY;
+        float maxY = Float.NEGATIVE_INFINITY;
+        for (Face face : faces) {
+            Vector3f[] c = face.corners();
+            Vector3f far = new Vector3f(c[1]).add(c[2]).sub(c[0]);
+            for (Vector3f point : new Vector3f[]{c[0], c[1], c[2], far}) {
+                minX = Math.min(minX, point.x);
+                maxX = Math.max(maxX, point.x);
+                minY = Math.min(minY, point.y);
+                maxY = Math.max(maxY, point.y);
+            }
+        }
+        float size = Math.max(maxX - minX, maxY - minY);
+        float shrink = size > 0.9f ? 0.9f / size : 1f;
+        float middleX = (minX + maxX) / 2;
+        float middleY = (minY + maxY) / 2;
+        for (Face face : faces) {
+            for (Vector3f corner : face.corners()) {
+                corner.set((corner.x - middleX) * shrink, (corner.y - middleY) * shrink, corner.z * shrink);
+            }
+        }
     }
 
     /** A flat item's picture: its layers over each other, each its first frame, at the size of the first. */

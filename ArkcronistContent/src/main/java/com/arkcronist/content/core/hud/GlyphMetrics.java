@@ -1,6 +1,7 @@
 package com.arkcronist.content.core.hud;
 
-import javax.imageio.ImageIO;
+import com.arkcronist.content.core.pack.PngReader;
+
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -25,10 +26,8 @@ public final class GlyphMetrics {
      * @throws IOException when the file is not an image Java can read
      */
     public static int advance(Path image, int height) throws IOException {
-        BufferedImage read;
-        try (var in = Files.newInputStream(image)) {
-            read = ImageIO.read(in);
-        }
+        // Through PngReader: an imported ItemsAdder HUD's pictures may be protected ones.
+        BufferedImage read = PngReader.read(Files.readAllBytes(image));
         if (read == null) {
             throw new IOException(image.getFileName() + " is not a readable image");
         }

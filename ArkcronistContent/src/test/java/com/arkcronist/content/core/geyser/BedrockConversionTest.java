@@ -205,6 +205,17 @@ class BedrockConversionTest {
         assertEquals(0, icon.getRGB(0, 0) >>> 24, "the corner left clear");
     }
 
+    /** 3.3.1: a model hung far below its block - a cosmetic worn on the back - is drawn centred, not lost. */
+    @Test
+    void aModelOutsideItsFrameIsDrawnCentred() throws IOException {
+        JavaModel model = cubeModel(new float[]{4, -28, 4}, new float[]{12, -20, 12});
+        BufferedImage texture = ImageIO.read(new ByteArrayInputStream(png(16, 16, 0xff40c040)));
+        BufferedImage icon = IconRenderer.render(model, location -> texture);
+        assertNotNull(icon, "drawn after all");
+        assertTrue((icon.getRGB(IconRenderer.SIZE / 2, IconRenderer.SIZE / 2) >>> 24) > 200, "in the middle of the icon");
+        assertEquals(0, icon.getRGB(0, 0) >>> 24, "the corner left clear");
+    }
+
     private static BedrockConverter.Input input(Map<String, byte[]> pack, Map<String, Integer> previous) {
         Placement.Display display = Placement.Display.DEFAULT;
         return new BedrockConverter.Input(pack::get,
@@ -289,6 +300,25 @@ class BedrockConversionTest {
         BedrockConverter.Build again = BedrockConverter.convert(input(pack(), build.carrierAssignments()));
         assertArrayEquals(build.pack(), again.pack(), "the same content, the same bytes");
         assertEquals(build.carrierAssignments(), again.carrierAssignments(), "carriers kept");
+    }
+
+    /**
+     * 3.3.1: ItemsAdder's generated packs give every texture a short sprite name in the atlas
+     * ({@code ia:7} for {@code demo:item/ruby}) and the models use that name: the icon is still found.
+     */
+    @Test
+    void anAtlasSpriteNameLeadsToItsTexture() throws IOException {
+        Map<String, byte[]> pack = pack();
+        pack.put("assets/demo/models/item/ruby.json",
+                "{\"parent\":\"minecraft:item/generated\",\"textures\":{\"layer0\":\"ia:7\"}}".getBytes(StandardCharsets.UTF_8));
+        BedrockConverter.Build without = BedrockConverter.convert(input(pack, Map.of()));
+        assertEquals(List.of("demo:ruby"), without.unpictured(), "no atlas: ia:7 is nowhere");
+        pack.put("assets/minecraft/atlases/blocks.json", ("{\"sources\":[{\"type\":\"minecraft:single\","
+                + "\"resource\":\"demo:item/ruby\",\"sprite\":\"ia:7\"},{\"type\":\"single\",\"resource\":\"Bad Name\","
+                + "\"sprite\":\"ia:8\"}]}").getBytes(StandardCharsets.UTF_8));
+        BedrockConverter.Build with = BedrockConverter.convert(input(pack, Map.of()));
+        assertEquals(List.of(), with.unpictured(), "found through the atlas, a bad entry beside it or not");
+        assertEquals(List.of(), with.problems());
     }
 
     /** 3.3: furniture listed in bedrock.skip-furniture gets no carriers; its item still has its icon. */

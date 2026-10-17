@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.3.0.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.3.1.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -2250,9 +2250,11 @@ obligarían a una propiedad «nota» de 25 valores, y Bedrock no admite más de 
    `arkcontent.mcpack`.
 2. **En el proxy**: copia el jar de este plugin a `plugins/Geyser-Velocity/extensions/` (o
    `Geyser-BungeeCord/extensions/`, o `extensions/` en Standalone), y esos dos archivos a
-   `extensions/arkcontent/` dentro de esa misma carpeta de Geyser. Reinicia el proxy.
-3. Al arrancar, la consola del proxy dice `[arkcontent] [bedrock] Read N item(s) and M block(s)` y
-   Geyser `Registered ... custom blocks / custom items`.
+   `extensions/arkcontent/` dentro de esa misma carpeta de Geyser. Desde 3.3.1 también valen
+   `extensions/arkcontent/geyser-extension/` y `extensions/arkcontent/bedrock/geyser-extension/`, por
+   si copias la carpeta entera. Reinicia el proxy.
+3. Al arrancar, la consola del proxy dice `[arkcontent] [bedrock] Read N item(s) and M block(s) from
+   <archivo>` y Geyser `Registered ... custom blocks / custom items`.
 4. **Cuando cambie el contenido** (ítems nuevos, `/arkcontent map`, una versión nueva del plugin):
    copia otra vez los dos archivos (y el jar, si cambió) y reinicia el proxy. Si el proxy está en la
    misma máquina, `bedrock.geyser-folder:` en `config.yml` hace que el plugin los escriba directamente
@@ -2295,6 +2297,47 @@ No verificado: cómo se ve en una pantalla de Bedrock (el cliente de prueba no d
 BungeeCord en sí: se probó con Geyser Standalone, que carga las extensiones igual. Para que el
 cliente de prueba entrase sin cuenta de Xbox, ese Geyser tenía `enable-proxy-connections: true`; en
 tu red no hace falta.
+
+#### 3.3.1: los dibujos de ItemsAdder, Geyser 2.11 y las carpetas
+
+**Los packs protegidos de ItemsAdder.** ItemsAdder puede «proteger» su pack: cada PNG lleva un
+trozo propio (`iaPR`), sumas CRC falsas y un Adler-32 falso al final de los datos. El juego no las
+comprueba y lo dibuja; Java (`ImageIO`) sí, y lo rechaza («incorrect data check»). Por eso, hasta
+3.3.0, casi todos los ítems importados llegaban a Bedrock con el signo de interrogación. Desde 3.3.1
+esos PNG se leen como los lee el cliente (los mismos bytes, sin mirar las sumas) y entran limpios en
+el `.mcpack`; el pack Java no cambia. También se siguen los nombres cortos que ItemsAdder da a cada
+textura en el atlas (`ia:230` → `dragones_epicos:armor/abyssor/botas`), y un modelo colgado lejos de
+su bloque (la mochila en tercera persona) se dibuja centrado en su icono. El mismo lector mide los
+glifos de un HUD importado.
+
+En el pack de pruebas, 3314 de sus PNG estaban protegidos: los ítems sin dibujo pasaron de 1587 a 5.
+Esos 5 son cabezas de jugador (`template_skull`, `player_head`): su dibujo es la piel de un
+jugador, que no está en ningún pack.
+
+**Geyser 2.9 o posterior en el proxy.** Geyser 2.11 habla con el servidor como un Java 26.2: con
+Paper 1.21.8 detrás hace falta **ViaVersion** (en el proxy o en Paper). Los ítems se le registran
+por `item_model`, y eso sobrevive a la traducción de ViaVersion. En su consola, «Registered 199
+custom block overrides», «2 custom block item overrides» y «7 custom blocks» salen aunque no haya
+nada instalado: son de Geyser. Si en `custom_mappings/` o en `packs/` quedan mapeos y packs de una
+conversión anterior de esos mismos ítems, compiten con los de este plugin: quítalos cuando veas que
+estos funcionan.
+
+**Packs viejos.** `output/bedrock/` guardaba un `arkcontent-<hash>.mcpack` por cada compilación.
+Desde 3.3.1 solo quedan el de la última y el que Geyser-Spigot tomó al arrancar.
+
+| Prueba (3.3.1): Paper 1.21.8 + Floodgate + ViaVersion 5.12.1, y aparte Geyser Standalone 2.11.3-b1247 con este jar como extensión y los archivos en `extensions/arkcontent/bedrock/geyser-extension/` | Resultado |
+|---|---|
+| Conversión en Paper | 1673 ítems, 5 sin dibujo (con 3.3.0, 1587); 792 bloques; pack de 2,9 MB en 3,8 s |
+| Arranque de Geyser 2.11.3 | `Read 1673 item(s) and 792 block(s) from bedrock/geyser-extension/arkcontent-content.txt`; `Geyser: 1673 custom item(s), told apart by item model`; Geyser: `Registered 1674 custom items` y `Registered 799 custom blocks` (uno y siete son suyos) |
+| Cliente de Bedrock 1.26.40 a través de ese Geyser | recibe el pack (2 986 425 bytes) y 799 bloques personalizados; sin desconexiones |
+| `/customgive .BedBot` de las botas de abyssor y la espada mítica eclipse (importadas de ItemsAdder) | en su inventario como `arkcontent:ark_dragones_epicos_abyssor_botas` y `arkcontent:ark_arkespadas_mitica_eclipse`; sus iconos, en el pack |
+| Muebles | 74 portadores al recibir los chunks y 21 más al poner 5 muebles de ejemplo a su lado (Geyser 2.11 los manda en `update_subchunk_blocks`; 81 bloques distintos) |
+| Tests | 539, todos pasan |
+
+Sigue sin verificarse cómo se ve en una pantalla de Bedrock, y Velocity en sí (se probó con Geyser
+Standalone). Para el cliente de prueba, sin cuenta de Xbox, ese Geyser tenía
+`advanced.bedrock.validate-bedrock-login: false` (lo que en 2.11 sustituye a
+`enable-proxy-connections`); en tu red no hace falta.
 
 #### Qué se ha verificado en un servidor Paper 1.21.8 real (3.0, Bedrock)
 
