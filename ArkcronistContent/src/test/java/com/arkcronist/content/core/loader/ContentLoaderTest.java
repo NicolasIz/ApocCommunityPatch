@@ -578,6 +578,14 @@ class ContentLoaderTest {
                     type: custom_furniture
                     resource: {model: furniture/table}
                     furniture: {interactable: bed, seat-height: 1}
+                  throne:
+                    type: custom_furniture
+                    resource: {model: furniture/throne}
+                    furniture: {size: 3x3x2, interactable: seat, seat-height: 1.0, seat-at: [0, -0.25]}
+                  pew:
+                    type: custom_furniture
+                    resource: {model: furniture/pew}
+                    furniture: {size: 3x1, interactable: seat, seat-at: [0, 9]}
                 """);
 
         LoadReport report = new ContentLoader().load(contents);
@@ -585,7 +593,13 @@ class ContentLoaderTest {
         assertEquals(new Placement.Seat(0.4f), ((Placement.Furniture) report.items().get(0).placement()).seat());
         assertEquals(Placement.Seat.DEFAULT, ((Placement.Furniture) report.items().get(1).placement()).seat());
         assertNull(((Placement.Furniture) report.items().get(2).placement()).seat());
-        assertEquals(2, report.problems().size(), report.problems().toString());
+        // 3.2: one seat in the middle of a big piece, moved a quarter of a block back.
+        assertEquals(new Placement.Seat(1.0f, true, 0f, -0.25f), ((Placement.Furniture) report.items().get(3).placement()).seat());
+        assertEquals(Placement.Seat.DEFAULT, ((Placement.Furniture) report.items().get(4).placement()).seat(),
+                "nine blocks off its middle: a seat on each block");
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("'seat-at' should be [across, forward]")),
+                report.problems().toString());
+        assertEquals(3, report.problems().size(), report.problems().toString());
     }
 
     @Test

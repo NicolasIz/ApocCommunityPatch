@@ -1172,17 +1172,31 @@ public final class ContentLoader {
         return new Placement.Storage(slots, title == null || title.isBlank() ? null : title);
     }
 
-    /** {@code interactable: seat}, and where the seat is: {@code seat-height}, blocks above the floor. */
+    /**
+     * {@code interactable: seat}, and where the seat is: {@code seat-height}, blocks above the floor,
+     * and (3.2) {@code seat-at: [across, forward]} for one seat in the middle of a piece several
+     * blocks big, moved that far.
+     */
     private static Placement.Seat seat(Map<?, ?> section, String prefix, List<String> problems) {
         Object height = section.get("seat-height");
-        if (height == null) {
-            return Placement.Seat.DEFAULT;
+        float seatHeight = Placement.Seat.DEFAULT.height();
+        if (height instanceof Number number && number.doubleValue() >= 0 && number.doubleValue() <= 3) {
+            seatHeight = number.floatValue();
+        } else if (height != null) {
+            problems.add(prefix + "'seat-height' should be a number from 0 to 3; using " + Placement.Seat.DEFAULT.height());
         }
-        if (height instanceof Number number && number.doubleValue() >= 0 && number.doubleValue() <= 2) {
-            return new Placement.Seat(number.floatValue());
+        Object at = section.get("seat-at");
+        if (at == null) {
+            return new Placement.Seat(seatHeight);
         }
-        problems.add(prefix + "'seat-height' should be a number from 0 to 2; using " + Placement.Seat.DEFAULT.height());
-        return Placement.Seat.DEFAULT;
+        if (at instanceof List<?> pair && pair.size() == 2 && pair.get(0) instanceof Number across
+                && pair.get(1) instanceof Number forward && Math.abs(across.doubleValue()) <= 3
+                && Math.abs(forward.doubleValue()) <= 3) {
+            return new Placement.Seat(seatHeight, true, across.floatValue(), forward.floatValue());
+        }
+        problems.add(prefix + "'seat-at' should be [across, forward] in blocks from the piece's middle, each -3 to 3;"
+                + " a seat on each block instead");
+        return new Placement.Seat(seatHeight);
     }
 
     /**

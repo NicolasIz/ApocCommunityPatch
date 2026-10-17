@@ -95,3 +95,11 @@ contents/medieval_props/textures/furniture/pila_lena.png 32d199b5171830631ae1a9c
 contents/demo/huds.yml d437098b5aa998ecafdbfd8dfc0f9d0423b0fabf
 # 3.1.0: the HUDs before 3.1.1 drew them as BetterHud's status bars
 contents/demo/huds.yml 6d1fb667392eb28a60570251beefbc06f397cf76
+# 3.1.0-3.1.1: the throne, the bread oven and the map at one block, before 3.2 made them big
+contents/medieval_props/furniture.yml 7a48dd727f48e9b1cfd13d461db5a2d6e5bda7c8
+contents/medieval_props/models/furniture/trono_real.json c053aa4b9d065ab92eca2d5238aab21dc9f165da
+contents/medieval_props/textures/furniture/trono_real.png 42f284e1831bd8f26167bb0a28d5ceb46594380c
+contents/medieval_props/models/furniture/horno_pan.json 37d8f19ef10cb71a4b59ff53a426275432981570
+contents/medieval_props/textures/furniture/horno_pan.png 9fb15d3b8cad11ffe3ce24bd81bd48d25ad73c7b
+contents/medieval_props/models/furniture/mapa_mural.json cf6eaa14fe9552960e76c5ff70bf389ffc6ed9a4
+contents/medieval_props/textures/furniture/mapa_mural.png f750b99509ca2bdfafb715b72e817ef312ec3ba5

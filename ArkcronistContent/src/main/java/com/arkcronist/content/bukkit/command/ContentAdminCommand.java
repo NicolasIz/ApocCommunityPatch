@@ -134,6 +134,16 @@ public final class ContentAdminCommand {
                                 .then(Commands.argument("radius", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 256))
                                         .executes(context -> legacy(context, true,
                                                 com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "radius"))))))
+                .then(Commands.literal("map").requires(ContentAdminCommand::admin)
+                        .executes(context -> map(context, false, 160))
+                        .then(Commands.argument("radius", com.mojang.brigadier.arguments.IntegerArgumentType.integer(40, 640))
+                                .executes(context -> map(context, false,
+                                        com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "radius"))))
+                        .then(Commands.literal("spawn")
+                                .executes(context -> map(context, true, 160))
+                                .then(Commands.argument("radius", com.mojang.brigadier.arguments.IntegerArgumentType.integer(40, 640))
+                                        .executes(context -> map(context, true,
+                                                com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "radius"))))))
                 .then(Commands.literal("integrity").requires(ContentAdminCommand::admin)
                         .executes(this::integrity)
                         .then(Commands.literal("now").executes(this::integrityNow))
@@ -584,6 +594,53 @@ public final class ContentAdminCommand {
             sender.sendMessage(Component.text("A punch at one, or breaking its barrier, takes it away and drops its item;"
                     + " /arkcontent legacy remove " + radius + " takes them all.", NamedTextColor.GRAY));
         }
+        return Command.SINGLE_SUCCESS;
+    }
+
+    /**
+     * 3.2: the map board's picture drawn from the world: {@code radius} blocks either side across
+     * (the picture is twenty to eleven), around where the player stands or the world's spawn, with a
+     * cross on the spawn; then the pack is built again, so everyone sees it.
+     */
+    private int map(CommandContext<CommandSourceStack> context, boolean atSpawn, int radius) {
+        CommandSender sender = context.getSource().getSender();
+        org.bukkit.World world;
+        org.bukkit.Location centre;
+        if (context.getSource().getExecutor() instanceof org.bukkit.entity.Player player) {
+            world = player.getWorld();
+            centre = atSpawn ? world.getSpawnLocation() : player.getLocation();
+        } else if (atSpawn) {
+            world = plugin.getServer().getWorlds().get(0);
+            centre = world.getSpawnLocation();
+        } else {
+            sender.sendMessage(Component.text("Run it as a player, or use /arkcontent map spawn.", NamedTextColor.RED));
+            return 0;
+        }
+        java.nio.file.Path pack = plugin.pipeline().contentsDir().resolve("medieval_props");
+        if (!java.nio.file.Files.isDirectory(pack)) {
+            sender.sendMessage(Component.text("contents/medieval_props/ is not there: the map board is one of its pieces.",
+                    NamedTextColor.RED));
+            return 0;
+        }
+        java.nio.file.Path out = pack.resolve("textures/furniture/mapa_mural_mapa.png");
+        int scale = Math.max(1, Math.min(com.arkcronist.content.bukkit.furniture.SpawnMapRenderer.MAX_SCALE,
+                (int) Math.ceil(radius / (com.arkcronist.content.core.furniture.SpawnMap.WIDTH / 2.0))));
+        int across = com.arkcronist.content.core.furniture.SpawnMap.WIDTH * scale;
+        int down = com.arkcronist.content.core.furniture.SpawnMap.HEIGHT * scale;
+        sender.sendMessage(Component.text("Drawing " + across + " x " + down + " blocks around " + centre.getBlockX() + ", "
+                + centre.getBlockZ() + " (" + scale + " block(s) a pixel)...", NamedTextColor.GRAY));
+        new com.arkcronist.content.bukkit.furniture.SpawnMapRenderer(plugin)
+                .render(world, centre.getBlockX(), centre.getBlockZ(), scale, world.getSpawnLocation(), out)
+                .whenCompleteAsync((chunks, error) -> {
+                    if (error != null) {
+                        sender.sendMessage(Component.text("The map could not be drawn: " + rootMessage(error), NamedTextColor.RED));
+                        return;
+                    }
+                    sender.sendMessage(Component.text("Map drawn from " + chunks + " chunk(s) into "
+                            + "contents/medieval_props/textures/furniture/mapa_mural_mapa.png. Rebuilding the pack...",
+                            NamedTextColor.GREEN));
+                    tellWhenLive(sender, plugin.pipeline().rebuild());
+                }, plugin.pipeline().mainThread());
         return Command.SINGLE_SUCCESS;
     }
 

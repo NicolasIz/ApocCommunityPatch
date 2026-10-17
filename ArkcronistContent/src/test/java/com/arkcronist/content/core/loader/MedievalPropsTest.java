@@ -86,7 +86,12 @@ class MedievalPropsTest {
         assertEquals(5, count(props, furniture -> furniture.support() == Placement.Support.LIGHT), "lights");
 
         assertEquals(new Footprint(2, 1), props.get("banco_largo").footprint());
-        assertEquals(new Footprint(1, 2), props.get("trono_real").footprint());
+        // 3.2: the throne on its dais, three by three, with one seat in its middle; the bread oven and
+        // the map board of the spawn, big too.
+        assertEquals(new Footprint(3, 3, 2), props.get("trono_real").footprint());
+        assertEquals(new Placement.Seat(1.0f, true, 0f, -0.2f), props.get("trono_real").seat());
+        assertEquals(new Footprint(3, 2, 2), props.get("horno_pan").footprint());
+        assertEquals(new Footprint(6, 4, 1), props.get("mapa_mural").footprint());
         assertEquals(new Footprint(3, 2), props.get("puesto_mercado").footprint());
         // 3.1: the big three - the forge, the well of a square and the woodpile.
         assertEquals(new Footprint(3, 3, 2), props.get("forja").footprint());
@@ -202,6 +207,13 @@ class MedievalPropsTest {
                 assertEquals("medieval_props:furniture/" + id, texture, file.toString());
                 assertTrue(Files.isRegularFile(pack.resolve("assets/medieval_props/textures/furniture/" + id + ".png")), id);
                 assertTrue(atlas.contains("\"" + texture + "\""), texture + " on the atlas");
+                // 3.2: the map board's picture is a second texture, of its own.
+                if (model.getAsJsonObject("textures").has("1")) {
+                    String picture = model.getAsJsonObject("textures").get("1").getAsString();
+                    assertEquals("medieval_props:furniture/mapa_mural_mapa", picture, file.toString());
+                    assertTrue(Files.isRegularFile(pack.resolve("assets/medieval_props/textures/furniture/mapa_mural_mapa.png")));
+                    assertTrue(atlas.contains("\"" + picture + "\""), picture + " on the atlas");
+                }
                 for (JsonElement element : model.getAsJsonArray("elements")) {
                     JsonObject cube = element.getAsJsonObject();
                     for (String corner : List.of("from", "to")) {

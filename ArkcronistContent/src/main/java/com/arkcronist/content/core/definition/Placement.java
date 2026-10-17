@@ -174,12 +174,21 @@ public sealed interface Placement {
     /**
      * A piece of furniture players can sit on.
      *
-     * @param height where the sitter's seat is, in blocks above the bottom of the support block -
-     *               0.5 for a chair of ordinary height
+     * @param height  where the sitter's seat is, in blocks above the bottom of the support block -
+     *                0.5 for a chair of ordinary height
+     * @param centred 3.2: one seat for the whole piece, at its middle moved by {@code across} and
+     *                {@code forward} - a throne several blocks big; otherwise one on each block it
+     *                stands on, as a bench's
+     * @param across  blocks to the sitter's right of the piece's middle (from the front, to the left)
+     * @param forward blocks towards its front
      */
-    record Seat(float height) {
+    record Seat(float height, boolean centred, float across, float forward) {
 
         public static final Seat DEFAULT = new Seat(0.5f);
+
+        public Seat(float height) {
+            this(height, false, 0f, 0f);
+        }
     }
 
     /**

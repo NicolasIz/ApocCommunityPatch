@@ -237,9 +237,21 @@ public final class FurnitureListener implements Listener {
                 Block seat = furniture.piece(support.get())
                         .map(piece -> support.get().getRelative(0, -piece.up(), 0)).orElse(support.get());
                 // 3.2: the sitter's camera passes through the piece's own supports.
-                List<Block> piece = furniture.piece(support.get()).map(found -> furniture.pieceParts(found.root()))
-                        .orElse(List.of(support.get()));
-                seats.sit(player, seat, definition.seat(), yaw, piece);
+                Optional<FurnitureService.Piece> whole = furniture.piece(support.get());
+                List<Block> piece = whole.map(found -> furniture.pieceParts(found.root())).orElse(List.of(support.get()));
+                Placement.Seat spec = definition.seat();
+                if (spec.centred() && whole.isPresent()) {
+                    // 3.2: one seat for the whole piece - a throne - in its middle, keyed on its anchor.
+                    Location middle = whole.get().root().getLocation();
+                    double[] moved = com.arkcronist.content.core.furniture.PieceAxes.offset(yaw, spec.across(), 0,
+                            spec.forward());
+                    Block anchor = whole.get().anchor();
+                    Location sitting = new Location(anchor.getWorld(), middle.getX() + moved[0],
+                            anchor.getY() + spec.height(), middle.getZ() + moved[2]);
+                    seats.sit(player, anchor, sitting, yaw, piece);
+                } else {
+                    seats.sit(player, seat, spec, yaw, piece);
+                }
             } else if (definition.storage() != null && protection.check(player, support.get(), Interaction.CONTAINER)) {
                 Optional<ChestPair> pair = furniture.pairAt(support.get());
                 if (pair.isPresent() && definition.doubleChest() != null) {

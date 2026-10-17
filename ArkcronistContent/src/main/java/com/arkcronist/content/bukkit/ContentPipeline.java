@@ -219,7 +219,10 @@ public final class ContentPipeline {
             Map.entry("3.1.1", List.of(
                     "contents/demo/textures/hud/thirst_small.png",
                     "contents/demo/textures/hud/mana_small.png",
-                    "contents/demo/textures/hud/shield_small.png")));
+                    "contents/demo/textures/hud/shield_small.png")),
+            // 3.2: the map board's picture, a texture of its own that /arkcontent map draws again.
+            Map.entry("3.2.0", List.of(
+                    "contents/medieval_props/textures/furniture/mapa_mural_mapa.png")));
 
     /** Copied into contents/ the first time the plugin starts. */
     private static final List<String> EXAMPLES = Stream.concat(FIRST_EXAMPLES.stream(),

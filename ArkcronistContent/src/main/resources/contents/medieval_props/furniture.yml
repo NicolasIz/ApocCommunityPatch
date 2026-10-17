@@ -119,11 +119,17 @@ items:
       model: 'furniture/trono_real'
     furniture:
       support: 'BARRIER'
+      # On its dais, three blocks across, two back and three up, drawn a block low and raised by
+      # the translation. One seat in its middle, a block up, a little back from the dais's edge.
       size:
-        width: 1
-        height: 2
+        width: 3
+        height: 3
+        depth: 2
+      display:
+        translation: [0, 1, 0]
       interactable: 'seat'
-      seat-height: 0.45
+      seat-height: 1.0
+      seat-at: [0, -0.2]
 
   tocon_asiento:
     type: 'custom_furniture'
@@ -542,15 +548,18 @@ items:
       model: 'furniture/horno_pan'
     furniture:
       support: 'BARRIER'
+      light: 12
+      # A baker's clay dome: three blocks across, two back and two up.
       size:
-        width: 1
+        width: 3
         height: 2
+        depth: 2
       interactable: 'effect'
       effect:
-        interval: 10
+        interval: 8
         particles:
-          - {particle: 'smoke', offset: [-0.219, 1.75, -0.156], count: 1, spread: 0.05, speed: 0.02}
-          - {particle: 'small_flame', offset: [0.0, 0.312, 0.438], count: 1, spread: 0.15, speed: 0.0}
+          - {particle: 'campfire_cosy_smoke', offset: [-0.312, 2.0, -0.562], count: 1, spread: 0.05, speed: 0.02}
+          - {particle: 'small_flame', offset: [0.0, 0.8, 0.72], count: 1, spread: 0.2, speed: 0.0}
         on-click:
           cook: 'smoker'
           potions:
@@ -745,9 +754,16 @@ items:
       model: 'furniture/mapa_mural'
     furniture:
       support: 'BARRIER'
+      # Six blocks across and four up, drawn at twice its model's size. Its picture,
+      # textures/furniture/mapa_mural_mapa.png, is drawn from the server's own spawn by
+      # /arkcontent map spawn.
       size:
-        width: 1
-        height: 2
+        width: 6
+        height: 4
+        depth: 1
+      display:
+        scale: 2.0
+        translation: [0, 0.5, 0]
       interactable: 'command'
       command:
         run:
