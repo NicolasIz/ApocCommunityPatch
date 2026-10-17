@@ -288,6 +288,7 @@ public final class ArkContentPlugin extends JavaPlugin {
             this.bedrock = bedrock;
             plugins.registerEvents(bedrock, this);
             delivery.skip(bedrock::isBedrock);
+            seats.drawnAsBlocksFor(bedrock::isBedrock);
             actionBars.plainFor(bedrock::isBedrock);
             minigames.plainTextFor(bedrock::isBedrock);
         }

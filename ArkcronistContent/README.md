@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.2.0.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.2.1.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -889,7 +889,10 @@ que está sentado: la cámara se quedaba pegada a su cara. Ahora, mientras algui
 arrodillado, **solo a su cliente** se le muestran como aire las barreras de ese mueble
 (`sendBlockChanges`, un tick después de sentarse para que no las pise el reenvío del bloque clicado).
 Puede alejar la cámara y verse sentado. Los demás siguen chocando con ellas, y al levantarse, al
-romperse el mueble, al salir o al apagar el plugin se le vuelven a mostrar.
+romperse el mueble, al salir o al apagar el plugin se le vuelven a mostrar. **3.2.1:** a un jugador
+de Bedrock no se le hace: su cliente dibuja el mueble como bloques justo donde están esas barreras
+(ver *Jugadores de Bedrock*), y mandárselas como aire le quitaba el trono de la pantalla, y al
+levantarse se quedaba sin él hasta volver a cargar el chunk.
 
 ### Muebles con almacenamiento
 
@@ -2216,6 +2219,24 @@ sus palabras, sin las imágenes ni los espacios que los colocan.
 
 `/arkcontent bedrock` dice cuántos ítems, bloques y portadores recibió Geyser, cuántos jugadores de
 Bedrock hay, cuántas piezas se les están mostrando y cuántos bloques portadores se han enviado.
+
+**Lo de 3.2 en Bedrock.**
+
+- **Hacia dónde mira un mueble** y **`/arkcontent legacy look`** son del servidor: valen igual
+  colocando o mirando desde Bedrock.
+- **El trono, el horno y el mapa** llegan como portadores, como los demás muebles, tras reiniciar.
+  Necesitan muchos (una celda por bloque y por giro: el trono 60, el mapa hasta 96, el pozo de 6×6
+  más de 400), y solo hay 799 estados de note block, menos los de los bloques personalizados. Si no
+  llegan, la consola lo dice al compilar (`no Bedrock carrier state left`) y esas celdas no se ven en
+  Bedrock.
+- **El dibujo del mapa** (`/arkcontent map`) entra en el `.mcpack`, pero Geyser toma el pack al
+  arrancar: los jugadores de Bedrock lo ven tras reiniciar el servidor.
+- **La cámara en tercera persona** no cambia en Bedrock (ver *Asientos*).
+- **El HUD dibujado por BetterHud** no le llega a Bedrock: BetterHud no dibuja nada a sus jugadores.
+- **Todo esto pide Geyser-Spigot en este mismo servidor.** Con Geyser en un proxy (Velocity o
+  BungeeCord) y solo Floodgate en Paper, este plugin no puede darle a Geyser los ítems, los bloques
+  ni los muebles por su API: `bedrock.enabled: auto` lo deja apagado. `bedrock.enabled: true` deja el
+  `.mcpack` en `output/bedrock/`, pero sin los mapeos que Geyser necesita.
 
 #### Qué se ha verificado en un servidor Paper 1.21.8 real (3.0, Bedrock)
 

@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 /**
  * Sitting on furniture.
@@ -48,10 +49,21 @@ public final class SeatService {
     private final Map<UUID, Map<Long, UUID>> seats = new HashMap<>();
     /** 3.2: the supports each sitter's client is shown as air, by player. */
     private final Map<UUID, List<Block>> hidden = new HashMap<>();
+    /** 3.2.1: sitters whose client draws the piece as blocks where its supports are: Bedrock players. */
+    private Predicate<Player> drawnAsBlocks = player -> false;
 
     public SeatService(Plugin plugin) {
         this.plugin = plugin;
         this.seatTag = new NamespacedKey(plugin, "seat");
+    }
+
+    /**
+     * 3.2.1: players whose client draws furniture as blocks in place of its supports - Bedrock
+     * players, through Geyser. Their supports are not shown to them as air while they sit: that
+     * would take the piece itself off their screen, and leave it off after they stand up.
+     */
+    public void drawnAsBlocksFor(Predicate<Player> drawnAsBlocks) {
+        this.drawnAsBlocks = drawnAsBlocks;
     }
 
     /**
@@ -75,7 +87,7 @@ public final class SeatService {
     public void sit(Player player, Block support, Location sitting, float yaw, Collection<Block> piece) {
         sit(player, support, sitting, yaw);
         Entity seat = seatAt(support);
-        if (seat != null && seat.equals(player.getVehicle())) {
+        if (seat != null && seat.equals(player.getVehicle()) && !drawnAsBlocks.test(player)) {
             // A tick later: the click that sat them down was cancelled, and the server sends the
             // clicked block back to their client after that - as the barrier it is.
             plugin.getServer().getScheduler().runTask(plugin, () -> {
