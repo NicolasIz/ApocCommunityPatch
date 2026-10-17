@@ -278,13 +278,32 @@ public final class ArkContentPlugin extends JavaPlugin {
         // 3.0: Bedrock players, through Geyser: furniture as carrier blocks, plain titles and bars,
         // and no Java pack - Geyser sends them the Bedrock one. After the title listener above.
         com.arkcronist.content.bukkit.hooks.geyser.GeyserHook geyser = hooks.geyser();
+        com.arkcronist.content.bukkit.bedrock.BedrockService bedrock = null;
         if (geyser != null) {
-            com.arkcronist.content.bukkit.bedrock.BedrockService bedrock =
-                    new com.arkcronist.content.bukkit.bedrock.BedrockService(this, furniture, itemFactory,
-                            geyser::isBedrockPlayer, () -> {
-                                ContentPipeline.BedrockContent given = geyser.registered();
-                                return given != null && geyser.live() ? given.build() : null;
-                            });
+            bedrock = new com.arkcronist.content.bukkit.bedrock.BedrockService(this, furniture, itemFactory,
+                    geyser::isBedrockPlayer, () -> {
+                        ContentPipeline.BedrockContent given = geyser.registered();
+                        return given != null && geyser.live() ? given.build() : null;
+                    });
+        } else if (pipeline.bedrockActive() && !pipeline.geyserHere()) {
+            // 3.3: Geyser on a proxy, with this jar as its extension: Floodgate here says who plays on
+            // Bedrock, and the proxy's Geyser knows the carriers of the build the extension was given.
+            if (getServer().getPluginManager().getPlugin("floodgate") == null) {
+                getLogger().warning("[bedrock] Geyser is not on this server and Floodgate is not either: Bedrock"
+                        + " players cannot be told apart here, so they are shown no furniture. Install Floodgate on this"
+                        + " server too, as Geyser's docs say for a proxy.");
+            } else {
+                getLogger().info("[bedrock] Geyser on a proxy: Bedrock players are told apart by Floodgate.");
+                com.arkcronist.content.bukkit.bedrock.FloodgateBridge floodgate =
+                        new com.arkcronist.content.bukkit.bedrock.FloodgateBridge(getClass().getClassLoader());
+                bedrock = new com.arkcronist.content.bukkit.bedrock.BedrockService(this, furniture, itemFactory,
+                        floodgate::isBedrockPlayer, () -> {
+                            CompletableFuture<ContentPipeline.BedrockContent> first = pipeline.bedrockReady();
+                            return first.isDone() && !first.isCompletedExceptionally() ? first.join().build() : null;
+                        });
+            }
+        }
+        if (bedrock != null) {
             this.bedrock = bedrock;
             plugins.registerEvents(bedrock, this);
             delivery.skip(bedrock::isBedrock);

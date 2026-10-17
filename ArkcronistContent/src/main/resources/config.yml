@@ -294,26 +294,42 @@ sanity:
   max-millis-per-tick: 1.0
 
 # ---------------------------------------------------------------------------
-#  Bedrock players (3.0), through Geyser-Spigot on this server
+#  Bedrock players (3.0), through Geyser - on this server or (3.3) on a proxy
 # ---------------------------------------------------------------------------
 #  Every rebuild also converts the content for Bedrock, on the ArkContent-Worker
 #  thread: an icon for each item, each custom block and liquid as a Bedrock
 #  block, each piece of furniture cut into the block cells it covers, and the
-#  emojis as glyph sheets, all in one .mcpack (output/bedrock/). As Geyser
-#  starts, it is handed the items, the blocks and the pack through its API -
-#  its mappings are made in memory; nothing is written into Geyser's folder and
-#  nothing needs configuring there. Geyser draws no item displays, so Bedrock
-#  players are shown furniture as blocks of its own, sent to them alone: Java
-#  players and the world keep the barriers. Geyser takes custom items and
-#  blocks only as it starts: content added later reaches Bedrock players after
-#  a restart. The note block states furniture is drawn with are kept in
-#  data/bedrock_carriers.json, taken from the top of the range down and never
-#  given to custom blocks.
-#    auto  - when Geyser-Spigot is installed (default)
-#    true  - always; for Geyser on a proxy, take output/bedrock/*.mcpack from here
+#  emojis as glyph sheets, all in one .mcpack (output/bedrock/). Geyser draws
+#  no item displays, so Bedrock players are shown furniture as blocks of its
+#  own, sent to them alone: Java players and the world keep the barriers.
+#  Geyser takes custom items and blocks only as it starts: content added later
+#  reaches Bedrock players after Geyser restarts. The note block states
+#  furniture is drawn with ("carriers") are kept in data/bedrock_carriers.json.
+#
+#  With Geyser-Spigot on this server, Geyser is handed everything through its
+#  API as it starts; nothing needs configuring there.
+#
+#  With Geyser on a proxy (Velocity, BungeeCord) and Floodgate on this server
+#  (3.3): every rebuild writes output/bedrock/geyser-extension/ - the content
+#  and the .mcpack. On the proxy, put this same jar in Geyser's extensions/
+#  folder (plugins/Geyser-Velocity/extensions/) and those two files in
+#  extensions/arkcontent/, then restart the proxy. Do it again after content
+#  changes. Floodgate here says who plays on Bedrock.
+#    auto  - on when Geyser-Spigot or Floodgate is installed here (default)
+#    true  - always on
+#    proxy - on, as for a Geyser on a proxy even if Geyser-Spigot is here
 #    false - never
 #  With it on, every item with a model also gets a custom_model_data number
 #  (pack.custom-model-data), which Geyser 2.8 tells custom items apart by.
 # ---------------------------------------------------------------------------
 bedrock:
   enabled: auto
+  # 3.3: if the proxy's Geyser folder is reachable from here (the same machine
+  # or a shared disk), the files are written straight into it as well, e.g.
+  # /srv/proxy/plugins/Geyser-Velocity/extensions/arkcontent
+  geyser-folder: ''
+  # 3.3: furniture Bedrock players are not shown, by id or namespace:*. There
+  # are only so many note block states for carriers (one per block of a piece
+  # and per quarter turn: a 6x6 well takes over 400), and when they run out
+  # the biggest pieces are left out. Listing some here leaves those out instead.
+  skip-furniture: []

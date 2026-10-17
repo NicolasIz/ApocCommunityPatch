@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'com.arkcronist'
-version = '3.2.1'
+version = '3.3.0'
 description = 'Custom items from YAML, drawn by a resource pack the plugin compiles, zips, hashes and serves itself.'
 
 java {
@@ -322,7 +322,7 @@ processResources {
     def props = [version: project.version]
     inputs.properties props
     filteringCharset = 'UTF-8'
-    filesMatching('paper-plugin.yml') {
+    filesMatching(['paper-plugin.yml', 'extension.yml']) {
         expand props
     }
 }

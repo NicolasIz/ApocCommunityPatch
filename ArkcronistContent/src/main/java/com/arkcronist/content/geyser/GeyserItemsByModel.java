@@ -1,4 +1,4 @@
-package com.arkcronist.content.bukkit.hooks.geyser;
+package com.arkcronist.content.geyser;
 
 import com.arkcronist.content.core.geyser.BedrockConverter;
 import org.geysermc.geyser.api.event.lifecycle.GeyserDefineCustomItemsEvent;

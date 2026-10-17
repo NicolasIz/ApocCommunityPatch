@@ -291,6 +291,21 @@ class BedrockConversionTest {
         assertEquals(build.carrierAssignments(), again.carrierAssignments(), "carriers kept");
     }
 
+    /** 3.3: furniture listed in bedrock.skip-furniture gets no carriers; its item still has its icon. */
+    @Test
+    void skippedFurnitureGetsNoCarriers() throws IOException {
+        BedrockConverter.Input base = input(pack(), Map.of());
+        for (Set<String> skip : List.of(Set.of("demo:bench"), Set.of("demo:*"))) {
+            BedrockConverter.Build build = BedrockConverter.convert(new BedrockConverter.Input(base.pack(), base.items(),
+                    base.blocks(), base.liquids(), base.furniture(), base.emojis(), base.previousCarriers(),
+                    base.blockStates(), skip));
+            assertEquals(List.of(), build.problems());
+            assertEquals(0, build.carriers().size(), skip.toString());
+            assertEquals(Map.of(), build.carrierAssignments());
+            assertEquals(2, build.items().size(), "the bench is still an item");
+        }
+    }
+
     /**
      * An item made with resource.item-model - most imported ones - names an item definition, not
      * a model: its icon comes from the model the definition draws by default. And however long an

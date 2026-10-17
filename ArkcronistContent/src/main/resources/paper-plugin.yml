@@ -223,6 +223,11 @@ dependencies:
       load: OMIT
       required: false
       join-classpath: true
+    # 3.3: with Geyser on a proxy, Floodgate on this server says who plays on Bedrock.
+    floodgate:
+      load: OMIT
+      required: false
+      join-classpath: true
     # 3.0: cosmetics drawn by packets from their own thread.
     packetevents:
       load: BEFORE

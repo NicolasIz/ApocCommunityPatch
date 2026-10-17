@@ -236,8 +236,10 @@ public final class HookManager {
             placeholders.add(luckPerms);
         }
         // 3.0: Bedrock players, through Geyser - items, blocks, furniture and the pack, made for them
-        // by the pipeline and handed over as Geyser starts.
-        if (plugin.pipeline().bedrockActive()) {
+        // by the pipeline and handed over as Geyser starts. Only with Geyser on this server: on a
+        // proxy it takes them from the extension (3.3), and its API classes here - a plugin may ship
+        // them - lead nowhere.
+        if (plugin.pipeline().geyserHere()) {
             geyser = create("Geyser", "org.geysermc.geyser.api.event.lifecycle.GeyserDefineCustomBlocksEvent",
                     () -> new GeyserHook(plugin, plugin.pipeline().bedrockReady()));
         }

@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.2.1.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.3.0.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -2224,19 +2224,77 @@ Bedrock hay, cuántas piezas se les están mostrando y cuántos bloques portador
 
 - **Hacia dónde mira un mueble** y **`/arkcontent legacy look`** son del servidor: valen igual
   colocando o mirando desde Bedrock.
-- **El trono, el horno y el mapa** llegan como portadores, como los demás muebles, tras reiniciar.
-  Necesitan muchos (una celda por bloque y por giro: el trono 60, el mapa hasta 96, el pozo de 6×6
-  más de 400), y solo hay 799 estados de note block, menos los de los bloques personalizados. Si no
-  llegan, la consola lo dice al compilar (`no Bedrock carrier state left`) y esas celdas no se ven en
-  Bedrock.
+- **El trono, el horno y el mapa** llegan como portadores, como los demás muebles, tras reiniciar
+  Geyser. Necesitan muchos (una celda por bloque y por giro: el trono 60, el mapa 120, el pozo de 6×6
+  456), y solo hay 799 estados de note block, menos los de los bloques personalizados. Ver
+  *Portadores: cuando no hay para todos (3.3)*.
 - **El dibujo del mapa** (`/arkcontent map`) entra en el `.mcpack`, pero Geyser toma el pack al
-  arrancar: los jugadores de Bedrock lo ven tras reiniciar el servidor.
+  arrancar: los jugadores de Bedrock lo ven tras reiniciar Geyser (con Geyser en un proxy, tras
+  copiar otra vez los archivos de la extensión).
 - **La cámara en tercera persona** no cambia en Bedrock (ver *Asientos*).
 - **El HUD dibujado por BetterHud** no le llega a Bedrock: BetterHud no dibuja nada a sus jugadores.
-- **Todo esto pide Geyser-Spigot en este mismo servidor.** Con Geyser en un proxy (Velocity o
-  BungeeCord) y solo Floodgate en Paper, este plugin no puede darle a Geyser los ítems, los bloques
-  ni los muebles por su API: `bedrock.enabled: auto` lo deja apagado. `bedrock.enabled: true` deja el
-  `.mcpack` en `output/bedrock/`, pero sin los mapeos que Geyser necesita.
+- **Con Geyser en un proxy**, ver la sección siguiente (3.3).
+
+#### Geyser en un proxy: Velocity, BungeeCord o Geyser Standalone (3.3)
+
+En una red, Geyser va en el proxy (es por donde entran los jugadores de Bedrock) y en cada Paper
+solo hay Floodgate. Desde Paper, este plugin no puede hablar con ese Geyser. Por eso **el mismo jar
+del plugin es también una extensión de Geyser**: puesto en la carpeta `extensions/` del Geyser del
+proxy, le registra los ítems, los bloques, los muebles y el pack igual que lo hace el plugin con
+Geyser-Spigot (la misma API y el mismo código). No usa los mapeos JSON de Geyser: para los bloques
+obligarían a una propiedad «nota» de 25 valores, y Bedrock no admite más de 16 por propiedad.
+
+1. **En Paper** (con Floodgate, como ya pide Geyser en un proxy): `bedrock.enabled: auto` lo detecta
+   solo (hay Floodgate y no Geyser-Spigot). Cada compilación escribe
+   `output/bedrock/geyser-extension/` con dos archivos: `arkcontent-content.txt` (ítems y bloques) y
+   `arkcontent.mcpack`.
+2. **En el proxy**: copia el jar de este plugin a `plugins/Geyser-Velocity/extensions/` (o
+   `Geyser-BungeeCord/extensions/`, o `extensions/` en Standalone), y esos dos archivos a
+   `extensions/arkcontent/` dentro de esa misma carpeta de Geyser. Reinicia el proxy.
+3. Al arrancar, la consola del proxy dice `[arkcontent] [bedrock] Read N item(s) and M block(s)` y
+   Geyser `Registered ... custom blocks / custom items`.
+4. **Cuando cambie el contenido** (ítems nuevos, `/arkcontent map`, una versión nueva del plugin):
+   copia otra vez los dos archivos (y el jar, si cambió) y reinicia el proxy. Si el proxy está en la
+   misma máquina, `bedrock.geyser-folder:` en `config.yml` hace que el plugin los escriba directamente
+   en `extensions/arkcontent/` del proxy.
+
+En Paper, Floodgate dice quién juega en Bedrock: a ellos se les mandan los muebles como bloques, no
+el pack Java, los títulos de menú en texto y el minijuego en texto, como con Geyser-Spigot. Los
+portadores de un mueble solo existen en el cliente del jugador de Bedrock: el mundo y los jugadores
+de Java no cambian. `bedrock.enabled: proxy` fuerza este modo aunque haya Geyser-Spigot (para
+pruebas).
+
+#### Portadores: cuando no hay para todos (3.3)
+
+Cada mueble necesita un estado de note block por bloque y por giro de 90° («portador»). Desde 3.3:
+
+- Un mueble recibe **todos los suyos o ninguno**: medio mueble es peor que nada.
+- **Primero los pequeños**: si no hay para todos, se quedan fuera los más grandes. La consola lo dice
+  en una línea: cuáles y cuántos necesita cada uno.
+- `bedrock.skip-furniture: [medieval_props:pozo_deseos]` (id o `namespace:*`) deja fuera para
+  Bedrock lo que elijas, y su hueco pasa a los demás.
+- Un mueble que ya no existe libera los suyos solo: un portador solo vive en el cliente de un
+  jugador de Bedrock y Geyser los aprende de nuevo al arrancar, así que no hace falta tocar
+  `data/bedrock_carriers.json`.
+
+En el servidor de pruebas, con todo el contenido importado (1673 ítems), caben 784 portadores. Hasta
+3.2 se repartían por orden alfabético y faltaban 599, partidos entre varios muebles. En 3.3 entran
+enteros el trono, el horno y todos los demás, y quedan fuera solo el pozo (456) y el mapa (120). Si
+prefieres el mapa al pozo, `skip-furniture` puede dejar fuera otros (la forja usa 84 y la pila de
+leña 48).
+
+| Prueba (3.3), Paper 1.21.8 + Floodgate 2.2.5 b141 + Geyser Standalone 2.8.4 aparte, con este jar como extensión | Resultado |
+|---|---|
+| Paper con Floodgate y sin Geyser, `enabled: auto` | «Geyser on a proxy: Bedrock players are told apart by Floodgate»; escribe `geyser-extension/` (549 KB de contenido, pack de 928 KB) |
+| Arranque de Geyser | `Enabled extension ArkcronistContent`; `Read 1673 item(s) and 792 block(s)`; Geyser: `Registered 792 custom blocks`, `Registered 1673 custom items`; envía `arkcontent.mcpack` |
+| Cliente de Bedrock (`bedrock-protocol`, 1.21.111) a través de ese Geyser | Floodgate en Paper: `Floodgate player logged in as .BedBot`; recibe el pack (951 147 bytes), 792 bloques `geyser_custom:` (el horno, la forja…) y 2465 ítems |
+| Junto a los muebles | `/arkcontent bedrock`: 1 jugador de Bedrock, 764 portadores enviados; el cliente recibió esos cambios de bloque |
+| Geyser-Spigot en el propio Paper (como hasta 3.2) | sigue igual: el plugin le registra 792 bloques y 1673 ítems por la API |
+
+No verificado: cómo se ve en una pantalla de Bedrock (el cliente de prueba no dibuja), ni Velocity o
+BungeeCord en sí: se probó con Geyser Standalone, que carga las extensiones igual. Para que el
+cliente de prueba entrase sin cuenta de Xbox, ese Geyser tenía `enable-proxy-connections: true`; en
+tu red no hace falta.
 
 #### Qué se ha verificado en un servidor Paper 1.21.8 real (3.0, Bedrock)
 
@@ -3846,9 +3904,9 @@ con `join-classpath: true` para ver sus clases.
   Un mueble de soporte de luz (que se atraviesa) es para Geyser un note block: la corrección de
   movimiento de Geyser podría empujar a quien lo atraviesa; no se ha podido comprobar. Con Geyser
   2.8, una stack con un `custom_model_data` ajeno mayor que los de este plugin se vería como el
-  último ítem de este plugin por debajo de ese número (es la regla de Geyser). Geyser tiene que estar
-  en este servidor; en un proxy, el `.mcpack` se puede copiar, pero los bloques no se registran.
-  Cómo se ve todo en un cliente de Bedrock no se ha podido ver aquí.
+  último ítem de este plugin por debajo de ese número (es la regla de Geyser). Con Geyser en un
+  proxy (3.3), la extensión tiene que llevar los archivos de la última compilación; si no, lo nuevo
+  no se ve en Bedrock hasta copiarlos. Cómo se ve todo en un cliente de Bedrock no se ha podido ver aquí.
 - 3.0, cosméticos: un hueco, la espalda. Sin PacketEvents el display es una entidad real movida por
   el hilo principal (barata, pero una entidad por jugador).
 - 3.0, minijuegos: la barra va en la barra de acción, así que otro plugin que la use a la vez (la de

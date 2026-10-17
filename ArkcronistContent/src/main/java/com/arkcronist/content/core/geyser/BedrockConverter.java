@@ -1,6 +1,5 @@
 package com.arkcronist.content.core.geyser;
 
-import com.arkcronist.content.core.allocation.StableAllocator;
 import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.definition.ResourceLocation;
@@ -102,10 +101,23 @@ public final class BedrockConverter {
     /**
      * @param previousCarriers what bedrock_carriers.json held
      * @param blockStates      note block states custom blocks hold or held: never carriers
+     * @param skipFurniture    3.3: furniture Bedrock players are not shown, by id or {@code namespace:*}
+     *                         ({@code bedrock.skip-furniture}), leaving its carriers to the rest
      */
     public record Input(PackFiles pack, List<ItemSpec> items, List<BlockSpec> blocks, List<LiquidSpec> liquids,
                         List<FurnitureSpec> furniture, List<EmojiSpec> emojis, Map<String, Integer> previousCarriers,
-                        Set<Integer> blockStates) {
+                        Set<Integer> blockStates, Set<String> skipFurniture) {
+
+        public Input(PackFiles pack, List<ItemSpec> items, List<BlockSpec> blocks, List<LiquidSpec> liquids,
+                     List<FurnitureSpec> furniture, List<EmojiSpec> emojis, Map<String, Integer> previousCarriers,
+                     Set<Integer> blockStates) {
+            this(pack, items, blocks, liquids, furniture, emojis, previousCarriers, blockStates, Set.of());
+        }
+
+        /** Whether {@code id} is left out for Bedrock players. */
+        public boolean skipped(String id) {
+            return skipFurniture.contains(id) || skipFurniture.contains(id.substring(0, id.indexOf(':') + 1) + "*");
+        }
     }
 
     /** An item as Geyser is told about it. */
@@ -320,7 +332,11 @@ public final class BedrockConverter {
 
     private Map<String, Integer> furniture(List<BedrockBlock> blocks, List<Carrier> carriers) {
         Map<String, List<Object[]>> wanted = new LinkedHashMap<>();
+        Map<String, List<String>> keysByPiece = new TreeMap<>();
         for (FurnitureSpec piece : input.furniture()) {
+            if (input.skipped(piece.id())) {
+                continue;
+            }
             JavaModel model = model(piece.model());
             if (model == null || model.elements().isEmpty()) {
                 problems.add(piece.id() + ": its model could not be read for Bedrock - Bedrock players see nothing there");
@@ -345,22 +361,31 @@ public final class BedrockConverter {
                     String key = piece.id() + "|" + cell.getKey().key() + "|" + quarter;
                     wanted.computeIfAbsent(key, ignored -> new ArrayList<>()).add(new Object[]{piece, cell.getKey(),
                             quarter, geometry, materials, onSupport, base});
+                    keysByPiece.computeIfAbsent(piece.id(), ignored -> new ArrayList<>()).add(key);
                 }
             }
         }
         // Carriers from the top of the custom blocks' range down, never a state a block holds.
-        StableAllocator top = new StableAllocator(1, NoteBlockState.CAPACITY - 1 - 1, "Bedrock carrier state",
-                "to furniture no longer defined; remove those from bedrock_carriers.json");
         Map<String, Integer> mirroredPrevious = new HashMap<>();
         input.previousCarriers().forEach((key, state) -> mirroredPrevious.put(key, NoteBlockState.CAPACITY - state));
         Set<Integer> reserved = new HashSet<>();
         input.blockStates().forEach(state -> reserved.add(NoteBlockState.CAPACITY - state));
-        StableAllocator.Allocation allocation = top.allocate(mirroredPrevious, wanted.keySet(), reserved, true);
-        allocation.problems().forEach(problem -> problems.add("Bedrock: " + problem));
+        CarrierPlan plan = planCarriers(keysByPiece, mirroredPrevious, reserved, 1, NoteBlockState.CAPACITY - 2);
+        if (!plan.leftOut().isEmpty()) {
+            int total = plan.leftOut().values().stream().mapToInt(Integer::intValue).sum();
+            List<String> named = new ArrayList<>();
+            plan.leftOut().entrySet().stream().sorted((a, b) -> b.getValue() - a.getValue())
+                    .forEach(entry -> named.add(entry.getKey() + " (" + entry.getValue() + ")"));
+            problems.add("Bedrock: " + plan.leftOut().size() + " piece(s) of furniture left out for Bedrock players - "
+                    + "not enough note block states for their carriers (one per block of a piece and per quarter turn; "
+                    + plan.assignments().size() + " in use, " + total + " more needed). The smallest pieces go first. "
+                    + "Left out, with what each needs: " + String.join(", ", named) + ". List pieces under "
+                    + "bedrock.skip-furniture in config.yml to leave those out instead.");
+        }
         Map<String, Integer> assignments = new TreeMap<>();
-        allocation.assignments().forEach((key, mirrored) -> assignments.put(key, NoteBlockState.CAPACITY - mirrored));
+        plan.assignments().forEach((key, mirrored) -> assignments.put(key, NoteBlockState.CAPACITY - mirrored));
         for (Map.Entry<String, List<Object[]>> entry : wanted.entrySet()) {
-            Integer mirrored = allocation.active().get(entry.getKey());
+            Integer mirrored = plan.assignments().get(entry.getKey());
             if (mirrored == null) {
                 continue;
             }
@@ -379,6 +404,83 @@ public final class BedrockConverter {
                     Math.floorMod(-quarter * 90 + 180, 360) - 180, piece.displayName()));
         }
         return assignments;
+    }
+
+    /**
+     * Which carriers go to which piece.
+     *
+     * @param assignments every carrier key's number
+     * @param leftOut     pieces given none, with how many they needed
+     */
+    record CarrierPlan(Map<String, Integer> assignments, Map<String, Integer> leftOut) {
+    }
+
+    /**
+     * 3.3: hands out the numbers {@code first} to {@code last}, less {@code reserved}, to whole pieces:
+     * a piece gets a carrier for every block and quarter turn or none at all, since half a piece is
+     * worse than none. The smallest pieces go first, so the most pieces are shown when there are not
+     * enough for all; a key keeps the number it had before when it can. A carrier is only ever a
+     * block change sent to a Bedrock client, and Geyser learns them all anew as it starts: nothing in
+     * the world holds one, so a piece no longer defined frees its numbers at once.
+     *
+     * @param keysByPiece every piece's carrier keys
+     * @param previous    the number each key had before
+     */
+    static CarrierPlan planCarriers(Map<String, List<String>> keysByPiece, Map<String, Integer> previous,
+                                    Set<Integer> reserved, int first, int last) {
+        java.util.TreeSet<Integer> free = new java.util.TreeSet<>();
+        for (int number = first; number <= last; number++) {
+            if (!reserved.contains(number)) {
+                free.add(number);
+            }
+        }
+        // What each key had, where it still can: a free number, and not another key's too.
+        Set<String> wanted = new HashSet<>();
+        keysByPiece.values().forEach(wanted::addAll);
+        Map<String, Integer> claim = new HashMap<>();
+        Map<Integer, String> claimedBy = new HashMap<>();
+        for (Map.Entry<String, Integer> entry : new TreeMap<>(previous).entrySet()) {
+            Integer number = entry.getValue();
+            if (wanted.contains(entry.getKey()) && number != null && free.contains(number) && !claimedBy.containsKey(number)) {
+                claim.put(entry.getKey(), number);
+                claimedBy.put(number, entry.getKey());
+            }
+        }
+        List<String> order = new ArrayList<>(keysByPiece.keySet());
+        order.sort(java.util.Comparator.comparingInt((String piece) -> keysByPiece.get(piece).size())
+                .thenComparing(java.util.Comparator.naturalOrder()));
+        Map<String, Integer> assignments = new TreeMap<>();
+        Map<String, Integer> leftOut = new TreeMap<>();
+        for (String piece : order) {
+            List<String> keys = new ArrayList<>(new java.util.TreeSet<>(keysByPiece.get(piece)));
+            List<String> own = keys.stream().filter(key -> claim.containsKey(key) && free.contains(claim.get(key))).toList();
+            int needed = keys.size() - own.size();
+            if (needed > free.size() - own.size()) {
+                leftOut.put(piece, keys.size());
+                own.forEach(key -> claimedBy.remove(claim.get(key)));
+                continue;
+            }
+            for (String key : own) {
+                int number = claim.get(key);
+                assignments.put(key, number);
+                free.remove(number);
+                claimedBy.remove(number);
+            }
+            for (String key : keys) {
+                if (assignments.containsKey(key)) {
+                    continue;
+                }
+                // A number nobody had first; else one a later, larger piece had.
+                Integer number = free.stream().filter(n -> !claimedBy.containsKey(n)).findFirst().orElse(free.first());
+                String owner = claimedBy.remove(number);
+                if (owner != null) {
+                    claim.remove(owner);
+                }
+                assignments.put(key, number);
+                free.remove(number);
+            }
+        }
+        return new CarrierPlan(assignments, leftOut);
     }
 
     private static String cellName(FurnitureLayout.Cell cell) {
@@ -497,10 +599,7 @@ public final class BedrockConverter {
      * not registered that way.
      */
     public static List<BedrockItem> lowestNumberFirst(List<BedrockItem> items) {
-        List<BedrockItem> sorted = new ArrayList<>(items);
-        sorted.sort(java.util.Comparator.comparing((BedrockItem item) -> item.customModelData() == null ? Integer.MAX_VALUE
-                : item.customModelData()));
-        return sorted;
+        return GeyserExport.lowestNumberFirst(items);
     }
 
     /** One line for many items: how many, from which packs, a few of them. */

@@ -51,6 +51,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -406,6 +407,8 @@ public final class ContentPipeline {
     private final CompletableFuture<BedrockContent> bedrockReady = new CompletableFuture<>();
     private volatile @Nullable BedrockContent bedrockLatest;
     private final boolean bedrockActive;
+    /** 3.3: whether Geyser is on this server (Geyser-Spigot), not on a proxy in front of it. */
+    private final boolean geyserHere;
     private final Path emojiCharacterFile;
     private final Path modelDataFile;
     private final Path liquidStateFile;
@@ -467,6 +470,7 @@ public final class ContentPipeline {
         this.carrierFile = data.resolve("data").resolve("bedrock_carriers.json");
         this.bedrockDir = data.resolve("output").resolve("bedrock");
         this.bedrockActive = bedrockActive(plugin);
+        this.geyserHere = bedrockActive && geyserHere(plugin);
         this.emojiCharacterFile = data.resolve("data").resolve("emoji_characters.json");
         this.modelDataFile = data.resolve("data").resolve("custom_model_data.json");
         this.liquidStateFile = data.resolve("data").resolve("liquid_states.json");
@@ -1068,20 +1072,36 @@ public final class ContentPipeline {
 
     /**
      * Whether the content is made for Bedrock players too: config {@code bedrock.enabled}, where
-     * auto means when Geyser is installed. Decided once, as the plugin starts - Geyser takes the
-     * content only as it starts too.
+     * auto means when Geyser-Spigot is installed - or (3.3) Floodgate, which a server behind a proxy
+     * with Geyser has. Decided once, as the plugin starts - Geyser takes the content only as it
+     * starts too.
      */
     public boolean bedrockActive() {
         return bedrockActive;
     }
 
+    /**
+     * 3.3: whether Geyser runs on this server and is handed the content through its API; if not, it
+     * runs on a proxy (or standalone), and gets it through the extension and the files in
+     * output/bedrock/geyser-extension/.
+     */
+    public boolean geyserHere() {
+        return geyserHere;
+    }
+
     private static boolean bedrockActive(ArkContentPlugin plugin) {
         Object mode = plugin.getConfig().get("bedrock.enabled", "auto");
         return switch (String.valueOf(mode).trim().toLowerCase(Locale.ROOT)) {
-            case "true", "on", "yes" -> true;
+            case "true", "on", "yes", "proxy" -> true;
             case "false", "off", "no" -> false;
-            default -> plugin.getServer().getPluginManager().getPlugin("Geyser-Spigot") != null;
+            default -> plugin.getServer().getPluginManager().getPlugin("Geyser-Spigot") != null
+                    || plugin.getServer().getPluginManager().getPlugin("floodgate") != null;
         };
+    }
+
+    private static boolean geyserHere(ArkContentPlugin plugin) {
+        String mode = String.valueOf(plugin.getConfig().get("bedrock.enabled", "auto")).trim().toLowerCase(Locale.ROOT);
+        return !mode.equals("proxy") && plugin.getServer().getPluginManager().getPlugin("Geyser-Spigot") != null;
     }
 
     /** What Bedrock players are shown, and the .mcpack it is drawn with. */
@@ -1123,6 +1143,9 @@ public final class ContentPipeline {
                 Files.write(pack, bedrock.pack());
             }
             build.problems().addAll(bedrock.problems());
+            if (!geyserHere) {
+                exportForProxy(bedrock);
+            }
             Path missing = bedrockDir.resolve("items-without-picture.txt");
             if (bedrock.unpictured().isEmpty()) {
                 Files.deleteIfExists(missing);
@@ -1142,6 +1165,51 @@ public final class ContentPipeline {
             build.problems().add("bedrock: the content could not be made for Bedrock players - " + failure);
             return build;
         }
+    }
+
+    /**
+     * 3.3: for a Geyser on a proxy, the items and blocks it is to be told and the .mcpack, as the
+     * extension reads them: output/bedrock/geyser-extension/, and the folder {@code
+     * bedrock.geyser-folder} names, if it does - Geyser's extensions/arkcontent/ on a proxy that
+     * shares this machine's disk. Each file is written only when it changed.
+     */
+    private void exportForProxy(BedrockConverter.Build bedrock) throws IOException {
+        byte[] content = com.arkcronist.content.core.geyser.GeyserExport.write(bedrock.items(), bedrock.blocks(),
+                bedrock.carriers().size()).getBytes(StandardCharsets.UTF_8);
+        List<Path> folders = new ArrayList<>();
+        folders.add(bedrockDir.resolve("geyser-extension"));
+        String elsewhere = plugin.getConfig().getString("bedrock.geyser-folder", "");
+        if (elsewhere != null && !elsewhere.isBlank()) {
+            folders.add(Path.of(elsewhere.trim()));
+        }
+        boolean changed = false;
+        for (Path folder : folders) {
+            try {
+                Files.createDirectories(folder);
+                changed |= writeIfChanged(folder.resolve(com.arkcronist.content.core.geyser.GeyserExport.FILE), content);
+                changed |= writeIfChanged(folder.resolve(com.arkcronist.content.core.geyser.GeyserExport.PACK),
+                        bedrock.pack());
+            } catch (IOException failure) {
+                logger.warning("[bedrock] Could not write the files for Geyser's extension into " + folder + ": " + failure);
+            }
+        }
+        if (changed) {
+            logger.info("[bedrock] Geyser is not on this server: the content for Bedrock players is in"
+                    + " output/bedrock/geyser-extension/. Put this plugin's jar in the proxy's Geyser extensions/"
+                    + " folder and those two files in extensions/arkcontent/, then restart the proxy."
+                    + (folders.size() > 1 ? " Also written to " + folders.get(1) + "." : ""));
+        }
+    }
+
+    private static boolean writeIfChanged(Path file, byte[] bytes) throws IOException {
+        if (Files.isRegularFile(file) && java.util.Arrays.equals(Files.readAllBytes(file), bytes)) {
+            return false;
+        }
+        Path temporary = file.resolveSibling(file.getFileName() + ".tmp");
+        Files.write(temporary, bytes);
+        Files.move(temporary, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+        return true;
     }
 
     private BedrockConverter.Input bedrockInput(Build build) throws IOException {
@@ -1183,8 +1251,13 @@ public final class ContentPipeline {
         build.emojis().forEach((emoji, character) -> emojis.add(new BedrockConverter.EmojiSpec(character, emoji.texture())));
         Set<Integer> blockStates = new java.util.HashSet<>(NoteBlockAllocator.read(noteBlockStateFile).values());
         build.noteBlocks().values().forEach(state -> blockStates.add(state.index()));
+        // 3.3: furniture the admin leaves out for Bedrock players, to give its carriers to the rest.
+        Set<String> skip = new java.util.HashSet<>();
+        for (String id : plugin.getConfig().getStringList("bedrock.skip-furniture")) {
+            skip.add(id.trim().toLowerCase(Locale.ROOT));
+        }
         return new BedrockConverter.Input(this::builtFile, items, blocks, liquids, furniture, emojis,
-                StableAllocator.read(carrierFile), blockStates);
+                StableAllocator.read(carrierFile), blockStates, skip);
     }
 
     private CompletableFuture<Build> zipPack(Build build) {

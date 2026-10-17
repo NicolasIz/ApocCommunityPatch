@@ -1,0 +1,9 @@
+# 3.3: this jar is also a Geyser extension, for a Geyser on a proxy (Velocity, BungeeCord) or
+# standalone. Put the jar in Geyser's extensions/ folder and the two files of the server's
+# plugins/ArkcronistContent/output/bedrock/geyser-extension/ in extensions/arkcontent/.
+id: arkcontent
+name: ArkcronistContent
+main: com.arkcronist.content.geyser.ArkContentGeyserExtension
+api: 2.8.0
+version: '${version}'
+authors: [Arkcronist]
