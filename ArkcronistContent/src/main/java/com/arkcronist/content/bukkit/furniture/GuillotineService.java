@@ -82,7 +82,8 @@ public final class GuillotineService {
         Block anchor = piece.anchor();
         double[] behind = PieceAxes.offset(piece.yaw(), 0, 0, -KNEEL_BEHIND);
         Location sitting = anchor.getLocation().add(0.5 + behind[0], spec.kneelHeight(), 0.5 + behind[2]);
-        seats.sit(player, anchor, sitting, piece.yaw());
+        // 3.2: the kneeler's camera passes through the frame's supports.
+        seats.sit(player, anchor, sitting, piece.yaw(), furniture.pieceParts(piece.root()));
     }
 
     /** A right click on the lever: the blade falls. */

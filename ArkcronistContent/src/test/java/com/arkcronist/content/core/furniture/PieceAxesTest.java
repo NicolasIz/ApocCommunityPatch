@@ -35,4 +35,19 @@ class PieceAxesTest {
             assertEquals(right[1], across[2], EPSILON, "yaw " + yaw);
         }
     }
+
+    /**
+     * 3.2: a piece turns to where its placer stands, not along where they look: from the east,
+     * looking north past it, it faces east all the same.
+     */
+    @Test
+    void aPieceFacesWhereItsPlacerStands() {
+        assertEquals(0f, PieceAxes.towards(0, 3, 180f), "placer to the south: faces south (yaw 0)");
+        assertEquals(270f, PieceAxes.towards(3, 0.4, 180f), "placer to the east, looking north: faces east");
+        assertEquals(90f, PieceAxes.towards(-2, -0.5, 0f), "placer to the west: faces west");
+        assertEquals(180f, PieceAxes.towards(0.6, -3, 90f), "placer to the north: faces north");
+        // Straight above: where they look decides, turned back towards them, as before.
+        assertEquals(0f, PieceAxes.towards(0.1, -0.2, 180f), "looking north from above: faces south");
+        assertEquals(90f, PieceAxes.towards(0, 0, 270f), "looking east from above: faces west");
+    }
 }

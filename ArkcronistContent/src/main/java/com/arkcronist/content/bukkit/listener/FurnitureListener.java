@@ -146,7 +146,7 @@ public final class FurnitureListener implements Listener {
         }
         Player player = event.getPlayer();
         List<Block> blocks = FurnitureService.footprint(event.getBlockPlaced(), spec,
-                FurnitureService.placementYaw(player, spec));
+                FurnitureService.placementYaw(player, event.getBlockPlaced(), spec));
         for (Block part : blocks.subList(1, blocks.size())) {
             boolean free = (part.isEmpty() || part.isReplaceable()) && !part.isLiquid() && !furniture.claims(part);
             if (!free) {
@@ -236,7 +236,10 @@ public final class FurnitureListener implements Listener {
                 // a wide one - a bench - seats one on each of its blocks.
                 Block seat = furniture.piece(support.get())
                         .map(piece -> support.get().getRelative(0, -piece.up(), 0)).orElse(support.get());
-                seats.sit(player, seat, definition.seat(), yaw);
+                // 3.2: the sitter's camera passes through the piece's own supports.
+                List<Block> piece = furniture.piece(support.get()).map(found -> furniture.pieceParts(found.root()))
+                        .orElse(List.of(support.get()));
+                seats.sit(player, seat, definition.seat(), yaw, piece);
             } else if (definition.storage() != null && protection.check(player, support.get(), Interaction.CONTAINER)) {
                 Optional<ChestPair> pair = furniture.pairAt(support.get());
                 if (pair.isPresent() && definition.doubleChest() != null) {
@@ -370,6 +373,7 @@ public final class FurnitureListener implements Listener {
         if (signs != null) {
             signs.forget(event.getPlayer());
         }
+        seats.forget(event.getPlayer());
         Entity vehicle = event.getPlayer().getVehicle();
         if (vehicle != null && seats.isSeat(vehicle)) {
             vehicle.eject();

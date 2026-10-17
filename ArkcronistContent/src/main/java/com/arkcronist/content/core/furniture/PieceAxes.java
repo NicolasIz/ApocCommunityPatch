@@ -15,6 +15,19 @@ public final class PieceAxes {
     private PieceAxes() {
     }
 
+    /**
+     * 3.2: the yaw a piece placed by someone standing {@code dx}, {@code dz} from its block's centre
+     * takes to face them, to the nearest quarter turn: towards where they stand, not along where they
+     * look - placed from one side while looking ahead, it still turns to them. Straight above it
+     * (closer than a third of a block across), the way they look decides, as before 3.2.
+     *
+     * @param lookYaw the placer's own yaw, for when where they stand says nothing
+     */
+    public static float towards(double dx, double dz, float lookYaw) {
+        double yaw = Math.abs(dx) < 0.34 && Math.abs(dz) < 0.34 ? lookYaw + 180.0 : Math.toDegrees(Math.atan2(-dx, dz));
+        return (float) (((Math.round(yaw / 90.0) * 90.0) % 360.0 + 360.0) % 360.0);
+    }
+
     /** {@code across, up, forward} for a piece turned to {@code yaw}, as {dx, dy, dz} in the world. */
     public static double[] offset(float yaw, double across, double up, double forward) {
         double radians = Math.toRadians(yaw);

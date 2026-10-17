@@ -5,9 +5,11 @@ import com.arkcronist.content.core.storage.BlockKey;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockState;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
@@ -15,6 +17,8 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +33,11 @@ import java.util.UUID;
  * the chunk: a seat outlives neither its sitter nor a restart. The player takes the vanilla riding
  * pose, as on a horse or in a boat.</p>
  *
+ * <p>3.2: while someone sits, their own client is shown the piece's invisible supports as air. A
+ * sitter's eyes are inside those barriers - in a throne's back, in the guillotine's frame - and the
+ * third-person camera stops at the first solid block it meets, so it stayed at their face. Everyone
+ * else still meets solid barriers, and the sitter is shown them again as they stand up.</p>
+ *
  * <p>Main thread only.</p>
  */
 public final class SeatService {
@@ -37,6 +46,8 @@ public final class SeatService {
     private final NamespacedKey seatTag;
     /** The seat on each support block, by world and position. */
     private final Map<UUID, Map<Long, UUID>> seats = new HashMap<>();
+    /** 3.2: the supports each sitter's client is shown as air, by player. */
+    private final Map<UUID, List<Block>> hidden = new HashMap<>();
 
     public SeatService(Plugin plugin) {
         this.plugin = plugin;
@@ -49,7 +60,24 @@ public final class SeatService {
      * @param yaw the direction the chair faces, which the sitter faces too
      */
     public void sit(Player player, Block support, Placement.Seat seat, float yaw) {
-        sit(player, support, support.getLocation().add(0.5, seat.height(), 0.5), yaw);
+        sit(player, support, seat, yaw, List.of(support));
+    }
+
+    /** As {@link #sit(Player, Block, Placement.Seat, float)}, for a piece standing on all of {@code piece}. */
+    public void sit(Player player, Block support, Placement.Seat seat, float yaw, Collection<Block> piece) {
+        sit(player, support, support.getLocation().add(0.5, seat.height(), 0.5), yaw, piece);
+    }
+
+    /**
+     * 3.2: as {@link #sit(Player, Block, Location, float)}, for a piece standing on all of
+     * {@code piece}, whose barriers the sitter's client is shown as air while they sit.
+     */
+    public void sit(Player player, Block support, Location sitting, float yaw, Collection<Block> piece) {
+        sit(player, support, sitting, yaw);
+        Entity seat = seatAt(support);
+        if (seat != null && seat.equals(player.getVehicle())) {
+            hide(player, piece);
+        }
     }
 
     /**
@@ -116,6 +144,7 @@ public final class SeatService {
                 standUp.setPitch(sitter.getLocation().getPitch());
                 sitter.teleport(standUp);
             }
+            reveal(sitter);
         });
     }
 
@@ -130,8 +159,38 @@ public final class SeatService {
             Location standUp = standUp(support, seat.getLocation().getYaw());
             for (Entity sitter : sitters) {
                 sitter.teleport(standUp.clone().setDirection(sitter.getLocation().getDirection()));
+                reveal(sitter);
             }
         }
+    }
+
+    /** 3.2: {@code player}'s client is shown the barriers of {@code piece} as air. */
+    private void hide(Player player, Collection<Block> piece) {
+        List<Block> barriers = piece.stream().filter(block -> block.getType() == Material.BARRIER).toList();
+        if (barriers.isEmpty()) {
+            return;
+        }
+        List<BlockState> air = new ArrayList<>(barriers.size());
+        for (Block barrier : barriers) {
+            BlockState state = barrier.getState();
+            state.setBlockData(Material.AIR.createBlockData());
+            air.add(state);
+        }
+        player.sendBlockChanges(air);
+        hidden.put(player.getUniqueId(), barriers);
+    }
+
+    /** 3.2: whatever {@code sitter}'s client was shown as air, it is shown as it is again. */
+    private void reveal(Entity sitter) {
+        List<Block> blocks = hidden.remove(sitter.getUniqueId());
+        if (blocks != null && sitter instanceof Player player && player.isOnline()) {
+            player.sendBlockChanges(blocks.stream().map(Block::getState).toList());
+        }
+    }
+
+    /** A player who left: nothing to show them again. */
+    public void forget(Player player) {
+        hidden.remove(player.getUniqueId());
     }
 
     /**
@@ -165,8 +224,10 @@ public final class SeatService {
             for (UUID id : List.copyOf(world.getValue().values())) {
                 Entity seat = plugin.getServer().getEntity(id);
                 if (seat != null) {
+                    List<Entity> sitters = List.copyOf(seat.getPassengers());
                     seat.eject();
                     seat.remove();
+                    sitters.forEach(this::reveal);
                 }
             }
         }

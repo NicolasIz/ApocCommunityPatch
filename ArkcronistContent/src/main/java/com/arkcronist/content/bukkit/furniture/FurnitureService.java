@@ -238,7 +238,7 @@ public final class FurnitureService {
      * @return false if a bed has lost its head and nothing was placed
      */
     public boolean place(Block block, Player player, CustomItem item, Placement.Furniture furniture) {
-        return place(block, placementYaw(player, furniture), item, furniture);
+        return place(block, placementYaw(player, block, furniture), item, furniture);
     }
 
     /**
@@ -358,9 +358,17 @@ public final class FurnitureService {
         return !lit;
     }
 
-    /** The way a piece placed by {@code player} will face: towards them, or south. */
-    public static float placementYaw(Player player, Placement.Furniture furniture) {
-        return placementYaw(player.getLocation().getYaw(), furniture);
+    /**
+     * The way a piece placed on {@code block} by {@code player} will face: towards where they stand
+     * (3.2; along where they looked before), or south.
+     */
+    public static float placementYaw(Player player, Block block, Placement.Furniture furniture) {
+        if (!furniture.facePlayer()) {
+            return 0f;
+        }
+        Location at = player.getLocation();
+        return com.arkcronist.content.core.furniture.PieceAxes.towards(at.getX() - (block.getX() + 0.5),
+                at.getZ() - (block.getZ() + 0.5), at.getYaw());
     }
 
     /** As {@link #placementYaw(Player, Placement.Furniture)}, for a player who looks along {@code playerYaw}. */
