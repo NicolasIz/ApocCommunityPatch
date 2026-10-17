@@ -125,6 +125,7 @@ public final class ContentAdminCommand {
                 .then(Commands.literal("bedrock").requires(ContentAdminCommand::admin).executes(this::bedrock))
                 .then(Commands.literal("legacy").requires(ContentAdminCommand::admin)
                         .executes(context -> legacy(context, false, 32))
+                        .then(Commands.literal("look").executes(this::legacyLook))
                         .then(Commands.argument("radius", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 256))
                                 .executes(context -> legacy(context, false,
                                         com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "radius"))))
@@ -584,6 +585,99 @@ public final class ContentAdminCommand {
                     + " /arkcontent legacy remove " + radius + " takes them all.", NamedTextColor.GRAY));
         }
         return Command.SINGLE_SUCCESS;
+    }
+
+    /**
+     * 3.2: the model the player looks at, taken away - a leftover that nothing else recognises: one of
+     * ItemsAdder's whose item no longer says so, or a display of this plugin's whose piece is gone.
+     * A live piece of furniture is not touched: it is broken as any other.
+     */
+    private int legacyLook(CommandContext<CommandSourceStack> context) {
+        CommandSender sender = context.getSource().getSender();
+        if (!(context.getSource().getExecutor() instanceof org.bukkit.entity.Player player)) {
+            sender.sendMessage(Component.text("Run it as a player, looking at the model.", NamedTextColor.RED));
+            return 0;
+        }
+        org.bukkit.entity.Entity target = lookedAt(player, 8);
+        if (target == null) {
+            sender.sendMessage(Component.text("No model where you look, within 8 blocks: a display, an armour stand, an"
+                    + " item frame or an interaction box.", NamedTextColor.RED));
+            return 0;
+        }
+        String what = describe(target);
+        String id = plugin.furniture().furnitureId(target);
+        if (id != null && !plugin.furniture().isLeftOver(target)) {
+            sender.sendMessage(Component.text(what + " is a piece of " + id + " that is still standing: break it to take"
+                    + " it away.", NamedTextColor.YELLOW));
+            return 0;
+        }
+        var piece = plugin.legacy().pieceOf(target);
+        if (piece.isPresent()) {
+            plugin.legacy().remove(piece.get(), null, false);
+            sender.sendMessage(Component.text("Removed " + what + ", left by ItemsAdder"
+                    + (piece.get().id() == null || piece.get().id().isEmpty() ? "" : " (" + piece.get().id() + ")")
+                    + ", with " + (piece.get().entities().size() - 1) + " other part(s) and "
+                    + piece.get().barriers().size() + " barrier(s).", NamedTextColor.GREEN));
+        } else {
+            target.remove();
+            sender.sendMessage(Component.text("Removed " + what + (id != null ? ", left over from " + id : "") + ".",
+                    NamedTextColor.GREEN));
+        }
+        return Command.SINGLE_SUCCESS;
+    }
+
+    /**
+     * The model nearest the middle of the player's view within {@code reach} blocks - a display, an
+     * armour stand, an item frame or an interaction box, not a seat - up to the first block in the
+     * way, and a little past it: a model often stands inside the barrier it was placed on.
+     */
+    private @org.jetbrains.annotations.Nullable org.bukkit.entity.Entity lookedAt(org.bukkit.entity.Player player,
+                                                                                   double reach) {
+        org.bukkit.Location eye = player.getEyeLocation();
+        org.bukkit.util.Vector direction = eye.getDirection().normalize();
+        org.bukkit.util.RayTraceResult wall = player.getWorld().rayTraceBlocks(eye, direction, reach,
+                org.bukkit.FluidCollisionMode.NEVER, true);
+        double limit = wall == null ? reach : Math.min(reach, wall.getHitPosition().distance(eye.toVector()) + 1.5);
+        org.bukkit.util.Vector start = eye.toVector();
+        org.bukkit.util.BoundingBox around = org.bukkit.util.BoundingBox.of(start, start.clone().add(direction.clone()
+                .multiply(limit))).expand(1.5);
+        org.bukkit.entity.Entity best = null;
+        double bestScore = Double.MAX_VALUE;
+        for (org.bukkit.entity.Entity entity : player.getWorld().getNearbyEntities(around, this::lookable)) {
+            org.bukkit.util.BoundingBox box = entity.getBoundingBox();
+            org.bukkit.util.Vector centre = box.getVolume() > 0 ? box.getCenter() : entity.getLocation().toVector();
+            org.bukkit.util.Vector relative = centre.clone().subtract(start);
+            double along = relative.dot(direction);
+            if (along < 0 || along > limit) {
+                continue;
+            }
+            double off = relative.clone().subtract(direction.clone().multiply(along)).length();
+            double reachOf = Math.max(0.9, Math.max(box.getWidthX(), box.getHeight()) / 2 + 0.3);
+            if (off <= reachOf && off + along * 0.05 < bestScore) {
+                bestScore = off + along * 0.05;
+                best = entity;
+            }
+        }
+        return best;
+    }
+
+    private boolean lookable(org.bukkit.entity.Entity entity) {
+        return (entity instanceof org.bukkit.entity.Display || entity instanceof org.bukkit.entity.ArmorStand
+                || entity instanceof org.bukkit.entity.ItemFrame || entity instanceof org.bukkit.entity.Interaction)
+                && !(entity instanceof org.bukkit.entity.TextDisplay) && !plugin.seats().isSeat(entity);
+    }
+
+    private static String describe(org.bukkit.entity.Entity entity) {
+        org.bukkit.inventory.ItemStack shown = entity instanceof org.bukkit.entity.ItemDisplay display ? display.getItemStack()
+                : entity instanceof org.bukkit.entity.ItemFrame frame ? frame.getItem()
+                : entity instanceof org.bukkit.entity.ArmorStand stand ? stand.getEquipment().getHelmet() : null;
+        org.bukkit.Location at = entity.getLocation();
+        String item = shown == null || shown.getType().isAir() ? ""
+                : " showing " + shown.getType().getKey().getKey()
+                + (shown.hasItemMeta() && shown.getItemMeta().hasItemModel()
+                ? " (" + shown.getItemMeta().getItemModel() + ")" : "");
+        return "a " + entity.getType().getKey().getKey().replace('_', ' ') + item + " at " + at.getBlockX() + " "
+                + at.getBlockY() + " " + at.getBlockZ();
     }
 
     private int integrityNow(CommandContext<CommandSourceStack> context) {

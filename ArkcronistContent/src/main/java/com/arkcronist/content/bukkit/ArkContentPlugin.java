@@ -549,6 +549,10 @@ public final class ArkContentPlugin extends JavaPlugin {
     }
 
     /** 3.1: furniture ItemsAdder placed and left behind. */
+    public SeatService seats() {
+        return seats;
+    }
+
     public com.arkcronist.content.bukkit.furniture.LegacyFurniture legacy() {
         return legacy;
     }
