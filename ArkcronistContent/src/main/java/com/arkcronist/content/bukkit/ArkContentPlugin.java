@@ -312,6 +312,8 @@ public final class ArkContentPlugin extends JavaPlugin {
         if (bedrock != null) {
             this.bedrock = bedrock;
             plugins.registerEvents(bedrock, this);
+            // 3.3.5: carriers past plugins that rewrite block states - CraftEngine's note blocks.
+            hooks.bedrockCarriers(bedrock);
             delivery.skip(bedrock::isBedrock);
             seats.drawnAsBlocksFor(bedrock::isBedrock);
             actionBars.plainFor(bedrock::isBedrock);

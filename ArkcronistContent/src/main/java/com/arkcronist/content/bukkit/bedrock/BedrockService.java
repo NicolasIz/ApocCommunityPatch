@@ -71,6 +71,9 @@ public final class BedrockService implements Listener {
     private final Map<UUID, Piece> byRoot = new HashMap<>();
     private final Set<UUID> bedrockOnline = new HashSet<>();
     private boolean started;
+    /** How carriers are sent: through Bukkit, or past plugins that rewrite block states (3.3.5). */
+    private BlockChangeSender carriersThrough = BlockChangeSender.BUKKIT;
+    private String carrierRoute = "Bukkit";
     /** Carrier blocks sent so far, for /arkcontent bedrock. */
     private long sent;
     private boolean warnedNew;
@@ -99,6 +102,17 @@ public final class BedrockService implements Listener {
         this.isBedrock = isBedrock;
         furniture.onRootAppeared(this::appeared);
         furniture.onRootGoing(this::going);
+    }
+
+    /**
+     * 3.3.5: carriers sent another way than through Bukkit - past CraftEngine, which shows every note
+     * block of another instrument as a harp one, and so every carrier as another piece's.
+     *
+     * @param route what /arkcontent bedrock says they go through
+     */
+    public void sendCarriersThrough(BlockChangeSender sender, String route) {
+        this.carriersThrough = sender;
+        this.carrierRoute = route;
     }
 
     /** Whether the player plays on Bedrock. Any thread. */
@@ -225,7 +239,7 @@ public final class BedrockService implements Listener {
             }
         }
         if (!changes.isEmpty()) {
-            player.sendMultiBlockChange(changes);
+            carriersThrough.send(player, changes);
             sent += changes.size();
         }
     }
@@ -282,7 +296,7 @@ public final class BedrockService implements Listener {
             }
         }
         lines.add(bedrockOnline.size() + " Bedrock player(s) online; " + byRoot.size() + " piece(s) loaded that they"
-                + " are shown; " + sent + " carrier block(s) sent since the start.");
+                + " are shown; " + sent + " carrier block(s) sent since the start, through " + carrierRoute + ".");
         return lines;
     }
 

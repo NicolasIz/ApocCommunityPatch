@@ -570,6 +570,36 @@ public final class HookManager {
         }
     }
 
+    /**
+     * 3.3.5: with PacketEvents, Bedrock players' furniture carriers are written where plugins that
+     * rewrite block states on the way out do not see them. CraftEngine does that to every note block
+     * of another instrument than harp, so without this its servers show Bedrock players the wrong
+     * piece in each carrier's place. Without PacketEvents, carriers go through Bukkit.
+     */
+    public void bedrockCarriers(com.arkcronist.content.bukkit.bedrock.BedrockService bedrock) {
+        boolean craftEngine = plugin.getServer().getPluginManager().getPlugin("CraftEngine") != null;
+        try {
+            Class.forName("com.github.retrooper.packetevents.PacketEvents", false, getClass().getClassLoader());
+        } catch (ClassNotFoundException | LinkageError absent) {
+            if (craftEngine) {
+                logger.warning("[bedrock] CraftEngine shows every note block of another instrument as a harp one,"
+                        + " and the furniture Bedrock players see is drawn with note blocks: without PacketEvents"
+                        + " on this server they see other pieces in its place. Install PacketEvents to send them"
+                        + " past CraftEngine.");
+            }
+            return;
+        }
+        try {
+            com.arkcronist.content.bukkit.bedrock.BlockChangeSender sender =
+                    new com.arkcronist.content.bukkit.hooks.packetevents.DirectBlockChanges(logger::warning);
+            String route = craftEngine ? "PacketEvents, past CraftEngine's block state mappings" : "PacketEvents";
+            bedrock.sendCarriersThrough(sender, route);
+            logger.info("[bedrock] Furniture blocks for Bedrock players are sent through " + route + ".");
+        } catch (RuntimeException | LinkageError error) {
+            logger.log(Level.WARNING, "[bedrock] Could not send furniture blocks through PacketEvents", error);
+        }
+    }
+
     private <T> T create(String name, String probeClass, Supplier<T> factory) {
         try {
             Class.forName(probeClass, false, getClass().getClassLoader());

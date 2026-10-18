@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.3.4.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.3.5.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -2433,6 +2433,41 @@ No verificado aún en una pantalla de Bedrock: el tamaño final (debería parece
 altura exacta dentro de la línea y si Bedrock deja hueco detrás de una imagen más estrecha que su
 casilla.
 
+#### 3.3.5: los muebles en Bedrock con CraftEngine
+
+Visto en un servidor real: los abrevaderos salían en Bedrock como postes de ladrillo y trozos sueltos
+(piezas de la forja). La causa es **CraftEngine**: para liberar estados para sus propios bloques,
+enseña a los jugadores todo bloque musical (`note_block`) de otro instrumento como uno de arpa
+(`harp`), con la misma nota (sus `block_state_mappings`, 3738 en su configuración de serie). Lo hace
+en lo que sale hacia el cliente, en su manejador `craftengine_encoder`. Los portadores de los muebles
+son justo esos estados, así que llegaban a Geyser cambiados: el del abrevadero (`bit`, nota 20) llegaba
+como `harp` nota 20, que es una pieza de la forja.
+
+Desde 3.3.5, con **PacketEvents** en el servidor, los portadores se escriben en la conexión del
+jugador de Bedrock en el mismo punto donde PacketEvents escribe sus paquetes «silenciosos», que está
+más cerca de la salida que el manejador de CraftEngine: CraftEngine no los ve y llegan tal cual. Si
+algún día CraftEngine quedara del otro lado, se escriben en su sitio, siempre que entre los dos no
+haya nada que el paquete necesite (la compresión, ViaVersion); si lo hay, van por Bukkit como antes y
+el registro lo avisa una vez con la lista de manejadores. Al arrancar, el registro dice por dónde van:
+`[bedrock] Furniture blocks for Bedrock players are sent through PacketEvents, past CraftEngine's block
+state mappings.`, y `/arkcontent bedrock` lo repite. Con CraftEngine y sin PacketEvents, un aviso lo
+explica. Los bloques reales del mundo (al quitar un mueble) siguen yendo por Bukkit, con los cambios
+de CraftEngine, que para ellos son los correctos.
+
+| Prueba (3.3.5), Paper 1.21.8 con CraftEngine 26.9.1 y PacketEvents | Resultado |
+|---|---|
+| Proxy como el del servidor (Velocity, ViaVersion 5.11.0, Geyser 2.11.3, Floodgate), sin CraftEngine, 3.3.4 | referencia: 212 bloques de muebles recibidos por el bot de Bedrock, 190 piezas distintas |
+| Lo mismo con CraftEngine, 3.3.4 | 196 de los 212 llegan cambiados; solo 30 piezas distintas (el fallo visto) |
+| Lo mismo con CraftEngine, 3.3.5 | 212 de 212 iguales a la 3.3.5 sin CraftEngine; 211 de 212 iguales a la referencia (la otra es un bloque donde se tocan dos muebles y gana el último enviado, igual con y sin CraftEngine) |
+| Geyser-Spigot 2.8.4 en el propio Paper, con CraftEngine, 3.3.5 | 212 de 212 iguales a la referencia sin CraftEngine |
+| Tests | 547, todos pasan |
+
+No verificado: cómo se ve en una pantalla (aquí no hay cliente que dibuje; se compara qué bloque
+recibe el cliente en cada posición). Los **bloques personalizados** del plugin en Java también son
+estados de bloque musical: CraftEngine enseña los que no son de arpa como de arpa. Los dos bloques de
+ejemplo usan estados de arpa y no se ven afectados; con más de 49 bloques personalizados, los
+siguientes sí lo estarían, y eso no lo arregla esta versión.
+
 #### Qué se ha verificado en un servidor Paper 1.21.8 real (3.0, Bedrock)
 
 Con Geyser-Spigot 2.8.4 y un cliente de Bedrock 1.21.111 sin cuenta (`bedrock-protocol`; para él, y
@@ -3236,9 +3271,10 @@ carácter del emoji `:ruby:`.
 
 ### PacketEvents y Geyser (3.0)
 
-Con **PacketEvents** los cosméticos son paquetes enviados desde su propio hilo; sin él, displays
-reales. Con **Geyser-Spigot** el contenido llega a los jugadores de Bedrock. Los dos están en la
-sección 4.
+Con **PacketEvents** los cosméticos son paquetes enviados desde su propio hilo (sin él, displays
+reales), los rangos anchos se escriben en trozos para Bedrock (3.3.3) y los muebles de Bedrock pasan
+por delante de CraftEngine (3.3.5). Con **Geyser** el contenido llega a los jugadores de Bedrock. Todo
+está en la sección 4.
 
 ### Jobs Reborn y ExcellentJobs
 
