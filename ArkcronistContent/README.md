@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.3.3.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.3.4.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -2406,6 +2406,32 @@ como siempre).
 No verificado: cómo se ve en una pantalla de Bedrock (si deja un píxel entre trozo y trozo) y el
 rango en el nombre del chat de jugadores (en el servidor de pruebas ningún plugin de chat lo pone;
 el código está, sin probar en vivo).
+
+#### 3.3.4: los rangos, a su tamaño
+
+Visto en un móvil con 3.3.3, los rangos salían unas cuatro veces más altos que el texto, se montaban
+sobre la línea de encima y dejaban una raya entre trozo y trozo. Bedrock no encaja una casilla de la
+hoja en el alto de una letra, como suponía 3.3.3: dibuja cada píxel de la hoja más o menos como un
+píxel de su fuente (medido en la captura: una casilla de 32 píxeles ocupaba unos 36 píxeles de letra
+y la letra mide 7).
+
+Desde 3.3.4, cada imagen se dibuja en la hoja al tamaño al que la pone Java: más pequeña o más grande
+por un factor entero, para que el pixel art no se emborrone. Un rango de 126×22 que Java pone a 10 de
+alto queda en 63×11, entero y legible. La casilla de cada hoja es la que necesite su imagen más
+ancha (de 16 a 128 píxeles), y la imagen va centrada en la línea como en Java. Así un rango cabe en
+un solo carácter y no hay trozos ni rayas. Solo una imagen de más de 128 píxeles de ancho a su tamaño
+se sigue cortando en trozos, y para esas sigue haciendo falta PacketEvents; en el pack de pruebas no
+hay ninguna. Los emojis del plugin salen con la altura que tienen en la fuente de Java, no al doble.
+
+| Prueba (3.3.4) | Resultado |
+|---|---|
+| Fuente del pack de pruebas (la de ItemsAdder importada) | ningún trozo; los 43 rangos enteros en la hoja E6, de 63×11 (yatagarasu, 66×11) |
+| Hoja E6 vista de cerca | «HOTARU», «HAYATE», «SHINOBI»… legibles a 11 píxeles de alto |
+| Tests | 543, todos pasan |
+
+No verificado aún en una pantalla de Bedrock: el tamaño final (debería parecerse al de Java), la
+altura exacta dentro de la línea y si Bedrock deja hueco detrás de una imagen más estrecha que su
+casilla.
 
 #### Qué se ha verificado en un servidor Paper 1.21.8 real (3.0, Bedrock)
 

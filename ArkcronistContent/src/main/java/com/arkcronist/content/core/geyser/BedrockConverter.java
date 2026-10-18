@@ -837,51 +837,54 @@ public final class BedrockConverter {
 
     /** Glyphs taller than this, in font pixels, are menu backgrounds and HUD panels, not inline icons. */
     private static final int TALLEST_INLINE_GLYPH = 32;
+    /** The largest glyph cell drawn: sheets of 2048 pixels. A glyph wider than this is cut in pieces. */
+    private static final int LARGEST_CELL = 128;
 
     /**
      * A character to draw on a glyph sheet.
      *
      * @param image  null for a character drawn as nothing (a space, a menu background)
      * @param height and {@code ascent}: the Java font's, in font pixels
-     * @param fill   an emoji: its picture fills the cell, as it always has
      */
-    private record Glyph(@Nullable BufferedImage image, int height, int ascent, boolean fill) {
+    private record Glyph(@Nullable BufferedImage image, int height, int ascent) {
     }
 
     /**
      * Bedrock draws a private-use character from {@code font/glyph_XX.png}: 256 characters a sheet,
-     * 16 across, each cell the sheet's width over 16, the cell drawn the size of a letter. Each emoji's
-     * picture goes in its cell, so chat shows the emoji on Bedrock too.
+     * 16 across, each cell the sheet's width over 16 - and, as seen on a phone (3.3.3), each pixel of
+     * a sheet about one pixel of its font, whatever the sheet's size. So every glyph is drawn at the
+     * size Java draws it: made smaller or larger by a whole factor, which keeps pixel art crisp (a
+     * rank 22 pixels high, drawn ten high on Java, is drawn 11 high), in a cell as large as the
+     * sheet's largest glyph needs, from 16 to 128 pixels; centred on the line as Java centres it.
      *
-     * <p>3.3.3: and every private-use character the Java pack's default font draws - the ranks in a
-     * scoreboard, the icons in a tab list - kept in proportion, placed on the line as Java places it,
-     * made smaller only when it does not fit a cell. Spaces, and the menu backgrounds a font carries,
-     * are drawn as nothing: on Bedrock they would otherwise show as boxes.</p>
+     * <p>That is every private-use character of the Java pack's default font - the ranks in a
+     * scoreboard, the icons in a tab list, the plugin's emojis - and the emojis it does not draw.
+     * Spaces, and the menu backgrounds a font carries, are drawn as nothing: on Bedrock they would
+     * otherwise show as boxes.</p>
      */
     private void emojis() {
         Map<Integer, Glyph> glyphs = new TreeMap<>();
         fontGlyphs(new ResourceLocation("minecraft", "default"), glyphs, 0);
         for (EmojiSpec emoji : input.emojis()) {
-            if (emoji.character() >= 0xE000 && emoji.character() <= 0xF8FF) {
+            if (privateUse(emoji.character()) && !glyphs.containsKey(emoji.character())) {
                 BufferedImage image = image(emoji.texture());
-                glyphs.put(emoji.character(), new Glyph(image == null ? null : IconRenderer.frame(image), 8, 7, true));
+                glyphs.put(emoji.character(), new Glyph(image == null ? null : IconRenderer.frame(image), 9, 8));
             }
         }
-        glyphs.putAll(pieces(glyphs));
+        Map<Integer, Glyph> sized = new TreeMap<>();
+        glyphs.forEach((character, glyph) -> sized.put(character, sized(glyph)));
+        sized.putAll(pieces(sized));
         Map<Integer, Map<Integer, Glyph>> sheets = new TreeMap<>();
-        glyphs.forEach((character, glyph) -> sheets.computeIfAbsent(character >> 8, ignored -> new TreeMap<>())
+        sized.forEach((character, glyph) -> sheets.computeIfAbsent(character >> 8, ignored -> new TreeMap<>())
                 .put(character & 0xff, glyph));
         for (Map.Entry<Integer, Map<Integer, Glyph>> sheet : sheets.entrySet()) {
             int cell = 16;
             for (Glyph glyph : sheet.getValue().values()) {
-                if (glyph.image() == null) {
-                    continue;
+                if (glyph.image() != null) {
+                    cell = Math.max(cell, Math.max(glyph.image().getWidth(), glyph.image().getHeight() + 4));
                 }
-                int wanted = glyph.fill() ? glyph.image().getWidth()
-                        : (int) Math.ceil(8.0 * glyph.image().getHeight() / Math.max(1, glyph.height()));
-                cell = Math.max(cell, Math.min(64, wanted));
             }
-            cell = Integer.highestOneBit(cell - 1) << 1; // 16, 32 or 64, as Bedrock's own sheets
+            cell = Math.min(LARGEST_CELL, Integer.highestOneBit(cell - 1) << 1); // 16 to 128, as Bedrock's own
             BufferedImage page = new BufferedImage(cell * 16, cell * 16, BufferedImage.TYPE_INT_ARGB);
             java.awt.Graphics2D graphics = page.createGraphics();
             for (Map.Entry<Integer, Glyph> entry : sheet.getValue().entrySet()) {
@@ -889,30 +892,13 @@ public final class BedrockConverter {
                 if (glyph.image() == null) {
                     continue;
                 }
-                int x = (entry.getKey() & 15) * cell;
-                int y = (entry.getKey() >> 4) * cell;
-                if (glyph.fill()) {
-                    graphics.drawImage(glyph.image(), x, y, cell, cell, null);
-                    continue;
-                }
-                // In font pixels, a cell being eight: the size Java draws it at, made smaller to fit.
-                double height = glyph.height();
-                double width = height * glyph.image().getWidth() / glyph.image().getHeight();
-                double shrink = Math.min(1, Math.min(8 / width, 8 / height));
-                width *= shrink;
-                height *= shrink;
-                // Java puts the top ascent pixels above the baseline, seven down a line; a glyph made
-                // smaller sits in the middle of the line instead.
-                double top = shrink < 1 ? (8 - height) / 2 : 7 - glyph.ascent();
-                top = Math.max(0, Math.min(8 - height, top));
-                double scale = cell / 8.0;
-                int drawnWidth = Math.max(1, (int) Math.round(width * scale));
-                int drawnHeight = Math.max(1, (int) Math.round(height * scale));
-                boolean smaller = drawnWidth < glyph.image().getWidth();
-                graphics.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, smaller
-                        ? java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR
-                        : java.awt.RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
-                graphics.drawImage(glyph.image(), x, y + (int) Math.round(top * scale), drawnWidth, drawnHeight, null);
+                BufferedImage image = glyph.image();
+                // Java puts the top ascent pixels above the baseline, a letter's middle 3.5 above it;
+                // Bedrock puts a cell's middle about two pixels above a letter's middle.
+                double below = 3.5 - glyph.ascent() + glyph.height() / 2.0;
+                int top = (int) Math.round((cell - image.getHeight()) / 2.0 + 2 + below);
+                top = Math.max(0, Math.min(cell - image.getHeight(), top));
+                graphics.drawImage(image, (entry.getKey() & 15) * cell, (entry.getKey() >> 4) * cell + top, null);
             }
             graphics.dispose();
             files.put(String.format(Locale.ROOT, "font/glyph_%02X.png", sheet.getKey()), png(page));
@@ -920,48 +906,103 @@ public final class BedrockConverter {
     }
 
     /**
-     * 3.3.3: a glyph wider than a cell - a rank's banner, 126 by 22 - would be drawn a few pixels
-     * high in one. It is cut instead into pieces a cell wide, each on a character of its own that
-     * the font leaves free, from U+F7FF down (never Bedrock's own sheets E0 and E1); {@link
-     * Build#glyphText()} says which characters stand for which, and the plugin writes those in its
-     * place in what it sends a Bedrock player. Its own cell keeps the whole glyph, made smaller, for
-     * text that is not rewritten.
+     * The glyph's picture at about the size Java draws it, one pixel to a font pixel: smaller by a
+     * whole factor, each pixel the mean of those it stands for, or larger by one, each pixel repeated.
+     */
+    private static Glyph sized(Glyph glyph) {
+        BufferedImage image = glyph.image();
+        if (image == null) {
+            return glyph;
+        }
+        double scale = (double) glyph.height() / image.getHeight();
+        if (scale < 1) {
+            image = shrunk(image, Math.max(1, (int) Math.round(1 / scale)));
+        } else if (scale >= 1.5) {
+            int factor = (int) Math.round(scale);
+            BufferedImage larger = new BufferedImage(image.getWidth() * factor, image.getHeight() * factor,
+                    BufferedImage.TYPE_INT_ARGB);
+            java.awt.Graphics2D graphics = larger.createGraphics();
+            graphics.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
+                    java.awt.RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+            graphics.drawImage(image, 0, 0, larger.getWidth(), larger.getHeight(), null);
+            graphics.dispose();
+            image = larger;
+        }
+        return new Glyph(image, glyph.height(), glyph.ascent());
+    }
+
+    /** Each square of {@code factor} by {@code factor} pixels made one, its colour weighed by how opaque each is. */
+    static BufferedImage shrunk(BufferedImage image, int factor) {
+        if (factor <= 1) {
+            return image;
+        }
+        int width = (image.getWidth() + factor - 1) / factor;
+        int height = (image.getHeight() + factor - 1) / factor;
+        BufferedImage small = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                long alpha = 0;
+                long red = 0;
+                long green = 0;
+                long blue = 0;
+                int count = 0;
+                for (int dy = 0; dy < factor && y * factor + dy < image.getHeight(); dy++) {
+                    for (int dx = 0; dx < factor && x * factor + dx < image.getWidth(); dx++) {
+                        int argb = image.getRGB(x * factor + dx, y * factor + dy);
+                        int a = argb >>> 24;
+                        alpha += a;
+                        red += (long) ((argb >> 16) & 0xff) * a;
+                        green += (long) ((argb >> 8) & 0xff) * a;
+                        blue += (long) (argb & 0xff) * a;
+                        count++;
+                    }
+                }
+                if (alpha > 0) {
+                    small.setRGB(x, y, (int) (alpha / count) << 24 | (int) (red / alpha) << 16
+                            | (int) (green / alpha) << 8 | (int) (blue / alpha));
+                }
+            }
+        }
+        return small;
+    }
+
+    /**
+     * 3.3.3: a glyph wider than the largest cell, even at its own size, is cut into pieces a cell wide,
+     * each on a character the font leaves free, from U+F7FF down (never Bedrock's own sheets E0 and
+     * E1); {@link Build#glyphText()} says which characters stand for which, and the plugin writes
+     * those in its place in what it sends a Bedrock player. Its own cell keeps the whole glyph, made
+     * smaller to fit, for text that is not rewritten.
      */
     private Map<Integer, Glyph> pieces(Map<Integer, Glyph> glyphs) {
         Map<Integer, Glyph> pieces = new TreeMap<>();
         Set<Integer> taken = new HashSet<>(glyphs.keySet());
         int next = 0xF7FF;
-        for (Map.Entry<Integer, Glyph> entry : glyphs.entrySet()) {
+        for (Map.Entry<Integer, Glyph> entry : new ArrayList<>(glyphs.entrySet())) {
             Glyph glyph = entry.getValue();
-            if (glyph.fill() || glyph.image() == null) {
+            if (glyph.image() == null || glyph.image().getWidth() <= LARGEST_CELL) {
                 continue;
             }
-            int height = Math.min(glyph.height(), 8);
-            double width = (double) height * glyph.image().getWidth() / glyph.image().getHeight();
-            if (width <= 8.01) {
-                continue;
-            }
-            int count = (int) Math.ceil(width / 8 - 0.01);
-            double across = glyph.image().getWidth() * 8 / width;
-            // A glyph made smaller to the line's height sits at its top, as the pieces then fill it.
-            int ascent = glyph.height() > 8 ? 7 : glyph.ascent();
+            BufferedImage image = glyph.image();
+            int count = (image.getWidth() + LARGEST_CELL - 1) / LARGEST_CELL;
             StringBuilder text = new StringBuilder();
             Map<Integer, Glyph> these = new TreeMap<>();
             for (int i = 0; i < count; i++) {
                 while (next >= 0xE200 && taken.contains(next)) {
                     next--;
                 }
-                int from = (int) Math.round(i * across);
-                int to = (int) Math.min(glyph.image().getWidth(), Math.round((i + 1) * across));
-                if (next < 0xE200 || to <= from) {
+                if (next < 0xE200) {
                     break;
                 }
-                these.put(next, new Glyph(glyph.image().getSubimage(from, 0, to - from, glyph.image().getHeight()),
-                        height, ascent, false));
+                int from = i * LARGEST_CELL;
+                int to = Math.min(image.getWidth(), from + LARGEST_CELL);
+                these.put(next, new Glyph(image.getSubimage(from, 0, to - from, image.getHeight()), glyph.height(),
+                        glyph.ascent()));
                 taken.add(next);
                 text.appendCodePoint(next);
                 next--;
             }
+            // Its own glyph, the whole of it, made smaller to fit one cell.
+            glyphs.put(entry.getKey(), new Glyph(shrunk(image, count), glyph.height(), glyph.ascent()));
             if (these.size() < count) {
                 problems.add("Bedrock: no free characters left to cut wide glyphs into - "
                         + String.format(Locale.ROOT, "U+%04X", entry.getKey()) + " and those after it stay one small glyph");
@@ -1015,7 +1056,7 @@ public final class BedrockConverter {
                     for (String character : provider.getAsJsonObject("advances").keySet()) {
                         int code = character.codePointAt(0);
                         if (privateUse(code)) {
-                            glyphs.putIfAbsent(code, new Glyph(null, 0, 0, false));
+                            glyphs.putIfAbsent(code, new Glyph(null, 0, 0));
                         }
                     }
                 }
@@ -1047,7 +1088,7 @@ public final class BedrockConverter {
                                     ? trimmed(sheet.getSubimage(column * cellWidth, row * cellHeight, cellWidth, cellHeight))
                                     : null;
                         }
-                        glyphs.put(code, new Glyph(image, height, ascent, false));
+                        glyphs.put(code, new Glyph(image, height, ascent));
                     }
                 }
             }
