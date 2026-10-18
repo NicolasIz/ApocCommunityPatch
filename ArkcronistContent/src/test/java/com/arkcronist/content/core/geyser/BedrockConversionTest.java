@@ -321,6 +321,36 @@ class BedrockConversionTest {
         assertEquals(List.of(), with.problems());
     }
 
+    /**
+     * 3.3.2: ItemsAdder's packs draw each item on the plain vanilla one by its custom_model_data number
+     * (a range dispatch, each range closed by the vanilla model). Items the Java pack draws so are
+     * marked, for Geyser 2.9 and later to know them by that number too; nothing else is.
+     */
+    @Test
+    void itemsTheJavaPackDrawsByNumberAreMarked() throws IOException {
+        Map<String, byte[]> pack = pack();
+        BedrockConverter.Build without = BedrockConverter.convert(input(pack, Map.of()));
+        assertFalse(without.items().get(0).byNumber(), "no vanilla definition: not drawn by number");
+
+        pack.put("assets/minecraft/items/paper.json", ("{\"model\":{\"type\":\"minecraft:select\",\"property\":"
+                + "\"minecraft:display_context\",\"cases\":[],\"fallback\":{\"type\":\"minecraft:range_dispatch\","
+                + "\"property\":\"minecraft:custom_model_data\",\"entries\":["
+                + "{\"threshold\":1001,\"model\":{\"type\":\"model\",\"model\":\"demo:item/ruby\"}},"
+                + "{\"threshold\":1002,\"model\":{\"type\":\"minecraft:model\",\"model\":\"minecraft:item/paper\"}}],"
+                + "\"fallback\":{\"type\":\"minecraft:model\",\"model\":\"minecraft:item/paper\"}}}}")
+                .getBytes(StandardCharsets.UTF_8));
+        BedrockConverter.Build with = BedrockConverter.convert(input(pack, Map.of()));
+        assertTrue(with.items().get(0).byNumber(), "the ruby, 1001 on paper: drawn by number, inside a select too");
+        assertFalse(with.items().get(1).byNumber(), "the bench is a barrier: nothing draws barriers by number");
+
+        pack.put("assets/minecraft/items/paper.json", ("{\"model\":{\"type\":\"range_dispatch\",\"property\":"
+                + "\"custom_model_data\",\"entries\":[{\"threshold\":1001,\"model\":{\"type\":\"model\","
+                + "\"model\":\"minecraft:item/paper\"}}],\"fallback\":{\"type\":\"model\",\"model\":"
+                + "\"minecraft:item/paper\"}}}").getBytes(StandardCharsets.UTF_8));
+        assertFalse(BedrockConverter.convert(input(pack, Map.of())).items().get(0).byNumber(),
+                "1001 drawn as plain paper is not the ruby's");
+    }
+
     /** 3.3: furniture listed in bedrock.skip-furniture gets no carriers; its item still has its icon. */
     @Test
     void skippedFurnitureGetsNoCarriers() throws IOException {

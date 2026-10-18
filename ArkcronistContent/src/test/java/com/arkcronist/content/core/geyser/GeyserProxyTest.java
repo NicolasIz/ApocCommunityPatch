@@ -30,7 +30,7 @@ class GeyserProxyTest {
         BedrockConverter.BedrockItem sword = new BedrockConverter.BedrockItem("demo:sword", "ark_demo_sword",
                 "minecraft:netherite_sword", 1003, "demo:sword", "ark_demo_sword", "Espada del\tseñor\noscuro, 100% & más", true);
         BedrockConverter.BedrockItem plain = new BedrockConverter.BedrockItem("demo:paper", "ark_demo_paper",
-                "minecraft:paper", null, "demo:paper", "ark_no_picture", "Paper", false);
+                "minecraft:paper", 1004, "demo:paper", "ark_no_picture", "Paper", false, true);
         Map<String, BedrockConverter.Material> materials = new LinkedHashMap<>();
         materials.put("*", new BedrockConverter.Material("ark_demo_stone", "opaque"));
         materials.put("up", new BedrockConverter.Material("ark_a=b,c&d", "alpha_test"));
@@ -46,6 +46,14 @@ class GeyserProxyTest {
         assertEquals(List.of(block), read.blocks());
         assertEquals(1, read.carriers());
         assertThrows(IllegalArgumentException.class, () -> GeyserExport.read("something else\n"));
+        assertTrue(read.items().get(1).byNumber(), "3.3.2: drawn by number, and said so");
+
+        // A file written by 3.3.1 has nine fields an item: read as not drawn by number.
+        String old = GeyserExport.HEADER + "\nitem\tdemo%3Apaper\tark_demo_paper\tminecraft%3Apaper\t1004\tdemo%3Apaper"
+                + "\tark_demo_paper\tPaper\tfalse\n";
+        BedrockConverter.BedrockItem before = GeyserExport.read(old).items().get(0);
+        assertEquals(1004, before.customModelData());
+        assertFalse(before.byNumber());
     }
 
     /** The extension runs inside Geyser: none of what it loads may need Bukkit, Paper or Gson. */

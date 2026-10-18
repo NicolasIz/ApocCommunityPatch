@@ -28,12 +28,18 @@ import java.util.function.Consumer;
  * loads inside Geyser too.
  *
  * <p>Items are told apart by their {@code item_model} on Geyser 2.9 and later, and by their
- * {@code custom_model_data} number on 2.8 - the one for 1.21.8 - which has nothing else to go by.</p>
+ * {@code custom_model_data} number on 2.8 - the one for 1.21.8 - which has nothing else to go by.
+ * Since 3.3.2, on 2.9 and later also by that number wherever the Java pack draws them by it: the
+ * stacks ItemsAdder made carry only the number.</p>
  */
 public final class GeyserRegistration {
 
     /** Geyser 2.9 and later: items by item model. */
     public static final boolean ITEMS_BY_MODEL = present("org.geysermc.geyser.api.item.custom.v2.CustomItemDefinition");
+    /** 3.3.2: and, where its API has the predicate, by custom_model_data number too. */
+    public static final boolean ITEMS_BY_NUMBER_TOO = ITEMS_BY_MODEL
+            && present("org.geysermc.geyser.api.predicate.item.ItemRangeDispatchPredicate", "customModelData",
+            int.class, float.class);
 
     private final Consumer<String> info;
     private final Consumer<String> warning;
@@ -47,6 +53,7 @@ public final class GeyserRegistration {
     /** Every item; returns how many Geyser took. */
     public int items(GeyserDefineCustomItemsEvent event, List<BedrockConverter.BedrockItem> all) {
         int registered = 0;
+        int byNumber = 0;
         List<String> refused = new ArrayList<>();
         // Geyser 2.8 reverses the order items were registered in and gives a stack the first whose
         // number is at most the stack's: registered lowest number first, that is the stack's own.
@@ -62,9 +69,20 @@ public final class GeyserRegistration {
             } catch (RuntimeException | LinkageError failure) {
                 refused.add(item.id() + " (" + failure + ")");
             }
+            if (ITEMS_BY_NUMBER_TOO && item.byNumber()) {
+                try {
+                    if (GeyserItemsByModel.registerByNumber(event, item)) {
+                        byNumber++;
+                    }
+                } catch (RuntimeException | LinkageError failure) {
+                    refused.add(item.id() + " by number (" + failure + ")");
+                }
+            }
         }
         info.accept("[bedrock] Geyser: " + registered + " custom item(s), told apart by "
-                + (ITEMS_BY_MODEL ? "item model" : "custom_model_data") + ".");
+                + (ITEMS_BY_MODEL ? "item model" : "custom_model_data")
+                + (byNumber > 0 ? "; " + byNumber + " of them also by custom_model_data, as the Java pack draws them" : "")
+                + ".");
         if (!refused.isEmpty()) {
             warning.accept("[bedrock] Geyser refused " + refused.size() + " item(s): " + String.join(", ", refused));
         }
@@ -156,6 +174,17 @@ public final class GeyserRegistration {
             Class.forName(className, false, org.geysermc.geyser.api.GeyserApi.class.getClassLoader());
             return true;
         } catch (ClassNotFoundException | LinkageError missing) {
+            return false;
+        }
+    }
+
+    /** The class, and on it the method: an API that has the one may still lack the other. */
+    private static boolean present(String className, String method, Class<?>... parameters) {
+        try {
+            Class.forName(className, false, org.geysermc.geyser.api.GeyserApi.class.getClassLoader())
+                    .getMethod(method, parameters);
+            return true;
+        } catch (ClassNotFoundException | NoSuchMethodException | LinkageError missing) {
             return false;
         }
     }

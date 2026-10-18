@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.3.1.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.3.2.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -2196,7 +2196,8 @@ añadido con `/arkcontent reload` llega a Bedrock tras reiniciar, y la consola l
 `custom_model_data`; con Bedrock activo, todo ítem con modelo recibe uno (el pack Java no cambia si
 `pack.custom-model-data` está apagado). Geyser 2.8 invierte el orden de registro y da a una stack
 el primer ítem cuyo número es menor o igual que el suyo, así que se registran de menor a mayor:
-cada stack se ve como ella misma. Con Geyser 2.9 o posterior se usa su API nueva, por `item_model`.
+cada stack se ve como ella misma. Con Geyser 2.9 o posterior se usa su API nueva, por `item_model`
+(y, desde 3.3.2, también por número donde el pack Java dibuja por número; ver *3.3.2* más abajo).
 Las stacks antiguas sin número lo reciben cuando un jugador de Bedrock entra con ellas. Un ítem del
 que no se puede dibujar icono (su modelo o sus texturas no están en el pack) se registra igual, con
 su nombre y un signo de interrogación como dibujo; la lista entera queda en
@@ -2338,6 +2339,32 @@ Sigue sin verificarse cómo se ve en una pantalla de Bedrock, y Velocity en sí 
 Standalone). Para el cliente de prueba, sin cuenta de Xbox, ese Geyser tenía
 `advanced.bedrock.validate-bedrock-login: false` (lo que en 2.11 sustituye a
 `enable-proxy-connections`); en tu red no hace falta.
+
+#### 3.3.2: los ítems que el pack dibuja por número
+
+En el pack de ItemsAdder, cada ítem se dibuja sobre el ítem vanilla según su número
+`custom_model_data`: `assets/minecraft/items/netherite_sword.json` dibuja la espada mítica eclipse
+en cualquier espada de netherita con el número 10749, y cierra cada rango con el modelo vanilla.
+Así son las stacks que ItemsAdder fabricó (las que los jugadores ya tenían, las de los kits) y los
+iconos de los menús configurados por número: llevan el número, pero no el `item_model` del ítem.
+Java las dibuja bien. Geyser 2.9 o posterior solo las reconocía por `item_model`, así que en Bedrock
+salían como el ítem vanilla. Con Geyser 2.8 no pasaba, porque ahí todo va por número.
+
+Desde 3.3.2, el conversor mira las definiciones vanilla del pack Java y marca los ítems que el pack
+dibuja por su número (en `arkcontent-content.txt`, un campo más por ítem; un archivo de 3.3.1 se
+sigue leyendo, sin la marca). A Geyser 2.9 o posterior se le registra además cada uno de esos ítems
+por su número exacto (`arkcontent_cmd:<nombre>`; al menos ese número y no el siguiente), con el
+mismo icono. Un número que el pack no dibuja, o que dibuja como vanilla, sigue saliendo vanilla,
+igual que en Java.
+
+| Prueba (3.3.2): réplica del proxy con Velocity 4.1.0-SNAPSHOT build 9, Geyser-Velocity 2.11.3-b1247, Floodgate 2.2.5 b141 (prefijo `_`) y ViaVersion 5.11.0 en el proxy; Paper 1.21.8 detrás | Resultado |
+|---|---|
+| Arranque de Geyser | `Geyser: 1673 custom item(s), told apart by item model; 1330 of them also by custom_model_data, as the Java pack draws them`; Geyser: `Registered 3004 custom items` |
+| Espada de netherita vanilla con el número 10749 (sin `item_model`), como las de ItemsAdder | con 3.3.1, `minecraft:netherite_sword`; con 3.3.2, `arkcontent_cmd:ark_arkespadas_mitica_eclipse` |
+| Pico de hierro vanilla con el 10805 (`default_tools`) | con 3.3.1, `minecraft:iron_pickaxe`; con 3.3.2, `arkcontent_cmd:ark_default_tools_iron_pickaxe` |
+| Pico con el 10806 (el cierre vanilla de ese rango) y espada con el 99999 (ningún ítem) | vanilla, como en Java |
+| `/customgive` de la espada mítica eclipse | `arkcontent:ark_arkespadas_mitica_eclipse`, como en 3.3.1 |
+| Tests | 540, todos pasan |
 
 #### Qué se ha verificado en un servidor Paper 1.21.8 real (3.0, Bedrock)
 

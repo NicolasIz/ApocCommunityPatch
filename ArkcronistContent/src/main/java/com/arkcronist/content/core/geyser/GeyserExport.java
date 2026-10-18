@@ -46,7 +46,7 @@ public final class GeyserExport {
         for (BedrockConverter.BedrockItem item : items) {
             line(out, "item", item.id(), item.name(), item.javaItem(),
                     item.customModelData() == null ? "" : item.customModelData().toString(), item.itemModel(), item.icon(),
-                    item.displayName(), Boolean.toString(item.handheld()));
+                    item.displayName(), Boolean.toString(item.handheld()), Boolean.toString(item.byNumber()));
         }
         for (BedrockConverter.BedrockBlock block : blocks) {
             StringBuilder materials = new StringBuilder();
@@ -88,9 +88,10 @@ public final class GeyserExport {
                 }
                 case "item" -> {
                     need(field, 9, i);
+                    // The tenth field came in 3.3.2: a file written before reads as "not by number".
                     items.add(new BedrockConverter.BedrockItem(field[1], field[2], field[3],
                             field[4].isEmpty() ? null : Integer.valueOf(field[4]), field[5], field[6], field[7],
-                            Boolean.parseBoolean(field[8])));
+                            Boolean.parseBoolean(field[8]), field.length > 9 && Boolean.parseBoolean(field[9])));
                 }
                 case "block" -> {
                     need(field, 11, i);

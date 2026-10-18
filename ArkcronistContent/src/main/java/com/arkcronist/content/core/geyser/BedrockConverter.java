@@ -120,9 +120,20 @@ public final class BedrockConverter {
         }
     }
 
-    /** An item as Geyser is told about it. */
+    /**
+     * An item as Geyser is told about it.
+     *
+     * @param byNumber 3.3.2: the Java pack also draws it by its {@code custom_model_data} number, on the
+     *                 plain vanilla item - as ItemsAdder's packs do, for the stacks it made and for menus
+     *                 set up by number - so Geyser 2.9 and later are told to know it by that number too
+     */
     public record BedrockItem(String id, String name, String javaItem, @Nullable Integer customModelData,
-                              String itemModel, String icon, String displayName, boolean handheld) {
+                              String itemModel, String icon, String displayName, boolean handheld, boolean byNumber) {
+
+        public BedrockItem(String id, String name, String javaItem, @Nullable Integer customModelData,
+                           String itemModel, String icon, String displayName, boolean handheld) {
+            this(id, name, javaItem, customModelData, itemModel, icon, displayName, handheld, false);
+        }
     }
 
     /** A texture of a block's, and how Bedrock blends it. */
@@ -174,6 +185,8 @@ public final class BedrockConverter {
     /** 3.3.1: sprites the atlases give another name, by that name; null until first needed. */
     private @Nullable Map<ResourceLocation, ResourceLocation> spriteAliases;
     private final Map<ResourceLocation, JsonObject> models = new HashMap<>();
+    /** 3.3.2: by vanilla item, the custom_model_data numbers the Java pack draws on it. */
+    private final Map<String, Set<Integer>> numbersDrawn = new HashMap<>();
     private final List<JsonObject> flipbooks = new ArrayList<>();
 
     private BedrockConverter(Input input) {
@@ -239,13 +252,96 @@ public final class BedrockConverter {
                 itemTextures.put(MISSING_ICON, "textures/items/ark/" + MISSING_ICON);
             }
             return new BedrockItem(item.id(), name, "minecraft:" + item.material().toLowerCase(Locale.ROOT),
-                    item.customModelData(), item.itemModel().toString(), MISSING_ICON, item.displayName(), item.handheld());
+                    item.customModelData(), item.itemModel().toString(), MISSING_ICON, item.displayName(), item.handheld(),
+                    drawnByNumber(item));
         }
         String path = shortPath("textures/items/ark/", name, ".png");
         files.put(path, png(icon));
         itemTextures.put(name, path.substring(0, path.length() - 4));
         return new BedrockItem(item.id(), name, "minecraft:" + item.material().toLowerCase(Locale.ROOT),
-                item.customModelData(), item.itemModel().toString(), name, item.displayName(), item.handheld());
+                item.customModelData(), item.itemModel().toString(), name, item.displayName(), item.handheld(),
+                drawnByNumber(item));
+    }
+
+    /**
+     * 3.3.2: whether the Java pack draws this item on the plain vanilla one by its number - the vanilla
+     * item's definition dispatches on {@code custom_model_data} and has an entry at exactly that number
+     * that is not the vanilla model. A stack ItemsAdder made, or a menu icon set up by number, carries
+     * only the number; Geyser 2.9 and later only see it as this item if told so.
+     */
+    private boolean drawnByNumber(ItemSpec item) {
+        Integer number = item.customModelData();
+        if (number == null) {
+            return false;
+        }
+        String material = item.material().toLowerCase(Locale.ROOT);
+        return numbersDrawn.computeIfAbsent(material, this::numbersDrawn).contains(number);
+    }
+
+    /** The numbers {@code assets/minecraft/items/<material>.json} draws a model of its own for. */
+    private Set<Integer> numbersDrawn(String material) {
+        byte[] bytes = input.pack().read("assets/minecraft/items/" + material + ".json");
+        Set<Integer> numbers = new HashSet<>();
+        if (bytes == null) {
+            return numbers;
+        }
+        try {
+            JsonElement root = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8));
+            if (root.isJsonObject() && root.getAsJsonObject().has("model")) {
+                collectNumbers(root.getAsJsonObject().get("model"), material, numbers);
+            }
+        } catch (RuntimeException unreadable) {
+            // A definition the client would not read either draws nothing by number.
+        }
+        return numbers;
+    }
+
+    /** Every range dispatch on the first custom_model_data float, wherever it sits in the definition. */
+    private static void collectNumbers(JsonElement element, String material, Set<Integer> numbers) {
+        if (element.isJsonArray()) {
+            element.getAsJsonArray().forEach(child -> collectNumbers(child, material, numbers));
+            return;
+        }
+        if (!element.isJsonObject()) {
+            return;
+        }
+        JsonObject node = element.getAsJsonObject();
+        String type = node.has("type") && node.get("type").isJsonPrimitive()
+                ? node.get("type").getAsString().replace("minecraft:", "") : "";
+        String property = node.has("property") && node.get("property").isJsonPrimitive()
+                ? node.get("property").getAsString().replace("minecraft:", "") : "";
+        int index = node.has("index") && node.get("index").isJsonPrimitive() ? node.get("index").getAsInt() : 0;
+        if (type.equals("range_dispatch") && property.equals("custom_model_data") && index == 0
+                && node.has("entries") && node.get("entries").isJsonArray()) {
+            for (JsonElement entry : node.getAsJsonArray("entries")) {
+                if (!entry.isJsonObject() || !entry.getAsJsonObject().has("threshold")) {
+                    continue;
+                }
+                double threshold = entry.getAsJsonObject().get("threshold").getAsDouble();
+                JsonElement model = entry.getAsJsonObject().get("model");
+                if (threshold == Math.rint(threshold) && model != null && !vanillaModel(model, material)) {
+                    numbers.add((int) threshold);
+                }
+            }
+        }
+        for (Map.Entry<String, JsonElement> child : node.entrySet()) {
+            if (child.getValue().isJsonObject() || child.getValue().isJsonArray()) {
+                collectNumbers(child.getValue(), material, numbers);
+            }
+        }
+    }
+
+    /** An entry that only draws the item as vanilla does - how ItemsAdder ends each of its ranges. */
+    private static boolean vanillaModel(JsonElement model, String material) {
+        if (!model.isJsonObject()) {
+            return false;
+        }
+        JsonObject node = model.getAsJsonObject();
+        String type = node.has("type") && node.get("type").isJsonPrimitive()
+                ? node.get("type").getAsString().replace("minecraft:", "") : "";
+        String name = node.has("model") && node.get("model").isJsonPrimitive() ? node.get("model").getAsString() : "";
+        return type.equals("model") && (name.equals("minecraft:item/" + material) || name.equals("item/" + material)
+                || name.equals("minecraft:block/" + material) || name.equals("block/" + material));
     }
 
     // ---------------------------------------------------------------- blocks and liquids
