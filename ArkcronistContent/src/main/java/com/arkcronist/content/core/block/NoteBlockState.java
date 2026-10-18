@@ -37,6 +37,12 @@ public record NoteBlockState(String instrument, int note, boolean powered) {
 
     public static final int NOTES = 25;
     public static final int CAPACITY = INSTRUMENTS.size() * NOTES * 2;
+    /**
+     * 3.5: every state, the mob-head instruments' after the others ({@value} of them) - for the
+     * furniture carriers of Bedrock players, which are only ever block changes sent to their
+     * clients, so they may be any state the world does not hold.
+     */
+    public static final int CARRIER_CAPACITY = ALL_INSTRUMENTS.size() * NOTES * 2;
 
     /** The state vanilla note blocks are held in; never given to a custom block. */
     public static final NoteBlockState VANILLA = new NoteBlockState("harp", 0, false);
@@ -64,6 +70,19 @@ public record NoteBlockState(String instrument, int note, boolean powered) {
             throw new IllegalArgumentException("note block state index " + index + " is outside 0-" + (CAPACITY - 1));
         }
         return new NoteBlockState(INSTRUMENTS.get(index / (NOTES * 2)), (index / 2) % NOTES, index % 2 == 1);
+    }
+
+    /** 3.5: the state at a carrier index, 0 to {@value #CARRIER_CAPACITY} - 1: {@link #fromIndex}, and the mob-head instruments after. */
+    public static NoteBlockState fromCarrierIndex(int index) {
+        if (index < 0 || index >= CARRIER_CAPACITY) {
+            throw new IllegalArgumentException("note block carrier index " + index + " is outside 0-" + (CARRIER_CAPACITY - 1));
+        }
+        return new NoteBlockState(ALL_INSTRUMENTS.get(index / (NOTES * 2)), (index / 2) % NOTES, index % 2 == 1);
+    }
+
+    /** 3.5: this state's carrier index - its {@link #index} for the 16 block instruments. */
+    public int carrierIndex() {
+        return ALL_INSTRUMENTS.indexOf(instrument) * NOTES * 2 + note * 2 + (powered ? 1 : 0);
     }
 
     /** This state's index, or -1 for a mob head instrument, which no custom block uses. */

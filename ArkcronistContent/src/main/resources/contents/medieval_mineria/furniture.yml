@@ -1,0 +1,1425 @@
+# ---------------------------------------------------------------------------
+#  La mina (3.5): 87 piezas.
+#  montones de mineral, vagonetas, cestas y cajas de mineral, cristales, geodas, rocas,
+#  estalagmitas, puntales, faroles, picos, cribas, pólvora, vías, el torno del pozo y la mesa del tasador.
+#  Clic derecho: se abren, sientan, encienden, dan su efecto o abren su mesa de trabajo.
+#  /arkcontent showcase medieval_mineria las coloca todas delante de ti.
+# ---------------------------------------------------------------------------
+
+items:
+  monton_carbon:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Montón de carbón'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/monton_carbon'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.stone.hit'
+          cooldown: 3
+          message: '<gray>Un buen montón de carbón en bruto.'
+          particles:
+            - {particle: 'ash', offset: [0.0, 0.6, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  monton_hierro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Montón de hierro'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/monton_hierro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.stone.hit'
+          cooldown: 3
+          message: '<gray>Un buen montón de hierro en bruto.'
+          particles:
+            - {particle: 'ash', offset: [0.0, 0.6, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  monton_cobre:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Montón de cobre'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/monton_cobre'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.stone.hit'
+          cooldown: 3
+          message: '<gray>Un buen montón de cobre en bruto.'
+          particles:
+            - {particle: 'ash', offset: [0.0, 0.6, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  monton_oro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Montón de oro'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/monton_oro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.stone.hit'
+          cooldown: 3
+          message: '<gray>Un buen montón de oro en bruto.'
+          particles:
+            - {particle: 'ash', offset: [0.0, 0.6, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  monton_redstone:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Montón de piedra roja'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/monton_redstone'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.stone.hit'
+          cooldown: 3
+          message: '<gray>Un buen montón de piedra roja en bruto.'
+          particles:
+            - {particle: 'ash', offset: [0.0, 0.6, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  monton_lapislazuli:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Montón de lapislázuli'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/monton_lapislazuli'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.stone.hit'
+          cooldown: 3
+          message: '<gray>Un buen montón de lapislázuli en bruto.'
+          particles:
+            - {particle: 'ash', offset: [0.0, 0.6, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  monton_esmeralda:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Montón de esmeralda'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/monton_esmeralda'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.stone.hit'
+          cooldown: 3
+          message: '<gray>Un buen montón de esmeralda en bruto.'
+          particles:
+            - {particle: 'ash', offset: [0.0, 0.6, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  monton_diamante:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Montón de diamante'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/monton_diamante'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.stone.hit'
+          cooldown: 3
+          message: '<gray>Un buen montón de diamante en bruto.'
+          particles:
+            - {particle: 'ash', offset: [0.0, 0.6, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  monton_amatista:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Montón de amatista'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/monton_amatista'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.stone.hit'
+          cooldown: 3
+          message: '<gray>Un buen montón de amatista en bruto.'
+          particles:
+            - {particle: 'ash', offset: [0.0, 0.6, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  monton_cuarzo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Montón de cuarzo'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/monton_cuarzo'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.stone.hit'
+          cooldown: 3
+          message: '<gray>Un buen montón de cuarzo en bruto.'
+          particles:
+            - {particle: 'ash', offset: [0.0, 0.6, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  monton_plata:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Montón de plata'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/monton_plata'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.stone.hit'
+          cooldown: 3
+          message: '<gray>Un buen montón de plata en bruto.'
+          particles:
+            - {particle: 'ash', offset: [0.0, 0.6, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  monton_estano:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Montón de estaño'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/monton_estano'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.stone.hit'
+          cooldown: 3
+          message: '<gray>Un buen montón de estaño en bruto.'
+          particles:
+            - {particle: 'ash', offset: [0.0, 0.6, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  vagoneta_carbon:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Vagoneta de carbón'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/vagoneta_carbon'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Vagoneta de carbón'
+
+  vagoneta_hierro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Vagoneta de hierro'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/vagoneta_hierro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Vagoneta de hierro'
+
+  vagoneta_cobre:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Vagoneta de cobre'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/vagoneta_cobre'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Vagoneta de cobre'
+
+  vagoneta_oro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Vagoneta de oro'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/vagoneta_oro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Vagoneta de oro'
+
+  vagoneta_redstone:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Vagoneta de piedra roja'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/vagoneta_redstone'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Vagoneta de piedra roja'
+
+  vagoneta_esmeralda:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Vagoneta de esmeralda'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/vagoneta_esmeralda'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Vagoneta de esmeralda'
+
+  vagoneta_diamante:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Vagoneta de diamante'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/vagoneta_diamante'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Vagoneta de diamante'
+
+  vagoneta_plata:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Vagoneta de plata'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/vagoneta_plata'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Vagoneta de plata'
+
+  cesta_carbon:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cesta de carbón'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/cesta_carbon'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Cesta de carbón'
+
+  cesta_hierro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cesta de hierro'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/cesta_hierro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Cesta de hierro'
+
+  cesta_cobre:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cesta de cobre'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/cesta_cobre'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Cesta de cobre'
+
+  cesta_oro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cesta de oro'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/cesta_oro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Cesta de oro'
+
+  cesta_lapislazuli:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cesta de lapislázuli'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/cesta_lapislazuli'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Cesta de lapislázuli'
+
+  cesta_amatista:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cesta de amatista'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/cesta_amatista'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Cesta de amatista'
+
+  caja_carbon:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de carbón'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_carbon'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de carbón'
+
+  caja_hierro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de hierro'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_hierro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de hierro'
+
+  caja_cobre:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de cobre'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_cobre'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de cobre'
+
+  caja_oro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de oro'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_oro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de oro'
+
+  caja_redstone:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de piedra roja'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_redstone'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de piedra roja'
+
+  caja_cuarzo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de cuarzo'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_cuarzo'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de cuarzo'
+
+  bloque_veta_hierro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Bloque de veta de hierro'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/bloque_veta_hierro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.stone.hit'
+          cooldown: 3
+          message: '<gray>Cortado de la veta, aún sin picar.'
+
+  bloque_veta_oro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Bloque de veta de oro'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/bloque_veta_oro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.stone.hit'
+          cooldown: 3
+          message: '<gray>Cortado de la veta, aún sin picar.'
+
+  bloque_veta_diamante:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Bloque de veta de diamante'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/bloque_veta_diamante'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.stone.hit'
+          cooldown: 3
+          message: '<gray>Cortado de la veta, aún sin picar.'
+
+  bloque_veta_esmeralda:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Bloque de veta de esmeralda'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/bloque_veta_esmeralda'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.stone.hit'
+          cooldown: 3
+          message: '<gray>Cortado de la veta, aún sin picar.'
+
+  cristales_amatista:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cristales de amatista'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+      - '<gray>Da algo de luz.'
+    resource:
+      model: 'furniture/cristales_amatista'
+    furniture:
+      support: 'BARRIER'
+      light: 7
+      interactable: 'effect'
+      effect:
+        interval: 8
+        particles:
+          - {particle: 'end_rod', offset: [0.0, 0.6, 0.0], count: 1, spread: 0.15, speed: 0.01}
+        range: 24
+        on-click:
+          sound: 'minecraft:block.amethyst_cluster.hit'
+          cooldown: 0.5
+          message: '<light_purple>Los cristales tintinean.'
+
+  cristales_esmeralda:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cristales de esmeralda'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+      - '<gray>Da algo de luz.'
+    resource:
+      model: 'furniture/cristales_esmeralda'
+    furniture:
+      support: 'BARRIER'
+      light: 7
+      interactable: 'effect'
+      effect:
+        interval: 8
+        particles:
+          - {particle: 'end_rod', offset: [0.0, 0.6, 0.0], count: 1, spread: 0.15, speed: 0.01}
+        range: 24
+        on-click:
+          sound: 'minecraft:block.amethyst_cluster.hit'
+          cooldown: 0.5
+          message: '<light_purple>Los cristales tintinean.'
+
+  cristales_rubi:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cristales de rubí'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+      - '<gray>Da algo de luz.'
+    resource:
+      model: 'furniture/cristales_rubi'
+    furniture:
+      support: 'BARRIER'
+      light: 7
+      interactable: 'effect'
+      effect:
+        interval: 8
+        particles:
+          - {particle: 'end_rod', offset: [0.0, 0.6, 0.0], count: 1, spread: 0.15, speed: 0.01}
+        range: 24
+        on-click:
+          sound: 'minecraft:block.amethyst_cluster.hit'
+          cooldown: 0.5
+          message: '<light_purple>Los cristales tintinean.'
+
+  cristales_zafiro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cristales de zafiro'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+      - '<gray>Da algo de luz.'
+    resource:
+      model: 'furniture/cristales_zafiro'
+    furniture:
+      support: 'BARRIER'
+      light: 7
+      interactable: 'effect'
+      effect:
+        interval: 8
+        particles:
+          - {particle: 'end_rod', offset: [0.0, 0.6, 0.0], count: 1, spread: 0.15, speed: 0.01}
+        range: 24
+        on-click:
+          sound: 'minecraft:block.amethyst_cluster.hit'
+          cooldown: 0.5
+          message: '<light_purple>Los cristales tintinean.'
+
+  cristales_topacio:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cristales de topacio'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+      - '<gray>Da algo de luz.'
+    resource:
+      model: 'furniture/cristales_topacio'
+    furniture:
+      support: 'BARRIER'
+      light: 7
+      interactable: 'effect'
+      effect:
+        interval: 8
+        particles:
+          - {particle: 'end_rod', offset: [0.0, 0.6, 0.0], count: 1, spread: 0.15, speed: 0.01}
+        range: 24
+        on-click:
+          sound: 'minecraft:block.amethyst_cluster.hit'
+          cooldown: 0.5
+          message: '<light_purple>Los cristales tintinean.'
+
+  cristales_cuarzo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cristales de cuarzo'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+      - '<gray>Da algo de luz.'
+    resource:
+      model: 'furniture/cristales_cuarzo'
+    furniture:
+      support: 'BARRIER'
+      light: 7
+      interactable: 'effect'
+      effect:
+        interval: 8
+        particles:
+          - {particle: 'end_rod', offset: [0.0, 0.6, 0.0], count: 1, spread: 0.15, speed: 0.01}
+        range: 24
+        on-click:
+          sound: 'minecraft:block.amethyst_cluster.hit'
+          cooldown: 0.5
+          message: '<light_purple>Los cristales tintinean.'
+
+  cristales_diamante:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cristales de diamante'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+      - '<gray>Da algo de luz.'
+    resource:
+      model: 'furniture/cristales_diamante'
+    furniture:
+      support: 'BARRIER'
+      light: 7
+      interactable: 'effect'
+      effect:
+        interval: 8
+        particles:
+          - {particle: 'end_rod', offset: [0.0, 0.6, 0.0], count: 1, spread: 0.15, speed: 0.01}
+        range: 24
+        on-click:
+          sound: 'minecraft:block.amethyst_cluster.hit'
+          cooldown: 0.5
+          message: '<light_purple>Los cristales tintinean.'
+
+  geoda_amatista:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Geoda de amatista'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/geoda_amatista'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.amethyst_block.chime'
+          cooldown: 3
+          message: '<light_purple>Brilla por dentro.'
+
+  geoda_esmeralda:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Geoda de esmeralda'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/geoda_esmeralda'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.amethyst_block.chime'
+          cooldown: 3
+          message: '<light_purple>Brilla por dentro.'
+
+  geoda_zafiro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Geoda de zafiro'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/geoda_zafiro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.amethyst_block.chime'
+          cooldown: 3
+          message: '<light_purple>Brilla por dentro.'
+
+  rocas_piedra:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Rocas de piedra'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/rocas_piedra'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'seat'
+      seat-height: 0.45
+
+  rocas_granito:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Rocas de granito'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/rocas_granito'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'seat'
+      seat-height: 0.45
+
+  rocas_diorita:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Rocas de diorita'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/rocas_diorita'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'seat'
+      seat-height: 0.45
+
+  rocas_andesita:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Rocas de andesita'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/rocas_andesita'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'seat'
+      seat-height: 0.45
+
+  rocas_pizarra:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Rocas de pizarra'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/rocas_pizarra'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'seat'
+      seat-height: 0.45
+
+  rocas_arenisca:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Rocas de arenisca'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/rocas_arenisca'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'seat'
+      seat-height: 0.45
+
+  estalagmita_piedra:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Estalagmita de piedra'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/estalagmita_piedra'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.pointed_dripstone.hit'
+          cooldown: 3
+          message: '<gray>Gotea agua de la punta.'
+          particles:
+            - {particle: 'dripping_water', offset: [0.0, 1.0, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  estalagmita_pizarra:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Estalagmita de pizarra'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/estalagmita_pizarra'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.pointed_dripstone.hit'
+          cooldown: 3
+          message: '<gray>Gotea agua de la punta.'
+          particles:
+            - {particle: 'dripping_water', offset: [0.0, 1.0, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  estalagmita_basalto:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Estalagmita de basalto'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/estalagmita_basalto'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.pointed_dripstone.hit'
+          cooldown: 3
+          message: '<gray>Gotea agua de la punta.'
+          particles:
+            - {particle: 'dripping_water', offset: [0.0, 1.0, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  puntal_mina:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Puntal de mina'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/puntal_mina'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.wood.hit'
+          cooldown: 3
+          message: '<gray>Aguanta el techo... por ahora.'
+
+  puntal_mina_doble:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Puntal de mina doble'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/puntal_mina_doble'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.wood.hit'
+          cooldown: 3
+          message: '<gray>La galería principal, bien apuntalada.'
+
+  farol_minero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Farol de minero'
+    lore:
+      - '<gray>Clic derecho: enciende o apaga.'
+    resource:
+      model: 'furniture/farol_minero'
+    furniture:
+      support: 'LIGHT'
+      light: 15
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          toggle-light: true
+          sound: 'minecraft:block.lantern.place'
+          cooldown: 0.5
+
+  farol_colgante_mina:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Farol colgante de mina'
+    lore:
+      - '<gray>Clic derecho: enciende o apaga.'
+    resource:
+      model: 'furniture/farol_colgante_mina'
+    furniture:
+      support: 'LIGHT'
+      light: 15
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          toggle-light: true
+          sound: 'minecraft:block.lantern.place'
+          cooldown: 0.5
+
+  pico_apoyado_hierro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Pico de hierro apoyado'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/pico_apoyado_hierro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'haste 30 0'
+          sound: 'minecraft:block.stone.break'
+          cooldown: 60
+          message: '<gray>Alguien se tomó un descanso.'
+
+  pico_apoyado_acero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Pico de acero apoyado'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/pico_apoyado_acero'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'haste 30 0'
+          sound: 'minecraft:block.stone.break'
+          cooldown: 60
+          message: '<gray>Alguien se tomó un descanso.'
+
+  pico_apoyado_oro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Pico de oro apoyado'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/pico_apoyado_oro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'haste 30 0'
+          sound: 'minecraft:block.stone.break'
+          cooldown: 60
+          message: '<gray>Alguien se tomó un descanso.'
+
+  pala_apoyada:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Pala apoyada'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/pala_apoyada'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:item.shovel.flatten'
+          cooldown: 3
+          message: '<gray>Lista para cavar.'
+
+  carretilla_carbon:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Carretilla de carbón'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/carretilla_carbon'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Carretilla de carbón'
+
+  carretilla_hierro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Carretilla de hierro'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/carretilla_hierro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Carretilla de hierro'
+
+  carretilla_oro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Carretilla de oro'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/carretilla_oro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Carretilla de oro'
+
+  criba_mina:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Criba de mina'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/criba_mina'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.gravel.hit'
+          cooldown: 5
+          message: '<gray>Cribas la grava... <gold>¡algo brilla!'
+          particles:
+            - {particle: 'ash', offset: [0.0, 0.9, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  batea_oro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Batea de oro'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/batea_oro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:entity.generic.splash'
+          cooldown: 5
+          message: '<gold>Pepitas en el fondo de la batea.'
+
+  barril_polvora:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Barril de pólvora'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/barril_polvora'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Barril de pólvora'
+
+  caja_dinamita:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de cartuchos'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/caja_dinamita'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:entity.tnt.primed'
+          cooldown: 5
+          message: '<red>¡Cuidado! <gray>Mejor no tocar.'
+          particles:
+            - {particle: 'smoke', offset: [0.0, 0.6, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  tope_vias:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Tope de vías'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/tope_vias'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.wood.hit'
+          cooldown: 3
+          message: '<gray>Fin de la vía.'
+
+  vias_mina:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Tramo de vías'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/vias_mina'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.metal.step'
+          cooldown: 3
+          message: '<gray>Vías de la mina.'
+
+  torno_pozo_mina:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Torno de pozo de mina'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/torno_pozo_mina'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.chain.place'
+          cooldown: 2
+          message: '<gray>Subes el cubo del pozo.'
+
+  cartel_mina:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cartel de la mina'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/cartel_mina'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.wood.hit'
+          cooldown: 3
+          message: '<gold>Mina Arkcronist. <gray>Se buscan picadores.'
+
+  casco_minero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Casco de minero'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/casco_minero'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'night_vision 60 0'
+          sound: 'minecraft:item.armor.equip_iron'
+          cooldown: 120
+          message: '<gray>Un casco con su candil.'
+
+  mesa_tasador:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Mesa del tasador'
+    lore:
+      - '<gray>Clic derecho: mesa de cartografía.'
+    resource:
+      model: 'furniture/mesa_tasador'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'cartography'
+          sound: 'minecraft:ui.cartography_table.take_result'
+          cooldown: 0.5
+
+  balanza_minero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Balanza de minero'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/balanza_minero'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.chain.step'
+          cooldown: 3
+          message: '<gold>Pesas el mineral: <gray>buena ley.'
+
+  cuenco_pepitas:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cuenco de pepitas de oro'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/cuenco_pepitas'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.chain.step'
+          cooldown: 3
+          message: '<gold>Pepitas de oro, a puñados.'
+
+  expositor_rubi:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Expositor de rubíes'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+      - '<gray>Da algo de luz.'
+    resource:
+      model: 'furniture/expositor_rubi'
+    furniture:
+      support: 'BARRIER'
+      light: 6
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.amethyst_block.chime'
+          cooldown: 0.5
+          message: '<aqua>Gemas talladas, bajo cristal.'
+
+  expositor_esmeralda:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Expositor de esmeraldas'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+      - '<gray>Da algo de luz.'
+    resource:
+      model: 'furniture/expositor_esmeralda'
+    furniture:
+      support: 'BARRIER'
+      light: 6
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.amethyst_block.chime'
+          cooldown: 0.5
+          message: '<aqua>Gemas talladas, bajo cristal.'
+
+  expositor_zafiro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Expositor de zafiros'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+      - '<gray>Da algo de luz.'
+    resource:
+      model: 'furniture/expositor_zafiro'
+    furniture:
+      support: 'BARRIER'
+      light: 6
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.amethyst_block.chime'
+          cooldown: 0.5
+          message: '<aqua>Gemas talladas, bajo cristal.'
+
+  expositor_diamante:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Expositor de diamantes'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+      - '<gray>Da algo de luz.'
+    resource:
+      model: 'furniture/expositor_diamante'
+    furniture:
+      support: 'BARRIER'
+      light: 6
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.amethyst_block.chime'
+          cooldown: 0.5
+          message: '<aqua>Gemas talladas, bajo cristal.'
+
+  soporte_picos:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Soporte de picos'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/soporte_picos'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Soporte de picos'
+
+  muestra_hierro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Muestra de hierro'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/muestra_hierro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.stone.hit'
+          cooldown: 3
+          message: '<gray>Muestra de la veta, con su etiqueta.'
+
+  muestra_oro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Muestra de oro'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/muestra_oro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.stone.hit'
+          cooldown: 3
+          message: '<gray>Muestra de la veta, con su etiqueta.'
+
+  muestra_diamante:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Muestra de diamante'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/muestra_diamante'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.stone.hit'
+          cooldown: 3
+          message: '<gray>Muestra de la veta, con su etiqueta.'
+
+  muestra_esmeralda:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Muestra de esmeralda'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/muestra_esmeralda'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.stone.hit'
+          cooldown: 3
+          message: '<gray>Muestra de la veta, con su etiqueta.'

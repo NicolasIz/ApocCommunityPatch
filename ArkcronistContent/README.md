@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.4.0.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.5.0.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -2279,6 +2279,14 @@ Cada mueble necesita un estado de note block por bloque y por giro de 90° («po
 - Un mueble que ya no existe libera los suyos solo: un portador solo vive en el cliente de un
   jugador de Bedrock y Geyser los aprende de nuevo al arrancar, así que no hace falta tocar
   `data/bedrock_carriers.json`.
+- **3.5:** hay 1147 portadores en vez de 799: también se usan los estados de los 7 instrumentos de
+  cabeza de mob (zombi, esqueleto, creeper, dragón, esqueleto wither, piglin y cabeza de jugador),
+  que solo existen en Java con una cabeza encima del bloque musical y que el plugin no da a bloques.
+- **3.5:** un mueble de un solo bloque de ancho, todo dentro de su columna, ocupa los mismos bloques
+  como sea que se gire: si no hay estados para sus cuatro giros, se enseña sin girar (uno por bloque
+  en vez de cuatro). Los giros se reparten con lo que sobra, primero los más pequeños.
+- **3.5:** lo que los jugadores de Bedrock ya veían conserva sus portadores; el contenido nuevo se
+  reparte lo que queda. Antes, al añadir 300 piezas pequeñas, se quedaban fuera el trono o la forja.
 
 En el servidor de pruebas, con todo el contenido importado (1673 ítems), caben 784 portadores. Hasta
 3.2 se repartían por orden alfabético y faltaban 599, partidos entre varios muebles. En 3.3 entran
@@ -2713,6 +2721,47 @@ bloques se junta ahí al cargar). Se actualiza al cerrar el inventario. Al rompe
 | Mochila | se abre (27 huecos, su título), guarda 7 troncos, la propia mochila no entra, `/mochila` la reabre con los 7 |
 | Armero con katana darksteel, espada de diamante, de hierro y hacha de oro | las cuatro colgadas de los ganchos, dentro del marco (captura del cliente) |
 | Maniquí con la armadura darksteel y una espada | la lleva puesta, casco 3D incluido, y la espada en la mano |
+
+### Cuatro packs medievales nuevos (3.5): la mina, la herrería, el puerto y la granja
+
+305 piezas más, en cuatro carpetas de `contents/` que el plugin añade solo al actualizar (como los
+demás ejemplos, sin tocar lo que ya tengas):
+
+| Pack | Piezas | Qué hay |
+|---|---|---|
+| `medieval_mineria` | 87 | montones de 12 minerales, vagonetas, cestas y cajas de mineral, bloques de veta, cristales y geodas que brillan, rocas para sentarse, estalagmitas, puntales, faroles, picos y pala apoyados, carretillas, criba, batea, pólvora, cartuchos, vías y tope, torno de pozo, cartel, casco de minero, mesa del tasador, balanza, expositores de gemas, muestras |
+| `medieval_herreria` | 66 | yunques (siete), pilas de temple, fuelles, carbonera, lingotes de siete metales y cajas de lingotes, moldes con metal al rojo, crisoles que funden, paredes de martillos y tenazas, barriles de espadas, lanzas y hachas, cinco escudos con su emblema, cuatro yelmos, mesas del herrero y del armero, muelas, herraduras, clavos, cadenas, espada en la piedra, soportes de lanzas y arcos, flechas, horno de fundición, cota de malla, carro, cartel |
+| `medieval_pesca` | 69 | secaderos de seis peces, cajas, barriles y cestas de pescado en hielo, redes, boyas, anclas, nasas con cangrejo o langosta, soportes de cañas y arpones, remos, botes para sentarse, cubos de cebo, conchas, estrella de mar, cuerda, mesa del pescadero, ahumadero, postes de muelle, salvavidas, farol del puerto, timón, cofre pirata, trofeos, barril de agua dulce, peceras, cangrejo, pulpo |
+| `medieval_granja` | 83 | cajas de 14 cosechas, cestas de 10, sacos, fardos de heno para sentarse, carretillas, tres espantapájaros, arado, comedero, lechera, mantequera, huevos, gallinero, colmenas, miel, quesos, calabazas, sandías, aperos, regadera, horca, guadañas, silo, molinillo, ristras, hierbas, macetas, sidra, mesa del granjero, leche, bancales, semillas, uvas |
+
+Todas hacen algo con clic derecho: las cajas, barriles, cestas, sacos, vagonetas y carretillas
+**guardan cosas**; los fardos, rocas, botes y redes **son asientos**; los yunques, muelas, mesas y el
+molinillo **abren su mesa de trabajo** (yunque, piedra de afilar, herrería, mesa de trabajo,
+cartografía, cortapiedras); el horno de fundición y los crisoles **funden** lo que tengas en la mano y
+el ahumadero **ahúma**; los faroles **se encienden y apagan**; el agua (barril de agua dulce, cubo del
+herrero, lechera, leche, sidra) **quita la sed**; la comida (cestas, quesos, sandías, secaderos, mesa
+del pescadero) **da saciedad**; y el resto da un sonido, partículas, un mensaje o un efecto corto
+(prisa del pico, visión nocturna del casco, suerte de la caña…). Los cristales, expositores y moldes
+dan algo de luz.
+
+`/arkcontent showcase medieval_mineria` (o `_herreria`, `_pesca`, `_granja`) las coloca todas
+delante de ti para verlas. Cada una tiene su modelo y su textura pintada en
+`models/furniture/` y `textures/furniture/`, editables con Blockbench.
+
+**En Bedrock:** caben casi todas (ver «Portadores» más arriba). En el servidor de prueba, con todo tu
+contenido importado más estas 305: lo que ya se veía sigue viéndose, de lo nuevo entran 295 y quedan
+fuera 10 de dos bloques de ancho (la mesa del herrero, la del armero, la de cadenas, el yunque del
+maestro, el carro del herrero, los dos botes, la mesa del pescadero, el soporte de lanzas y el puntal
+doble). Si prefieres esas a otras, `bedrock.skip-furniture` deja fuera las que elijas. 328 piezas
+pequeñas se ven sin girar.
+
+| Prueba (3.5), Paper 1.21.8 | Resultado |
+|---|---|
+| Arranque de un servidor con 3.4 | `Added 614 example file(s) from newer versions` (las cuatro carpetas) |
+| Carga | 1980 ítems, sin un solo problema en los cuatro `furniture.yml` |
+| `/arkcontent showcase` de los cuatro, con un cliente Java 1.21.8 real | las 305 colocadas (87 + 66 + 69 + 83), todas con su modelo y su textura |
+| Bedrock, mismo contenido | 1141 portadores; lo de antes, igual; de lo nuevo, 10 fuera (arriba) |
+| Tests | 557, todos pasan |
 
 ## 5. Integraciones
 

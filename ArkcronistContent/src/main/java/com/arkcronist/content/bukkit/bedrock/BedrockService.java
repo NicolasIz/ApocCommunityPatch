@@ -182,7 +182,7 @@ public final class BedrockService implements Listener {
         }
         int quarter = Math.floorMod(Math.round(root.getLocation().getYaw() / 90f), 4);
         Block anchor = furniture.anchorOf(root);
-        Piece piece = new Piece(root.getUniqueId(), ChunkKey.of(anchor), anchor, quarters[quarter]);
+        Piece piece = new Piece(root.getUniqueId(), ChunkKey.of(anchor), anchor, turned(quarters, quarter));
         forget(root.getUniqueId());
         byRoot.put(piece.root(), piece);
         pieces.computeIfAbsent(piece.chunk(), key -> new HashMap<>()).put(piece.root(), piece);
@@ -190,6 +190,14 @@ public final class BedrockService implements Listener {
             // The display goes up before its supports on placing: a tick later both are there.
             plugin.getServer().getScheduler().runTaskLater(plugin, () -> showToViewers(piece), 1);
         }
+    }
+
+    /**
+     * The carriers of a turn: its own, or (3.5) for a piece one block across with none for its turn,
+     * the unturned piece's - which stands on the same blocks.
+     */
+    private static List<BedrockConverter.Carrier> turned(List<BedrockConverter.Carrier>[] quarters, int quarter) {
+        return quarters[quarter].isEmpty() ? quarters[0] : quarters[quarter];
     }
 
     private void going(ItemDisplay root) {
@@ -332,7 +340,7 @@ public final class BedrockService implements Listener {
             return lines;
         }
         Piece piece = byRoot.get(root.getUniqueId());
-        List<BedrockConverter.Carrier> list = piece != null ? piece.carriers() : quarters[quarter];
+        List<BedrockConverter.Carrier> list = piece != null ? piece.carriers() : turned(quarters, quarter);
         int fit = 0;
         Map<String, Integer> kept = new java.util.TreeMap<>();
         for (BedrockConverter.Carrier carrier : list) {
@@ -343,6 +351,9 @@ public final class BedrockService implements Listener {
             } else {
                 kept.merge(type.getKey().getKey(), 1, Integer::sum);
             }
+        }
+        if (quarters[quarter].isEmpty()) {
+            lines.add("Shown unturned: there were not enough note block states to turn it as well.");
         }
         lines.add(list.size() + " block(s) for Bedrock players, " + fit + " of them where they go"
                 + (kept.isEmpty() ? "." : "; " + (list.size() - fit) + " left out where the world has " + kept

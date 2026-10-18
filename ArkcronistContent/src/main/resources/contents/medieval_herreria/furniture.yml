@@ -1,0 +1,1121 @@
+# ---------------------------------------------------------------------------
+#  La herrería (3.5): 66 piezas.
+#  yunques, pilas de temple, fuelles, carbón, lingotes, moldes, crisoles, paredes de
+#  herramientas, barriles de armas, escudos, yelmos, mesas, muelas, herraduras y el horno de fundición.
+#  Clic derecho: se abren, sientan, encienden, dan su efecto o abren su mesa de trabajo.
+#  /arkcontent showcase medieval_herreria las coloca todas delante de ti.
+# ---------------------------------------------------------------------------
+
+items:
+  yunque_hierro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Yunque de hierro'
+    lore:
+      - '<gray>Clic derecho: yunque (reparar y renombrar).'
+    resource:
+      model: 'furniture/yunque_hierro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'anvil'
+          sound: 'minecraft:block.anvil.use'
+          cooldown: 0.5
+
+  yunque_acero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Yunque de acero'
+    lore:
+      - '<gray>Clic derecho: yunque (reparar y renombrar).'
+    resource:
+      model: 'furniture/yunque_acero'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'anvil'
+          sound: 'minecraft:block.anvil.use'
+          cooldown: 0.5
+
+  yunque_bronce:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Yunque de bronce'
+    lore:
+      - '<gray>Clic derecho: yunque (reparar y renombrar).'
+    resource:
+      model: 'furniture/yunque_bronce'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'anvil'
+          sound: 'minecraft:block.anvil.use'
+          cooldown: 0.5
+
+  yunque_oxido:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Yunque de hierro oxidado'
+    lore:
+      - '<gray>Clic derecho: yunque (reparar y renombrar).'
+    resource:
+      model: 'furniture/yunque_oxido'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'anvil'
+          sound: 'minecraft:block.anvil.use'
+          cooldown: 0.5
+
+  yunque_piedra:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Yunque sobre piedra'
+    lore:
+      - '<gray>Clic derecho: yunque (reparar y renombrar).'
+    resource:
+      model: 'furniture/yunque_piedra'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'anvil'
+          sound: 'minecraft:block.anvil.use'
+          cooldown: 0.5
+
+  yunque_suelto:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Yunque pequeño'
+    lore:
+      - '<gray>Clic derecho: yunque (reparar y renombrar).'
+    resource:
+      model: 'furniture/yunque_suelto'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'anvil'
+          sound: 'minecraft:block.anvil.use'
+          cooldown: 0.5
+
+  yunque_maestro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Yunque del maestro herrero'
+    lore:
+      - '<gray>Clic derecho: yunque (reparar y renombrar).'
+    resource:
+      model: 'furniture/yunque_maestro'
+    furniture:
+      support: 'BARRIER'
+      light: 6
+      size:
+        width: 2
+        height: 1
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'anvil'
+          sound: 'minecraft:block.anvil.use'
+          cooldown: 0.5
+
+  pila_temple:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Pila de temple'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/pila_temple'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.fire.extinguish'
+          cooldown: 2
+          message: '<gray>El acero sisea al templarse.'
+          particles:
+            - {particle: 'cloud', offset: [0.0, 0.6, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  pila_temple_aceite:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Pila de temple en aceite'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/pila_temple_aceite'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.fire.extinguish'
+          cooldown: 2
+          message: '<gray>El aceite humea.'
+          particles:
+            - {particle: 'smoke', offset: [0.0, 0.6, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  fuelle:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Fuelle'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/fuelle'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:entity.player.breath'
+          cooldown: 1
+          message: '<gold>Avivas las brasas.'
+          particles:
+            - {particle: 'flame', offset: [0.0, 0.3, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  fuelle_grande:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Fuelle grande'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/fuelle_grande'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:entity.player.breath'
+          cooldown: 1
+          message: '<gold>El fuelle ruge.'
+          particles:
+            - {particle: 'flame', offset: [0.0, 0.9, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  carbonera:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Carbonera'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/carbonera'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Carbonera'
+
+  saco_carbon:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Saco de carbón'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/saco_carbon'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Saco de carbón'
+
+  cubo_carbon:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cubo de carbón'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/cubo_carbon'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Cubo de carbón'
+
+  lingotes_hierro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Lingotes de hierro'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/lingotes_hierro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.metal.place'
+          cooldown: 3
+          message: '<gray>Lingotes de hierro, recién fundidos.'
+
+  lingotes_oro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Lingotes de oro'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/lingotes_oro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.metal.place'
+          cooldown: 3
+          message: '<gray>Lingotes de oro, recién fundidos.'
+
+  lingotes_cobre:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Lingotes de cobre'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/lingotes_cobre'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.metal.place'
+          cooldown: 3
+          message: '<gray>Lingotes de cobre, recién fundidos.'
+
+  lingotes_bronce:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Lingotes de bronce'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/lingotes_bronce'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.metal.place'
+          cooldown: 3
+          message: '<gray>Lingotes de bronce, recién fundidos.'
+
+  lingotes_acero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Lingotes de acero'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/lingotes_acero'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.metal.place'
+          cooldown: 3
+          message: '<gray>Lingotes de acero, recién fundidos.'
+
+  lingotes_plata:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Lingotes de plata'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/lingotes_plata'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.metal.place'
+          cooldown: 3
+          message: '<gray>Lingotes de plata, recién fundidos.'
+
+  lingotes_estano:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Lingotes de estaño'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/lingotes_estano'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.metal.place'
+          cooldown: 3
+          message: '<gray>Lingotes de estaño, recién fundidos.'
+
+  caja_lingotes_hierro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de lingotes de hierro'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_lingotes_hierro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de lingotes'
+
+  caja_lingotes_oro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de lingotes de oro'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_lingotes_oro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de lingotes'
+
+  caja_lingotes_cobre:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de lingotes de cobre'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_lingotes_cobre'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de lingotes'
+
+  caja_lingotes_plata:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de lingotes de plata'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_lingotes_plata'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de lingotes'
+
+  molde_hierro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Molde de lingotes de hierro'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+      - '<gray>Da algo de luz.'
+    resource:
+      model: 'furniture/molde_hierro'
+    furniture:
+      support: 'BARRIER'
+      light: 9
+      interactable: 'effect'
+      effect:
+        interval: 8
+        particles:
+          - {particle: 'lava', offset: [0.0, 0.2, 0.0], count: 1, spread: 0.15, speed: 0.01}
+        range: 24
+        on-click:
+          sound: 'minecraft:block.lava.pop'
+          cooldown: 0.5
+          message: '<gold>El metal aún está al rojo.'
+
+  molde_oro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Molde de lingotes de oro'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+      - '<gray>Da algo de luz.'
+    resource:
+      model: 'furniture/molde_oro'
+    furniture:
+      support: 'BARRIER'
+      light: 9
+      interactable: 'effect'
+      effect:
+        interval: 8
+        particles:
+          - {particle: 'lava', offset: [0.0, 0.2, 0.0], count: 1, spread: 0.15, speed: 0.01}
+        range: 24
+        on-click:
+          sound: 'minecraft:block.lava.pop'
+          cooldown: 0.5
+          message: '<gold>El metal aún está al rojo.'
+
+  molde_cobre:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Molde de lingotes de cobre'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+      - '<gray>Da algo de luz.'
+    resource:
+      model: 'furniture/molde_cobre'
+    furniture:
+      support: 'BARRIER'
+      light: 9
+      interactable: 'effect'
+      effect:
+        interval: 8
+        particles:
+          - {particle: 'lava', offset: [0.0, 0.2, 0.0], count: 1, spread: 0.15, speed: 0.01}
+        range: 24
+        on-click:
+          sound: 'minecraft:block.lava.pop'
+          cooldown: 0.5
+          message: '<gold>El metal aún está al rojo.'
+
+  crisol_hierro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Crisol de hierro'
+    lore:
+      - '<gray>Clic derecho con mineral en la mano: lo fundes.'
+    resource:
+      model: 'furniture/crisol_hierro'
+    furniture:
+      support: 'BARRIER'
+      light: 12
+      interactable: 'effect'
+      effect:
+        interval: 8
+        particles:
+          - {particle: 'lava', offset: [0.0, 0.75, 0.0], count: 1, spread: 0.15, speed: 0.01}
+        range: 24
+        on-click:
+          cook: 'blast'
+          sound: 'minecraft:block.lava.ambient'
+          cooldown: 0.5
+
+  crisol_oro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Crisol de oro'
+    lore:
+      - '<gray>Clic derecho con mineral en la mano: lo fundes.'
+    resource:
+      model: 'furniture/crisol_oro'
+    furniture:
+      support: 'BARRIER'
+      light: 12
+      interactable: 'effect'
+      effect:
+        interval: 8
+        particles:
+          - {particle: 'lava', offset: [0.0, 0.75, 0.0], count: 1, spread: 0.15, speed: 0.01}
+        range: 24
+        on-click:
+          cook: 'blast'
+          sound: 'minecraft:block.lava.ambient'
+          cooldown: 0.5
+
+  pared_martillos:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Pared de martillos'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/pared_martillos'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Martillos del herrero'
+
+  pared_tenazas:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Pared de tenazas y cinceles'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/pared_tenazas'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Tenazas y cinceles'
+
+  barril_espadas:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Barril de espadas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/barril_espadas'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Barril de espadas'
+
+  barril_lanzas:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Barril de lanzas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/barril_lanzas'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Barril de lanzas'
+
+  barril_hachas:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Barril de hachas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/barril_hachas'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Barril de hachas'
+
+  escudo_rojo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Escudo del león'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/escudo_rojo'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'resistance 20 0'
+          sound: 'minecraft:item.shield.block'
+          cooldown: 120
+          message: '<gold>Escudo del león.'
+
+  escudo_azul:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Escudo de la flor de lis'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/escudo_azul'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'resistance 20 0'
+          sound: 'minecraft:item.shield.block'
+          cooldown: 120
+          message: '<gold>Escudo de la flor de lis.'
+
+  escudo_verde:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Escudo de la torre'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/escudo_verde'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'resistance 20 0'
+          sound: 'minecraft:item.shield.block'
+          cooldown: 120
+          message: '<gold>Escudo de la torre.'
+
+  escudo_oro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Escudo del águila'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/escudo_oro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'resistance 20 0'
+          sound: 'minecraft:item.shield.block'
+          cooldown: 120
+          message: '<gold>Escudo del águila.'
+
+  escudo_blanco:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Escudo de la cruz'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/escudo_blanco'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'resistance 20 0'
+          sound: 'minecraft:item.shield.block'
+          cooldown: 120
+          message: '<gold>Escudo de la cruz.'
+
+  yelmo_caballero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Yelmo de caballero en su soporte'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/yelmo_caballero'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:item.armor.equip_iron'
+          cooldown: 3
+          message: '<gray>Yelmo de caballero, bruñido.'
+
+  yelmo_vikingo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Yelmo con cuernos en su soporte'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/yelmo_vikingo'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:item.armor.equip_iron'
+          cooldown: 3
+          message: '<gray>Yelmo con cuernos, bruñido.'
+
+  yelmo_oro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Yelmo dorado en su soporte'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/yelmo_oro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:item.armor.equip_iron'
+          cooldown: 3
+          message: '<gray>Yelmo dorado, bruñido.'
+
+  yelmo_hierro:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Yelmo de hierro en su soporte'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/yelmo_hierro'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:item.armor.equip_iron'
+          cooldown: 3
+          message: '<gray>Yelmo de hierro, bruñido.'
+
+  mesa_herrero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Mesa del herrero'
+    lore:
+      - '<gray>Clic derecho: mesa de herrería.'
+    resource:
+      model: 'furniture/mesa_herrero'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 1
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'smithing'
+          sound: 'minecraft:block.smithing_table.use'
+          cooldown: 0.5
+
+  mesa_cadenas:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Mesa de cadenas'
+    lore:
+      - '<gray>Clic derecho: mesa de trabajo.'
+    resource:
+      model: 'furniture/mesa_cadenas'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 1
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'crafting'
+          sound: 'minecraft:block.chain.place'
+          cooldown: 0.5
+
+  muela:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Muela de afilar'
+    lore:
+      - '<gray>Clic derecho: piedra de afilar.'
+    resource:
+      model: 'furniture/muela'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'grindstone'
+          sound: 'minecraft:block.grindstone.use'
+          cooldown: 0.5
+
+  muela_grande:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Muela grande con pila'
+    lore:
+      - '<gray>Clic derecho: piedra de afilar.'
+    resource:
+      model: 'furniture/muela_grande'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'grindstone'
+          sound: 'minecraft:block.grindstone.use'
+          cooldown: 0.5
+
+  afiladora_pedal:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Afiladora de pedal'
+    lore:
+      - '<gray>Clic derecho: piedra de afilar.'
+    resource:
+      model: 'furniture/afiladora_pedal'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'grindstone'
+          sound: 'minecraft:block.grindstone.use'
+          cooldown: 0.5
+
+  soporte_herraduras:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Soporte de herraduras'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/soporte_herraduras'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Herraduras'
+
+  cubo_herraduras:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cubo de herraduras'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/cubo_herraduras'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'speed 20 0'
+          sound: 'minecraft:block.chain.step'
+          cooldown: 90
+          message: '<gray>Herraduras para todo el establo.'
+
+  caja_clavos:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de clavos'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_clavos'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Caja de clavos'
+
+  cadenas_colgantes:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cadenas colgantes'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/cadenas_colgantes'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.chain.hit'
+          cooldown: 3
+          message: '<gray>Las cadenas tintinean.'
+
+  espada_en_piedra:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Espada en la piedra'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/espada_en_piedra'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'strength 10 0'
+          sound: 'minecraft:block.anvil.land'
+          cooldown: 300
+          message: '<gold>No se mueve... <gray>no eres el elegido.'
+
+  soporte_lanzas:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Soporte de lanzas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/soporte_lanzas'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 2
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Lanzas'
+
+  soporte_arcos:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Soporte de arcos'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/soporte_arcos'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Arcos y flechas'
+
+  barril_flechas:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Barril de flechas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/barril_flechas'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Barril de flechas'
+
+  mesa_armero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Mesa del armero'
+    lore:
+      - '<gray>Clic derecho: mesa de herrería.'
+    resource:
+      model: 'furniture/mesa_armero'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 1
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'smithing'
+          sound: 'minecraft:item.armor.equip_chain'
+          cooldown: 0.5
+
+  horno_fundicion:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Horno de fundición'
+    lore:
+      - '<gray>Clic derecho con mineral en la mano: lo fundes.'
+    resource:
+      model: 'furniture/horno_fundicion'
+    furniture:
+      support: 'BARRIER'
+      light: 13
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        interval: 8
+        particles:
+          - {particle: 'flame', offset: [0.0, 0.4, 0.0], count: 1, spread: 0.15, speed: 0.01}
+        range: 24
+        on-click:
+          cook: 'blast'
+          sound: 'minecraft:block.blastfurnace.fire_crackle'
+          cooldown: 0.5
+
+  soporte_cota_malla:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cota de malla en su soporte'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/soporte_cota_malla'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:item.armor.equip_chain'
+          cooldown: 3
+          message: '<gray>Cada anilla, remachada a mano.'
+
+  cubo_agua_herrero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cubo de agua del herrero'
+    lore:
+      - '<gray>Clic derecho: bebe, quita la sed.'
+    resource:
+      model: 'furniture/cubo_agua_herrero'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          hud: {thirst: 6}
+          sound: 'minecraft:item.bucket.fill'
+          cooldown: 10
+          message: '<aqua>Agua fresca.'
+
+  carro_herrero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Carro del herrero'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/carro_herrero'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 1
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Carro del herrero'
+
+  cartel_herradura:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cartel de la herradura'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/cartel_herradura'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.wood.hit'
+          cooldown: 3
+          message: '<gold>Herrería. <gray>Se hierran caballos.'
+
+  caja_armaduras:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de armaduras'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_armaduras'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Caja de armaduras'
+
+  banco_afilar:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Banco de afilar'
+    lore:
+      - '<gray>Clic derecho: piedra de afilar.'
+    resource:
+      model: 'furniture/banco_afilar'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'grindstone'
+          sound: 'minecraft:block.grindstone.use'
+          cooldown: 0.5
+
+  hojas_sin_forjar:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Hojas sin forjar'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/hojas_sin_forjar'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.metal.place'
+          cooldown: 3
+          message: '<gray>Hojas en bruto, esperando el martillo.'

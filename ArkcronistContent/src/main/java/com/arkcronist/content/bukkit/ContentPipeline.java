@@ -228,7 +228,23 @@ public final class ContentPipeline {
             Map.entry("3.4.0", List.of(
                     "contents/medieval_props/items.yml",
                     "contents/medieval_props/models/item/cantimplora.json",
-                    "contents/medieval_props/textures/item/cantimplora.png")));
+                    "contents/medieval_props/textures/item/cantimplora.png")),
+            // 3.5: four packs of medieval props - the mine, the smithy, the harbour, the farm - listed in a
+            // file of their own, being six hundred.
+            Map.entry("3.5.0", exampleList("examples-3.5.0.txt")));
+
+    /** The example files a resource lists, one path a line; # starts a comment. */
+    private static List<String> exampleList(String resource) {
+        try (java.io.InputStream in = ContentPipeline.class.getClassLoader().getResourceAsStream(resource)) {
+            if (in == null) {
+                throw new IllegalStateException(resource + " is missing from the plugin jar");
+            }
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8).lines().map(String::trim)
+                    .filter(line -> !line.isEmpty() && !line.startsWith("#")).toList();
+        } catch (IOException broken) {
+            throw new UncheckedIOException(broken);
+        }
+    }
 
     /** Copied into contents/ the first time the plugin starts. */
     private static final List<String> EXAMPLES = Stream.concat(FIRST_EXAMPLES.stream(),

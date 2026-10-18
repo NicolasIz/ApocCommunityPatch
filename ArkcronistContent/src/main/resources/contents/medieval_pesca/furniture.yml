@@ -1,0 +1,1118 @@
+# ---------------------------------------------------------------------------
+#  El puerto de pesca (3.5): 69 piezas.
+#  secaderos, cajas, barriles y cestas de pescado, redes, boyas, anclas,
+#  nasas, cañas, remos, botes, cebos, conchas, cuerda, postes de muelle, el farol del puerto y el timón.
+#  Clic derecho: se abren, sientan, encienden, dan su efecto o abren su mesa de trabajo.
+#  /arkcontent showcase medieval_pesca las coloca todas delante de ti.
+# ---------------------------------------------------------------------------
+
+items:
+  secadero_bacalao:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Secadero de bacalao'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/secadero_bacalao'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          sound: 'minecraft:entity.cod.flop'
+          cooldown: 60
+          message: '<gray>El bacalao se seca al aire.'
+
+  secadero_salmon:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Secadero de salmón'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/secadero_salmon'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          sound: 'minecraft:entity.cod.flop'
+          cooldown: 60
+          message: '<gray>El salmón se seca al aire.'
+
+  secadero_tropical:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Secadero de pez tropical'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/secadero_tropical'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          sound: 'minecraft:entity.cod.flop'
+          cooldown: 60
+          message: '<gray>El pez tropical se seca al aire.'
+
+  secadero_globo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Secadero de pez globo'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/secadero_globo'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          sound: 'minecraft:entity.cod.flop'
+          cooldown: 60
+          message: '<gray>El pez globo se seca al aire.'
+
+  secadero_trucha:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Secadero de trucha'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/secadero_trucha'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          sound: 'minecraft:entity.cod.flop'
+          cooldown: 60
+          message: '<gray>El trucha se seca al aire.'
+
+  secadero_carpa:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Secadero de carpa'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/secadero_carpa'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          sound: 'minecraft:entity.cod.flop'
+          cooldown: 60
+          message: '<gray>El carpa se seca al aire.'
+
+  caja_bacalao:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de bacalao'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_bacalao'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de bacalao'
+
+  caja_salmon:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de salmón'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_salmon'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de salmón'
+
+  caja_tropical:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de pez tropical'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_tropical'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de pez tropical'
+
+  caja_trucha:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de trucha'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_trucha'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de trucha'
+
+  caja_carpa:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de carpa'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_carpa'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de carpa'
+
+  caja_sardina:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de sardinas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_sardina'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de sardinas'
+
+  barril_bacalao:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Barril de bacalao'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/barril_bacalao'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Barril de bacalao'
+
+  barril_salmon:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Barril de salmón'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/barril_salmon'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Barril de salmón'
+
+  barril_sardina:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Barril de sardinas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/barril_sardina'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Barril de sardinas'
+
+  barril_lucio:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Barril de lucio'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/barril_lucio'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Barril de lucio'
+
+  cesta_bacalao:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cesta de bacalao'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/cesta_bacalao'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Cesta de bacalao'
+
+  cesta_trucha:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cesta de trucha'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/cesta_trucha'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Cesta de trucha'
+
+  cesta_sardina:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cesta de sardinas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/cesta_sardina'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Cesta de sardinas'
+
+  red_colgada:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Red colgada'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/red_colgada'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.wool.hit'
+          cooldown: 3
+          message: '<gray>Una red tendida a secar.'
+
+  red_con_peces:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Red con peces'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/red_con_peces'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:entity.cod.flop'
+          cooldown: 3
+          message: '<gray>La red aún gotea.'
+
+  monton_redes:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Montón de redes'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/monton_redes'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'seat'
+      seat-height: 0.35
+
+  monton_redes_verdes:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Montón de redes verdes'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/monton_redes_verdes'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'seat'
+      seat-height: 0.35
+
+  boya_rojo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Boya roja'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/boya_rojo'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.bell.use'
+          cooldown: 3
+          message: '<gray>La boya suena con la marea.'
+
+  boya_azul:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Boya azul'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/boya_azul'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.bell.use'
+          cooldown: 3
+          message: '<gray>La boya suena con la marea.'
+
+  boya_verde:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Boya verde'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/boya_verde'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.bell.use'
+          cooldown: 3
+          message: '<gray>La boya suena con la marea.'
+
+  boya_amarillo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Boya amarilla'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/boya_amarillo'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.bell.use'
+          cooldown: 3
+          message: '<gray>La boya suena con la marea.'
+
+  ancla:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Ancla'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/ancla'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.chain.place'
+          cooldown: 3
+          message: '<gray>Un ancla de hierro forjado.'
+
+  ancla_oxidada:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Ancla oxidada'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/ancla_oxidada'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.chain.place'
+          cooldown: 3
+          message: '<gray>Lleva años en el fondo del puerto.'
+
+  nasa_cangrejo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Nasa con cangrejo'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/nasa_cangrejo'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Nasa con cangrejo'
+
+  nasa_langosta:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Nasa con langosta'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/nasa_langosta'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Nasa con langosta'
+
+  nasa_vacia:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Nasa vacía'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/nasa_vacia'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Nasa vacía'
+
+  soporte_canas:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Soporte de cañas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/soporte_canas'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Cañas de pescar'
+
+  soporte_canas_pequeno:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Soporte de cañas pequeño'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/soporte_canas_pequeno'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Cañas de pescar'
+
+  remos_cruzados:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Remos cruzados'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/remos_cruzados'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:entity.boat.paddle_water'
+          cooldown: 3
+          message: '<gray>Remos de la barca.'
+
+  bote_remos:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Bote de remos'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/bote_remos'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 1
+      interactable: 'seat'
+      seat-height: 0.4
+
+  bote_remos_azul:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Bote de remos azul'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/bote_remos_azul'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 1
+      interactable: 'seat'
+      seat-height: 0.4
+
+  cubo_gusanos:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cubo de gusanos'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/cubo_gusanos'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Cubo de gusanos'
+
+  cubo_pececillos:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cubo de pececillos'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/cubo_pececillos'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Cubo de pececillos'
+
+  cubo_cangrejos:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cubo de cangrejos'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/cubo_cangrejos'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Cubo de cangrejos'
+
+  conchas_blanca:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Conchas blancas'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/conchas_blanca'
+    furniture:
+      support: 'LIGHT'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.sand.hit'
+          cooldown: 3
+          message: '<gray>Se oye el mar dentro de una.'
+
+  conchas_rosa:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Conchas rosas'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/conchas_rosa'
+    furniture:
+      support: 'LIGHT'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.sand.hit'
+          cooldown: 3
+          message: '<gray>Se oye el mar dentro de una.'
+
+  conchas_naranja:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Conchas naranjas'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/conchas_naranja'
+    furniture:
+      support: 'LIGHT'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.sand.hit'
+          cooldown: 3
+          message: '<gray>Se oye el mar dentro de una.'
+
+  conchas_azul:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Conchas azules'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/conchas_azul'
+    furniture:
+      support: 'LIGHT'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.sand.hit'
+          cooldown: 3
+          message: '<gray>Se oye el mar dentro de una.'
+
+  estrella_mar:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Estrella de mar'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/estrella_mar'
+    furniture:
+      support: 'LIGHT'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.sand.hit'
+          cooldown: 3
+          message: '<gold>Una estrella de mar seca.'
+
+  cuerda_pequeno:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Rollo de cuerda pequeño'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/cuerda_pequeno'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.wool.place'
+          cooldown: 3
+          message: '<gray>Cuerda de cáñamo, bien enrollada.'
+
+  cuerda_mediano:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Rollo de cuerda'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/cuerda_mediano'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.wool.place'
+          cooldown: 3
+          message: '<gray>Cuerda de cáñamo, bien enrollada.'
+
+  cuerda_grande:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Rollo de cuerda grande'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/cuerda_grande'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'seat'
+      seat-height: 0.4
+
+  soporte_arpones:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Soporte de arpones'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/soporte_arpones'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Arpones'
+
+  mesa_pescadero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Mesa del pescadero'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/mesa_pescadero'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 1
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 2'
+          sound: 'minecraft:entity.cod.flop'
+          cooldown: 60
+          message: '<gold>Pescado fresco del día.'
+
+  pescado_ahumado:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Pescado ahumado colgado'
+    lore:
+      - '<gray>Clic derecho con comida cruda: la ahumas.'
+    resource:
+      model: 'furniture/pescado_ahumado'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        interval: 8
+        particles:
+          - {particle: 'campfire_cosy_smoke', offset: [0.0, 1.2, 0.0], count: 1, spread: 0.15, speed: 0.01}
+        range: 24
+        on-click:
+          cook: 'smoker'
+          sound: 'minecraft:block.smoker.smoke'
+          cooldown: 0.5
+
+  poste_muelle_16:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Poste de muelle'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/poste_muelle_16'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.wood.hit'
+          cooldown: 3
+          message: '<gray>Ahí se amarran las barcas.'
+
+  poste_muelle_24:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Poste de muelle alto'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/poste_muelle_24'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.wood.hit'
+          cooldown: 3
+          message: '<gray>Ahí se amarran las barcas.'
+
+  poste_muelle_12:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Poste de amarre'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/poste_muelle_12'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.wood.hit'
+          cooldown: 3
+          message: '<gray>Ahí se amarran las barcas.'
+
+  salvavidas:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Salvavidas'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/salvavidas'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'water_breathing 60 0'
+          sound: 'minecraft:entity.generic.splash'
+          cooldown: 120
+          message: '<aqua>Por si alguien cae al agua.'
+
+  farol_puerto:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Farol del puerto'
+    lore:
+      - '<gray>Clic derecho: enciende o apaga.'
+    resource:
+      model: 'furniture/farol_puerto'
+    furniture:
+      support: 'LIGHT'
+      light: 15
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          toggle-light: true
+          sound: 'minecraft:block.lantern.place'
+          cooldown: 0.5
+
+  timon:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Timón de barco'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/timon'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'dolphins_grace 15 0'
+          sound: 'minecraft:block.wood.place'
+          cooldown: 120
+          message: '<gold>¡A toda vela!'
+
+  cofre_pirata:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cofre pirata'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/cofre_pirata'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Cofre pirata'
+
+  secadero_algas:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Secadero de algas'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/secadero_algas'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.wet_grass.hit'
+          cooldown: 3
+          message: '<green>Algas secándose al sol.'
+
+  trofeo_salmon:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Trofeo de salmón'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/trofeo_salmon'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.wood.hit'
+          cooldown: 3
+          message: '<gold>¡Qué ejemplar!'
+
+  trofeo_lucio:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Trofeo de lucio'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/trofeo_lucio'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.wood.hit'
+          cooldown: 3
+          message: '<gold>¡Qué ejemplar!'
+
+  trofeo_globo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Trofeo de pez globo'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/trofeo_globo'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.wood.hit'
+          cooldown: 3
+          message: '<gold>¡Qué ejemplar!'
+
+  barril_agua_dulce:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Barril de agua dulce'
+    lore:
+      - '<gray>Clic derecho: bebe, quita la sed.'
+    resource:
+      model: 'furniture/barril_agua_dulce'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          hud: {thirst: 20}
+          sound: 'minecraft:entity.generic.drink'
+          cooldown: 5
+          message: '<aqua>Agua dulce para la travesía.'
+
+  pecera_tropical:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Pecera con pez tropical'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/pecera_tropical'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:entity.fish.swim'
+          cooldown: 3
+          message: '<aqua>El pez da vueltas.'
+
+  pecera_carpa:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Pecera con carpa'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/pecera_carpa'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:entity.fish.swim'
+          cooldown: 3
+          message: '<aqua>El pez da vueltas.'
+
+  tabla_pescado:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Tabla de cortar pescado'
+    lore:
+      - '<gray>Clic derecho: mesa de trabajo.'
+    resource:
+      model: 'furniture/tabla_pescado'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'crafting'
+          sound: 'minecraft:entity.cod.flop'
+          cooldown: 0.5
+
+  cangrejo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cangrejo'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/cangrejo'
+    furniture:
+      support: 'LIGHT'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:entity.turtle.hurt_baby'
+          cooldown: 3
+          message: '<red>¡Te pellizca!'
+
+  cubo_pulpo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cubo con pulpo'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/cubo_pulpo'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:entity.squid.ambient'
+          cooldown: 3
+          message: '<light_purple>El pulpo te mira.'
+
+  cana_apoyada:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caña apoyada'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/cana_apoyada'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'luck 60 0'
+          sound: 'minecraft:entity.fishing_bobber.throw'
+          cooldown: 120
+          message: '<gray>Esperando a que piquen.'

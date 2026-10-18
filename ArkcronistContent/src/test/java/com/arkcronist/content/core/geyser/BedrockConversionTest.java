@@ -605,6 +605,51 @@ class BedrockConversionTest {
         assertEquals("feet", BedrockConverter.Worn.ofMaterial("CHAINMAIL_BOOTS").slot());
     }
 
+    /**
+     * 3.5: past the 16 block instruments' states, carriers go on to the mob-head instruments'; and
+     * pieces one block across are shown unturned when there are not states enough to turn them all,
+     * every one of them still shown.
+     */
+    @Test
+    void manySmallPiecesAllReachBedrockSomeUnturned() throws IOException {
+        assertEquals(1150, NoteBlockState.CARRIER_CAPACITY);
+        assertEquals("minecraft:note_block[instrument=zombie,note=0,powered=false]",
+                NoteBlockState.fromCarrierIndex(800).asBlockData());
+        assertEquals(1149, NoteBlockState.fromCarrierIndex(1149).carrierIndex());
+        assertEquals(799, NoteBlockState.fromIndex(799).carrierIndex());
+        assertEquals(1, BedrockConverter.carrierNumber(799), "the top of the old range first, as before");
+        assertEquals(799, BedrockConverter.carrierState(1));
+        assertEquals(800, BedrockConverter.carrierNumber(800));
+        assertEquals(800, BedrockConverter.carrierState(800));
+
+        Map<String, byte[]> pack = pack();
+        pack.put("assets/demo/models/furniture/stool.json", ("{\"textures\":{\"0\":\"demo:block/stone\"},\"elements\":"
+                + "[{\"from\":[3,0,3],\"to\":[13,9,13],\"faces\":{\"north\":{\"texture\":\"#0\"},\"up\":{\"texture\":\"#0\"}}}]}")
+                .getBytes(StandardCharsets.UTF_8));
+        BedrockConverter.Input base = input(pack, Map.of());
+        List<BedrockConverter.FurnitureSpec> furniture = new java.util.ArrayList<>(base.furniture());
+        for (int i = 0; i < 300; i++) {
+            furniture.add(new BedrockConverter.FurnitureSpec("demo:stool_" + i, new ResourceLocation("demo", "furniture/stool"),
+                    new Footprint(1, 1), Placement.Display.DEFAULT, false, true, 0, "Stool " + i));
+        }
+        BedrockConverter.Build build = BedrockConverter.convert(new BedrockConverter.Input(base.pack(), base.items(),
+                base.blocks(), base.liquids(), furniture, base.emojis(), base.previousCarriers(), base.blockStates()));
+        Map<String, Set<Integer>> turns = new HashMap<>();
+        build.carriers().forEach(carrier -> turns.computeIfAbsent(carrier.furnitureId(), id -> new TreeSet<>()).add(carrier.quarter()));
+        assertEquals(301, turns.size(), "the bench and all 300 stools reach Bedrock players");
+        assertEquals(Set.of(0, 1, 2, 3), turns.get("demo:bench"));
+        long unturned = turns.values().stream().filter(quarters -> quarters.equals(Set.of(0))).count();
+        long turned = turns.values().stream().filter(quarters -> quarters.size() == 4).count();
+        assertEquals(301, unturned + turned, "a piece is turned all four ways, or shown unturned");
+        assertTrue(unturned > 0 && turned > 1, unturned + " unturned, " + turned + " turned");
+        assertTrue(build.carriers().stream().anyMatch(carrier -> carrier.state().instrument().equals("custom_head")),
+                "the mob-head instruments' states are used too");
+        assertTrue(build.carriers().stream().map(carrier -> carrier.state().carrierIndex()).distinct().count()
+                == build.carriers().size(), "no state carries two blocks");
+        assertTrue(build.problems().stream().anyMatch(line -> line.contains(unturned + " piece(s) one block across are"
+                + " shown to Bedrock players unturned")), build.problems().toString());
+    }
+
     /** 3.4: the overlays a 1.21.8 client reads, topmost first, whichever way their formats are written. */
     @Test
     void theOverlaysA1218ClientReadsAreFoundTopmostFirst() {

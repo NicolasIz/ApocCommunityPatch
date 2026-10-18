@@ -142,18 +142,30 @@ class GeyserProxyTest {
                 plan.assignments().get("demo:table|1"), plan.assignments().get("demo:table|2"))));
     }
 
+    /**
+     * 3.5: a piece Bedrock players were shown keeps its carriers when new content comes - before, a
+     * smaller new piece took them, and a server adding small props lost its big ones.
+     */
     @Test
-    void aSmallerPieceMayTakeWhatALargerOneHadBefore() {
+    void aPieceShownBeforeKeepsItsCarriersAndNewOnesGetWhatIsLeft() {
         Map<String, List<String>> pieces = new TreeMap<>();
         pieces.put("demo:well", keys("demo:well", 4));
         pieces.put("demo:chair", keys("demo:chair", 2));
+        pieces.put("demo:stool", keys("demo:stool", 1));
         Map<String, Integer> previous = new TreeMap<>();
         for (int i = 0; i < 4; i++) {
             previous.put("demo:well|" + i, i + 1);
         }
-        // Four numbers: before, all the well's; now the chair comes first and the well no longer fits.
-        BedrockConverter.CarrierPlan plan = BedrockConverter.planCarriers(pieces, previous, Set.of(), 1, 4);
-        assertEquals(Map.of("demo:well", 4), plan.leftOut());
-        assertEquals(2, plan.assignments().size());
+        // Five numbers: four the well's, as before; one left, which the stool fits and the chair does not.
+        BedrockConverter.CarrierPlan plan = BedrockConverter.planCarriers(pieces, previous, Set.of(), 1, 5);
+        assertEquals(Map.of("demo:chair", 2), plan.leftOut());
+        for (int i = 0; i < 4; i++) {
+            assertEquals(i + 1, plan.assignments().get("demo:well|" + i));
+        }
+        assertEquals(5, plan.assignments().get("demo:stool|0"));
+        // Numbers held apart (another plan's) go last: the stool takes 5 though 1 is free and soft.
+        BedrockConverter.CarrierPlan apart = BedrockConverter.planCarriers(Map.of("demo:stool", keys("demo:stool", 1)),
+                Map.of(), Set.of(), 1, 5, Set.of(1, 2, 3, 4));
+        assertEquals(5, apart.assignments().get("demo:stool|0"));
     }
 }

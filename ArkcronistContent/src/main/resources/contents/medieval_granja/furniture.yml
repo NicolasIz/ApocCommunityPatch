@@ -1,0 +1,1356 @@
+# ---------------------------------------------------------------------------
+#  La granja (3.5): 83 piezas.
+#  cajas, cestas y sacos de la cosecha, heno, carretillas, espantapájaros, el arado,
+#  la lechería, huevos, colmenas, quesos, aperos, el silo, ristras, macetas, la prensa de sidra y los bancales.
+#  Clic derecho: se abren, sientan, encienden, dan su efecto o abren su mesa de trabajo.
+#  /arkcontent showcase medieval_granja las coloca todas delante de ti.
+# ---------------------------------------------------------------------------
+
+items:
+  caja_zanahoria:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de zanahorias'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_zanahoria'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de zanahorias'
+
+  caja_patata:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de patatas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_patata'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de patatas'
+
+  caja_remolacha:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de remolachas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_remolacha'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de remolachas'
+
+  caja_manzana:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de manzanas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_manzana'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de manzanas'
+
+  caja_calabaza:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de calabazas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_calabaza'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de calabazas'
+
+  caja_sandia:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de sandías'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_sandia'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de sandías'
+
+  caja_trigo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de trigo'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_trigo'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de trigo'
+
+  caja_col:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de coles'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_col'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de coles'
+
+  caja_cebolla:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de cebollas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_cebolla'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de cebollas'
+
+  caja_nabo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de nabos'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_nabo'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de nabos'
+
+  caja_maiz:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de maíz'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_maiz'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de maíz'
+
+  caja_tomate:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de tomates'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_tomate'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de tomates'
+
+  caja_pera:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de peras'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_pera'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de peras'
+
+  caja_lechuga:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de lechugas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_lechuga'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de lechugas'
+
+  cesta_zanahoria:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cesta de zanahorias'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/cesta_zanahoria'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          sound: 'minecraft:entity.generic.eat'
+          cooldown: 45
+          message: '<gold>Coges un poco de zanahorias.'
+
+  cesta_patata:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cesta de patatas'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/cesta_patata'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          sound: 'minecraft:entity.generic.eat'
+          cooldown: 45
+          message: '<gold>Coges un poco de patatas.'
+
+  cesta_manzana:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cesta de manzanas'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/cesta_manzana'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          sound: 'minecraft:entity.generic.eat'
+          cooldown: 45
+          message: '<gold>Coges un poco de manzanas.'
+
+  cesta_manzana_verde:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cesta de manzanas verdes'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/cesta_manzana_verde'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          sound: 'minecraft:entity.generic.eat'
+          cooldown: 45
+          message: '<gold>Coges un poco de manzanas verdes.'
+
+  cesta_tomate:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cesta de tomates'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/cesta_tomate'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          sound: 'minecraft:entity.generic.eat'
+          cooldown: 45
+          message: '<gold>Coges un poco de tomates.'
+
+  cesta_cebolla:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cesta de cebollas'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/cesta_cebolla'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          sound: 'minecraft:entity.generic.eat'
+          cooldown: 45
+          message: '<gold>Coges un poco de cebollas.'
+
+  cesta_fresa:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cesta de fresas'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/cesta_fresa'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          sound: 'minecraft:entity.generic.eat'
+          cooldown: 45
+          message: '<gold>Coges un poco de fresas.'
+
+  cesta_uva:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cesta de uvas'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/cesta_uva'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          sound: 'minecraft:entity.generic.eat'
+          cooldown: 45
+          message: '<gold>Coges un poco de uvas.'
+
+  cesta_pimiento:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cesta de pimientos'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/cesta_pimiento'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          sound: 'minecraft:entity.generic.eat'
+          cooldown: 45
+          message: '<gold>Coges un poco de pimientos.'
+
+  cesta_ajo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cesta de ajos'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/cesta_ajo'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          sound: 'minecraft:entity.generic.eat'
+          cooldown: 45
+          message: '<gold>Coges un poco de ajos.'
+
+  saco_harina:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Saco de harina'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/saco_harina'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Saco de harina'
+
+  saco_trigo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Saco de trigo'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/saco_trigo'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Saco de trigo'
+
+  saco_semillas:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Saco de semillas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/saco_semillas'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Saco de semillas'
+
+  saco_patata:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Saco de patatas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/saco_patata'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Saco de patatas'
+
+  saco_maiz:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Saco de maíz'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/saco_maiz'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Saco de maíz'
+
+  saco_avena:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Saco de avena'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/saco_avena'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Saco de avena'
+
+  saco_cerrado:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Saco cerrado'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/saco_cerrado'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Saco'
+
+  fardo_pequeno:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Fardo de heno pequeño'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/fardo_pequeno'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'seat'
+      seat-height: 0.55
+
+  fardo_apilado:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Fardos de heno apilados'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/fardo_apilado'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 1
+      interactable: 'seat'
+      seat-height: 0.55
+
+  fardo_redondo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Rulo de heno'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/fardo_redondo'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'seat'
+      seat-height: 0.55
+
+  carretilla_vacia:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Carretilla vacía'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/carretilla_vacia'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Carretilla vacía'
+
+  carretilla_hay:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Carretilla de heno'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/carretilla_hay'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Carretilla de heno'
+
+  carretilla_calabaza:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Carretilla de calabazas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/carretilla_calabaza'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Carretilla de calabazas'
+
+  carretilla_col:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Carretilla de coles'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/carretilla_col'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Carretilla de coles'
+
+  carretilla_patata:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Carretilla de patatas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/carretilla_patata'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Carretilla de patatas'
+
+  espantapajaros_rojo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Espantapájaros'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/espantapajaros_rojo'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:entity.parrot.imitate.phantom'
+          cooldown: 3
+          message: '<gray>Los cuervos no se acercan.'
+          particles:
+            - {particle: 'crit', offset: [0.0, 1.2, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  espantapajaros_azul:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Espantapájaros de camisa azul'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/espantapajaros_azul'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:entity.parrot.imitate.phantom'
+          cooldown: 3
+          message: '<gray>Los cuervos no se acercan.'
+          particles:
+            - {particle: 'crit', offset: [0.0, 1.2, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  espantapajaros_paja:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Espantapájaros de saco'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/espantapajaros_paja'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:entity.parrot.imitate.phantom'
+          cooldown: 3
+          message: '<gray>Los cuervos no se acercan.'
+          particles:
+            - {particle: 'crit', offset: [0.0, 1.2, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  arado:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Arado'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/arado'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 1
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:item.hoe.till'
+          cooldown: 3
+          message: '<gray>Listo para labrar.'
+
+  comedero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Comedero de animales'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/comedero'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 1
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Comedero'
+
+  lechera:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Lechera'
+    lore:
+      - '<gray>Clic derecho: bebe, quita la sed.'
+    resource:
+      model: 'furniture/lechera'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          hud: {thirst: 4}
+          sound: 'minecraft:entity.generic.drink'
+          cooldown: 30
+          message: '<white>Leche fresca.'
+
+  mantequera:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Mantequera'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/mantequera'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.wood.hit'
+          cooldown: 2
+          message: '<gold>Bates la nata... <gray>pronto será mantequilla.'
+
+  cesta_huevos:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cesta de huevos'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/cesta_huevos'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Cesta de huevos'
+
+  nido_huevos:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Nido con huevos'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/nido_huevos'
+    furniture:
+      support: 'LIGHT'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:entity.chicken.egg'
+          cooldown: 3
+          message: '<white>Tres huevos aún calientes.'
+
+  gallinero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Gallinero'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/gallinero'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:entity.chicken.ambient'
+          cooldown: 3
+          message: '<white>Cloc, cloc.'
+
+  colmena_suelo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Colmena de paja'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/colmena_suelo'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        interval: 8
+        particles:
+          - {particle: 'falling_honey', offset: [0.0, 0.8, 0.0], count: 1, spread: 0.15, speed: 0.01}
+        range: 24
+        on-click:
+          sound: 'minecraft:block.beehive.work'
+          cooldown: 3
+          message: '<gold>Zumban las abejas.'
+
+  colmena_soporte:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Colmena de paja en soporte'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/colmena_soporte'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        interval: 8
+        particles:
+          - {particle: 'falling_honey', offset: [0.0, 0.8, 0.0], count: 1, spread: 0.15, speed: 0.01}
+        range: 24
+        on-click:
+          sound: 'minecraft:block.beehive.work'
+          cooldown: 3
+          message: '<gold>Zumban las abejas.'
+
+  colmena_miel:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Colmena con panal'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/colmena_miel'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        interval: 8
+        particles:
+          - {particle: 'falling_honey', offset: [0.0, 0.8, 0.0], count: 1, spread: 0.15, speed: 0.01}
+        range: 24
+        on-click:
+          sound: 'minecraft:block.beehive.work'
+          cooldown: 3
+          message: '<gold>Zumban las abejas.'
+
+  tarros_miel:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Tarros de miel'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/tarros_miel'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'regeneration 3 0'
+          sound: 'minecraft:item.honey_bottle.drink'
+          cooldown: 60
+          message: '<gold>Miel de la colmena.'
+
+  quesos_1:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Rueda de queso'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/quesos_1'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          sound: 'minecraft:entity.generic.eat'
+          cooldown: 45
+          message: '<gold>Queso curado.'
+
+  quesos_2:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Dos ruedas de queso'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/quesos_2'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          sound: 'minecraft:entity.generic.eat'
+          cooldown: 45
+          message: '<gold>Queso curado.'
+
+  quesos_3:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Torre de quesos'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/quesos_3'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          sound: 'minecraft:entity.generic.eat'
+          cooldown: 45
+          message: '<gold>Queso curado.'
+
+  quesos_4:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Quesos apilados'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/quesos_4'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          sound: 'minecraft:entity.generic.eat'
+          cooldown: 45
+          message: '<gold>Queso curado.'
+
+  monton_calabazas:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Montón de calabazas'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/monton_calabazas'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.wood.hit'
+          cooldown: 3
+          message: '<gold>Calabazas de la cosecha.'
+
+  monton_sandias:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Montón de sandías'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/monton_sandias'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'saturation 1 1'
+          sound: 'minecraft:entity.generic.eat'
+          cooldown: 45
+          message: '<green>Sandías dulces.'
+
+  soporte_aperos:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Soporte de aperos'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/soporte_aperos'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Aperos'
+
+  regadera:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Regadera'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/regadera'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:item.bucket.empty'
+          cooldown: 2
+          message: '<aqua>Riegas el huerto.'
+          particles:
+            - {particle: 'splash', offset: [0.0, 0.3, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  horca_heno:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Horca en el heno'
+    lore:
+      - '<gray>Clic derecho para sentarte.'
+    resource:
+      model: 'furniture/horca_heno'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'seat'
+      seat-height: 0.4
+
+  soporte_guadanas:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Soporte de guadañas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/soporte_guadanas'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Guadañas'
+
+  silo_grano:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Silo de grano'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/silo_grano'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Silo de grano'
+
+  molinillo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Molinillo de mano'
+    lore:
+      - '<gray>Clic derecho: muele (cortapiedras).'
+    resource:
+      model: 'furniture/molinillo'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'stonecutter'
+          sound: 'minecraft:block.grindstone.use'
+          cooldown: 0.5
+
+  ristra_ajo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Ristra de ajos'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/ristra_ajo'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.wool.hit'
+          cooldown: 3
+          message: '<gray>Colgadas a secar.'
+
+  ristra_cebolla:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Ristra de cebollas'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/ristra_cebolla'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.wool.hit'
+          cooldown: 3
+          message: '<gray>Colgadas a secar.'
+
+  ristra_pimiento:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Ristra de pimientos'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/ristra_pimiento'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.wool.hit'
+          cooldown: 3
+          message: '<gray>Colgadas a secar.'
+
+  secadero_hierbas:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Secadero de hierbas'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/secadero_hierbas'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'regeneration 2 0'
+          sound: 'minecraft:block.grass.hit'
+          cooldown: 60
+          message: '<green>Huele a romero y tomillo.'
+
+  maceta_flores:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Maceta de flores'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/maceta_flores'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.grass.place'
+          cooldown: 3
+          message: '<green>Bien regada.'
+
+  maceta_tomatera:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Maceta con tomatera'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/maceta_tomatera'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.grass.place'
+          cooldown: 3
+          message: '<green>Bien regada.'
+
+  maceta_hierbas:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Maceta de hierbas'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/maceta_hierbas'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.grass.place'
+          cooldown: 3
+          message: '<green>Bien regada.'
+
+  barril_manzanas:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Barril de manzanas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/barril_manzanas'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 27
+      storage-title: '<dark_gray>Barril de manzanas'
+
+  prensa_sidra:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Prensa de sidra'
+    lore:
+      - '<gray>Clic derecho: bebe, quita la sed.'
+    resource:
+      model: 'furniture/prensa_sidra'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 1
+        height: 2
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'speed 20 0'
+          hud: {thirst: 8}
+          sound: 'minecraft:entity.generic.drink'
+          cooldown: 60
+          message: '<gold>Sidra recién prensada.'
+
+  mesa_granjero:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Mesa del granjero'
+    lore:
+      - '<gray>Clic derecho: mesa de trabajo.'
+    resource:
+      model: 'furniture/mesa_granjero'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 1
+      interactable: 'effect'
+      effect:
+        on-click:
+          station: 'crafting'
+          sound: 'minecraft:block.wood.place'
+          cooldown: 0.5
+
+  cubo_leche:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Cubo de leche'
+    lore:
+      - '<gray>Clic derecho: bebe, quita la sed.'
+    resource:
+      model: 'furniture/cubo_leche'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          hud: {thirst: 6}
+          sound: 'minecraft:entity.cow.milk'
+          cooldown: 20
+          message: '<white>Leche recién ordeñada.'
+
+  bancal_zanahoria:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Bancal de zanahorias'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/bancal_zanahoria'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 1
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.crop.break'
+          cooldown: 3
+          message: '<green>El huerto crece.'
+          particles:
+            - {particle: 'happy_villager', offset: [0.0, 0.6, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  bancal_col:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Bancal de coles'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/bancal_col'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 1
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.crop.break'
+          cooldown: 3
+          message: '<green>El huerto crece.'
+          particles:
+            - {particle: 'happy_villager', offset: [0.0, 0.6, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  bancal_trigo:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Bancal de trigo'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/bancal_trigo'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 1
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.crop.break'
+          cooldown: 3
+          message: '<green>El huerto crece.'
+          particles:
+            - {particle: 'happy_villager', offset: [0.0, 0.6, 0.0], count: 8, spread: 0.25, speed: 0.02}
+
+  bandeja_semillas:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Bandeja de semillas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/bandeja_semillas'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 9
+      storage-title: '<dark_gray>Semillas'
+
+  caja_uvas:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Caja de uvas'
+    lore:
+      - '<gray>Clic derecho para abrirlo.'
+    resource:
+      model: 'furniture/caja_uvas'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'storage'
+      slots: 18
+      storage-title: '<dark_gray>Caja de uvas'
+
+  pisadera_uvas:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Tina de pisar uvas'
+    lore:
+      - '<gray>Clic derecho: te da fuerzas.'
+    resource:
+      model: 'furniture/pisadera_uvas'
+    furniture:
+      support: 'BARRIER'
+      interactable: 'effect'
+      effect:
+        on-click:
+          potions:
+            - 'jump_boost 10 0'
+          sound: 'minecraft:block.honey_block.step'
+          cooldown: 30
+          message: '<dark_purple>Pisas las uvas... <gray>buen vino saldrá.'
+
+  valla_heno:
+    type: 'custom_furniture'
+    display-name: '<#c8a165>Valla con heno'
+    lore:
+      - '<gray>Clic derecho para mirarlo de cerca.'
+    resource:
+      model: 'furniture/valla_heno'
+    furniture:
+      support: 'BARRIER'
+      size:
+        width: 2
+        height: 1
+      interactable: 'effect'
+      effect:
+        on-click:
+          sound: 'minecraft:block.fence_gate.open'
+          cooldown: 3
+          message: '<gray>La valla del corral.'

@@ -895,6 +895,8 @@ public final class BedrockConverter {
     private Map<String, Integer> furniture(List<BedrockBlock> blocks, List<Carrier> carriers) {
         Map<String, List<Object[]>> wanted = new LinkedHashMap<>();
         Map<String, List<String>> keysByPiece = new TreeMap<>();
+        // 3.5: the three turned versions of a piece one block across, given carriers if any are left.
+        Map<String, List<String>> turnsByPiece = new TreeMap<>();
         // Said only of pieces that reach Bedrock players: of one left out, nothing is drawn anyway.
         Map<String, List<String>> cellWarnings = new LinkedHashMap<>();
         for (FurnitureSpec piece : input.furniture()) {
@@ -920,20 +922,47 @@ public final class BedrockConverter {
                 String base = name(piece.id()) + "_" + cellName(cell.getKey());
                 String geometry = geometry(base, cell.getValue(), materials, false);
                 boolean onSupport = support.contains(cell.getKey().key());
+                boolean turnless = turnless(layout, piece.footprint());
                 for (int quarter = 0; quarter < 4; quarter++) {
                     String key = piece.id() + "|" + cell.getKey().key() + "|" + quarter;
                     wanted.computeIfAbsent(key, ignored -> new ArrayList<>()).add(new Object[]{piece, cell.getKey(),
                             quarter, geometry, materials, onSupport, base});
-                    keysByPiece.computeIfAbsent(piece.id(), ignored -> new ArrayList<>()).add(key);
+                    (turnless && quarter > 0 ? turnsByPiece : keysByPiece)
+                            .computeIfAbsent(piece.id(), ignored -> new ArrayList<>()).add(key);
                 }
             }
         }
-        // Carriers from the top of the custom blocks' range down, never a state a block holds.
+        // Carriers from the top of the custom blocks' range down, never a state a block holds; then
+        // (3.5) the mob-head instruments' states.
         Map<String, Integer> mirroredPrevious = new HashMap<>();
-        input.previousCarriers().forEach((key, state) -> mirroredPrevious.put(key, NoteBlockState.CAPACITY - state));
+        input.previousCarriers().forEach((key, state) -> mirroredPrevious.put(key, carrierNumber(state)));
         Set<Integer> reserved = new HashSet<>();
-        input.blockStates().forEach(state -> reserved.add(NoteBlockState.CAPACITY - state));
-        CarrierPlan plan = planCarriers(keysByPiece, mirroredPrevious, reserved, 1, NoteBlockState.CAPACITY - 2);
+        input.blockStates().forEach(state -> reserved.add(carrierNumber(state)));
+        reserved.add(NoteBlockState.CAPACITY - 1);
+        Set<Integer> turnNumbers = new HashSet<>();
+        turnsByPiece.values().forEach(keys -> keys.forEach(key -> {
+            Integer number = mirroredPrevious.get(key);
+            if (number != null) {
+                turnNumbers.add(number);
+            }
+        }));
+        CarrierPlan whole = planCarriers(keysByPiece, mirroredPrevious, reserved, 1, NoteBlockState.CARRIER_CAPACITY - 1,
+                turnNumbers);
+        // 3.5: a piece one block across stands on the same blocks however it is turned: shown unturned,
+        // it needs one carrier a block, not four. Its turns get carriers only where some are left over.
+        Set<Integer> taken = new HashSet<>(reserved);
+        taken.addAll(whole.assignments().values());
+        Map<String, List<String>> turnsShown = new TreeMap<>(turnsByPiece);
+        turnsShown.keySet().removeAll(whole.leftOut().keySet());
+        CarrierPlan turns = planCarriers(turnsShown, mirroredPrevious, taken, 1, NoteBlockState.CARRIER_CAPACITY - 1);
+        Map<String, Integer> all = new HashMap<>(whole.assignments());
+        all.putAll(turns.assignments());
+        CarrierPlan plan = new CarrierPlan(all, whole.leftOut());
+        if (!turns.leftOut().isEmpty()) {
+            problems.add("Bedrock: " + turns.leftOut().size() + " piece(s) one block across are shown to Bedrock players"
+                    + " unturned - not enough note block states to turn them too (they need four each, one a quarter"
+                    + " turn); smallest first, the others are turned");
+        }
         cellWarnings.forEach((piece, cells) -> {
             if (!plan.leftOut().containsKey(piece)) {
                 problems.add(piece + " on Bedrock: a turned cube reaches more than 7 pixels out of its "
@@ -953,7 +982,7 @@ public final class BedrockConverter {
                     + "bedrock.skip-furniture in config.yml to leave those out instead.");
         }
         Map<String, Integer> assignments = new TreeMap<>();
-        plan.assignments().forEach((key, mirrored) -> assignments.put(key, NoteBlockState.CAPACITY - mirrored));
+        plan.assignments().forEach((key, number) -> assignments.put(key, carrierState(number)));
         for (Map.Entry<String, List<Object[]>> entry : wanted.entrySet()) {
             Integer mirrored = plan.assignments().get(entry.getKey());
             if (mirrored == null) {
@@ -966,7 +995,7 @@ public final class BedrockConverter {
             @SuppressWarnings("unchecked")
             Map<String, Material> materials = (Map<String, Material>) spec[4];
             boolean onSupport = (boolean) spec[5];
-            NoteBlockState state = NoteBlockState.fromIndex(NoteBlockState.CAPACITY - mirrored);
+            NoteBlockState state = NoteBlockState.fromCarrierIndex(carrierState(mirrored));
             FurnitureLayout.Cell placed = FurnitureLayout.turned(cell, piece.footprint(), quarter);
             carriers.add(new Carrier(piece.id(), quarter, placed.dx(), placed.dy(), placed.dz(), state, onSupport));
             blocks.add(new BedrockBlock(spec[6] + "_r" + quarter, state.asBlockData(), (String) spec[3], materials,
@@ -974,6 +1003,35 @@ public final class BedrockConverter {
                     Math.floorMod(-quarter * 90 + 180, 360) - 180, piece.displayName()));
         }
         return assignments;
+    }
+
+    /**
+     * The order carriers are handed out in, by number: 1 to 798 the 16 block instruments' states from
+     * the top down - as before 3.5, so a piece keeps its carriers - then from 800 the mob-head
+     * instruments' states, as they are numbered.
+     */
+    static int carrierNumber(int carrierIndex) {
+        return carrierIndex < NoteBlockState.CAPACITY ? NoteBlockState.CAPACITY - carrierIndex : carrierIndex;
+    }
+
+    /** The carrier index of a carrier number: see {@link #carrierNumber}. */
+    static int carrierState(int number) {
+        return number < NoteBlockState.CAPACITY ? NoteBlockState.CAPACITY - number : number;
+    }
+
+    /**
+     * 3.5: whether a piece stands on the same blocks however it is turned - one block across, all its
+     * model within its own column - so that, shown unturned, it is still where it is.
+     */
+    private static boolean turnless(FurnitureLayout.Layout layout, Footprint footprint) {
+        for (FurnitureLayout.Cell cell : layout.cells().keySet()) {
+            for (int quarter = 1; quarter < 4; quarter++) {
+                if (!FurnitureLayout.turned(cell, footprint, quarter).equals(FurnitureLayout.turned(cell, footprint, 0))) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /**
@@ -988,8 +1046,9 @@ public final class BedrockConverter {
     /**
      * 3.3: hands out the numbers {@code first} to {@code last}, less {@code reserved}, to whole pieces:
      * a piece gets a carrier for every block and quarter turn or none at all, since half a piece is
-     * worse than none. The smallest pieces go first, so the most pieces are shown when there are not
-     * enough for all; a key keeps the number it had before when it can. A carrier is only ever a
+     * worse than none. Pieces that had all theirs before keep them (3.5); then the smallest pieces go
+     * first, so the most pieces are shown when there are not enough for all; a key keeps the number
+     * it had before when it can. A carrier is only ever a
      * block change sent to a Bedrock client, and Geyser learns them all anew as it starts: nothing in
      * the world holds one, so a piece no longer defined frees its numbers at once.
      *
@@ -998,6 +1057,12 @@ public final class BedrockConverter {
      */
     static CarrierPlan planCarriers(Map<String, List<String>> keysByPiece, Map<String, Integer> previous,
                                     Set<Integer> reserved, int first, int last) {
+        return planCarriers(keysByPiece, previous, reserved, first, last, Set.of());
+    }
+
+    /** @param soft numbers handed out only when no others are left: what keys planned apart had (3.5) */
+    static CarrierPlan planCarriers(Map<String, List<String>> keysByPiece, Map<String, Integer> previous,
+                                    Set<Integer> reserved, int first, int last, Set<Integer> soft) {
         java.util.TreeSet<Integer> free = new java.util.TreeSet<>();
         for (int number = first; number <= last; number++) {
             if (!reserved.contains(number)) {
@@ -1016,8 +1081,11 @@ public final class BedrockConverter {
                 claimedBy.put(number, entry.getKey());
             }
         }
+        // 3.5: a piece Bedrock players were shown keeps its carriers, first; content added since only
+        // gets what is left - a server adding three hundred small pieces does not lose its big ones.
         List<String> order = new ArrayList<>(keysByPiece.keySet());
-        order.sort(java.util.Comparator.comparingInt((String piece) -> keysByPiece.get(piece).size())
+        order.sort(java.util.Comparator.comparing((String piece) -> !keysByPiece.get(piece).stream().allMatch(claim::containsKey))
+                .thenComparingInt(piece -> keysByPiece.get(piece).size())
                 .thenComparing(java.util.Comparator.naturalOrder()));
         Map<String, Integer> assignments = new TreeMap<>();
         Map<String, Integer> leftOut = new TreeMap<>();
@@ -1040,8 +1108,10 @@ public final class BedrockConverter {
                 if (assignments.containsKey(key)) {
                     continue;
                 }
-                // A number nobody had first; else one a later, larger piece had.
-                Integer number = free.stream().filter(n -> !claimedBy.containsKey(n)).findFirst().orElse(free.first());
+                // A number nobody had first; then one another plan's key had (3.5: a small piece's turn);
+                // else one a later, larger piece had.
+                Integer number = free.stream().filter(n -> !claimedBy.containsKey(n) && !soft.contains(n)).findFirst()
+                        .orElseGet(() -> free.stream().filter(n -> !claimedBy.containsKey(n)).findFirst().orElse(free.first()));
                 String owner = claimedBy.remove(number);
                 if (owner != null) {
                     claim.remove(owner);
