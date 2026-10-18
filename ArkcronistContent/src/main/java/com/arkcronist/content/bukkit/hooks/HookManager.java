@@ -548,6 +548,28 @@ public final class HookManager {
         return geyser;
     }
 
+    /**
+     * 3.3.3: with PacketEvents, what Bedrock players are sent has its too-wide glyphs written as the
+     * pieces the .mcpack draws them in. Without it, those glyphs stay one small glyph each.
+     */
+    public void bedrockGlyphText(java.util.function.Predicate<java.util.UUID> bedrock,
+                                 Supplier<java.util.Map<Integer, String>> pieces) {
+        try {
+            Class.forName("com.github.retrooper.packetevents.PacketEvents", false, getClass().getClassLoader());
+        } catch (ClassNotFoundException | LinkageError absent) {
+            logger.info("[bedrock] PacketEvents is not installed: ranks and other glyphs wider than a letter are"
+                    + " drawn small for Bedrock players. With PacketEvents they are drawn full size.");
+            return;
+        }
+        try {
+            new com.arkcronist.content.bukkit.hooks.packetevents.BedrockGlyphText(bedrock, pieces);
+            logger.info("[bedrock] Ranks and other glyphs wider than a letter are written as pieces for Bedrock"
+                    + " players, through PacketEvents.");
+        } catch (RuntimeException | LinkageError error) {
+            logger.log(Level.WARNING, "[bedrock] Could not watch what Bedrock players are sent for wide glyphs", error);
+        }
+    }
+
     private <T> T create(String name, String probeClass, Supplier<T> factory) {
         try {
             Class.forName(probeClass, false, getClass().getClassLoader());

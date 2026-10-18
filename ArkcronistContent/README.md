@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.3.2.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.3.3.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -2365,6 +2365,47 @@ igual que en Java.
 | Pico con el 10806 (el cierre vanilla de ese rango) y espada con el 99999 (ningún ítem) | vanilla, como en Java |
 | `/customgive` de la espada mítica eclipse | `arkcontent:ark_arkespadas_mitica_eclipse`, como en 3.3.1 |
 | Tests | 540, todos pasan |
+
+#### 3.3.3: los rangos y las imágenes de la fuente
+
+En Java, los rangos de un marcador, los iconos del tab y los del chat son imágenes de la fuente del
+pack: caracteres de uso privado (U+E000–U+F8FF) que la fuente dibuja con una imagen. Bedrock dibuja
+esos caracteres con las hojas `font/glyph_XX.png` del `.mcpack`. Hasta 3.3.2 solo llevaban los
+emojis del plugin, así que el resto salía como cajas (`▯▯▯`).
+
+- **Toda la fuente del pack.** Cada carácter de uso privado de la fuente `minecraft:default` del pack
+  Java (y de las que esta referencia) va a su hoja, en su proporción y a la altura a la que lo pone
+  Java. Los espacios (los negativos de ItemsAdder incluidos) y las imágenes de más de 32 píxeles de
+  alto (fondos de menú, paneles de HUD) se dibujan vacíos: en Bedrock no se ven, en vez de salir
+  como cajas. Los PNG protegidos de ItemsAdder se leen igual que los de los ítems.
+- **Los rangos anchos, en trozos.** Bedrock dibuja cada carácter en una casilla cuadrada del alto de
+  una letra: un rango de 126×22, entero en una, se queda en una raya. Por eso, una imagen más ancha
+  que una casilla se corta en trozos cuadrados (6 para un rango), cada uno en un carácter que la
+  fuente deja libre, desde U+F7FF hacia abajo (nunca en las hojas E0 y E1, que usa Bedrock). Su
+  propio carácter sigue llevando la imagen entera, pequeña.
+- **Con PacketEvents en Paper**, a cada jugador de Bedrock se le escribe ese carácter como sus
+  trozos en lo que se le envía: mensajes del servidor, el nombre de quien habla en el chat (y lo que
+  un plugin de chat le añade), la barra de acción, títulos, el tab, el marcador y los prefijos de
+  equipo, y las barras de jefe. A los jugadores de Java no se les toca nada. Sin PacketEvents, el
+  rango se ve pequeño, en un solo carácter. La consola dice cuál de los dos casos es.
+
+Qué caracteres hacen de trozos sale de cada compilación: el `.mcpack` del proxy y el plugin de
+Paper tienen que ser de la misma (copia los dos archivos al proxy cada vez que cambie el contenido,
+como siempre).
+
+| Prueba (3.3.3): réplica del proxy (Velocity build 9 con reenvío `legacy`, Geyser-Velocity 2.11.3, Floodgate b141 con `send-floodgate-data`, ViaVersion 5.11.0) y Paper 1.21.8 con PacketEvents 2.14.0 | Resultado |
+|---|---|
+| Fuente del pack de ArkcronistContent (la de ItemsAdder importada) | 13 hojas; los 43 rangos (`ark_rangos`, U+E6A0…) y otras 5 imágenes anchas, cortados en trozos en las hojas F7 y F6 |
+| `tellraw` con «Rango: U+E6A0 y U+E6C6» a un jugador de Bedrock | le llega «Rango: U+F7FF…U+F7FA y U+F71B…U+F716»: seis trozos cada uno |
+| `title` con U+E6A0; marcador con «Rango U+E6C6» | trozos en el título y en el nombre del marcador |
+| Jugador de Java en un equipo con prefijo U+E6A0, al salir | el jugador de Bedrock lee el aviso con los trozos |
+| Lo mismo a un jugador de Java | le llega U+E6A0 y U+E6C6, sin tocar |
+| Una imagen de menú (U+E037, 256 de alto) | sin tocar; en la hoja, vacía |
+| Tests | 543, todos pasan |
+
+No verificado: cómo se ve en una pantalla de Bedrock (si deja un píxel entre trozo y trozo) y el
+rango en el nombre del chat de jugadores (en el servidor de pruebas ningún plugin de chat lo pone;
+el código está, sin probar en vivo).
 
 #### Qué se ha verificado en un servidor Paper 1.21.8 real (3.0, Bedrock)
 

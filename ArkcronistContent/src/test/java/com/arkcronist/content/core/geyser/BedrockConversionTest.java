@@ -351,6 +351,61 @@ class BedrockConversionTest {
                 "1001 drawn as plain paper is not the ruby's");
     }
 
+    private static boolean drawn(BufferedImage sheet, int character) {
+        int cell = sheet.getWidth() / 16;
+        int low = character & 0xff;
+        for (int y = (low >> 4) * cell; y < ((low >> 4) + 1) * cell; y++) {
+            for (int x = (low & 15) * cell; x < ((low & 15) + 1) * cell; x++) {
+                if ((sheet.getRGB(x, y) >>> 24) != 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 3.3.3: the Java pack's own font images - ranks in a scoreboard - become Bedrock glyphs. One
+     * too wide for a glyph is cut into pieces on free characters, and the build says which; spaces
+     * and menu backgrounds are drawn as nothing, rather than as boxes; a referenced font counts too.
+     */
+    @Test
+    void theJavaFontsImagesBecomeBedrockGlyphs() throws IOException {
+        Map<String, byte[]> pack = pack();
+        pack.put("assets/minecraft/font/default.json", ("{\"providers\":["
+                + "{\"type\":\"bitmap\",\"file\":\"demo:font/badge.png\",\"height\":10,\"ascent\":8,\"chars\":[\"\\ue6a0\"]},"
+                + "{\"type\":\"bitmap\",\"file\":\"demo:font/icon.png\",\"ascent\":7,\"chars\":[\"\\ue6a1\"]},"
+                + "{\"type\":\"bitmap\",\"file\":\"demo:font/menu.png\",\"height\":256,\"ascent\":13,\"chars\":[\"\\ue6a2\"]},"
+                + "{\"type\":\"space\",\"advances\":{\"\\uf801\":-1,\" \":4}},"
+                + "{\"type\":\"reference\",\"id\":\"minecraft:include/more\"}]}").getBytes(StandardCharsets.UTF_8));
+        pack.put("assets/minecraft/font/include/more.json", ("{\"providers\":[{\"type\":\"bitmap\",\"file\":"
+                + "\"demo:font/icon.png\",\"height\":8,\"ascent\":7,\"chars\":[\"\\ue6a3\"]}]}").getBytes(StandardCharsets.UTF_8));
+        pack.put("assets/demo/textures/font/badge.png", png(44, 11, 0xffc08020));
+        pack.put("assets/demo/textures/font/icon.png", png(8, 8, 0xff20c040));
+        pack.put("assets/demo/textures/font/menu.png", png(256, 256, 0xff808080));
+
+        BedrockConverter.Build build = BedrockConverter.convert(input(pack, Map.of()));
+        assertEquals(List.of(), build.problems());
+        String pieces = build.glyphText().get(0xE6A0);
+        assertNotNull(pieces, "the badge, 44 by 11 at ten high, is too wide for one glyph");
+        assertEquals(4, pieces.codePointCount(0, pieces.length()), "eight by 32 font pixels: four pieces");
+        assertTrue(pieces.codePoints().allMatch(c -> c >= 0xE200 && c <= 0xF7FF), "free characters, not E0 or E1");
+        assertEquals(Set.of(0xE6A0), build.glyphText().keySet(), "the others fit a glyph");
+
+        Map<String, byte[]> files = unzip(build.pack());
+        BufferedImage e6 = ImageIO.read(new ByteArrayInputStream(files.get("font/glyph_E6.png")));
+        assertTrue(drawn(e6, 0xE6A0), "the badge's own glyph keeps the whole badge, smaller");
+        assertTrue(drawn(e6, 0xE6A1));
+        assertFalse(drawn(e6, 0xE6A2), "a menu background is no inline glyph: drawn as nothing");
+        assertTrue(drawn(e6, 0xE6A3), "from the referenced font");
+        BufferedImage spaces = ImageIO.read(new ByteArrayInputStream(files.get("font/glyph_F8.png")));
+        assertFalse(drawn(spaces, 0xF801), "a space is there, and empty: no box on Bedrock");
+        int first = pieces.codePointAt(0);
+        BufferedImage cut = ImageIO.read(new ByteArrayInputStream(files.get(String.format("font/glyph_%02X.png", first >> 8))));
+        pieces.codePoints().forEach(piece -> assertTrue(drawn(cut, piece), "piece " + Integer.toHexString(piece)));
+        assertTrue(files.containsKey("font/glyph_E0.png"), "the emojis are still there");
+    }
+
     /** 3.3: furniture listed in bedrock.skip-furniture gets no carriers; its item still has its icon. */
     @Test
     void skippedFurnitureGetsNoCarriers() throws IOException {

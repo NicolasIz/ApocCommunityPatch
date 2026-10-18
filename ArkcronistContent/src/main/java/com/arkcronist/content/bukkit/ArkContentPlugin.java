@@ -279,12 +279,16 @@ public final class ArkContentPlugin extends JavaPlugin {
         // and no Java pack - Geyser sends them the Bedrock one. After the title listener above.
         com.arkcronist.content.bukkit.hooks.geyser.GeyserHook geyser = hooks.geyser();
         com.arkcronist.content.bukkit.bedrock.BedrockService bedrock = null;
+        java.util.function.Predicate<java.util.UUID> bedrockPlayer = null;
+        java.util.function.Supplier<com.arkcronist.content.core.geyser.BedrockConverter.Build> geyserHas = null;
         if (geyser != null) {
+            bedrockPlayer = geyser::isBedrockPlayer;
+            geyserHas = () -> {
+                ContentPipeline.BedrockContent given = geyser.registered();
+                return given != null && geyser.live() ? given.build() : null;
+            };
             bedrock = new com.arkcronist.content.bukkit.bedrock.BedrockService(this, furniture, itemFactory,
-                    geyser::isBedrockPlayer, () -> {
-                        ContentPipeline.BedrockContent given = geyser.registered();
-                        return given != null && geyser.live() ? given.build() : null;
-                    });
+                    bedrockPlayer, geyserHas);
         } else if (pipeline.bedrockActive() && !pipeline.geyserHere()) {
             // 3.3: Geyser on a proxy, with this jar as its extension: Floodgate here says who plays on
             // Bedrock, and the proxy's Geyser knows the carriers of the build the extension was given.
@@ -296,11 +300,13 @@ public final class ArkContentPlugin extends JavaPlugin {
                 getLogger().info("[bedrock] Geyser on a proxy: Bedrock players are told apart by Floodgate.");
                 com.arkcronist.content.bukkit.bedrock.FloodgateBridge floodgate =
                         new com.arkcronist.content.bukkit.bedrock.FloodgateBridge(getClass().getClassLoader());
+                bedrockPlayer = floodgate::isBedrockPlayer;
+                geyserHas = () -> {
+                    CompletableFuture<ContentPipeline.BedrockContent> first = pipeline.bedrockReady();
+                    return first.isDone() && !first.isCompletedExceptionally() ? first.join().build() : null;
+                };
                 bedrock = new com.arkcronist.content.bukkit.bedrock.BedrockService(this, furniture, itemFactory,
-                        floodgate::isBedrockPlayer, () -> {
-                            CompletableFuture<ContentPipeline.BedrockContent> first = pipeline.bedrockReady();
-                            return first.isDone() && !first.isCompletedExceptionally() ? first.join().build() : null;
-                        });
+                        bedrockPlayer, geyserHas);
             }
         }
         if (bedrock != null) {
@@ -310,6 +316,12 @@ public final class ArkContentPlugin extends JavaPlugin {
             seats.drawnAsBlocksFor(bedrock::isBedrock);
             actionBars.plainFor(bedrock::isBedrock);
             minigames.plainTextFor(bedrock::isBedrock);
+            // 3.3.3: glyphs too wide for one Bedrock glyph - ranks - written as their pieces for them.
+            java.util.function.Supplier<com.arkcronist.content.core.geyser.BedrockConverter.Build> has = geyserHas;
+            hooks.bedrockGlyphText(bedrockPlayer, () -> {
+                com.arkcronist.content.core.geyser.BedrockConverter.Build build = has.get();
+                return build == null ? java.util.Map.of() : build.glyphText();
+            });
         }
         plugins.registerEvents(new ContentMenuListener(this), this);
         plugins.registerEvents(new AdvancementListener(this, advancements), this);
