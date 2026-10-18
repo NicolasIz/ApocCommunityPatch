@@ -223,7 +223,12 @@ public final class ContentPipeline {
                     "contents/demo/textures/hud/shield_small.png")),
             // 3.2: the map board's picture, a texture of its own that /arkcontent map draws again.
             Map.entry("3.2.0", List.of(
-                    "contents/medieval_props/textures/furniture/mapa_mural_mapa.png")));
+                    "contents/medieval_props/textures/furniture/mapa_mural_mapa.png")),
+            // 3.4: a canteen to drink from - thirst - and fill at water and at the trough.
+            Map.entry("3.4.0", List.of(
+                    "contents/medieval_props/items.yml",
+                    "contents/medieval_props/models/item/cantimplora.json",
+                    "contents/medieval_props/textures/item/cantimplora.png")));
 
     /** Copied into contents/ the first time the plugin starts. */
     private static final List<String> EXAMPLES = Stream.concat(FIRST_EXAMPLES.stream(),
@@ -1154,8 +1159,9 @@ public final class ContentPipeline {
                 Files.write(missing, bedrock.unpictured());
             }
             logger.info(String.format(Locale.ROOT, "[bedrock] %d item(s), %d block(s) (%d furniture carrier state(s)),"
-                            + " pack %s (%d KB) in %d ms.", bedrock.items().size(), bedrock.blocks().size(),
-                    bedrock.carriers().size(), pack.getFileName(), bedrock.pack().length / 1024,
+                            + " %d armour piece(s) drawn worn, pack %s (%d KB) in %d ms.", bedrock.items().size(),
+                    bedrock.blocks().size(), bedrock.carriers().size(), bedrock.wornPieces(), pack.getFileName(),
+                    bedrock.pack().length / 1024,
                     TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)));
             BedrockContent content = new BedrockContent(bedrock, pack);
             bedrockLatest = content;
@@ -1236,6 +1242,38 @@ public final class ContentPipeline {
         return true;
     }
 
+    /** 3.4: how Bedrock clients are to use an item: drunk, one to a slot, worn. */
+    private static BedrockConverter.Uses uses(ItemDefinition definition) {
+        com.arkcronist.content.core.definition.DrinkDefinition drink = definition.drink();
+        float seconds = drink == null ? 0 : (float) drink.seconds();
+        int stack = drink != null || definition.backpack() != null ? 1 : 0;
+        int damage = drink == null ? 0 : drink.sips();
+        String slot = definition.equipment() == null ? null
+                : definition.equipment().slot().name().toLowerCase(Locale.ROOT);
+        return new BedrockConverter.Uses(seconds, stack, damage, slot);
+    }
+
+    /**
+     * 3.4: how a piece of armour is drawn worn, for its Bedrock attachable: its equipment asset, its
+     * 3D model on the head, or - worn as its material - vanilla's armour of that material.
+     */
+    private static @Nullable BedrockConverter.Worn worn(ItemDefinition definition, String material) {
+        com.arkcronist.content.core.definition.Equipment equipment = definition.equipment();
+        if (equipment == null) {
+            return BedrockConverter.Worn.ofMaterial(material);
+        }
+        String slot = equipment.slot().name().toLowerCase(Locale.ROOT);
+        if (equipment.asset() != null) {
+            return new BedrockConverter.Worn(slot, equipment.asset(), null, null);
+        }
+        if (equipment.slot() == com.arkcronist.content.core.definition.Equipment.Slot.HEAD) {
+            ResourceLocation onHead = equipment.worn() != null ? equipment.worn().location()
+                    : definition.model() != null ? definition.model().location() : definition.itemModel();
+            return new BedrockConverter.Worn(slot, null, onHead, null);
+        }
+        return null;
+    }
+
     private BedrockConverter.Input bedrockInput(Build build) throws IOException {
         net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer plain =
                 net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText();
@@ -1253,7 +1291,7 @@ public final class ContentPipeline {
                         || material.endsWith("_PICKAXE") || material.endsWith("_SHOVEL") || material.endsWith("_HOE")
                         || material.equals("FISHING_ROD") || material.equals("STICK");
                 items.add(new BedrockConverter.ItemSpec(item.id(), material, definition.itemModel(), model,
-                        build.modelData().get(item.id()), name, handheld));
+                        build.modelData().get(item.id()), name, handheld, uses(definition), worn(definition, material)));
             }
             NoteBlockState state = build.noteBlocks().get(item.id());
             if (state != null && model != null) {

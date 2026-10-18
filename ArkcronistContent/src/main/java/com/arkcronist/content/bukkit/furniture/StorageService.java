@@ -159,12 +159,25 @@ public final class StorageService {
     private final Map<Key, Session> sessions = new HashMap<>();
     private BukkitTask ticker;
     private int seconds;
+    /** 3.4: told what a single piece's inventory holds whenever it changes or is saved - to show it. */
+    private java.util.function.BiConsumer<Block, ItemStack[]> contentsChanged = (support, contents) -> { };
 
     public StorageService(Plugin plugin, DatabaseManager database, Lid lid) {
         this.plugin = plugin;
         this.database = database;
         this.lid = lid;
         this.logger = plugin.getLogger();
+    }
+
+    /** 3.4: who is told what a piece's inventory holds as it changes - the pieces that show it. */
+    public void onContentsChanged(java.util.function.BiConsumer<Block, ItemStack[]> listener) {
+        this.contentsChanged = listener;
+    }
+
+    /** 3.4: whether the storage at this block is in memory now, read and possibly changed. */
+    public boolean isOpen(Block support) {
+        Session session = sessions.get(Key.of(support));
+        return session != null;
     }
 
     /** Starts the once-a-second check: reach, and the autosave. */
@@ -387,8 +400,27 @@ public final class StorageService {
             Session session = sessions.get(holder.key);
             if (session != null && session.inventory == top) {
                 session.dirty = true;
+                if (holder.partner == null) {
+                    // The click is applied after this event: what it holds is read a tick later.
+                    plugin.getServer().getScheduler().runTask(plugin, () -> told(session));
+                }
             }
         }
+    }
+
+    /** Whoever shows this piece's contents is told what it holds now. */
+    private void told(Session session) {
+        Key key = session.holder.key;
+        World world = plugin.getServer().getWorld(key.world());
+        if (session.inventory == null || world == null || !world.isChunkLoaded(key.x() >> 4, key.z() >> 4)) {
+            return;
+        }
+        ItemStack[] contents = session.inventory.getContents();
+        ItemStack[] copy = new ItemStack[contents.length];
+        for (int slot = 0; slot < contents.length; slot++) {
+            copy[slot] = contents[slot] == null ? null : contents[slot].clone();
+        }
+        contentsChanged.accept(world.getBlockAt(key.x(), key.y(), key.z()), copy);
     }
 
     /**
@@ -551,6 +583,9 @@ public final class StorageService {
 
     /** A snapshot of the inventory, taken now, written on the database thread. */
     private void save(Session session) {
+        if (session.holder.partner == null) {
+            told(session);
+        }
         List<StoredInventory> rows = rows(session);
         Key key = session.holder.key;
         if (rows.size() > 1) {

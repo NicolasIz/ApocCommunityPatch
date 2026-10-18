@@ -24,6 +24,15 @@
 #             the fires roast meat); with a station too, an empty hand opens it
 #    toggle-light: true - puts the piece's light out, or lights it again
 #    particles: [...] - drawn once at each click
+#  3.4, also under on-click:
+#    hud: {thirst: 20} - adds to a HUD value this plugin keeps (huds.yml):
+#             the trough and the well quench thirst
+#  A canteen (items.yml) held out to the trough or the well is filled there.
+#  3.4, under storage: show: - what it holds is shown on the piece:
+#    show: { armor: true, offset: [x, y, z], yaw: 0 } - worn by an armour
+#             stand standing in it: armour by its slot, other things in hand
+#    show: { items: [{offset: [x, y, z], rotation: [x, y, z], scale: 1}] } -
+#             the first things it holds, one at each place (Java only)
 #  A 'light' on a BARRIER support shines from the block just above the piece.
 #
 #  Every piece is a Java model under models/furniture/ with its own texture,
@@ -476,9 +485,10 @@ items:
         on-click:
           potions:
             - 'luck 300 0'
+          hud: {thirst: 20}
           sound: 'minecraft:entity.player.splash'
           cooldown: 60
-          message: '<aqua>Lanzas una moneda y pides un deseo...'
+          message: '<aqua>Bebes del pozo, lanzas una moneda y pides un deseo...'
         range: 40
 
   alambique:
@@ -915,6 +925,7 @@ items:
     display-name: '<#c8a165>Armero'
     lore:
       - '<gray>Clic derecho: guarda tus armas.'
+      - '<gray>Las cuatro primeras cuelgan de sus ganchos.'
     resource:
       model: 'furniture/armero'
     furniture:
@@ -925,6 +936,14 @@ items:
       interactable: 'storage'
       slots: 18
       storage-title: '<dark_gray>Armero'
+      # 3.4: the first four things it holds hang from its hooks, blade down,
+      # every other one a little further out so their guards overlap cleanly.
+      show:
+        items:
+          - {offset: [-0.297, 0.9, -0.21], rotation: [0, 0, -135], scale: 0.8}
+          - {offset: [-0.094, 0.9, -0.24], rotation: [0, 0, -135], scale: 0.8}
+          - {offset: [0.094, 0.9, -0.21], rotation: [0, 0, -135], scale: 0.8}
+          - {offset: [0.297, 0.9, -0.24], rotation: [0, 0, -135], scale: 0.8}
 
   yunque_herrero:
     type: 'custom_furniture'
@@ -960,9 +979,11 @@ items:
 
   maniqui_armadura:
     type: 'custom_furniture'
-    display-name: '<#c8a165>Maniquí con armadura'
+    display-name: '<#c8a165>Maniquí de armadura'
     lore:
-      - '<gray>Clic derecho: guarda una armadura.'
+      - '<gray>Clic derecho: ponle una armadura.'
+      - '<gray>Casco, peto, grebas y botas se ven puestos;'
+      - '<gray>lo demás, en sus manos.'
     resource:
       model: 'furniture/maniqui_armadura'
     furniture:
@@ -973,6 +994,10 @@ items:
       interactable: 'storage'
       slots: 9
       storage-title: '<dark_gray>Maniquí de armadura'
+      # 3.4: worn by an armour stand standing in it - Java and Bedrock players see it.
+      show:
+        armor: true
+        offset: [0, 0, 0]
 
   estandarte_rojo:
     type: 'custom_furniture'
@@ -1053,7 +1078,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Abrevadero'
     lore:
-      - '<gray>Clic derecho: bebe agua fresca.'
+      - '<gray>Clic derecho: bebe agua fresca (quita la sed).'
+      - '<gray>Con una cantimplora en la mano, la rellena.'
     resource:
       model: 'furniture/abrevadero'
     furniture:
@@ -1065,6 +1091,7 @@ items:
       effect:
         on-click:
           potions: ['regeneration 4 0']
+          hud: {thirst: 20}
           sound: 'minecraft:entity.generic.drink'
           cooldown: 20
           message: '<aqua>Bebes agua fresca del abrevadero.'

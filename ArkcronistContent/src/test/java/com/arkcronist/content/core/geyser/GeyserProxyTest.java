@@ -54,6 +54,29 @@ class GeyserProxyTest {
         BedrockConverter.BedrockItem before = GeyserExport.read(old).items().get(0);
         assertEquals(1004, before.customModelData());
         assertFalse(before.byNumber());
+        assertEquals(BedrockConverter.Uses.NONE, before.uses());
+    }
+
+    /** 3.4: how an item is used - drunk, one to a slot, worn - goes to the proxy with it, and back. */
+    @Test
+    void howAnItemIsUsedGoesToTheProxy() {
+        BedrockConverter.Uses canteen = new BedrockConverter.Uses(1.2f, 1, 6, null);
+        BedrockConverter.Uses helmet = new BedrockConverter.Uses(0, 0, 0, "head");
+        assertEquals("drink=1.2;stack=1;damage=6", canteen.encode());
+        assertEquals("slot=head", helmet.encode());
+        assertEquals("", BedrockConverter.Uses.NONE.encode());
+        assertEquals(canteen, BedrockConverter.Uses.decode(canteen.encode()));
+        assertEquals(BedrockConverter.Uses.NONE, BedrockConverter.Uses.decode(""));
+        assertEquals(new BedrockConverter.Uses(0, 1, 0, null), BedrockConverter.Uses.decode("stack=1;later=what"),
+                "what it does not know is left out");
+
+        BedrockConverter.BedrockItem drink = new BedrockConverter.BedrockItem("medieval_props:cantimplora",
+                "ark_cantimplora", "minecraft:paper", 1005, "medieval_props:cantimplora", "ark_cantimplora", "Cantimplora",
+                false, false, canteen);
+        BedrockConverter.BedrockItem worn = new BedrockConverter.BedrockItem("demo:ruby_helmet", "ark_ruby_helmet",
+                "minecraft:netherite_helmet", 1006, "demo:ruby_helmet", "ark_ruby_helmet", "Yelmo", false, true, helmet);
+        GeyserExport.Content read = GeyserExport.read(GeyserExport.write(List.of(drink, worn), List.of(), 0));
+        assertEquals(List.of(drink, worn), read.items());
     }
 
     /** The extension runs inside Geyser: none of what it loads may need Bukkit, Paper or Gson. */

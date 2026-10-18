@@ -54,6 +54,10 @@ public final class CosmeticListener implements Listener {
         if (item.isEmpty() || item.get().definition().cosmetic() == null) {
             return;
         }
+        // 3.4: sneaking, a backpack is opened instead.
+        if (event.getPlayer().isSneaking() && item.get().definition().backpack() != null) {
+            return;
+        }
         event.setUseItemInHand(Event.Result.DENY);
         event.setUseInteractedBlock(Event.Result.DENY);
         cosmetics.putOn(event.getPlayer(), item.get(), hand);

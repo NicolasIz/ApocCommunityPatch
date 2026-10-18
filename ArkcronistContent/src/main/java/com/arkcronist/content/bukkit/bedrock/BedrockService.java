@@ -300,6 +300,67 @@ public final class BedrockService implements Listener {
         return lines;
     }
 
+    /**
+     * 3.4: {@code /arkcontent bedrock look} - what Bedrock players are shown of the piece the player
+     * looks at, and why not, where they are not. A Bedrock player asking is sent its blocks again.
+     * Main thread.
+     */
+    public List<String> look(Player player) {
+        List<String> lines = new ArrayList<>();
+        Block part = furniture.target(player).orElse(null);
+        ItemDisplay root = part == null ? null : furniture.pieceRoot(part);
+        String id = root == null ? null : furniture.furnitureId(root);
+        if (root == null || id == null) {
+            lines.add("Look at a piece of furniture, within reach, and ask again.");
+            return lines;
+        }
+        int quarter = Math.floorMod(Math.round(root.getLocation().getYaw() / 90f), 4);
+        Block anchor = furniture.anchorOf(root);
+        lines.add(id + " at " + anchor.getX() + " " + anchor.getY() + " " + anchor.getZ() + ", turned " + quarter * 90
+                + " degrees.");
+        if (registered.get() == null) {
+            lines.add("Geyser has not been given the content: Bedrock players see none of it.");
+            return lines;
+        }
+        List<BedrockConverter.Carrier>[] quarters = carriers.get(id);
+        if (quarters == null) {
+            lines.add(registeredIds.contains(id)
+                    ? "It has no blocks for Bedrock players: it is left out (bedrock.skip-furniture), it is too big"
+                    + " to be cut into blocks, or the note block states ran out - the log of the last build says which."
+                    : "Geyser does not know it: it was added after Geyser started. Restart the proxy (or the server,"
+                    + " with Geyser-Spigot) and Bedrock players see it.");
+            return lines;
+        }
+        Piece piece = byRoot.get(root.getUniqueId());
+        List<BedrockConverter.Carrier> list = piece != null ? piece.carriers() : quarters[quarter];
+        int fit = 0;
+        Map<String, Integer> kept = new java.util.TreeMap<>();
+        for (BedrockConverter.Carrier carrier : list) {
+            Block block = anchor.getRelative(carrier.dx(), carrier.dy(), carrier.dz());
+            Material type = block.getType();
+            if (carrier.support() ? type == Material.BARRIER || type == Material.LIGHT : type.isAir()) {
+                fit++;
+            } else {
+                kept.merge(type.getKey().getKey(), 1, Integer::sum);
+            }
+        }
+        lines.add(list.size() + " block(s) for Bedrock players, " + fit + " of them where they go"
+                + (kept.isEmpty() ? "." : "; " + (list.size() - fit) + " left out where the world has " + kept
+                + " in their place."));
+        if (piece == null) {
+            lines.add("Not among the pieces shown yet: it is, once its chunk loads again.");
+            return lines;
+        }
+        if (isBedrock(player)) {
+            show(player, piece);
+            lines.add("You play on Bedrock: its blocks were sent to you again, through " + carrierRoute + ".");
+        } else {
+            lines.add("You play on Java and see the piece itself; " + viewers(piece).size()
+                    + " Bedrock player(s) near enough are sent its blocks, through " + carrierRoute + ".");
+        }
+        return lines;
+    }
+
     // ---------------------------------------------------------------- events
 
     @EventHandler(priority = EventPriority.MONITOR)

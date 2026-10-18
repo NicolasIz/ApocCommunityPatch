@@ -33,11 +33,22 @@ import java.util.Map;
  *                  then follow from it; null for the ascent and offset as written
  * @param betterHud 3.1: whether BetterHud draws it, and where; null to leave it to {@code huds.betterhud}
  *                  in config.yml - with BetterHud installed, a bar on the action bar is drawn by it
+ * @param bedrock   3.4: how Bedrock players, who see neither the pack's font nor BetterHud, are shown
+ *                  it; null for the default - a boss bar for a value this plugin keeps, nothing for
+ *                  the others, which the game or another plugin already shows them
  */
 public record HudDefinition(String namespace, String id, ResourceLocation full, @Nullable ResourceLocation half,
                             @Nullable ResourceLocation empty, int height, int ascent, int segments, int spacing,
                             int offset, Source source, boolean actionBar, Path sourceRoot, Path file,
-                            @Nullable HudAnchor anchor, @Nullable BetterHud betterHud) {
+                            @Nullable HudAnchor anchor, @Nullable BetterHud betterHud, @Nullable Bedrock bedrock) {
+
+    public HudDefinition(String namespace, String id, ResourceLocation full, @Nullable ResourceLocation half,
+                         @Nullable ResourceLocation empty, int height, int ascent, int segments, int spacing,
+                         int offset, Source source, boolean actionBar, Path sourceRoot, Path file,
+                         @Nullable HudAnchor anchor, @Nullable BetterHud betterHud) {
+        this(namespace, id, full, half, empty, height, ascent, segments, spacing, offset, source, actionBar, sourceRoot,
+                file, anchor, betterHud, null);
+    }
 
     public HudDefinition(String namespace, String id, ResourceLocation full, @Nullable ResourceLocation half,
                          @Nullable ResourceLocation empty, int height, int ascent, int segments, int spacing,
@@ -86,6 +97,28 @@ public record HudDefinition(String namespace, String id, ResourceLocation full, 
         public boolean placed() {
             return gui != null || pixel != null;
         }
+    }
+
+    /**
+     * 3.4: {@code bedrock:} - the bar as Bedrock players see it: a boss bar at the top of the screen,
+     * named {@code title} and followed by the value, as {@code 14/20}.
+     *
+     * @param shown whether they are shown it
+     * @param title its name; null for the HUD's id
+     * @param color the boss bar's colour: pink, blue, red, green, yellow, purple or white
+     */
+    public record Bedrock(boolean shown, @Nullable String title, String color) {
+
+        public static final List<String> COLORS = List.of("pink", "blue", "red", "green", "yellow", "purple", "white");
+        public static final Bedrock OFF = new Bedrock(false, null, "white");
+    }
+
+    /** 3.4: what Bedrock players are shown of it - by default, a boss bar for a value this plugin keeps. */
+    public Bedrock bedrockBar() {
+        if (bedrock != null) {
+            return bedrock;
+        }
+        return source instanceof Source.Stored ? new Bedrock(true, null, "blue") : Bedrock.OFF;
     }
 
     /** Two numbers: across, then down. */

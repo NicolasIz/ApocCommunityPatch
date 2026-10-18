@@ -4,6 +4,9 @@ import com.arkcronist.content.core.geyser.BedrockConverter;
 import org.geysermc.geyser.api.event.lifecycle.GeyserDefineCustomItemsEvent;
 import org.geysermc.geyser.api.item.custom.v2.CustomItemBedrockOptions;
 import org.geysermc.geyser.api.item.custom.v2.CustomItemDefinition;
+import org.geysermc.geyser.api.item.custom.v2.component.java.JavaConsumable;
+import org.geysermc.geyser.api.item.custom.v2.component.java.JavaEquippable;
+import org.geysermc.geyser.api.item.custom.v2.component.java.JavaItemDataComponents;
 import org.geysermc.geyser.api.predicate.PredicateStrategy;
 import org.geysermc.geyser.api.predicate.item.ItemRangeDispatchPredicate;
 import org.geysermc.geyser.api.util.Identifier;
@@ -15,21 +18,42 @@ import org.geysermc.geyser.api.util.Identifier;
  */
 final class GeyserItemsByModel {
 
-    private static final String NAMESPACE = "arkcontent";
+    private static final String NAMESPACE = BedrockConverter.ITEM_NAMESPACE;
     /** 3.3.2: the same items, known by their number: a Bedrock item of its own for each. */
-    private static final String BY_NUMBER_NAMESPACE = "arkcontent_cmd";
+    private static final String BY_NUMBER_NAMESPACE = BedrockConverter.BY_NUMBER_NAMESPACE;
 
     private GeyserItemsByModel() {
     }
 
     static boolean register(GeyserDefineCustomItemsEvent event, BedrockConverter.BedrockItem item) {
-        CustomItemDefinition definition = CustomItemDefinition.builder(Identifier.of(NAMESPACE, item.name()),
+        CustomItemDefinition.Builder builder = CustomItemDefinition.builder(Identifier.of(NAMESPACE, item.name()),
                         Identifier.of(item.itemModel()))
                 .displayName(item.displayName())
-                .bedrockOptions(options(item))
-                .build();
-        event.register(Identifier.of(item.javaItem()), definition);
+                .bedrockOptions(options(item));
+        event.register(Identifier.of(item.javaItem()), uses(builder, item.uses()).build());
         return true;
+    }
+
+    /**
+     * 3.4: what the stack's own components make of it on Java - drunk, one to a slot, worn - which
+     * Geyser takes from the item underneath unless told: a canteen made of paper would be paper.
+     */
+    private static CustomItemDefinition.Builder uses(CustomItemDefinition.Builder builder, BedrockConverter.Uses uses) {
+        if (uses.drinkSeconds() > 0) {
+            builder.component(JavaItemDataComponents.CONSUMABLE,
+                    JavaConsumable.of(uses.drinkSeconds(), JavaConsumable.Animation.DRINK));
+        }
+        if (uses.maxStack() > 0) {
+            builder.component(JavaItemDataComponents.MAX_STACK_SIZE, uses.maxStack());
+        }
+        if (uses.maxDamage() > 0) {
+            builder.component(JavaItemDataComponents.MAX_DAMAGE, uses.maxDamage());
+        }
+        if (uses.slot() != null) {
+            builder.component(JavaItemDataComponents.EQUIPPABLE,
+                    JavaEquippable.of(JavaEquippable.EquipmentSlot.valueOf(uses.slot().toUpperCase(java.util.Locale.ROOT))));
+        }
+        return builder;
     }
 
     /**
@@ -43,15 +67,14 @@ final class GeyserItemsByModel {
         if (number == null) {
             return false;
         }
-        CustomItemDefinition definition = CustomItemDefinition.builder(Identifier.of(BY_NUMBER_NAMESPACE, item.name()),
+        CustomItemDefinition.Builder builder = CustomItemDefinition.builder(Identifier.of(BY_NUMBER_NAMESPACE, item.name()),
                         Identifier.of(item.javaItem()))
                 .displayName(item.displayName())
                 .bedrockOptions(options(item))
                 .predicate(ItemRangeDispatchPredicate.customModelData(0, number))
                 .predicate(ItemRangeDispatchPredicate.customModelData(0, number + 1).negate())
-                .predicateStrategy(PredicateStrategy.AND)
-                .build();
-        event.register(Identifier.of(item.javaItem()), definition);
+                .predicateStrategy(PredicateStrategy.AND);
+        event.register(Identifier.of(item.javaItem()), uses(builder, item.uses()).build());
         return true;
     }
 

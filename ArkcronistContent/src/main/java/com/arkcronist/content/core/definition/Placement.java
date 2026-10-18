@@ -2,6 +2,7 @@ package com.arkcronist.content.core.definition;
 
 import com.arkcronist.content.core.animation.AnimatedModel;
 import com.arkcronist.content.core.furniture.Footprint;
+import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -224,10 +225,12 @@ public sealed interface Placement {
      *                      of opening the station; null for none
      * @param toggleLight   3.1: a click puts its light out, or lights it again
      * @param clickParticles 3.1: particles drawn once at each click
+     * @param hud           3.4: what a click adds to the HUD values this plugin keeps, by HUD id - a
+     *                      trough's water to thirst; empty for none
      */
     record Ambience(List<Particles> particles, int intervalTicks, int range, List<Effect> potions,
                     String sound, int cooldownTicks, String message, String station, String cook,
-                    boolean toggleLight, List<Particles> clickParticles) {
+                    boolean toggleLight, List<Particles> clickParticles, Map<String, Double> hud) {
 
         /** The workstations a click can open, as {@code station:} names them. */
         public static final List<String> STATIONS = List.of("crafting", "anvil", "grindstone", "smithing",
@@ -239,6 +242,14 @@ public sealed interface Placement {
             particles = List.copyOf(particles);
             potions = List.copyOf(potions);
             clickParticles = clickParticles == null ? List.of() : List.copyOf(clickParticles);
+            hud = hud == null ? Map.of() : Map.copyOf(hud);
+        }
+
+        public Ambience(List<Particles> particles, int intervalTicks, int range, List<Effect> potions,
+                        String sound, int cooldownTicks, String message, String station, String cook,
+                        boolean toggleLight, List<Particles> clickParticles) {
+            this(particles, intervalTicks, range, potions, sound, cooldownTicks, message, station, cook, toggleLight,
+                    clickParticles, Map.of());
         }
 
         public Ambience(List<Particles> particles, int intervalTicks, int range, List<Effect> potions,
@@ -249,7 +260,7 @@ public sealed interface Placement {
         /** Whether a right click does anything: a piece with only particles leaves the click alone. */
         public boolean clickable() {
             return !potions.isEmpty() || sound != null || message != null || station != null || cook != null
-                    || toggleLight || !clickParticles.isEmpty();
+                    || toggleLight || !clickParticles.isEmpty() || !hud.isEmpty();
         }
     }
 
@@ -310,10 +321,17 @@ public sealed interface Placement {
      *
      * @param slots a chest's worth of rows: 9, 18, 27, 36, 45 or 54
      * @param title MiniMessage shown at the top of the inventory; null to use the item's name
+     * @param show  3.4: what of its contents is shown on the piece - swords on a rack, armour on a
+     *              mannequin; null for nothing. A piece that shows its contents keeps one inventory,
+     *              at its anchor, whichever of its blocks is clicked
      */
-    record Storage(int slots, String title) {
+    record Storage(int slots, String title, @Nullable Show show) {
 
         public static final int DEFAULT_SLOTS = 27;
+
+        public Storage(int slots, String title) {
+            this(slots, title, null);
+        }
 
         /** Whether an inventory can have this many slots: whole rows of nine, one to six of them. */
         public static boolean validSlots(int slots) {
@@ -328,6 +346,38 @@ public sealed interface Placement {
         public int sizeFor(int used) {
             return Math.min(54, Math.max(slots, (used + 8) / 9 * 9));
         }
+    }
+
+    /**
+     * 3.4: what a storage piece shows of what it holds.
+     *
+     * <p>{@code armor}: an armour stand nobody sees stands on the piece wearing it - pieces that go
+     * on the head, chest, legs and feet each where they go, by their own slot, and the first two other
+     * things in its hands - drawn as any armour stand is, by Java and Bedrock clients alike.</p>
+     *
+     * <p>{@code items}: each listed place shows one thing held, in the order they are held - a sword
+     * hanging on a rack - as an item display, which only Java clients draw.</p>
+     *
+     * @param armor  whether an armour stand wears what it holds
+     * @param offset where that armour stand stands, from the piece's centre: across, up, forward, in blocks
+     * @param yaw    which way it faces, in degrees from the way the piece faces
+     * @param items  where each thing held is shown, in order
+     */
+    record Show(boolean armor, Vec3 offset, float yaw, List<ShownItem> items) {
+
+        public Show {
+            items = List.copyOf(items);
+        }
+    }
+
+    /**
+     * One place a held thing is shown at.
+     *
+     * @param offset   from the piece's centre: across, up, forward, in blocks
+     * @param rotation degrees about x, y and z, in that order - a sword turned blade down
+     * @param scale    how big it is drawn; 1 as in an item frame
+     */
+    record ShownItem(Vec3 offset, Vec3 rotation, float scale) {
     }
 
     /**

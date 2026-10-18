@@ -78,6 +78,7 @@ public final class AmbienceService {
     }
 
     private final Plugin plugin;
+    private java.util.function.BiFunction<Player, Map<String, Double>, List<String>> hud;
     private final ItemRegistry registry;
     private final FurnitureService furniture;
     private final Map<UUID, Emitter> emitters = new HashMap<>();
@@ -368,6 +369,11 @@ public final class AmbienceService {
             furniture.toggleLight(piece);
         }
         burst(piece, spec.clickParticles());
+        if (!spec.hud().isEmpty() && hud != null) {
+            for (String unknown : hud.apply(player, spec.hud())) {
+                warn(item.id() + ": there is no HUD '" + unknown + "' kept by this plugin; nothing is added to it");
+            }
+        }
         for (Placement.Effect effect : spec.potions()) {
             PotionEffectType type = effectType(item.id(), effect.type());
             if (type != null) {
@@ -381,6 +387,11 @@ public final class AmbienceService {
         if (spec.message() != null) {
             player.sendMessage(MiniMessage.miniMessage().deserialize(spec.message().replace("%player%", player.getName())));
         }
+    }
+
+    /** 3.4: adds a click's HUD values - a trough's water to thirst; returns the HUD ids it does not know. */
+    public void hudGains(java.util.function.BiFunction<Player, Map<String, Double>, List<String>> hud) {
+        this.hud = hud;
     }
 
     /** 3.1: what is one of this plugin's own items - a forge or a fire leaves those alone. */

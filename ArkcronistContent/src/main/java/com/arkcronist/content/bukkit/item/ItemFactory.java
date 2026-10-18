@@ -1,11 +1,14 @@
 package com.arkcronist.content.bukkit.item;
 
+import com.arkcronist.content.core.definition.DrinkDefinition;
 import com.arkcronist.content.core.definition.Equipment;
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.definition.ResourceLocation;
 import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.Consumable;
 import io.papermc.paper.datacomponent.item.CustomModelData;
 import io.papermc.paper.datacomponent.item.Equippable;
+import io.papermc.paper.datacomponent.item.consumable.ItemUseAnimation;
 import net.kyori.adventure.key.Key;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.EquipmentSlot;
@@ -81,7 +84,27 @@ public final class ItemFactory {
             // A bucket: one per slot, as vanilla's filled buckets.
             stack.setData(DataComponentTypes.MAX_STACK_SIZE, 1);
         }
+        DrinkDefinition drink = item.definition().drink();
+        if (drink != null) {
+            // 3.4: a canteen, full: drunk as a potion is, its sips left shown by the damage bar.
+            stack.setData(DataComponentTypes.MAX_STACK_SIZE, 1);
+            stack.setData(DataComponentTypes.MAX_DAMAGE, drink.sips());
+            stack.setData(DataComponentTypes.DAMAGE, 0);
+            stack.setData(DataComponentTypes.CONSUMABLE, drinking(drink));
+        }
+        if (item.definition().backpack() != null) {
+            // 3.4: a backpack is one thing with its own contents, never a stack of them.
+            stack.setData(DataComponentTypes.MAX_STACK_SIZE, 1);
+        }
         return stack;
+    }
+
+    /** 3.4: how a canteen is drunk - as a potion is, with no effects of the game's own. */
+    public static Consumable drinking(DrinkDefinition drink) {
+        Consumable.Builder builder = Consumable.consumable().consumeSeconds((float) drink.seconds())
+                .animation(ItemUseAnimation.DRINK).hasConsumeParticles(false);
+        builder.sound(Key.key(drink.sound() != null ? drink.sound() : "minecraft:entity.generic.drink"));
+        return builder.build();
     }
 
     /** The custom_model_data number each item is also drawn by, by id. Set by each rebuild. */

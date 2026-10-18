@@ -5,7 +5,9 @@ import com.arkcronist.content.core.animation.BbModelReader;
 import com.arkcronist.content.core.ballistics.DamageFalloff;
 import com.arkcronist.content.core.cosmetic.CosmeticDefinition;
 import com.arkcronist.content.core.definition.AdvancementDefinition;
+import com.arkcronist.content.core.definition.BackpackDefinition;
 import com.arkcronist.content.core.definition.ContentType;
+import com.arkcronist.content.core.definition.DrinkDefinition;
 import com.arkcronist.content.core.definition.EmojiDefinition;
 import com.arkcronist.content.core.definition.Equipment;
 import com.arkcronist.content.core.definition.FontImageDefinition;
@@ -353,7 +355,62 @@ public final class ContentLoader {
                 item = item.withCosmetic(cosmetic(cosmetic, prefix, problems));
             }
         }
+        Map<?, ?> drink = section(section, "drink", prefix, problems);
+        if (drink != null) {
+            if (type != ContentType.ITEM) {
+                problems.add(prefix + "'drink' is only read on items (type: item)");
+            } else {
+                item = item.withDrink(drink(drink, prefix, problems));
+            }
+        }
+        Map<?, ?> backpack = section(section, "backpack", prefix, problems);
+        if (backpack != null) {
+            if (type != ContentType.ITEM) {
+                problems.add(prefix + "'backpack' is only read on items (type: item)");
+            } else {
+                int slots = (int) number(backpack, "slots", 27, 9, 54, prefix + "backpack: ", problems);
+                if (slots % 9 != 0) {
+                    problems.add(prefix + "backpack: 'slots' is in whole rows of 9; using " + (slots / 9 * 9));
+                    slots = slots / 9 * 9;
+                }
+                item = item.withBackpack(new BackpackDefinition(slots, text(backpack, "title", prefix, problems)));
+            }
+        }
         return item;
+    }
+
+    /**
+     * {@code drink:} (3.4) - a canteen: {@code sips}, {@code seconds}, {@code hud: {thirst: 6}},
+     * {@code potions}, {@code refill: [water, cauldron, <furniture id>...]}, {@code sound}, and the
+     * messages {@code filled} and {@code empty}.
+     */
+    private static DrinkDefinition drink(Map<?, ?> section, String prefix, List<String> problems) {
+        String where = prefix + "drink: ";
+        int sips = (int) number(section, "sips", 5, 1, 100, where, problems);
+        double seconds = number(section, "seconds", 1.6, 0.05, 30, where, problems);
+        Map<String, Double> hud = InteractionReader.hudGains(section.get("hud"), where, problems);
+        List<Placement.Effect> potions = InteractionReader.potions(section.get("potions"), where, problems);
+        List<String> refill = new ArrayList<>();
+        Object raw = section.get("refill");
+        if (raw == null) {
+            refill.addAll(DrinkDefinition.SOURCES);
+        } else {
+            for (Object entry : raw instanceof List<?> list ? list : List.of(raw)) {
+                String source = String.valueOf(entry).trim().toLowerCase(Locale.ROOT);
+                if (DrinkDefinition.SOURCES.contains(source) || source.matches("[a-z0-9_.\\-]+:[a-z0-9_/.\\-]+")) {
+                    refill.add(source);
+                } else {
+                    problems.add(where + "'refill' takes water, cauldron or a furniture id such as"
+                            + " medieval_props:abrevadero, not '" + entry + "'");
+                }
+            }
+        }
+        if (hud.isEmpty() && potions.isEmpty()) {
+            problems.add(where + "a drink with neither 'hud' nor 'potions' does nothing");
+        }
+        String sound = text(section, "sound", where, problems);
+        return new DrinkDefinition(sips, seconds, hud, potions, refill, sound == null || sound.isBlank() ? null : sound.trim(),
+                text(section, "filled", where, problems), text(section, "empty", where, problems));
     }
 
     /**
@@ -1148,7 +1205,7 @@ public final class ContentLoader {
         if (!kind.equals("seat") && section.containsKey("seat-height")) {
             problems.add(prefix + "'seat-height' is only read with interactable: seat");
         }
-        for (String key : List.of("slots", "storage-title")) {
+        for (String key : List.of("slots", "storage-title", "show")) {
             if (!kind.equals("storage") && section.containsKey(key)) {
                 problems.add(prefix + "'" + key + "' is only read with interactable: storage");
             }
@@ -1169,7 +1226,38 @@ public final class ContentLoader {
             }
         }
         String title = text(section, "storage-title", prefix, problems);
-        return new Placement.Storage(slots, title == null || title.isBlank() ? null : title);
+        Map<?, ?> show = section(section, "show", prefix, problems);
+        return new Placement.Storage(slots, title == null || title.isBlank() ? null : title,
+                show == null ? null : show(show, prefix + "show: ", problems));
+    }
+
+    /**
+     * {@code show:} (3.4) - {@code armor: true} with {@code offset} and {@code yaw}, or {@code items:}
+     * a list of {@code {offset, rotation, scale}}.
+     */
+    private static Placement.Show show(Map<?, ?> section, String prefix, List<String> problems) {
+        boolean armor = flag(section, "armor", false, prefix, problems);
+        Placement.Vec3 offset = vector(section, "offset", Placement.Vec3.ZERO, prefix, problems);
+        float yaw = (float) number(section, "yaw", 0, -360, 360, prefix, problems);
+        List<Placement.ShownItem> items = new ArrayList<>();
+        Object raw = section.get("items");
+        if (raw instanceof List<?> list) {
+            for (Object entry : list) {
+                if (!(entry instanceof Map<?, ?> item)) {
+                    problems.add(prefix + "each of 'items' should be {offset: [x, y, z], rotation: [x, y, z], scale: 1}");
+                    continue;
+                }
+                items.add(new Placement.ShownItem(vector(item, "offset", Placement.Vec3.ZERO, prefix, problems),
+                        vector(item, "rotation", Placement.Vec3.ZERO, prefix, problems),
+                        (float) number(item, "scale", 1, 0.05, 4, prefix, problems)));
+            }
+        } else if (raw != null) {
+            problems.add(prefix + "'items' should be a list of {offset, rotation, scale}");
+        }
+        if (!armor && items.isEmpty()) {
+            problems.add(prefix + "shows nothing: give it armor: true, or items");
+        }
+        return new Placement.Show(armor, offset, yaw, items);
     }
 
     /**
@@ -1747,7 +1835,36 @@ public final class ContentLoader {
         // A bar placed against the vanilla HUD is meant for the action bar, unless it says otherwise.
         return new HudDefinition(namespace, id, full, half, empty, height, ascent, segments, spacing, offset, source,
                 flag(section, "action-bar", anchor != null, prefix, problems), sourceRoot, file, anchor,
-                betterHud(section.get("betterhud"), namespace, sourceRoot, prefix, problems));
+                betterHud(section.get("betterhud"), namespace, sourceRoot, prefix, problems),
+                bedrockBar(section.get("bedrock"), prefix, problems));
+    }
+
+    /**
+     * 3.4: {@code bedrock:} - {@code true}, {@code false}, or a section: {@code enabled},
+     * {@code title} and {@code color}. Null when it is not there: the default.
+     */
+    private static HudDefinition.Bedrock bedrockBar(Object node, String prefix, List<String> problems) {
+        if (node == null) {
+            return null;
+        }
+        if (node instanceof Boolean shown) {
+            return new HudDefinition.Bedrock(shown, null, "blue");
+        }
+        if (!(node instanceof Map<?, ?> section)) {
+            problems.add(prefix + "'bedrock' should be true, false or a section such as { title: 'Sed', color: blue };"
+                    + " using the default");
+            return null;
+        }
+        String color = String.valueOf(section.containsKey("color") ? section.get("color") : "blue").trim()
+                .toLowerCase(Locale.ROOT);
+        if (!HudDefinition.Bedrock.COLORS.contains(color)) {
+            problems.add(prefix + "'bedrock.color' should be one of " + String.join(", ", HudDefinition.Bedrock.COLORS)
+                    + "; using blue");
+            color = "blue";
+        }
+        Object title = section.get("title");
+        return new HudDefinition.Bedrock(flag(section, "enabled", true, prefix, problems),
+                title == null ? null : String.valueOf(title), color);
     }
 
     /**

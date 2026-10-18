@@ -141,6 +141,8 @@ public final class ArkContentPlugin extends JavaPlugin {
     private final FontImageRegistry fontImages = new FontImageRegistry();
     private LiquidService liquids;
     private HudService huds;
+    private com.arkcronist.content.bukkit.item.BackpackService backpacks;
+    private com.arkcronist.content.bukkit.furniture.ShownContents shownContents;
     private com.arkcronist.content.bukkit.minigame.MinigameService minigames;
     private com.arkcronist.content.bukkit.cosmetic.CosmeticService cosmetics;
     private @org.jetbrains.annotations.Nullable com.arkcronist.content.bukkit.bedrock.BedrockService bedrock;
@@ -258,6 +260,19 @@ public final class ArkContentPlugin extends JavaPlugin {
         furnitureListener.useLegacy(legacy);
         this.ambience = new AmbienceService(this, items, furniture);
         ambience.useCustomItems(stack -> itemFactory.identify(stack).isPresent());
+        // 3.4: a trough's water to thirst; canteens drunk from, and filled at water and troughs.
+        ambience.hudGains(huds::gain);
+        com.arkcronist.content.bukkit.item.DrinkService drinks =
+                new com.arkcronist.content.bukkit.item.DrinkService(itemFactory, getLogger(), huds::gain);
+        plugins.registerEvents(drinks, this);
+        furnitureListener.fillCanteens(drinks::fillAt);
+        // 3.4: swords on the rack, armour on the mannequin: what storage pieces hold, shown on them.
+        this.shownContents = new com.arkcronist.content.bukkit.furniture.ShownContents(this, furniture, items, database);
+        shownContents.openNow(storage::isOpen);
+        storage.onContentsChanged(shownContents::changed);
+        furnitureListener.showContents(shownContents);
+        // Pieces whose chunks loaded before this, shown once the server is running.
+        getServer().getScheduler().runTaskLater(this, shownContents::scanLoaded, 40);
         furniture.onRootAppeared(ambience::track);
         CommandSigns signs = new CommandSigns(this);
         furnitureListener.useInteractions(ambience, signs, new GuillotineService(this, furniture, seats, signs));
@@ -314,6 +329,8 @@ public final class ArkContentPlugin extends JavaPlugin {
             plugins.registerEvents(bedrock, this);
             // 3.3.5: carriers past plugins that rewrite block states - CraftEngine's note blocks.
             hooks.bedrockCarriers(bedrock);
+            // 3.4: the bars this plugin keeps - thirst - as boss bars, which Bedrock clients draw.
+            huds.bedrockPlayers(bedrockPlayer);
             delivery.skip(bedrock::isBedrock);
             seats.drawnAsBlocksFor(bedrock::isBedrock);
             actionBars.plainFor(bedrock::isBedrock);
@@ -332,6 +349,11 @@ public final class ArkContentPlugin extends JavaPlugin {
         plugins.registerEvents(new HudListener(huds, itemFactory), this);
         plugins.registerEvents(new com.arkcronist.content.bukkit.minigame.MinigameListener(minigames, itemFactory), this);
         plugins.registerEvents(new com.arkcronist.content.bukkit.cosmetic.CosmeticListener(cosmetics, itemFactory), this);
+        // 3.4: backpacks that open - in hand, sneaking, or on the back with /backpack.
+        this.backpacks = new com.arkcronist.content.bukkit.item.BackpackService(this, itemFactory, database);
+        backpacks.wornOn(cosmetics::wornItem);
+        cosmetics.prepare(backpacks::ensureId, backpacks::takenOff);
+        plugins.registerEvents(backpacks, this);
 
         openStorage();
         // Queued behind the database opening: notices and online players' progress.
@@ -348,6 +370,8 @@ public final class ArkContentPlugin extends JavaPlugin {
             commands.register(new EmojiCommand(emojis).build(), "List the chat emojis", List.of("emoji"));
             commands.register(new com.arkcronist.content.bukkit.command.CosmeticCommand(cosmetics).build(),
                     "What you wear, and taking it off", List.of("cosmetics"));
+            commands.register(new com.arkcronist.content.bukkit.command.BackpackCommand(backpacks).build(),
+                    "Open your backpack", List.of("mochila"));
         });
 
         // Queued on the worker ahead of the first rebuild; a port that will not open never stops the start.
@@ -480,6 +504,12 @@ public final class ArkContentPlugin extends JavaPlugin {
             ambience.shutdown();
         }
         // Open storage is saved - queued ahead of the database closing below - and closed.
+        if (backpacks != null) {
+            backpacks.shutdown();
+        }
+        if (shownContents != null) {
+            shownContents.shutdown();
+        }
         if (storage != null) {
             storage.shutdown();
         }

@@ -442,7 +442,41 @@ class DatabaseManagerTest {
         try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
              Statement statement = connection.createStatement();
              ResultSet version = statement.executeQuery("PRAGMA user_version")) {
-            assertEquals(9, version.getInt(1));
+            assertEquals(DatabaseManager.SCHEMA_VERSION, version.getInt(1));
+        }
+    }
+
+    /**
+     * 3.4: what a backpack holds is kept under its id, written over on each save; a 3.3 file (schema
+     * 9) gains the table and keeps its rows.
+     */
+    @Test
+    void aBackpacksContentsAreKeptUnderItsIdAndAVersionNineFileGainsTheTable() throws Exception {
+        Path file = temp.resolve("content.db");
+        database = open();
+        get(database.saveAll(List.of(new PlacedContent(OVERWORLD, 2, 70, 2, "medieval_props:abrevadero",
+                PlacedContent.Kind.FURNITURE)), new FurniturePiece(OVERWORLD, 2, 70, 2, "medieval_props:abrevadero", 0f)));
+        database.close();
+        database = null;
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+             Statement statement = connection.createStatement()) {
+            statement.execute("DROP TABLE item_storage");
+            statement.execute("PRAGMA user_version=9");
+        }
+        database = open();
+        assertEquals(1, get(database.loadWorld(OVERWORLD)).size());
+        assertTrue(get(database.loadItemStorage("a")).isEmpty());
+        get(database.saveItemStorage("a", "medieval_props:mochila_viaje", 27, new byte[]{1, 2, 3}));
+        get(database.saveItemStorage("a", "medieval_props:mochila_viaje", 27, new byte[]{4, 5}));
+        get(database.saveItemStorage("b", "medieval_props:mochila_viaje", 27, new byte[]{6}));
+        assertArrayEquals(new byte[]{4, 5}, get(database.loadItemStorage("a")).orElseThrow());
+        assertArrayEquals(new byte[]{6}, get(database.loadItemStorage("b")).orElseThrow());
+        database.close();
+        database = null;
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+             Statement statement = connection.createStatement();
+             ResultSet version = statement.executeQuery("PRAGMA user_version")) {
+            assertEquals(10, version.getInt(1));
         }
     }
 

@@ -103,3 +103,11 @@ contents/medieval_props/models/furniture/horno_pan.json 37d8f19ef10cb71a4b59ff53
 contents/medieval_props/textures/furniture/horno_pan.png 9fb15d3b8cad11ffe3ce24bd81bd48d25ad73c7b
 contents/medieval_props/models/furniture/mapa_mural.json cf6eaa14fe9552960e76c5ff70bf389ffc6ed9a4
 contents/medieval_props/textures/furniture/mapa_mural.png f750b99509ca2bdfafb715b72e817ef312ec3ba5
+# 3.4: the backpack opens, the trough and the well quench thirst, Bedrock players get the thirst bar, the rack and the mannequin show what they hold
+contents/demo/huds.yml 900355c7738b8e5154e42b0631e3a78737ae47ca
+contents/medieval_props/cosmetics.yml ce201b428b1b5ca8bb21c85a324fd24ffefdce13
+contents/medieval_props/furniture.yml ea14592a20a892d2d8210159fc22b6878e81dcb1
+contents/medieval_props/models/furniture/armero.json f8e32b5a481317c008dbf6c424b25d1351b3e907
+contents/medieval_props/models/furniture/maniqui_armadura.json 457d398d349fee1c53688139ceb18ea8232c9465
+contents/medieval_props/textures/furniture/armero.png 66a7a344f7de98c4650cd2b1052ff9df98dba4f8
+contents/medieval_props/textures/furniture/maniqui_armadura.png 59f09127f76cd954e57c93defb443b36d7930359

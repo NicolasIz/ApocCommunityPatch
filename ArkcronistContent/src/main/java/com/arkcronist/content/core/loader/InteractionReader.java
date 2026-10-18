@@ -52,6 +52,7 @@ final class InteractionReader {
         String cook = null;
         boolean toggleLight = false;
         List<Placement.Particles> clickParticles = List.of();
+        Map<String, Double> hud = Map.of();
         Object raw = section.get("on-click");
         if (raw instanceof Map<?, ?> click) {
             String clickAt = at + "on-click: ";
@@ -68,16 +69,42 @@ final class InteractionReader {
                 problems.add(clickAt + "'toggle-light' should be true or false");
             }
             clickParticles = particles(click.get("particles"), clickAt + "particles: ", problems);
+            hud = hudGains(click.get("hud"), clickAt, problems);
         } else if (raw != null) {
             problems.add(at + "'on-click' should be a section with potions, sound, cooldown and message");
         }
         if (particles.isEmpty() && potions.isEmpty() && sound == null && message == null && station == null
-                && cook == null && !toggleLight && clickParticles.isEmpty()) {
+                && cook == null && !toggleLight && clickParticles.isEmpty() && hud.isEmpty()) {
             problems.add(at + "has neither particles nor anything on a click; nothing would happen");
             return null;
         }
         return new Placement.Ambience(particles, interval, range, potions, sound, cooldown, message, station, cook,
-                toggleLight, clickParticles);
+                toggleLight, clickParticles, hud);
+    }
+
+    /**
+     * 3.4: {@code hud: {thirst: 20}} - what is added to HUD values this plugin keeps, by HUD id
+     * ({@code thirst} or {@code demo:thirst}); a negative number takes away. Which HUDs exist is
+     * only known once every file is read, so an unknown one is left for the server to report.
+     */
+    static Map<String, Double> hudGains(@Nullable Object raw, String prefix, List<String> problems) {
+        if (raw == null) {
+            return Map.of();
+        }
+        if (!(raw instanceof Map<?, ?> map)) {
+            problems.add(prefix + "'hud' should be a section of HUD ids and amounts, such as {thirst: 20}");
+            return Map.of();
+        }
+        Map<String, Double> gains = new java.util.LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            String id = String.valueOf(entry.getKey()).trim();
+            if (entry.getValue() instanceof Number amount && Double.isFinite(amount.doubleValue()) && !id.isEmpty()) {
+                gains.put(id, amount.doubleValue());
+            } else {
+                problems.add(prefix + "'hud." + entry.getKey() + "' should be a number to add");
+            }
+        }
+        return gains;
     }
 
     /** One of {@code allowed}, lower case, or null when the key is not there or names something else. */
@@ -140,7 +167,7 @@ final class InteractionReader {
     }
 
     /** {@code "regeneration 8"}, {@code "speed 20 1"}, or {@code {effect: speed, seconds: 20, amplifier: 1}}. */
-    private static List<Placement.Effect> potions(@Nullable Object raw, String prefix, List<String> problems) {
+    static List<Placement.Effect> potions(@Nullable Object raw, String prefix, List<String> problems) {
         List<Placement.Effect> potions = new ArrayList<>();
         if (raw == null) {
             return potions;

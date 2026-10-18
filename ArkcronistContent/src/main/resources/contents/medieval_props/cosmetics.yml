@@ -7,6 +7,13 @@
 #  take it off - it comes back to your inventory. What you wear is kept in the
 #  plugin's database across restarts.
 #
+#  (3.4) backpack: - it holds things too. Sneak and right click with it in
+#  your hand to open it, or type /mochila (also /backpack) to open the one on
+#  your back or in your hand. What is inside belongs to that backpack and
+#  goes where it goes; a backpack cannot be put inside another.
+#    slots     9 to 54, in rows of 9
+#    title     its window's title; the item's name without one
+#
 #  It is drawn by a display that only the clients see, riding the wearer, so
 #  it follows them smoothly and never stops a teleport. With PacketEvents
 #  installed its swing is sent straight from the physics thread
@@ -33,8 +40,12 @@ items:
     display-name: "<#c8a165>Mochila de viaje"
     lore:
       - "<gray>Clic derecho para ponértela."
+      - "<gray>Agachado + clic derecho, o /mochila: ábrela."
     resource:
       model: cosmetic/mochila_viaje
+    backpack:
+      slots: 27
+      title: "<dark_gray>Mochila de viaje"
     cosmetic:
       slot: back
       offset: [0, -0.32, 0.27]

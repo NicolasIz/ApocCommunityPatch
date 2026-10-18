@@ -61,6 +61,8 @@ public final class CosmeticService {
     private final Logger logger;
     private final CosmeticRenderer renderer;
     private final Map<UUID, Worn> worn = new ConcurrentHashMap<>();
+    private java.util.function.Consumer<ItemStack> puttingOn = stack -> { };
+    private java.util.function.BiConsumer<UUID, ItemStack> comingBack = (wearer, stack) -> { };
     private final ScheduledExecutorService physics;
     private final AtomicLong stepNanos = new AtomicLong();
     private final AtomicLong steps = new AtomicLong();
@@ -198,12 +200,25 @@ public final class CosmeticService {
         });
     }
 
+    /** 3.4: what is done to a stack as it is put on - a backpack given its id - and as it comes back. */
+    public void prepare(java.util.function.Consumer<ItemStack> puttingOn,
+                        java.util.function.BiConsumer<UUID, ItemStack> comingBack) {
+        this.puttingOn = puttingOn;
+        this.comingBack = comingBack;
+    }
+
+    /** 3.4: the stack a player wears on their back, if any. Main thread. */
+    public Optional<ItemStack> wornItem(Player player) {
+        return wornBy(player.getUniqueId()).map(Worn::item);
+    }
+
     /** A right click with a cosmetic in hand: one is taken from the stack and put on. */
     public void putOn(Player player, CustomItem item, ItemStack hand) {
         CosmeticDefinition definition = item.definition().cosmetic();
         if (definition == null) {
             return;
         }
+        puttingOn.accept(hand);
         ItemStack one = hand.clone();
         one.setAmount(1);
         hand.setAmount(hand.getAmount() - 1);
@@ -224,7 +239,11 @@ public final class CosmeticService {
             if (online == null) {
                 return;
             }
-            before.ifPresent(previous -> give(online, ItemStack.deserializeBytes(previous.item())));
+            before.ifPresent(previous -> {
+                ItemStack back = ItemStack.deserializeBytes(previous.item());
+                comingBack.accept(id, back);
+                give(online, back);
+            });
             draw(online, item.id(), definition, one);
             online.saveData();
             online.sendMessage(Component.text("You put on ", NamedTextColor.GRAY)
@@ -253,7 +272,9 @@ public final class CosmeticService {
             if (on != null) {
                 renderer.takeOff(on);
             }
-            give(online, ItemStack.deserializeBytes(off.get().item()));
+            ItemStack back = ItemStack.deserializeBytes(off.get().item());
+            comingBack.accept(id, back);
+            give(online, back);
             online.saveData();
             online.sendMessage(Component.text("Taken off; it is back in your inventory.", NamedTextColor.GRAY));
         }, mainThread);

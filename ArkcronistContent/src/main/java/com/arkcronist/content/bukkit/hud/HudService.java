@@ -5,6 +5,7 @@ import com.arkcronist.content.core.hud.HudDefinition;
 import com.arkcronist.content.core.hud.HudLayout;
 import com.arkcronist.content.core.hud.Spaces;
 import com.arkcronist.content.core.storage.DatabaseManager;
+import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.ShadowColor;
@@ -67,6 +68,9 @@ public final class HudService {
     private BukkitTask secondly;
     private BukkitTask bars;
     private long seconds;
+    /** 3.4: who plays on Bedrock, and the boss bars they are shown their HUDs as. Main thread. */
+    private java.util.function.Predicate<UUID> bedrock = player -> false;
+    private final Map<UUID, Map<String, BossBar>> bedrockBars = new HashMap<>();
 
     public HudService(Plugin plugin, HudRegistry registry, DatabaseManager database, ActionBars actionBars,
                       EngineSettings.Huds settings, BiFunction<OfflinePlayer, String, String> placeholders) {
@@ -166,6 +170,23 @@ public final class HudService {
         return set(player, hud, stored(player, hud) + amount);
     }
 
+    /**
+     * 3.4: adds to the HUD values this plugin keeps, by HUD id ({@code thirst} or {@code demo:thirst}) -
+     * a canteen's sip, a trough's water. Main thread.
+     *
+     * @return the HUD ids not found, or not kept by this plugin
+     */
+    public java.util.List<String> gain(Player player, Map<String, Double> gains) {
+        java.util.List<String> missing = new java.util.ArrayList<>();
+        gains.forEach((id, amount) -> {
+            HudLayout hud = registry.find(id).orElse(null);
+            if (hud == null || Double.isNaN(add(player.getUniqueId(), hud, amount))) {
+                missing.add(id);
+            }
+        });
+        return missing;
+    }
+
     /** What eating or drinking {@code item} - a material, or a custom item's id - adds to each HUD. */
     public void consumed(Player player, String material, @Nullable String customId) {
         for (HudLayout hud : registry.all()) {
@@ -212,6 +233,80 @@ public final class HudService {
                 save(player);
             }
         }
+        showBedrockBars();
+    }
+
+    // ------------------------------------------------------------------ Bedrock
+
+    /**
+     * 3.4: Bedrock players see neither the pack's font nor BetterHud, so the bars this plugin keeps -
+     * thirst - would never reach them, though an empty one hurts them. They are shown each as a boss
+     * bar instead, renewed every second.
+     */
+    public void bedrockPlayers(java.util.function.Predicate<UUID> isBedrock) {
+        this.bedrock = isBedrock;
+    }
+
+    private void showBedrockBars() {
+        for (Player player : plugin.getServer().getOnlinePlayers()) {
+            UUID id = player.getUniqueId();
+            if (!bedrock.test(id)) {
+                continue;
+            }
+            Map<String, BossBar> mine = bedrockBars.computeIfAbsent(id, ignored -> new HashMap<>());
+            Set<String> current = new java.util.HashSet<>();
+            for (HudLayout hud : registry.all()) {
+                HudDefinition.Bedrock shown = hud.definition().bedrockBar();
+                if (!shown.shown()) {
+                    continue;
+                }
+                String key = hud.definition().fullId();
+                current.add(key);
+                double[] value = valueAndMax(player, hud);
+                float progress = value[1] <= 0 ? 0 : (float) Math.max(0, Math.min(1, value[0] / value[1]));
+                Component name = bedrockTitle(hud.definition(), shown)
+                        .append(Component.text(" " + format(Math.ceil(value[0])) + "/" + format(value[1]),
+                                NamedTextColor.WHITE));
+                BossBar bar = mine.get(key);
+                if (bar == null) {
+                    bar = BossBar.bossBar(name, progress, color(shown.color()), BossBar.Overlay.NOTCHED_10);
+                    mine.put(key, bar);
+                    player.showBossBar(bar);
+                } else {
+                    bar.name(name);
+                    bar.progress(progress);
+                }
+            }
+            // HUDs a rebuild took away, or turned off for Bedrock.
+            mine.entrySet().removeIf(entry -> {
+                if (current.contains(entry.getKey())) {
+                    return false;
+                }
+                player.hideBossBar(entry.getValue());
+                return true;
+            });
+        }
+    }
+
+    private static Component bedrockTitle(HudDefinition definition, HudDefinition.Bedrock shown) {
+        if (shown.title() != null) {
+            return net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().deserialize(shown.title());
+        }
+        String id = definition.id();
+        return Component.text(id.isEmpty() ? id : Character.toUpperCase(id.charAt(0)) + id.substring(1).replace('_', ' '),
+                NamedTextColor.AQUA);
+    }
+
+    private static BossBar.Color color(String name) {
+        return switch (name) {
+            case "pink" -> BossBar.Color.PINK;
+            case "red" -> BossBar.Color.RED;
+            case "green" -> BossBar.Color.GREEN;
+            case "yellow" -> BossBar.Color.YELLOW;
+            case "purple" -> BossBar.Color.PURPLE;
+            case "white" -> BossBar.Color.WHITE;
+            default -> BossBar.Color.BLUE;
+        };
     }
 
     // ------------------------------------------------------------------ drawing
@@ -382,6 +477,7 @@ public final class HudService {
     }
 
     public void quit(Player player) {
+        bedrockBars.remove(player.getUniqueId());
         stats.remove(player.getUniqueId());
         actionBars.forget(player.getUniqueId());
         save(player.getUniqueId());

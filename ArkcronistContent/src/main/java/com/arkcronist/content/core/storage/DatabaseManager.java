@@ -69,11 +69,12 @@ public final class DatabaseManager {
      * 1: custom_blocks_world. 2: custom_crops added. 3: furniture_storage added. 4:
      * advancement_unlocks added. 5: liquid_sources and hud_values added. 6: furniture_transforms
      * added. 7: furniture_pairs, quest_notices and quest_progress added. 8: furniture_pieces and
-     * recovered_storage added. 9: player_cosmetics and minigame_stats added. An older file gains the tables it lacks on open, all of them and the
+     * recovered_storage added. 9: player_cosmetics and minigame_stats added. 10: item_storage
+     * added. An older file gains the tables it lacks on open, all of them and the
      * new version number in one transaction - or none of it; nothing existing is touched, so an
      * older plugin still opens the file and leaves the tables it does not know alone.
      */
-    public static final int SCHEMA_VERSION = 9;
+    public static final int SCHEMA_VERSION = 10;
 
     /**
      * Each piece of furniture as a whole, by its anchor block: which way it faces. Written in the
@@ -109,6 +110,19 @@ public final class DatabaseManager {
                 recovered_at INTEGER NOT NULL,
                 claimed_by   TEXT,
                 claimed_at   INTEGER NOT NULL DEFAULT 0
+            )""";
+
+    /**
+     * 3.4: what each item that holds others - a backpack - holds, by the id the item carries. A
+     * rowid table, as furniture_storage: its rows carry a blob of a few kilobytes.
+     */
+    private static final String CREATE_ITEM_STORAGE_TABLE = """
+            CREATE TABLE IF NOT EXISTS item_storage (
+                storage_id TEXT    NOT NULL PRIMARY KEY,
+                item_id    TEXT    NOT NULL,
+                slots      INTEGER NOT NULL CHECK (slots > 0),
+                contents   BLOB    NOT NULL,
+                updated_at INTEGER NOT NULL
             )""";
 
     /**
@@ -613,6 +627,42 @@ public final class DatabaseManager {
                 statement.executeUpdate();
             }
             return null;
+        }, false);
+    }
+
+    // ---------------------------------------------------------------- items that hold others
+
+    /**
+     * 3.4: records what a backpack holds, by the id it carries, replacing what was recorded. Writes
+     * queue in order, so the last save asked for is the one that stays.
+     */
+    public CompletableFuture<Void> saveItemStorage(String storageId, String itemId, int slots, byte[] contents) {
+        return submit(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement("""
+                    INSERT INTO item_storage (storage_id, item_id, slots, contents, updated_at) VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT (storage_id) DO UPDATE SET item_id = excluded.item_id, slots = excluded.slots,
+                        contents = excluded.contents, updated_at = excluded.updated_at""")) {
+                statement.setString(1, storageId);
+                statement.setString(2, itemId);
+                statement.setInt(3, slots);
+                statement.setBytes(4, contents);
+                statement.setLong(5, System.currentTimeMillis());
+                statement.executeUpdate();
+            }
+            return null;
+        }, false);
+    }
+
+    /** 3.4: what a backpack holds, serialized, if anything was ever saved for its id. */
+    public CompletableFuture<Optional<byte[]>> loadItemStorage(String storageId) {
+        return submit(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "SELECT contents FROM item_storage WHERE storage_id = ?")) {
+                statement.setString(1, storageId);
+                try (ResultSet result = statement.executeQuery()) {
+                    return result.next() ? Optional.of(result.getBytes(1)) : Optional.<byte[]>empty();
+                }
+            }
         }, false);
     }
 
@@ -1512,7 +1562,8 @@ public final class DatabaseManager {
                 for (String create : List.of(CREATE_TABLE, CREATE_CROP_TABLE, CREATE_STORAGE_TABLE,
                         CREATE_UNLOCK_TABLE, CREATE_LIQUID_TABLE, CREATE_HUD_TABLE, CREATE_TRANSFORM_TABLE,
                         CREATE_PAIR_TABLE, CREATE_NOTICE_TABLE, CREATE_PROGRESS_TABLE, CREATE_PIECE_TABLE,
-                        CREATE_RECOVERED_TABLE, CREATE_COSMETIC_TABLE, CREATE_MINIGAME_TABLE)) {
+                        CREATE_RECOVERED_TABLE, CREATE_COSMETIC_TABLE, CREATE_MINIGAME_TABLE,
+                        CREATE_ITEM_STORAGE_TABLE)) {
                     statement.execute(create);
                 }
                 if (version < SCHEMA_VERSION) {

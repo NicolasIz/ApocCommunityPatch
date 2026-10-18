@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.3.5.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.4.0.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -2468,6 +2468,53 @@ estados de bloque musical: CraftEngine enseña los que no son de arpa como de ar
 ejemplo usan estados de arpa y no se ven afectados; con más de 49 bloques personalizados, los
 siguientes sí lo estarían, y eso no lo arregla esta versión.
 
+#### 3.4: la armadura puesta, la sed y `/arkcontent bedrock look`
+
+Visto en un servidor real: en Bedrock un jugador con la armadura darksteel puesta salía sin ella, y la
+barra de sed no aparecía. Bedrock no dibuja puesto un ítem personalizado si el pack no trae un
+*attachable* para él, y Geyser no lo hace solo. Desde 3.4 el `.mcpack` trae uno por pieza de armadura,
+con cada nombre que Geyser puede darle (`arkcontent:`, `arkcontent_cmd:` y `geyser_custom:` de 2.8):
+
+- **Con su equipment asset** (`equipment.asset`, o enlazado por nombre como los de MythicArmor): su
+  capa `humanoid` (o `humanoid_leggings` en las grebas), dibujada como la armadura vanilla de Bedrock.
+  También se busca en las carpetas *overlay* del pack que lee un cliente 1.21.8: ItemsAdder pone ahí
+  los equipment assets de 1.21.4 en adelante (los `dragones_epicos`, por ejemplo).
+- **MythicArmor**: sus piezas en 3D las dibujan sus shaders, que Bedrock no tiene, a partir de
+  texturas que sin ellos no son una imagen. Cada set trae además su aspecto «de lejos»
+  (`<asset>_far`), una capa normal de 64×32, y esa es la que ven los jugadores de Bedrock.
+- **Cascos 3D** (`equipment.model`, o los que se llevan como su modelo 3D): el modelo como geometría
+  de Bedrock sobre la cabeza, al tamaño de Java (5/8 y su `display.head`), con todas sus texturas en
+  una sola imagen.
+- **Armadura que se lleva como su material** (hierro, diamante, netherite, oro, malla, tortuga): la
+  textura de Bedrock de ese material. La de cuero no, porque su color es el de cada ítem.
+
+El registro lo cuenta: `[bedrock] 1674 item(s), ..., 379 armour piece(s) drawn worn, ...`, y las que
+no se pueden dibujar salen en una línea por motivo. Geyser también sabe ahora cómo se usa cada ítem:
+que la cantimplora se bebe (con su barra de 6 tragos), que la mochila va de una en una y en qué hueco
+va cada armadura.
+
+**La sed en Bedrock:** BetterHud solo dibuja para Java. Los valores que guarda este plugin (la sed de
+`huds.yml`) se ven en Bedrock como una barra de jefe arriba de la pantalla, `Sed 12/20`, que se
+actualiza cada segundo. En `huds.yml`, `bedrock: false` la quita y `bedrock: {title, color}` le cambia
+el nombre y el color.
+
+**`/arkcontent bedrock look`**: mirando un mueble, dice qué ve de él un jugador de Bedrock: cuántos
+bloques tiene para Bedrock y cuántos están en su sitio, o por qué no tiene (lo dejó fuera
+`bedrock.skip-furniture`, es demasiado grande, se acabaron los estados, o se añadió después de
+arrancar Geyser). Si lo usa un jugador de Bedrock, además se los vuelve a enviar.
+
+| Prueba (3.4), Paper 1.21.8 con el contenido del servidor de prueba (darksteel, MythicArmor, dragones épicos…) | Resultado |
+|---|---|
+| Build para Bedrock | 379 piezas de armadura con attachable, ninguna sin dibujo |
+| Darksteel | peto, grebas y botas con su capa «de lejos» de 64×32; el casco, en 3D sobre la cabeza |
+| Bot de Bedrock por un proxy como el del servidor (Velocity, Geyser 2.11.3, Floodgate) | recibe la barra «Sed 0/20»; Geyser le da a la cantimplora `minecraft:food`, `use_animation` y durabilidad 6, a las armaduras `minecraft:wearable`, a la mochila una por hueco; recibe el pack (5 MB) |
+| `/arkcontent bedrock look` mirando el abrevadero | `2 block(s) for Bedrock players, 2 of them where they go.` |
+| Tests | 553, todos pasan |
+
+No verificado: cómo se ve en una pantalla de Bedrock (aquí no hay cliente de Bedrock que dibuje; se
+comprueba lo que el pack trae y lo que Geyser le dice al cliente). La geometría de armadura y la forma
+del attachable son las de la armadura vanilla de Bedrock.
+
 #### Qué se ha verificado en un servidor Paper 1.21.8 real (3.0, Bedrock)
 
 Con Geyser-Spigot 2.8.4 y un cliente de Bedrock 1.21.111 sin cuenta (`bedrock-protocol`; para él, y
@@ -2603,6 +2650,69 @@ partidas se cuentan en `minigame_stats`.
 Las menas de prueba eran contenido solo del servidor de prueba. Un golpe al aire llega al servidor
 con la dirección en la que el cliente mira en ese momento: si mira a un bloque, cuenta como golpe
 al bloque, que también vale. Cómo se ve la barra en un cliente real no se ha podido ver.
+
+### Cantimplora, mochila y muebles que enseñan lo que guardan (3.4)
+
+**Cantimplora** (`drink:`, en `contents/medieval_props/items.yml`): se bebe como una poción, a tragos,
+manteniendo el clic derecho. Cada trago suma a un valor del HUD que guarda este plugin (la sed) y
+puede dar efectos de poción. No se gasta: su barra de durabilidad son los tragos que le quedan, y
+vacía no se bebe hasta rellenarla. Se rellena con clic derecho en agua, en un caldero con agua (que
+baja un nivel, como con una botella), en el abrevadero o en el pozo de los deseos.
+
+```yaml
+cantimplora:
+  material: PAPER
+  resource: {model: item/cantimplora}
+  drink:
+    sips: 6              # tragos llena
+    seconds: 1.2         # lo que tarda un trago
+    hud: {thirst: 5}     # lo que suma cada trago (huds.yml)
+    potions: ['regeneration 3 0']   # opcional
+    refill: [water, cauldron, 'medieval_props:abrevadero', 'medieval_props:pozo_deseos']
+    filled: "<aqua>Cantimplora llena."
+    empty: "<gray>La cantimplora está vacía: rellénala en agua."
+```
+
+**Abrevadero y pozo:** con la mano vacía, clic derecho y bebes: `hud: {thirst: 20}` en su `on-click`.
+Cualquier mueble con `effect: on-click:` admite `hud:`.
+
+**Mochila** (`backpack:`): clic derecho la pone a la espalda, como antes. Agachado + clic derecho con
+ella en la mano, o `/mochila` (también `/backpack`) con ella en la mano o puesta, la abre. Lo que
+guarda va con ella: está en la base de datos (`item_storage`) bajo un número que lleva el ítem, así
+que sigue dentro si la tiras, la guardas en un cofre o se la da a otro. Dos ventanas abiertas de la
+misma mochila son un solo inventario: no se duplica nada. Una mochila no entra en otra. Permiso
+`arkcontent.backpack` (todos lo tienen por defecto).
+
+```yaml
+backpack:
+  slots: 27              # filas de 9, de 9 a 54
+  title: "<dark_gray>Mochila de viaje"
+```
+
+**Muebles que enseñan lo que guardan** (`show:`, en un mueble con `interactable: storage`):
+
+```yaml
+# El maniquí: un soporte de armadura invisible dentro lo lleva puesto; cada pieza va en su hueco
+# (casco, peto, grebas, botas) y lo demás en sus manos. Lo ven Java y Bedrock.
+show: {armor: true, offset: [0, 0, 0], yaw: 0}
+# El armero: las cuatro primeras cosas que guarda cuelgan de sus ganchos, la hoja hacia abajo.
+# Espadas vanilla o de textura, hachas, lo que sea. Solo Java (Bedrock no dibuja item displays).
+show:
+  items:
+    - {offset: [-0.297, 0.9, -0.21], rotation: [0, 0, -135], scale: 0.8}
+```
+
+Lo guardado se queda en el bloque base del mueble (lo que versiones anteriores guardaban en sus otros
+bloques se junta ahí al cargar). Se actualiza al cerrar el inventario. Al romper el mueble, sale todo.
+
+| Prueba (3.4), Paper 1.21.8, bot y cliente Java 1.21.8 real | Resultado |
+|---|---|
+| Cantimplora: 7 tragos | 5/6 … 0/6, el séptimo no se bebe («vacía»); sed de 10 a 20 |
+| Caldero con agua | llena, el caldero baja de 3 a 2 |
+| Abrevadero | con la cantimplora: la llena; con la mano vacía: sed de 10 a 20 |
+| Mochila | se abre (27 huecos, su título), guarda 7 troncos, la propia mochila no entra, `/mochila` la reabre con los 7 |
+| Armero con katana darksteel, espada de diamante, de hierro y hacha de oro | las cuatro colgadas de los ganchos, dentro del marco (captura del cliente) |
+| Maniquí con la armadura darksteel y una espada | la lleva puesta, casco 3D incluido, y la espada en la mano |
 
 ## 5. Integraciones
 

@@ -32,6 +32,16 @@
 #
 #  and huds.betterhud: false in config.yml keeps them all on the action bar.
 #
+#  (3.4) Bedrock players see neither the pack's font nor BetterHud: a bar
+#  this plugin keeps (value with start/max) is shown to them as a boss bar at
+#  the top of the screen, its name followed by the value - "Sed 14/20":
+#
+#     bedrock: false                            not shown to them
+#     bedrock: { title: "<aqua>Sed", color: blue }
+#                 colour: pink, blue, red, green, yellow, purple or white
+#
+#  Bars read from the server or another plugin are not, unless bedrock: true.
+#
 #    icons     textures/hud/<name>.png; half and empty are optional
 #    height    icon height in font pixels (a chat line is 9)
 #    anchor    (2.0) where it sits against the vanilla HUD, to the pixel at
@@ -72,6 +82,7 @@ huds:
     segments: 10
     spacing: -1
     betterhud: { icon: hud/thirst_small, color: "#1c9ec0", warn-below: 30 }
+    bedrock: { title: "<#3fb6e0>Sed", color: blue }
     value:
       start: 20
       max: 20
@@ -91,6 +102,7 @@ huds:
     segments: 10
     spacing: -2
     betterhud: { icon: hud/mana_small, color: "#8a3fd6" }
+    bedrock: false
     value:
       start: 100
       max: 100

@@ -106,7 +106,7 @@ public final class ContentAdminCommand {
                                     plugin.getServer().getOnlinePlayers().forEach(online -> builder.suggest(online.getName()));
                                     return builder.buildFuture();
                                 })
-                                .then(Commands.argument("hud", StringArgumentType.word())
+                                .then(Commands.argument("hud", io.papermc.paper.command.brigadier.argument.ArgumentTypes.key())
                                         .suggests((context, builder) -> {
                                             plugin.hudRegistry().all().forEach(hud -> builder.suggest(hud.definition().fullId()));
                                             return builder.buildFuture();
@@ -122,7 +122,8 @@ public final class ContentAdminCommand {
                                                                 StringArgumentType.getString(context, "change"),
                                                                 DoubleArgumentType.getDouble(context, "amount"))))))))
                 .then(Commands.literal("liquids").requires(ContentAdminCommand::admin).executes(this::liquids))
-                .then(Commands.literal("bedrock").requires(ContentAdminCommand::admin).executes(this::bedrock))
+                .then(Commands.literal("bedrock").requires(ContentAdminCommand::admin).executes(this::bedrock)
+                        .then(Commands.literal("look").executes(this::bedrockLook)))
                 .then(Commands.literal("legacy").requires(ContentAdminCommand::admin)
                         .executes(context -> legacy(context, false, 32))
                         .then(Commands.literal("look").executes(this::legacyLook))
@@ -472,10 +473,15 @@ public final class ContentAdminCommand {
         CommandSender sender = context.getSource().getSender();
         String name = StringArgumentType.getString(context, "player");
         Player player = plugin.getServer().getPlayerExact(name);
-        Optional<HudLayout> hud = plugin.hudRegistry().find(StringArgumentType.getString(context, "hud"));
+        // 3.4: a namespaced id - demo:thirst - which a plain word argument turned down; a bare one reads
+        // as minecraft:thirst, and is looked up bare.
+        net.kyori.adventure.key.Key key = context.getArgument("hud", net.kyori.adventure.key.Key.class);
+        Optional<HudLayout> hud = plugin.hudRegistry().find(key.asString())
+                .or(() -> key.namespace().equals(net.kyori.adventure.key.Key.MINECRAFT_NAMESPACE)
+                        ? plugin.hudRegistry().find(key.value()) : Optional.empty());
         if (player == null || hud.isEmpty()) {
             sender.sendMessage(Component.text(player == null ? "No player '" + name + "' online."
-                    : "No HUD '" + StringArgumentType.getString(context, "hud") + "'.", NamedTextColor.RED));
+                    : "No HUD '" + key.asString() + "'.", NamedTextColor.RED));
             return 0;
         }
         HudService huds = plugin.huds();
@@ -533,6 +539,21 @@ public final class ContentAdminCommand {
             return 0;
         }
         plugin.bedrock().status().forEach(line -> sender.sendMessage(Component.text(line, NamedTextColor.GOLD)));
+        return 1;
+    }
+
+    /** 3.4: what Bedrock players are shown of the piece looked at. */
+    private int bedrockLook(CommandContext<CommandSourceStack> context) {
+        CommandSender sender = context.getSource().getSender();
+        Player player = viewer(context.getSource());
+        if (player == null) {
+            sender.sendMessage(Component.text("Only a player can look at a piece.", NamedTextColor.RED));
+            return 0;
+        }
+        if (plugin.bedrock() == null) {
+            return bedrock(context);
+        }
+        plugin.bedrock().look(player).forEach(line -> sender.sendMessage(Component.text(line, NamedTextColor.GOLD)));
         return 1;
     }
 

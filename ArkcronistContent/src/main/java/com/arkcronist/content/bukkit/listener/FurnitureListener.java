@@ -88,6 +88,10 @@ public final class FurnitureListener implements Listener {
     private @Nullable QuestBoardOpener boards;
     /** Drinks, command signs and guillotines; null until they are set. */
     private @Nullable AmbienceService ambience;
+    /** 3.4: fills the canteen in the player's hand at a piece, if it fills there; null without canteens. */
+    private java.util.function.BiPredicate<Player, String> canteens;
+    /** 3.4: storage pieces that show what they hold; null until set. */
+    private com.arkcronist.content.bukkit.furniture.ShownContents shown;
     private @Nullable CommandSigns signs;
     private @Nullable GuillotineService guillotines;
     /** 3.1: furniture ItemsAdder left in the world; null until it is set. */
@@ -218,6 +222,12 @@ public final class FurnitureListener implements Listener {
                 .map(Placement.Furniture.class::cast).orElse(null);
         boolean interactive = definition != null && definition.interactive();
         Player player = event.getPlayer();
+        // 3.4: a canteen held out to a trough or a well is filled there, and the piece does nothing else.
+        if (item.isPresent() && canteens != null && event.getHand() == EquipmentSlot.HAND
+                && canteens.test(player, item.get().id())) {
+            event.setCancelled(true);
+            return;
+        }
         boolean chest = support.isPresent() && support.get().getType() == Material.CHEST;
         boolean sneakingThrough = player.isSneaking()
                 && !(chest && player.getInventory().getItemInMainHand().isEmpty()
@@ -263,7 +273,10 @@ public final class FurnitureListener implements Listener {
                         storage.openPair(player, first, second, item.get().id(), doubleTitle(item.get(), definition));
                     }
                 } else {
-                    storage.open(player, support.get(), item.get().id(), definition.storage(),
+                    // 3.4: a piece that shows what it holds keeps it at its anchor, whichever block is clicked.
+                    Block at = shown != null && definition.storage().show() != null
+                            ? shown.storageBlock(support.get()) : support.get();
+                    storage.open(player, at, item.get().id(), definition.storage(),
                             title(item.get(), definition.storage()));
                 }
             } else if (definition.board() != null && boards != null) {
@@ -282,6 +295,16 @@ public final class FurnitureListener implements Listener {
         if (action == Action.RIGHT_CLICK_BLOCK && clickedFurniture) {
             event.setUseInteractedBlock(Event.Result.DENY);
         }
+    }
+
+    /** 3.4: pieces that show what they hold keep it at their anchor. */
+    public void showContents(com.arkcronist.content.bukkit.furniture.ShownContents shown) {
+        this.shown = shown;
+    }
+
+    /** 3.4: canteens filled at the furniture their {@code refill} names. */
+    public void fillCanteens(java.util.function.BiPredicate<Player, String> canteens) {
+        this.canteens = canteens;
     }
 
     /**
@@ -465,8 +488,10 @@ public final class FurnitureListener implements Listener {
         Player player = event.getPlayer();
         Optional<String> id = furniture.identify(block);
         if (id.isPresent()) {
-            furniture.partsOf(block).forEach(seats::release);
-            storage.broken(block);
+            List<Block> parts = furniture.partsOf(block);
+            parts.forEach(seats::release);
+            // Each of its blocks' storage: a tall piece's may be kept at another of its blocks than this.
+            parts.forEach(storage::broken);
             furniture.remove(block, id.get(), player.getGameMode() != GameMode.CREATIVE);
         } else if (legacy != null) {
             // 3.1: ItemsAdder's furniture: its model and its other barriers go with this block. In
@@ -567,8 +592,9 @@ public final class FurnitureListener implements Listener {
             }
             it.remove();
             if (protection.allowsExplosion(block, origin, source)) {
-                furniture.partsOf(block).forEach(seats::release);
-                storage.broken(block);
+                List<Block> parts = furniture.partsOf(block);
+                parts.forEach(seats::release);
+                parts.forEach(storage::broken);
                 furniture.remove(block, id.get(), true);
                 block.setType(Material.AIR, false);
             }

@@ -73,7 +73,123 @@ public final class BedrockConverter {
 
     /** Any custom item, for its Bedrock twin and icon. */
     public record ItemSpec(String id, String material, ResourceLocation itemModel, @Nullable ResourceLocation model,
-                           @Nullable Integer customModelData, String displayName, boolean handheld) {
+                           @Nullable Integer customModelData, String displayName, boolean handheld, Uses uses,
+                           @Nullable Worn worn) {
+
+        public ItemSpec(String id, String material, ResourceLocation itemModel, @Nullable ResourceLocation model,
+                        @Nullable Integer customModelData, String displayName, boolean handheld) {
+            this(id, material, itemModel, model, customModelData, displayName, handheld, Uses.NONE);
+        }
+
+        public ItemSpec(String id, String material, ResourceLocation itemModel, @Nullable ResourceLocation model,
+                        @Nullable Integer customModelData, String displayName, boolean handheld, Uses uses) {
+            this(id, material, itemModel, model, customModelData, displayName, handheld, uses, null);
+        }
+    }
+
+    /**
+     * 3.4: how a piece of armour looks worn, for the Bedrock pack's attachable - without one a Bedrock
+     * client draws nothing on a player wearing a custom item.
+     *
+     * @param slot  head, chest, legs or feet
+     * @param asset the Java equipment asset whose layer is drawn over the body, as vanilla armour is;
+     *              null for none
+     * @param model a 3D model drawn on the head instead; null for none
+     * @param vanilla for a piece worn as its material, the Bedrock pack's own texture of that armour
+     *                ({@code textures/models/armor/iron_1}); null otherwise
+     */
+    public record Worn(String slot, @Nullable ResourceLocation asset, @Nullable ResourceLocation model,
+                       @Nullable String vanilla) {
+
+        /**
+         * A vanilla armour piece by its material - {@code IRON_CHESTPLATE} - worn as that; null for
+         * any other material, and for leather, whose colour is the stack's own.
+         */
+        public static @Nullable Worn ofMaterial(String material) {
+            String name = material.toLowerCase(Locale.ROOT);
+            int split = name.lastIndexOf('_');
+            if (split < 0) {
+                return null;
+            }
+            String slot = switch (name.substring(split + 1)) {
+                case "helmet" -> "head";
+                case "chestplate" -> "chest";
+                case "leggings" -> "legs";
+                case "boots" -> "feet";
+                default -> null;
+            };
+            String texture = switch (name.substring(0, split)) {
+                case "chainmail" -> "chain";
+                case "golden" -> "gold";
+                case "iron", "diamond", "netherite", "turtle" -> name.substring(0, split);
+                default -> null;
+            };
+            if (slot == null || texture == null) {
+                return null;
+            }
+            return new Worn(slot, null, null, "textures/models/armor/" + texture + (slot.equals("legs") ? "_2" : "_1"));
+        }
+    }
+
+    /** 3.4: the namespaces Geyser gives the custom items: by item model (2.9+), by number (2.9+), and 2.8's. */
+    public static final String ITEM_NAMESPACE = "arkcontent";
+    public static final String BY_NUMBER_NAMESPACE = "arkcontent_cmd";
+    public static final String LEGACY_NAMESPACE = "geyser_custom";
+
+    /**
+     * 3.4: how an item is used, for Geyser to tell Bedrock clients - which otherwise treat a custom
+     * item as the plain one underneath: drunk (a canteen), one to a slot, with a damage bar, worn.
+     *
+     * @param drinkSeconds how long a drink of it takes; 0 for an item not drunk
+     * @param maxStack     how many go in a slot; 0 for the plain item's
+     * @param maxDamage    its damage bar's length; 0 for none
+     * @param slot         where it is worn: head, chest, legs or feet; null for an item not worn
+     */
+    public record Uses(float drinkSeconds, int maxStack, int maxDamage, @Nullable String slot) {
+
+        public static final Uses NONE = new Uses(0, 0, 0, null);
+
+        /** As one field: {@code drink=1.2;stack=1;damage=6;slot=chest}, or empty. */
+        public String encode() {
+            StringBuilder out = new StringBuilder();
+            if (drinkSeconds > 0) {
+                out.append("drink=").append(drinkSeconds);
+            }
+            if (maxStack > 0) {
+                out.append(out.isEmpty() ? "" : ";").append("stack=").append(maxStack);
+            }
+            if (maxDamage > 0) {
+                out.append(out.isEmpty() ? "" : ";").append("damage=").append(maxDamage);
+            }
+            if (slot != null) {
+                out.append(out.isEmpty() ? "" : ";").append("slot=").append(slot);
+            }
+            return out.toString();
+        }
+
+        /** Read back from {@link #encode}; what it does not know is left out. */
+        public static Uses decode(String field) {
+            float drink = 0;
+            int stack = 0;
+            int damage = 0;
+            String slot = null;
+            for (String part : field.split(";")) {
+                int equals = part.indexOf('=');
+                if (equals < 0) {
+                    continue;
+                }
+                String value = part.substring(equals + 1);
+                switch (part.substring(0, equals)) {
+                    case "drink" -> drink = Float.parseFloat(value);
+                    case "stack" -> stack = Integer.parseInt(value);
+                    case "damage" -> damage = Integer.parseInt(value);
+                    case "slot" -> slot = value;
+                    default -> {
+                    }
+                }
+            }
+            return new Uses(drink, stack, damage, slot);
+        }
     }
 
     /** A custom block: its note block state and its model. */
@@ -128,11 +244,17 @@ public final class BedrockConverter {
      *                 set up by number - so Geyser 2.9 and later are told to know it by that number too
      */
     public record BedrockItem(String id, String name, String javaItem, @Nullable Integer customModelData,
-                              String itemModel, String icon, String displayName, boolean handheld, boolean byNumber) {
+                              String itemModel, String icon, String displayName, boolean handheld, boolean byNumber,
+                              Uses uses) {
 
         public BedrockItem(String id, String name, String javaItem, @Nullable Integer customModelData,
                            String itemModel, String icon, String displayName, boolean handheld) {
             this(id, name, javaItem, customModelData, itemModel, icon, displayName, handheld, false);
+        }
+
+        public BedrockItem(String id, String name, String javaItem, @Nullable Integer customModelData,
+                           String itemModel, String icon, String displayName, boolean handheld, boolean byNumber) {
+            this(id, name, javaItem, customModelData, itemModel, icon, displayName, handheld, byNumber, Uses.NONE);
         }
     }
 
@@ -167,10 +289,17 @@ public final class BedrockConverter {
      * @param pack               the .mcpack
      * @param packId             a short hash of it, for its file name
      * @param unpictured         items no icon could be drawn for, which show as a question mark
+     * @param wornPieces         3.4: armour pieces the pack draws on a Bedrock player wearing them
      */
     public record Build(List<BedrockItem> items, List<BedrockBlock> blocks, List<Carrier> carriers,
                         Map<String, Integer> carrierAssignments, byte[] pack, String packId, List<String> problems,
-                        List<String> unpictured, Map<Integer, String> glyphText) {
+                        List<String> unpictured, Map<Integer, String> glyphText, int wornPieces) {
+
+        public Build(List<BedrockItem> items, List<BedrockBlock> blocks, List<Carrier> carriers,
+                     Map<String, Integer> carrierAssignments, byte[] pack, String packId, List<String> problems,
+                     List<String> unpictured, Map<Integer, String> glyphText) {
+            this(items, blocks, carriers, carrierAssignments, pack, packId, problems, unpictured, glyphText, 0);
+        }
 
         public Build(List<BedrockItem> items, List<BedrockBlock> blocks, List<Carrier> carriers,
                      Map<String, Integer> carrierAssignments, byte[] pack, String packId, List<String> problems,
@@ -191,6 +320,12 @@ public final class BedrockConverter {
     /** 3.3.1: sprites the atlases give another name, by that name; null until first needed. */
     private @Nullable Map<ResourceLocation, ResourceLocation> spriteAliases;
     private final Map<ResourceLocation, JsonObject> models = new HashMap<>();
+    /** 3.4: armour pieces given an attachable. */
+    private int wornPieces;
+    /** 3.4: armour pieces given none, by why. */
+    private final Map<String, List<String>> unworn = new TreeMap<>();
+    /** 3.4: the overlay folders a 1.21.8 client reads, topmost first; null until first needed. */
+    private @Nullable List<String> clientOverlays;
     /** 3.3.3: a character too wide for one Bedrock glyph, and the glyphs its pieces are drawn as. */
     private final Map<Integer, String> glyphText = new TreeMap<>();
     /** 3.3.2: by vanilla item, the custom_model_data numbers the Java pack draws on it. */
@@ -224,6 +359,9 @@ public final class BedrockConverter {
             liquid(liquid, blocks);
         }
         unpictured.forEach((reason, ids) -> problems.add(unpicturedLine(reason, ids)));
+        unworn.forEach((reason, ids) -> problems.add("Bedrock: " + ids.size() + " armour piece(s) not drawn on Bedrock"
+                + " players wearing them - " + reason + ": " + String.join(", ", ids.subList(0, Math.min(6, ids.size())))
+                + (ids.size() > 6 ? ", ..." : "")));
         List<Carrier> carriers = new ArrayList<>();
         Map<String, Integer> assignments = furniture(blocks, carriers);
         emojis();
@@ -232,7 +370,7 @@ public final class BedrockConverter {
         List<String> missing = new ArrayList<>();
         unpictured.values().forEach(missing::addAll);
         return new Build(List.copyOf(items), List.copyOf(blocks), List.copyOf(carriers), assignments, pack, packId,
-                List.copyOf(problems), List.copyOf(missing), Map.copyOf(glyphText));
+                List.copyOf(problems), List.copyOf(missing), Map.copyOf(glyphText), wornPieces);
     }
 
     // ---------------------------------------------------------------- items
@@ -261,14 +399,332 @@ public final class BedrockConverter {
             }
             return new BedrockItem(item.id(), name, "minecraft:" + item.material().toLowerCase(Locale.ROOT),
                     item.customModelData(), item.itemModel().toString(), MISSING_ICON, item.displayName(), item.handheld(),
-                    drawnByNumber(item));
+                    drawnByNumber(item), item.uses());
         }
         String path = shortPath("textures/items/ark/", name, ".png");
         files.put(path, png(icon));
         itemTextures.put(name, path.substring(0, path.length() - 4));
-        return new BedrockItem(item.id(), name, "minecraft:" + item.material().toLowerCase(Locale.ROOT),
+        BedrockItem converted = new BedrockItem(item.id(), name, "minecraft:" + item.material().toLowerCase(Locale.ROOT),
                 item.customModelData(), item.itemModel().toString(), name, item.displayName(), item.handheld(),
-                drawnByNumber(item));
+                drawnByNumber(item), item.uses());
+        if (item.worn() != null) {
+            worn(item, converted);
+        }
+        return converted;
+    }
+
+    // ---------------------------------------------------------------- armour, worn
+
+    /** Each slot's vanilla armour geometry, and the variable that hides the wearer's own layer there. */
+    private static final Map<String, String[]> ARMOUR_PIECES = Map.of(
+            "head", new String[]{"helmet", "helmet_layer_visible"},
+            "chest", new String[]{"chestplate", "chest_layer_visible"},
+            "legs", new String[]{"leggings", "leg_layer_visible"},
+            "feet", new String[]{"boots", "boot_layer_visible"});
+    /** Java draws an item worn on the head at five eighths of its size, as a carved pumpkin. */
+    private static final float HEAD_ITEM_SCALE = 0.625f;
+
+    /**
+     * 3.4: the attachable that draws a piece of armour on a Bedrock player - one for each name Geyser
+     * may give the item - as vanilla's armour is drawn: the Java equipment layer over the body, or a
+     * 3D model on the head. Without it, a custom item worn is not drawn at all.
+     */
+    private void worn(ItemSpec spec, BedrockItem item) {
+        Worn worn = spec.worn();
+        String[] piece = ARMOUR_PIECES.get(worn.slot());
+        if (piece == null) {
+            return;
+        }
+        String texture;
+        String geometry;
+        if (worn.asset() != null) {
+            String layer = worn.slot().equals("legs") ? "humanoid_leggings" : "humanoid";
+            BufferedImage image = armourLayer(worn.asset(), layer);
+            if (image == null) {
+                unworn.computeIfAbsent("its equipment asset has no " + layer + " picture in the pack",
+                        key -> new ArrayList<>()).add(spec.id() + " (" + worn.asset() + ")");
+                return;
+            }
+            String path = shortPath("textures/models/armor/ark/", item.name(), ".png");
+            files.put(path, png(image));
+            texture = path.substring(0, path.length() - ".png".length());
+            geometry = "geometry.humanoid.armor." + piece[0];
+        } else if (worn.vanilla() != null) {
+            texture = worn.vanilla();
+            geometry = "geometry.humanoid.armor." + piece[0];
+        } else if (worn.model() != null && worn.slot().equals("head")) {
+            String[] drawn = wornOnHead(spec.id(), item.name(), worn.model());
+            if (drawn == null) {
+                return;
+            }
+            geometry = drawn[0];
+            texture = drawn[1];
+        } else {
+            return;
+        }
+        List<String> identifiers = new ArrayList<>(List.of(ITEM_NAMESPACE + ":" + item.name(),
+                LEGACY_NAMESPACE + ":" + item.name()));
+        if (item.byNumber()) {
+            identifiers.add(BY_NUMBER_NAMESPACE + ":" + item.name());
+        }
+        for (String identifier : identifiers) {
+            files.put(shortPath("attachables/ark/", identifier.replace(':', '.'), ".json"),
+                    GSON.toJson(attachable(identifier, texture, geometry, piece[1])).getBytes(StandardCharsets.UTF_8));
+        }
+        wornPieces++;
+    }
+
+    /** Vanilla's armour attachable, with another texture and geometry. */
+    static JsonObject attachable(String identifier, String texture, String geometry, String hiddenLayer) {
+        JsonObject materials = new JsonObject();
+        materials.addProperty("default", "armor");
+        materials.addProperty("enchanted", "armor_enchanted");
+        JsonObject textures = new JsonObject();
+        textures.addProperty("default", texture);
+        textures.addProperty("enchanted", "textures/misc/enchanted_actor_glint");
+        JsonObject geometries = new JsonObject();
+        geometries.addProperty("default", geometry);
+        JsonObject scripts = new JsonObject();
+        scripts.addProperty("parent_setup", "variable." + hiddenLayer + " = 0.0;");
+        JsonArray controllers = new JsonArray();
+        controllers.add("controller.render.armor");
+        JsonObject description = new JsonObject();
+        description.addProperty("identifier", identifier);
+        description.add("materials", materials);
+        description.add("textures", textures);
+        description.add("geometry", geometries);
+        description.add("scripts", scripts);
+        description.add("render_controllers", controllers);
+        JsonObject body = new JsonObject();
+        body.add("description", description);
+        JsonObject file = new JsonObject();
+        file.addProperty("format_version", "1.8.0");
+        file.add("minecraft:attachable", body);
+        return file;
+    }
+
+    /**
+     * An equipment asset's layer as one picture: {@code assets/<ns>/equipment/<asset>.json} names its
+     * textures, drawn one over the other; an asset with no such file, the texture of its own name.
+     *
+     * <p>Only textures shaped as armour is - twice as wide as tall, 64 x 32 and its multiples - are
+     * pictures of it. MythicArmor's pieces are drawn in 3D by its shaders from textures of other
+     * shapes, which mean nothing without them; it gives each piece a plain look for far away as well,
+     * {@code <asset>_far}, and that is what Bedrock players are shown.</p>
+     */
+    private @Nullable BufferedImage armourLayer(ResourceLocation asset, String layer) {
+        BufferedImage picture = armourLayer(asset, layer, true);
+        if (picture == null) {
+            picture = armourLayer(new ResourceLocation(asset.namespace(), asset.path() + "_far"), layer, false);
+        }
+        return picture;
+    }
+
+    private @Nullable BufferedImage armourLayer(ResourceLocation asset, String layer, boolean ownName) {
+        List<ResourceLocation> textures = new ArrayList<>();
+        byte[] bytes = clientFile("assets/" + asset.namespace() + "/equipment/" + asset.path() + ".json");
+        if (bytes != null) {
+            try {
+                JsonElement root = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8));
+                if (root.isJsonObject() && root.getAsJsonObject().get("layers") instanceof JsonObject layers
+                        && layers.get(layer) instanceof JsonArray list) {
+                    for (JsonElement entry : list) {
+                        if (entry instanceof JsonObject one && one.get("texture") instanceof JsonElement name
+                                && name.isJsonPrimitive()) {
+                            ResourceLocation texture = ResourceLocation.parse(name.getAsString(), "minecraft");
+                            textures.add(new ResourceLocation(texture.namespace(),
+                                    "entity/equipment/" + layer + "/" + texture.path()));
+                        }
+                    }
+                }
+            } catch (RuntimeException broken) {
+                problems.add("Bedrock: the equipment asset " + asset + " could not be read (" + broken.getMessage() + ")");
+            }
+        }
+        if (textures.isEmpty() && (bytes != null || ownName)) {
+            textures.add(new ResourceLocation(asset.namespace(), "entity/equipment/" + layer + "/" + asset.path()));
+        }
+        BufferedImage combined = null;
+        for (ResourceLocation texture : textures) {
+            BufferedImage image = clientImage(texture);
+            if (image == null || image.getWidth() != image.getHeight() * 2) {
+                continue;
+            }
+            if (combined == null) {
+                combined = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
+            }
+            java.awt.Graphics2D graphics = combined.createGraphics();
+            graphics.drawImage(image, 0, 0, combined.getWidth(), combined.getHeight(), null);
+            graphics.dispose();
+        }
+        return combined;
+    }
+
+    /** The pack format of the Java clients this server is for: 1.21.8's. */
+    static final int CLIENT_PACK_FORMAT = 64;
+
+    /**
+     * A file as a 1.21.8 client reads it: from the topmost overlay folder that is for its pack format
+     * and has it, else from the pack itself. Armour often lives only in an overlay - ItemsAdder
+     * writes its equipment assets for 1.21.4 and later into one.
+     */
+    private @Nullable byte[] clientFile(String path) {
+        if (clientOverlays == null) {
+            clientOverlays = overlays(input.pack(), CLIENT_PACK_FORMAT);
+        }
+        for (String folder : clientOverlays) {
+            byte[] bytes = input.pack().read(folder + "/" + path);
+            if (bytes != null) {
+                return bytes;
+            }
+        }
+        return input.pack().read(path);
+    }
+
+    /** A texture as a 1.21.8 client reads it - see {@link #clientFile}. */
+    private @Nullable BufferedImage clientImage(ResourceLocation texture) {
+        byte[] bytes = clientFile("assets/" + texture.namespace() + "/textures/" + texture.path() + ".png");
+        if (bytes == null) {
+            return image(texture);
+        }
+        try {
+            return PngReader.read(bytes);
+        } catch (IOException broken) {
+            problems.add("Bedrock: " + texture + " could not be read as a PNG");
+            return null;
+        }
+    }
+
+    /**
+     * The overlay folders {@code pack.mcmeta} lists for pack format {@code format}, the last listed -
+     * the one the client puts on top - first.
+     */
+    static List<String> overlays(PackFiles pack, int format) {
+        List<String> folders = new ArrayList<>();
+        byte[] bytes = pack.read("pack.mcmeta");
+        if (bytes == null) {
+            return folders;
+        }
+        try {
+            JsonElement root = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8));
+            if (!(root instanceof JsonObject meta) || !(meta.get("overlays") instanceof JsonObject overlays)
+                    || !(overlays.get("entries") instanceof JsonArray entries)) {
+                return folders;
+            }
+            for (JsonElement element : entries) {
+                if (element instanceof JsonObject entry && entry.get("directory") instanceof JsonElement directory
+                        && directory.isJsonPrimitive() && covers(entry, format)) {
+                    folders.addFirst(directory.getAsString());
+                }
+            }
+        } catch (RuntimeException unreadable) {
+            // A pack.mcmeta the client could not read either: no overlays.
+        }
+        return folders;
+    }
+
+    /** Whether an overlay entry is for {@code format}: its {@code formats}, or else its min and max format. */
+    private static boolean covers(JsonObject entry, int format) {
+        JsonElement formats = entry.get("formats");
+        int min;
+        int max;
+        if (formats != null && formats.isJsonPrimitive()) {
+            min = max = formats.getAsInt();
+        } else if (formats instanceof JsonArray range && range.size() == 2) {
+            min = range.get(0).getAsInt();
+            max = range.get(1).getAsInt();
+        } else if (formats instanceof JsonObject range && range.has("min_inclusive") && range.has("max_inclusive")) {
+            min = range.get("min_inclusive").getAsInt();
+            max = range.get("max_inclusive").getAsInt();
+        } else if (entry.has("min_format") && entry.has("max_format")) {
+            min = major(entry.get("min_format"));
+            max = major(entry.get("max_format"));
+        } else {
+            return false;
+        }
+        return min <= format && format <= max;
+    }
+
+    /** A pack format written as a number, or 1.21.9's {@code [major, minor]}. */
+    private static int major(JsonElement value) {
+        return value instanceof JsonArray pair && !pair.isEmpty() ? pair.get(0).getAsInt() : value.getAsInt();
+    }
+
+    /**
+     * A 3D helmet: its model as Bedrock geometry on the head, sized and placed as Java draws an item
+     * worn there ({@code display.head}), with every texture it uses stacked into one picture.
+     *
+     * @return the geometry's identifier and the texture's path; null when it cannot be drawn
+     */
+    private @Nullable String[] wornOnHead(String id, String name, ResourceLocation location) {
+        JavaModel model = model(location);
+        if (model == null || model.elements().isEmpty()) {
+            unworn.computeIfAbsent("worn on the head as a model with no cubes", key -> new ArrayList<>()).add(id);
+            return null;
+        }
+        List<ResourceLocation> used = new ArrayList<>();
+        for (JavaModel.Element element : model.elements()) {
+            element.faces().values().forEach(face -> {
+                if (!used.contains(face.texture())) {
+                    used.add(face.texture());
+                }
+            });
+        }
+        List<BufferedImage> pictures = new ArrayList<>();
+        int size = 16;
+        for (ResourceLocation texture : used) {
+            BufferedImage image = image(texture);
+            BufferedImage frame = image == null ? null : IconRenderer.frame(image);
+            pictures.add(frame);
+            if (frame != null) {
+                size = Math.max(size, frame.getWidth());
+            }
+        }
+        BufferedImage sheet = new BufferedImage(size, size * Math.max(1, used.size()), BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D graphics = sheet.createGraphics();
+        for (int i = 0; i < pictures.size(); i++) {
+            if (pictures.get(i) != null) {
+                graphics.drawImage(pictures.get(i), 0, i * size, size, size, null);
+            }
+        }
+        graphics.dispose();
+        Map<ResourceLocation, Integer> rows = new HashMap<>();
+        for (int i = 0; i < used.size(); i++) {
+            rows.put(used.get(i), i);
+        }
+        float[][] head = headDisplay(location);
+        String identifier = "geometry.arkcontent.worn." + name;
+        JsonObject geometry = BedrockGeometry.onHead(identifier, model.elements(), rows, Math.max(1, used.size()),
+                head[0], head[1], head[2], HEAD_ITEM_SCALE);
+        files.put(shortPath("models/entity/ark/", name, ".geo.json"), GSON.toJson(geometry).getBytes(StandardCharsets.UTF_8));
+        String path = shortPath("textures/models/armor/ark/", name, ".png");
+        files.put(path, png(sheet));
+        return new String[]{identifier, path.substring(0, path.length() - ".png".length())};
+    }
+
+    /** A model's {@code display.head} - translation, rotation, scale - from it or the nearest parent with one. */
+    private float[][] headDisplay(ResourceLocation location) {
+        float[][] head = {{0, 0, 0}, {0, 0, 0}, {1, 1, 1}};
+        ResourceLocation current = modelJson(location) != null ? location : definedModel(location);
+        for (int depth = 0; current != null && depth < 16; depth++) {
+            JsonObject json = modelJson(current);
+            if (json == null) {
+                break;
+            }
+            if (json.get("display") instanceof JsonObject display && display.get("head") instanceof JsonObject transform) {
+                String[] keys = {"translation", "rotation", "scale"};
+                for (int i = 0; i < keys.length; i++) {
+                    if (transform.get(keys[i]) instanceof JsonArray values && values.size() == 3) {
+                        for (int axis = 0; axis < 3; axis++) {
+                            head[i][axis] = values.get(axis).getAsFloat();
+                        }
+                    }
+                }
+                break;
+            }
+            current = json.has("parent") ? ResourceLocation.parse(json.get("parent").getAsString(), "minecraft") : null;
+        }
+        return head;
     }
 
     /**

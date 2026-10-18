@@ -1,0 +1,37 @@
+# ---------------------------------------------------------------------------
+#  Medieval items (3.4)
+# ---------------------------------------------------------------------------
+#     /customgive <player> medieval_props:cantimplora
+#
+#  drink: - an item drunk from in sips, as a potion is, and filled again:
+#    sips      how many drinks it holds when full; its damage bar shows
+#              how many are left
+#    seconds   how long one drink takes
+#    hud       what one drink adds to a HUD value this plugin keeps
+#              (contents/demo/huds.yml): {thirst: 5}
+#    potions   potion effects one drink gives: ['regeneration 3 0']
+#    refill    what fills it again: water (a water source, clicked),
+#              cauldron (one with water, which loses a level) or the id of
+#              a piece of furniture - right click it with the item in hand
+#    filled / empty   the messages shown above the hotbar
+#  Bedrock players drink from it too: Geyser is told it is drunk as a potion.
+# ---------------------------------------------------------------------------
+
+items:
+
+  cantimplora:
+    material: PAPER
+    display-name: "<#c8a165>Cantimplora"
+    lore:
+      - "<gray>Clic derecho mantenido: un trago, quita la sed."
+      - "<gray>Rellénala en agua, en un caldero, en el abrevadero"
+      - "<gray>o en el pozo."
+    resource:
+      model: item/cantimplora
+    drink:
+      sips: 6
+      seconds: 1.2
+      hud: {thirst: 5}
+      refill: [water, cauldron, 'medieval_props:abrevadero', 'medieval_props:pozo_deseos']
+      filled: "<aqua>Cantimplora llena."
+      empty: "<gray>La cantimplora está vacía: rellénala en agua."

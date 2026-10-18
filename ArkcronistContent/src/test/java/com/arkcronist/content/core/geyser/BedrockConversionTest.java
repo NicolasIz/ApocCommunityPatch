@@ -515,6 +515,112 @@ class BedrockConversionTest {
         assertTrue(unzip(build.pack()).containsKey("textures/items/ark/" + BedrockConverter.MISSING_ICON + ".png"));
     }
 
+    /**
+     * 3.4: armour is drawn worn on Bedrock players by an attachable for each name Geyser gives the
+     * item: an equipment asset's layer over the body, a 3D helmet's model on the head, vanilla's own
+     * armour for a piece worn as its material.
+     */
+    @Test
+    void armourGetsAnAttachableForEveryNameGeyserGivesIt() throws IOException {
+        Map<String, byte[]> pack = pack();
+        pack.put("pack.mcmeta", "{\"overlays\":{\"entries\":[{\"formats\":[46,64],\"directory\":\"ia_overlay\"}]}}"
+                .getBytes(StandardCharsets.UTF_8));
+        pack.put("ia_overlay/assets/mythicarmor/equipment/darksteel.json",
+                "{\"layers\":{\"humanoid\":[{\"texture\":\"mythicarmor:darksteel_knight\"}]}}".getBytes(StandardCharsets.UTF_8));
+        pack.put("assets/mythicarmor/textures/entity/equipment/humanoid/darksteel_knight.png", png(64, 32, 0xff303040));
+        pack.put("assets/demo/models/item/horned.json", ("{\"textures\":{\"0\":\"demo:item/ruby\"},"
+                + "\"display\":{\"head\":{\"translation\":[0,4,0]}},\"elements\":[{\"from\":[0,0,0],\"to\":[16,16,16],"
+                + "\"faces\":{\"north\":{\"uv\":[0,0,16,16],\"texture\":\"#0\"},\"up\":{\"uv\":[0,0,16,16],\"texture\":\"#0\"}}}]}")
+                .getBytes(StandardCharsets.UTF_8));
+        BedrockConverter.Input base = input(pack, Map.of());
+        List<BedrockConverter.ItemSpec> items = new java.util.ArrayList<>(base.items());
+        ResourceLocation ruby = new ResourceLocation("demo", "item/ruby");
+        ResourceLocation darksteel = new ResourceLocation("mythicarmor", "darksteel");
+        items.add(new BedrockConverter.ItemSpec("demo:dark_chest", "NETHERITE_CHESTPLATE",
+                new ResourceLocation("demo", "dark_chest"), ruby, 1010, "Dark chest", false, BedrockConverter.Uses.NONE,
+                new BedrockConverter.Worn("chest", darksteel, null, null)));
+        items.add(new BedrockConverter.ItemSpec("demo:dark_legs", "NETHERITE_LEGGINGS",
+                new ResourceLocation("demo", "dark_legs"), ruby, 1011, "Dark legs", false, BedrockConverter.Uses.NONE,
+                new BedrockConverter.Worn("legs", darksteel, null, null)));
+        items.add(new BedrockConverter.ItemSpec("demo:horned", "NETHERITE_HELMET",
+                new ResourceLocation("demo", "horned"), ruby, 1012, "Horned", false, BedrockConverter.Uses.NONE,
+                new BedrockConverter.Worn("head", null, new ResourceLocation("demo", "item/horned"), null)));
+        items.add(new BedrockConverter.ItemSpec("demo:plain_iron", "IRON_CHESTPLATE",
+                new ResourceLocation("demo", "plain_iron"), ruby, 1013, "Iron", false, BedrockConverter.Uses.NONE,
+                BedrockConverter.Worn.ofMaterial("IRON_CHESTPLATE")));
+        BedrockConverter.Build build = BedrockConverter.convert(new BedrockConverter.Input(base.pack(), items,
+                base.blocks(), base.liquids(), base.furniture(), base.emojis(), base.previousCarriers(), base.blockStates()));
+        Map<String, byte[]> files = unzip(build.pack());
+        assertEquals(3, build.wornPieces());
+
+        String chest = BedrockConverter.name("demo:dark_chest");
+        for (String namespace : List.of("arkcontent", "geyser_custom")) {
+            byte[] bytes = files.get("attachables/ark/" + namespace + "." + chest + ".json");
+            assertNotNull(bytes, namespace + " in " + new TreeSet<>(files.keySet()));
+            JsonObject description = json(new String(bytes, StandardCharsets.UTF_8))
+                    .getAsJsonObject("minecraft:attachable").getAsJsonObject("description");
+            assertEquals(namespace + ":" + chest, description.get("identifier").getAsString());
+            assertEquals("geometry.humanoid.armor.chestplate",
+                    description.getAsJsonObject("geometry").get("default").getAsString());
+            assertEquals("variable.chest_layer_visible = 0.0;",
+                    description.getAsJsonObject("scripts").get("parent_setup").getAsString());
+            assertEquals("controller.render.armor", description.getAsJsonArray("render_controllers").get(0).getAsString());
+            String texture = description.getAsJsonObject("textures").get("default").getAsString();
+            BufferedImage layer = ImageIO.read(new ByteArrayInputStream(files.get(texture + ".png")));
+            assertEquals(64, layer.getWidth());
+            assertEquals(0xff303040, layer.getRGB(10, 10));
+        }
+        assertFalse(files.containsKey("attachables/ark/arkcontent_cmd." + chest + ".json"),
+                "not drawn by number in the Java pack: Geyser gives it no such name");
+
+        String legs = BedrockConverter.name("demo:dark_legs");
+        assertFalse(files.containsKey("attachables/ark/arkcontent." + legs + ".json"));
+        assertTrue(build.problems().stream().anyMatch(line -> line.contains("demo:dark_legs") && line.contains("humanoid_leggings")),
+                build.problems().toString());
+
+        String horned = BedrockConverter.name("demo:horned");
+        JsonObject attachable = json(new String(files.get("attachables/ark/arkcontent." + horned + ".json"),
+                StandardCharsets.UTF_8)).getAsJsonObject("minecraft:attachable").getAsJsonObject("description");
+        assertEquals("geometry.arkcontent.worn." + horned, attachable.getAsJsonObject("geometry").get("default").getAsString());
+        assertEquals("variable.helmet_layer_visible = 0.0;", attachable.getAsJsonObject("scripts").get("parent_setup").getAsString());
+        JsonObject geometry = json(new String(files.get("models/entity/ark/" + horned + ".geo.json"), StandardCharsets.UTF_8))
+                .getAsJsonArray("minecraft:geometry").get(0).getAsJsonObject();
+        JsonArray bones = geometry.getAsJsonArray("bones");
+        assertEquals("head", bones.get(0).getAsJsonObject().get("name").getAsString());
+        assertEquals("head", bones.get(1).getAsJsonObject().get("parent").getAsString());
+        JsonObject cube = bones.get(1).getAsJsonObject().getAsJsonArray("cubes").get(0).getAsJsonObject();
+        // Ten pixels across - five eighths of the model - its middle four pixels above the head's, and
+        // two and a half higher for display.head's four.
+        assertEquals("[-5.0,25.5,-5.0]", cube.get("origin").toString());
+        assertEquals("[10.0,10.0,10.0]", cube.get("size").toString());
+
+        String iron = BedrockConverter.name("demo:plain_iron");
+        JsonObject plain = json(new String(files.get("attachables/ark/arkcontent." + iron + ".json"), StandardCharsets.UTF_8))
+                .getAsJsonObject("minecraft:attachable").getAsJsonObject("description");
+        assertEquals("textures/models/armor/iron_1", plain.getAsJsonObject("textures").get("default").getAsString());
+
+        assertNull(BedrockConverter.Worn.ofMaterial("LEATHER_HELMET"), "dyed: its colour is the stack's");
+        assertNull(BedrockConverter.Worn.ofMaterial("DIAMOND_SWORD"));
+        assertEquals("textures/models/armor/gold_2", BedrockConverter.Worn.ofMaterial("GOLDEN_LEGGINGS").vanilla());
+        assertEquals("feet", BedrockConverter.Worn.ofMaterial("CHAINMAIL_BOOTS").slot());
+    }
+
+    /** 3.4: the overlays a 1.21.8 client reads, topmost first, whichever way their formats are written. */
+    @Test
+    void theOverlaysA1218ClientReadsAreFoundTopmostFirst() {
+        Map<String, byte[]> pack = new HashMap<>();
+        pack.put("pack.mcmeta", ("{\"pack\":{\"pack_format\":46},\"overlays\":{\"entries\":["
+                + "{\"formats\":[9,45],\"directory\":\"old\"},"
+                + "{\"directory\":\"ia_1_21_2_plus\",\"formats\":[42,64],\"min_format\":42,\"max_format\":9999},"
+                + "{\"min_format\":63,\"max_format\":65535,\"formats\":{\"min_inclusive\":63,\"max_inclusive\":65535},"
+                + "\"directory\":\"mythic\"},"
+                + "{\"min_format\":[64,0],\"max_format\":[64,2],\"directory\":\"new_style\"},"
+                + "{\"formats\":88,\"directory\":\"later\"}]}}").getBytes(StandardCharsets.UTF_8));
+        assertEquals(List.of("new_style", "mythic", "ia_1_21_2_plus"),
+                BedrockConverter.overlays(pack::get, BedrockConverter.CLIENT_PACK_FORMAT));
+        assertEquals(List.of(), BedrockConverter.overlays(name -> null, 64));
+    }
+
     private static BedrockConverter.BedrockItem item(String id, Integer number) {
         String name = BedrockConverter.name(id);
         return new BedrockConverter.BedrockItem(id, name, "minecraft:paper", number, id, name, id, false);

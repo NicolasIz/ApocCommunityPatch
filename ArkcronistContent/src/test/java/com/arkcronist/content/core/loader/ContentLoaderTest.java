@@ -645,6 +645,117 @@ class ContentLoaderTest {
         assertTrue(report.problems().stream().anyMatch(p -> p.contains("demo:shelf: 'storage-title' is only read")));
     }
 
+    /** 3.4: a canteen's sips, what each gives, where it is filled; and a backpack's size. */
+    @Test
+    void aCanteenAndABackpackAreRead() throws IOException {
+        write("demo/gear.yml", """
+                namespace: demo
+                items:
+                  canteen:
+                    material: PAPER
+                    drink:
+                      sips: 6
+                      seconds: 1.2
+                      hud: {thirst: 5}
+                      potions: [{effect: speed, seconds: 3}]
+                      refill: [water, Medieval_Props:abrevadero, a fountain]
+                      filled: "<aqua>Full"
+                  plain_canteen:
+                    material: PAPER
+                    drink: {}
+                  satchel:
+                    material: PAPER
+                    backpack: {slots: 20, title: "<gold>Satchel"}
+                  bag:
+                    material: PAPER
+                    backpack: {}
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+
+        ItemDefinition canteen = report.items().get(0);
+        assertEquals(6, canteen.drink().sips());
+        assertEquals(1.2, canteen.drink().seconds(), 1e-9);
+        assertEquals(Map.of("thirst", 5.0), canteen.drink().hud());
+        assertEquals(1, canteen.drink().potions().size());
+        assertEquals(List.of("water", "medieval_props:abrevadero"), canteen.drink().refill());
+        assertTrue(canteen.drink().fillsAtWater());
+        assertFalse(canteen.drink().fillsAtCauldron());
+        assertTrue(canteen.drink().fillsAt("medieval_props:abrevadero"));
+        assertEquals("<aqua>Full", canteen.drink().filled());
+        assertNull(canteen.backpack());
+
+        ItemDefinition plain = report.items().get(1);
+        assertEquals(5, plain.drink().sips());
+        assertTrue(plain.drink().fillsAtWater() && plain.drink().fillsAtCauldron(), "water and cauldrons when not said");
+
+        assertEquals(18, report.items().get(2).backpack().slots(), "whole rows of nine");
+        assertEquals("<gold>Satchel", report.items().get(2).backpack().title());
+        assertEquals(27, report.items().get(3).backpack().slots());
+        assertNull(report.items().get(3).backpack().title());
+
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("demo:canteen: drink: 'refill' takes water")
+                && p.contains("a fountain")), report.problems().toString());
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("demo:plain_canteen: drink: a drink with neither")));
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("demo:satchel: backpack: 'slots' is in whole rows")));
+        assertEquals(3, report.problems().size(), report.problems().toString());
+    }
+
+    /** 3.4: storage that shows what it holds - a mannequin's armour, a rack's swords. */
+    @Test
+    void storageCanShowWhatItHolds() throws IOException {
+        write("demo/show.yml", """
+                namespace: demo
+                items:
+                  dummy:
+                    type: custom_furniture
+                    resource: {model: furniture/dummy}
+                    furniture:
+                      interactable: storage
+                      slots: 9
+                      show: {armor: true, offset: [0, 0.1, 0], yaw: 180}
+                  rack:
+                    type: custom_furniture
+                    resource: {model: furniture/rack}
+                    furniture:
+                      interactable: storage
+                      slots: 9
+                      show:
+                        items:
+                          - {offset: [-0.3, 0.86, -0.22], rotation: [0, 0, -135], scale: 1.6}
+                          - {offset: [0.3, 0.86, -0.22]}
+                  empty_show:
+                    type: custom_furniture
+                    resource: {model: furniture/rack}
+                    furniture: {interactable: storage, show: {}}
+                  seat_show:
+                    type: custom_furniture
+                    resource: {model: furniture/rack}
+                    furniture: {interactable: seat, show: {armor: true}}
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+
+        Placement.Show dummy = ((Placement.Furniture) report.items().get(0).placement()).storage().show();
+        assertTrue(dummy.armor());
+        assertEquals(new Placement.Vec3(0, 0.1f, 0), dummy.offset());
+        assertEquals(180f, dummy.yaw());
+        assertTrue(dummy.items().isEmpty());
+
+        Placement.Show rack = ((Placement.Furniture) report.items().get(1).placement()).storage().show();
+        assertFalse(rack.armor());
+        assertEquals(List.of(new Placement.ShownItem(new Placement.Vec3(-0.3f, 0.86f, -0.22f),
+                        new Placement.Vec3(0, 0, -135), 1.6f),
+                new Placement.ShownItem(new Placement.Vec3(0.3f, 0.86f, -0.22f), Placement.Vec3.ZERO, 1f)), rack.items());
+
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("demo:empty_show: show: shows nothing")),
+                report.problems().toString());
+        assertTrue(report.problems().stream().anyMatch(p -> p.contains("demo:seat_show: 'show' is only read with"
+                + " interactable: storage")), report.problems().toString());
+        assertNull(((Placement.Furniture) report.items().get(3).placement()).storage());
+        assertEquals(2, report.problems().size(), report.problems().toString());
+    }
+
     @Test
     void anAnimatedChestIsStorageDrawnByItsBones() throws IOException {
         write("demo/models/furniture/ruby_chest.bbmodel", BbModelReaderTest.chest());
