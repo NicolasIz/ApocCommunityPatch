@@ -6,8 +6,11 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedMap;
+import java.util.SortedSet;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.function.Predicate;
 
 /**
@@ -109,6 +112,47 @@ public final class SoundNames {
         return file + ": " + names.size() + " sound name(s) pointed where their file is not and now name '"
                 + namespace + ":', where it is - e.g. '" + first + "' is now '" + names.get(first)
                 + "' (pack.fix-sound-names)";
+    }
+
+    /**
+     * 3.5.3: the vanilla sounds a {@code minecraft} sounds.json silences - an event replaced by no sound
+     * at all. ItemsAdder's pack does this to {@code block.wood.*} and {@code block.stone.*} (its blocks are
+     * note blocks and mushroom blocks, which sound like wood) and plays wood and stone itself, as
+     * {@code internal.block.*}; without ItemsAdder running, nothing plays them, and every wooden or stone
+     * block, step and blow - and every animation or skill that plays those sounds - is silent.
+     */
+    public static SortedSet<String> silenced(JsonObject sounds, String namespace) {
+        SortedSet<String> silenced = new TreeSet<>();
+        if (!namespace.equals("minecraft")) {
+            return silenced;
+        }
+        for (Map.Entry<String, JsonElement> event : sounds.entrySet()) {
+            if (event.getValue() instanceof JsonObject registration
+                    && registration.get("replace") instanceof JsonElement replace && replace.isJsonPrimitive()
+                    && replace.getAsBoolean()
+                    && (!(registration.get("sounds") instanceof JsonArray list) || list.isEmpty())) {
+                silenced.add(event.getKey());
+            }
+        }
+        return silenced;
+    }
+
+    /** A copy of {@code sounds} without the events of {@code silenced}: vanilla's play again. */
+    public static JsonObject unsilence(JsonObject sounds, Set<String> silenced) {
+        JsonObject kept = new JsonObject();
+        for (Map.Entry<String, JsonElement> event : sounds.entrySet()) {
+            if (!silenced.contains(event.getKey())) {
+                kept.add(event.getKey(), event.getValue().deepCopy());
+            }
+        }
+        return kept;
+    }
+
+    /** The note for {@link #silenced}'s events once given back to vanilla. */
+    public static String describeUnsilenced(String file, SortedSet<String> silenced) {
+        return file + ": " + silenced.size() + " vanilla sound(s) a merged pack silenced play again: "
+                + String.join(", ", silenced) + ". ItemsAdder silences them and plays them itself; it is not"
+                + " installed here, so nothing else would (pack.unsilence-vanilla-sounds)";
     }
 
     /** Where the client looks for a sound name's file: {@code minecraft:sounds/golem/roar.ogg}. */

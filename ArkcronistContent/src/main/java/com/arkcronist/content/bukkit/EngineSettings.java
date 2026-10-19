@@ -125,10 +125,19 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
      *                      {@code assets/}, or zips, relative to the server folder
      * @param fixSoundNames give a sounds.json name with no namespace the namespace its file is in
      * @param shaders       what to do with shaders the 1.21.8 client would not run as written (2.0)
+     * @param unsilenceVanillaSounds 3.5.3: let the vanilla sounds a merged pack silences play again
+     *                      (ItemsAdder's wood and stone) - unless ItemsAdder itself runs here
      */
     public record Pack(String description, int format, int minFormat, int maxFormat, List<String> merge,
                        ModelData modelData, boolean negativeSpaces, boolean fixSoundNames,
-                       com.arkcronist.content.core.pack.ShaderCheck.Mode shaders) {
+                       com.arkcronist.content.core.pack.ShaderCheck.Mode shaders, boolean unsilenceVanillaSounds) {
+
+        public Pack(String description, int format, int minFormat, int maxFormat, List<String> merge,
+                    ModelData modelData, boolean negativeSpaces, boolean fixSoundNames,
+                    com.arkcronist.content.core.pack.ShaderCheck.Mode shaders) {
+            this(description, format, minFormat, maxFormat, merge, modelData, negativeSpaces, fixSoundNames, shaders,
+                    true);
+        }
 
         public Pack(String description, int format, int minFormat, int maxFormat, List<String> merge,
                     ModelData modelData, boolean negativeSpaces, boolean fixSoundNames) {
@@ -384,7 +393,8 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
             return new Pack(description, PackSettings.FIRST_ITEM_MODEL_FORMAT,
                     PackSettings.FIRST_ITEM_MODEL_FORMAT, 99, merges(section), modelData(section),
                     section.getBoolean("negative-spaces", true), section.getBoolean("fix-sound-names", true),
-                shaderMode(section, logger));
+                shaderMode(section, logger),
+                section.getBoolean("unsilence-vanilla-sounds", true));
         }
         if (min < PackSettings.FIRST_ITEM_MODEL_FORMAT) {
             logger.warning("pack.min-format " + min + " is below 46 (1.21.4). Older clients cannot"
@@ -392,7 +402,8 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
         }
         return new Pack(description, format, min, max, merges(section), modelData(section),
                 section.getBoolean("negative-spaces", true), section.getBoolean("fix-sound-names", true),
-                shaderMode(section, logger));
+                shaderMode(section, logger),
+                section.getBoolean("unsilence-vanilla-sounds", true));
     }
 
     /** {@code pack.shaders}: keep, drop-broken or drop. */

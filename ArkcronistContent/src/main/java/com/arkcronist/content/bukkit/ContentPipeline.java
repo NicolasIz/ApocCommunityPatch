@@ -466,8 +466,10 @@ public final class ContentPipeline {
         this.emojis = emojis;
         this.delivery = delivery;
         this.logger = plugin.getLogger();
+        // 3.5.3: ItemsAdder's pack silences wood and stone and ItemsAdder plays them; without it, they play again.
+        boolean itemsAdder = plugin.getServer().getPluginManager().getPlugin("ItemsAdder") != null;
         this.compiler = new PackCompiler(settings.pack().toPackSettings(), settings.pack().fixSoundNames(),
-                settings.pack().shaders());
+                settings.pack().shaders(), settings.pack().unsilenceVanillaSounds() && !itemsAdder);
         // Packs named in config.yml: CosmeticsCore's, a model pack bought separately, any other.
         Path server = plugin.getDataFolder().toPath().toAbsolutePath().getParent().getParent();
         for (String merge : settings.pack().merge()) {

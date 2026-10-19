@@ -111,6 +111,7 @@ public final class PackCompiler {
     private final PackSettings settings;
     private final boolean fixSoundNames;
     private final ShaderCheck.Mode shaders;
+    private final boolean unsilenceVanillaSounds;
 
     public PackCompiler(PackSettings settings) {
         this(settings, true);
@@ -129,9 +130,20 @@ public final class PackCompiler {
      *                against the 1.21.8 client (2.0)
      */
     public PackCompiler(PackSettings settings, boolean fixSoundNames, ShaderCheck.Mode shaders) {
+        this(settings, fixSoundNames, shaders, true);
+    }
+
+    /**
+     * @param unsilenceVanillaSounds 3.5.3: drop the vanilla sounds a merged pack silences
+     *                               ({@link SoundNames#silenced}) - on unless ItemsAdder, which plays them
+     *                               itself, runs on the server
+     */
+    public PackCompiler(PackSettings settings, boolean fixSoundNames, ShaderCheck.Mode shaders,
+                        boolean unsilenceVanillaSounds) {
         this.settings = settings;
         this.fixSoundNames = fixSoundNames;
         this.shaders = shaders;
+        this.unsilenceVanillaSounds = unsilenceVanillaSounds;
     }
 
     /** {@link #compile(Path, Collection, Map, List)} with no other plugin's pack to merge. */
@@ -315,7 +327,7 @@ public final class PackCompiler {
         run.atlas();
         run.overlayShared();
         run.checkShaders(shaders);
-        run.soundNames(fixSoundNames);
+        run.soundNames(fixSoundNames, unsilenceVanillaSounds);
         run.overlayEntries(settings.mcmeta());
         return new Result(run.itemDefinitions, run.models, run.textures, run.customBlockStates,
                 run.glyphs, run.externalFiles, run.sounds, run.problems, run.notes, run.brokenShaders);
@@ -975,9 +987,10 @@ public final class PackCompiler {
         /**
          * Every {@code sounds.json} in the pack - a content pack's, a merged pack's, an overlay's copy -
          * checked for names that point where their file is not, while it is in the file's own
-         * namespace ({@link SoundNames}): pointed there, so the events play, or only reported.
+         * namespace ({@link SoundNames}): pointed there, so the events play, or only reported. 3.5.3:
+         * vanilla sounds a merged pack silenced play again ({@link SoundNames#silenced}).
          */
-        void soundNames(boolean fix) throws IOException {
+        void soundNames(boolean fix, boolean unsilence) throws IOException {
             java.util.regex.Pattern index = java.util.regex.Pattern.compile("(?:([^/]+)/)?assets/([^/]+)/sounds\\.json");
             for (String file : new TreeSet<>(placed.keySet())) {
                 java.util.regex.Matcher matcher = index.matcher(file);
@@ -995,6 +1008,12 @@ public final class PackCompiler {
                     events = object;
                 } catch (JsonParseException exception) {
                     continue;
+                }
+                java.util.SortedSet<String> silenced = SoundNames.silenced(events, namespace);
+                if (unsilence && !silenced.isEmpty()) {
+                    events = SoundNames.unsilence(events, silenced);
+                    Files.write(target, json(events));
+                    notes.add(SoundNames.describeUnsilenced(file, silenced));
                 }
                 java.util.SortedMap<String, String> names = SoundNames.misplaced(events, namespace, path ->
                         Files.isRegularFile(packDir.resolve(path))

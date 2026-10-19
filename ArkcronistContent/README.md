@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.5.2.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.5.3.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -2832,6 +2832,28 @@ perdía) ni el servidor web del pack.
 El error exacto de la consola no se pudo provocar en el servidor de prueba (allí PacketEvents aún
 tenía su sitio en la conexión al apagar). El arreglo cubre ese caso: el envío que fallaba ahora se
 descarta, y aunque fallara otro paso, el apagado sigue.
+
+#### 3.5.3: vuelven los sonidos de madera y piedra
+
+El pack que genera ItemsAdder **silencia diez sonidos vanilla**: los de madera y los de piedra
+(`block.wood.*` y `block.stone.*`: colocar, romper, golpear, pisar y caer). Sus bloques son note
+blocks y bloques de champiñón, que suenan a madera, así que ItemsAdder los silencia y pone él mismo
+los de verdad (como `internal.block.*`). Con ese pack importado y sin ItemsAdder en el servidor, nadie
+los ponía: no sonaban los bloques de madera ni de piedra, ni los pasos sobre ellos, ni las animaciones
+y habilidades que usan esos sonidos (los martillazos, hachazos y picadas de las escenas de ModelEngine,
+por ejemplo).
+
+Ahora, al montar el pack, esos sonidos silenciados se quitan y vuelven los de vanilla. La consola lo
+dice: `[pack] assets/minecraft/sounds.json: 10 vanilla sound(s) a merged pack silenced play again:
+...`. Solo se quita un sonido vanilla que un pack deja sin nada; los que un pack cambia por otros, y
+los `internal.block.*` de ItemsAdder, se quedan. Con ItemsAdder instalado en el servidor no se toca
+(él los pone), y `pack.unsilence-vanilla-sounds: false` en `config.yml` lo desactiva.
+
+| Prueba (3.5.3), Paper 1.21.8 con el pack de ItemsAdder importado | Resultado |
+|---|---|
+| Pack que se arma | `assets/minecraft/sounds.json` pasa de 20 entradas (10 silenciadas) a 10, ninguna silenciada |
+| Consola | `10 vanilla sound(s) a merged pack silenced play again: block.stone.break, ...` |
+| Tests | 559, todos pasan |
 
 ## 5. Integraciones
 

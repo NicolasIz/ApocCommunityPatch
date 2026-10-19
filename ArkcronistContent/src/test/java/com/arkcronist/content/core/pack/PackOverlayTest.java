@@ -121,6 +121,41 @@ class PackOverlayTest {
         assertFalse(Files.exists(temp.resolve("escape.json")));
     }
 
+    /**
+     * 3.5.3: ItemsAdder's pack silences vanilla wood and stone and ItemsAdder plays them itself; merged
+     * with no ItemsAdder, they play again - its own internal.* events and the rest stay as they are.
+     */
+    @Test
+    void theVanillaSoundsItemsAdderSilencesPlayAgainWithoutIt() throws IOException {
+        Path generated = generatedPack();
+        String index = """
+                {"block.wood.hit":{"sounds":[],"replace":true,"subtitle":"subtitles.block.generic.hit"},
+                 "block.stone.break":{"sounds":[],"replace":true,"subtitle":"subtitles.block.generic.break"},
+                 "internal.block.wood.hit":{"sounds":["step/wood1","step/wood2"],"subtitle":"subtitles.block.generic.hit"},
+                 "entity.villager.ambient":{"sounds":["mob/villager/idle1"],"replace":true},
+                 "block.anvil.use":{"sounds":[]}}
+                """;
+        write(generated, "assets/minecraft/sounds.json", index);
+        Path out = temp.resolve("pack");
+
+        PackCompiler.Result result = new PackCompiler(SETTINGS).compile(out, List.of(), Map.of(), Map.of(), List.of(),
+                Map.of(), List.of(new ExternalPack("packs/generated", generated)));
+
+        JsonObject sounds = JsonParser.parseString(Files.readString(out.resolve("assets/minecraft/sounds.json")))
+                .getAsJsonObject();
+        // Only an event replaced by nothing goes: one replaced by other sounds, or added to, is kept.
+        assertEquals(Set.of("internal.block.wood.hit", "entity.villager.ambient", "block.anvil.use"), sounds.keySet());
+        assertTrue(result.notes().contains("assets/minecraft/sounds.json: 2 vanilla sound(s) a merged pack silenced play"
+                + " again: block.stone.break, block.wood.hit. ItemsAdder silences them and plays them itself; it is not"
+                + " installed here, so nothing else would (pack.unsilence-vanilla-sounds)"), result.notes().toString());
+
+        // With ItemsAdder on the server, it plays them: the file goes in as it is.
+        new PackCompiler(SETTINGS, true, ShaderCheck.Mode.KEEP, false).compile(out, List.of(), Map.of(), Map.of(),
+                List.of(), Map.of(), List.of(new ExternalPack("packs/generated", generated)));
+        assertEquals(JsonParser.parseString(index), JsonParser.parseString(
+                Files.readString(out.resolve("assets/minecraft/sounds.json"))));
+    }
+
     @Test
     void ourNumbersAreJoinedIntoAnOverlayThatWouldHideThem() throws IOException {
         Path generated = generatedPack();

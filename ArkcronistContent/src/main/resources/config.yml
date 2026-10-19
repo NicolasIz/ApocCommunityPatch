@@ -55,6 +55,12 @@ pack:
   # they are; off, they are only reported. Only the name changes: volume, pitch,
   # weight, streaming and the .ogg itself are left alone.
   fix-sound-names: true
+  # 3.5.3: ItemsAdder's generated pack silences vanilla wood and stone (block.wood.* and
+  # block.stone.*: placing, breaking, hitting, stepping, falling) and ItemsAdder plays them
+  # itself. Merged here with no ItemsAdder on the server, every wooden or stone block, step
+  # and blow is silent - and so is any animation or skill that plays those sounds. On, the
+  # vanilla sounds a merged pack silences play again (not while ItemsAdder is installed).
+  unsilence-vanilla-sounds: true
   # Shaders - a content pack's (contents/<pack>/shaders/) and every merged pack's - are
   # read against what the 1.21.8 client does with them, and each problem is reported:
   # written for 1.21.4 or older (loose uniforms, which 1.21.5+ never sets), an import
