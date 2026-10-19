@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.5.3.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.5.4.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -2854,6 +2854,60 @@ los `internal.block.*` de ItemsAdder, se quedan. Con ItemsAdder instalado en el 
 | Pack que se arma | `assets/minecraft/sounds.json` pasa de 20 entradas (10 silenciadas) a 10, ninguna silenciada |
 | Consola | `10 vanilla sound(s) a merged pack silenced play again: block.stone.break, ...` |
 | Tests | 559, todos pasan |
+
+#### 3.5.4: los menús de Blossom Studios para PlayerWarps
+
+Los menús de PlayerWarps de Blossom Studios están hechos para ItemsAdder. Sus fondos y títulos
+(`%img_playerwarps_main%`, `%img_offset_-8%`, las fuentes `playerwarps_page_offset` y
+`playerwarps_submenu_title`) ya se veían con este plugin. Lo que fallaba eran los botones: cada uno
+es un objeto invisible encima del dibujo del fondo, escrito como `material: itemsadder-b_invisible_item`.
+PlayerWarps solo entiende ese prefijo si ItemsAdder está instalado. Sin ItemsAdder deja la casilla
+vacía, así que el menú se ve bien pero ningún botón responde.
+
+**En los menús.** PlayerWarps lee `item-model:` en cualquier objeto de sus menús, así que basta con
+nombrar el modelo del pack en lugar del objeto de ItemsAdder:
+
+```yaml
+# antes                                  # después
+material: itemsadder-b_invisible_item    material: PAPER
+                                         item-model: "blossom_studios:invisible_item"
+```
+
+Son 69 líneas en 9 archivos de `guis/`. Incluyen una con `nexo-b_invisible_item` (el botón de
+cerrar del menú principal) y una con `itemsadder-sponsor_locked`, un objeto que no existe: en la
+configuración de ItemsAdder se llama `progression_locked`, y pasa a ser
+`item-model: "blossom_studios:progression_locked"`.
+
+Además, `guis/rate.yml` trae `blacklisted-slots` vacío. Por eso la primera valoración caía en la
+casilla 0, encima del botón de volver; con ItemsAdder pasaría lo mismo. Se corrige con la misma lista que usa
+`visitedplayers.yml`.
+
+Los menús también necesitan dos expansiones de PlaceholderAPI:
+
+- `ChangeOutput`, que pide el README de Blossom;
+- `Player`, para `%player_name%` en el título de «mis warps».
+
+Se instalan con `/papi ecloud download ChangeOutput`, `/papi ecloud download Player` y
+`/papi reload`. `%img_...%` sigue funcionando tras `/papi reload`.
+
+**En el plugin.** El importador lee ahora el `item_model:` de un objeto de ItemsAdder:
+
+- Copia el `items/<ruta>.json` del pack, sin tocarlo, junto con los modelos y texturas que nombra.
+- El objeto se dibuja con él (`resource.item-model`).
+- Si el pack generado importado en `packs/` ya trae ese archivo, se usa el de allí.
+- Si no lo encuentra en ningún sitio, lo avisa y el objeto se queda con el aspecto de su `resource`.
+
+Antes se ignoraba, y `blossom_studios:b_invisible_item` salía como un papel normal.
+
+| Prueba (3.5.4), Paper 1.21.8, PlayerWarps 7.11.1, sin ItemsAdder | Resultado |
+|---|---|
+| Menú principal sin cambiar los menús | se ve bien; casillas vacías, ni nombre al pasar el ratón ni respuesta al clic |
+| Con `item-model` | nombre al pasar el ratón («Favourite Warps»), objeto invisible, abre su menú |
+| Menús abiertos con un cliente real | principal, favoritos, todos, una categoría, visita, valoraciones, visitantes, baneados, gestionar warp, mis warps; volver y cerrar |
+| Cabezas 2D (`item-model: blossom_studios:2d_head`) | la cara del jugador que valoró y visitó, en su casilla |
+| Título de gestionar warp (`%changeoutput_...%`) | el interruptor verde de «activado» |
+| `/arkcontent import` del pack de Blossom | `b_invisible_item` con `item-model: invisible_item`; en la mano, invisible |
+| Tests | 561, todos pasan |
 
 ## 5. Integraciones
 

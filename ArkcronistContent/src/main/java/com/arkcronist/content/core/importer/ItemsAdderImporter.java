@@ -6,10 +6,12 @@ import com.arkcronist.content.core.pack.ExternalPack;
 import com.arkcronist.content.core.pack.PackSource;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
@@ -61,6 +63,8 @@ import java.util.stream.Stream;
  *       {@code graphics} section: into {@code resource.model}, {@code resource.texture} or
  *       {@code resource.textures} + {@code parent} - the {@code CustomModelData} number is not
  *       needed any more;</li>
+ *   <li>{@code item_model} - an item definition of the pack's, {@code items/<path>.json}: copied
+ *       with the models it names, into {@code resource.item-model};</li>
  *   <li>{@code behaviours.block}: into {@code type: custom_block}, with six-face textures in
  *       ItemsAdder's order (down, east, north, south, up, west);</li>
  *   <li>{@code behaviours.furniture}: into {@code type: custom_furniture}, solid or not, light,
@@ -106,7 +110,7 @@ public final class ItemsAdderImporter {
     /** Item keys this converter reads, or that mean nothing outside ItemsAdder. */
     private static final Set<String> HANDLED = Set.of("enabled", "name", "display_name", "lore", "resource",
             "graphics", "behaviours", "material", "permission", "permission_suffix", "specific_properties",
-            "template", "variant_of");
+            "template", "variant_of", "item_model");
 
     /** Top-level sections of a config file that are read. */
     private static final Set<String> FILE_SECTIONS = Set.of("info", "items", "dictionary", "font_images");
@@ -512,9 +516,21 @@ public final class ItemsAdderImporter {
             }
 
             String material = String.valueOf(item.getOrDefault("material", "PAPER"));
-            Map<String, Object> look = graphics != null
-                    ? fromGraphics(source, graphics, block, material, prefix)
-                    : fromResource(source, id, resource, block, material, prefix);
+            Object itemModel = ia.get("item_model");
+            if (itemModel != null && (block || furniture)) {
+                dropped.add("item_model");
+            }
+            Map<String, Object> look = itemModel != null && !block && !furniture
+                    ? fromItemModel(source, itemModel, prefix) : null;
+            if (look == null) {
+                look = graphics != null
+                        ? fromGraphics(source, graphics, block, material, prefix)
+                        : fromResource(source, id, resource, block, material, prefix);
+            } else if (graphics != null || (resource != null && (resource.get("model_path") != null
+                    || resource.get("textures") != null || resource.get("texture") != null))) {
+                notes.add(prefix + "drawn by its item_model, as ItemsAdder draws it - the look in"
+                        + (graphics != null ? " graphics" : " resource") + " is not imported");
+            }
             if (look == null) {
                 if (block || furniture) {
                     problems.add(prefix + "a " + (block ? "block" : "furniture")
@@ -683,6 +699,77 @@ public final class ItemsAdderImporter {
                 parent = new ResourceLocation(ResourceLocation.MINECRAFT, heldLikeATool(material) ? "item/handheld" : "item/generated");
             }
             return generatedModel(source, variables, parent, block, prefix);
+        }
+
+        /**
+         * ItemsAdder's {@code item_model}: the stack names an item definition of the pack's,
+         * {@code items/<path>.json}, which draws it - a menu's invisible button, a 2D head. The file
+         * is copied as it is, with the models it names and their textures, and the item is drawn by
+         * it through {@code resource.item-model}. A vanilla one ({@code minecraft:...}) needs nothing.
+         */
+        private Map<String, Object> fromItemModel(Source source, Object raw, String prefix) throws IOException {
+            ResourceLocation definition = location(raw, source.namespace(), prefix);
+            if (definition == null) {
+                return null;
+            }
+            String relative = definition.assetPath("items", ".json");
+            if (!definition.namespace().equals(ResourceLocation.MINECRAFT) && !absorbedHas(relative)) {
+                Optional<Path> found = assets.find(definition.namespace(), "items", definition.path() + ".json",
+                        source.pack());
+                if (found.isEmpty()) {
+                    problems.add(prefix + "item_model " + definition + ": " + relative + " not found under import/"
+                            + " - put the pack's resourcepack folder in import/ with its configs; imported with"
+                            + " the look of its resource section instead");
+                    return null;
+                }
+                byte[] bytes = Files.readAllBytes(found.get());
+                copyBytes(bytes, assetTarget(definition, "items", ".json"), found.get(), prefix);
+                Set<ResourceLocation> seen = new HashSet<>();
+                for (ResourceLocation model : modelsNamed(bytes, definition, prefix)) {
+                    if (model.namespace().equals(definition.namespace())) {
+                        copyModel(source, model, prefix, seen);
+                    }
+                }
+            }
+            Map<String, Object> resource = new LinkedHashMap<>();
+            resource.put("item-model", shown(definition, source.namespace()));
+            return resource;
+        }
+
+        /**
+         * The models an item definition names, at any depth: a plain model's {@code model}, a
+         * special model's {@code base}, inside conditions, selects and composites alike.
+         */
+        private List<ResourceLocation> modelsNamed(byte[] bytes, ResourceLocation definition, String prefix) {
+            JsonElement root;
+            try {
+                root = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8));
+            } catch (JsonParseException exception) {
+                problems.add(prefix + "item definition " + definition + " is not valid JSON, copied as it is - "
+                        + firstLine(exception.getMessage()));
+                return List.of();
+            }
+            List<ResourceLocation> named = new ArrayList<>();
+            List<JsonElement> pending = new ArrayList<>(List.of(root));
+            while (!pending.isEmpty()) {
+                JsonElement element = pending.remove(pending.size() - 1);
+                if (element instanceof JsonArray array) {
+                    array.forEach(pending::add);
+                } else if (element instanceof JsonObject object) {
+                    String type = object.get("type") instanceof JsonPrimitive value ? value.getAsString() : "";
+                    String key = switch (type) {
+                        case "model", "minecraft:model" -> "model";
+                        case "special", "minecraft:special" -> "base";
+                        default -> null;
+                    };
+                    ResourceLocation model = key == null ? null : reference(object.get(key), prefix);
+                    if (model != null && !named.contains(model)) {
+                        named.add(model);
+                    }
+                    object.entrySet().forEach(entry -> pending.add(entry.getValue()));
+                }
+            }
+            return named;
         }
 
         private Map<String, Object> providedModel(Source source, ResourceLocation model, String prefix) throws IOException {

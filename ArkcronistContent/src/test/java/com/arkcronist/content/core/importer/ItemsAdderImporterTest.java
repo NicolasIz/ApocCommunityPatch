@@ -417,6 +417,95 @@ class ItemsAdderImporterTest {
         assertFalse(Files.exists(contents()));
     }
 
+    /**
+     * 3.5.4: {@code item_model} - how a menu pack (Blossom Studios' PlayerWarps) draws its invisible
+     * buttons. The pack's item definition is what draws the item, so it comes with its models and
+     * textures, unchanged, and the item points at it.
+     */
+    @Test
+    void anItemModelBringsThePacksItemDefinitionAndItsModels() throws IOException {
+        Path pack = importDir().resolve("blossom_studios");
+        write(pack, "configs/blossom_utils.yml", """
+                info:
+                  namespace: blossom_studios
+                items:
+                  b_invisible_item:
+                    display_name: "Invisible Item"
+                    item_model: blossom_studios:invisible_item
+                    resource:
+                      material: PAPER
+                  vanilla_look:
+                    item_model: minecraft:diamond
+                    resource:
+                      material: PAPER
+                  lost:
+                    item_model: blossom_studios:not_there
+                    resource:
+                      material: PAPER
+                """);
+        String definition = """
+                {"model":{"type":"minecraft:model","model":"blossom_studios:blossom_utils/item/invisible_item"}}""";
+        String model = """
+                {"parent":"minecraft:item/generated","textures":{"layer0":"blossom_studios:blossom_utils/item/invisible_item"}}""";
+        write(pack, "resourcepack/assets/blossom_studios/items/invisible_item.json", definition);
+        write(pack, "resourcepack/assets/blossom_studios/models/blossom_utils/item/invisible_item.json", model);
+        write(pack, "resourcepack/assets/blossom_studios/textures/blossom_utils/item/invisible_item.png", png("clear"));
+
+        ImportReport report = new ItemsAdderImporter().run(importDir(), contents());
+
+        assertEquals(1, report.problems().size(), report.problems()::toString);
+        assertProblem(report, "item_model blossom_studios:not_there");
+        assertEquals(definition, Files.readString(contents().resolve("blossom_studios/items/invisible_item.json")));
+        assertEquals(model, Files.readString(contents().resolve("blossom_studios/models/blossom_utils/item/invisible_item.json")));
+
+        LoadReport loaded = new ContentLoader().load(contents());
+        assertEquals(List.of(), loaded.problems());
+        Map<String, ItemDefinition> items = loaded.items().stream()
+                .collect(Collectors.toMap(ItemDefinition::fullId, Function.identity()));
+        assertEquals(new ResourceLocation("blossom_studios", "invisible_item"),
+                items.get("blossom_studios:b_invisible_item").itemModel());
+        assertEquals(new ResourceLocation("minecraft", "diamond"), items.get("blossom_studios:vanilla_look").itemModel());
+        // The one whose file is missing keeps its plain look rather than pointing at nothing.
+        assertEquals(new ResourceLocation("blossom_studios", "lost"), items.get("blossom_studios:lost").itemModel());
+
+        PackCompiler.Result compiled = new PackCompiler(SETTINGS).compile(temp.resolve("pack"), loaded.items(), Map.of());
+        assertEquals(List.of(), compiled.problems());
+        Path assets = temp.resolve("pack/assets/blossom_studios");
+        assertEquals(definition, Files.readString(assets.resolve("items/invisible_item.json")));
+        assertEquals(model, Files.readString(assets.resolve("models/blossom_utils/item/invisible_item.json")));
+        assertArrayEquals(png("clear"), Files.readAllBytes(assets.resolve("textures/blossom_utils/item/invisible_item.png")));
+    }
+
+    /** What the importer itself writes for an {@code item_model}: the item points at the definition. */
+    @Test
+    void anImportedItemModelLoadsAsItIsWritten() throws IOException {
+        Path pack = importDir().resolve("menus");
+        write(pack, "configs/a.yml", """
+                info:
+                  namespace: menus
+                items:
+                  button:
+                    item_model: menus:button
+                    resource: {material: PAPER, generate: true, textures: [item/unused.png]}
+                """);
+        write(pack, "resourcepack/assets/menus/items/button.json", """
+                {"model":{"type":"minecraft:model","model":"menus:item/button"}}""");
+        write(pack, "resourcepack/assets/menus/models/item/button.json", """
+                {"parent":"minecraft:item/generated","textures":{"layer0":"menus:item/button"}}""");
+        write(pack, "resourcepack/assets/menus/textures/item/button.png", png("button"));
+
+        ImportReport report = new ItemsAdderImporter().run(importDir(), contents());
+
+        assertEquals(List.of(), report.problems());
+        assertNote(report, "drawn by its item_model");
+        assertFalse(Files.exists(contents().resolve("menus/textures/item/unused.png")), "the look it does not use");
+        LoadReport loaded = new ContentLoader().load(contents());
+        assertEquals(List.of(), loaded.problems());
+        assertEquals(new ResourceLocation("menus", "button"), loaded.items().get(0).itemModel());
+        assertEquals(List.of(), new PackCompiler(SETTINGS).compile(temp.resolve("pack"), loaded.items(), Map.of()).problems());
+        assertArrayEquals(png("button"), Files.readAllBytes(temp.resolve("pack/assets/menus/textures/item/button.png")));
+    }
+
     @Test
     void itemsInTheMinecraftNamespaceAreRefused() throws IOException {
         write(importDir(), "vanilla/configs/items.yml", """
