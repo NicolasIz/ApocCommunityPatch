@@ -65,6 +65,22 @@ class MedievalPacksTest {
         assertEquals("smoker", byId.get("medieval_pesca:pescado_ahumado").ambience().cook());
     }
 
+    /** 3.5.1: each piece tells what it is in a description of its own, above the line saying what a click does. */
+    @Test
+    void eachPieceHasADescriptionOfItsOwn() throws IOException {
+        Map<String, String> seen = new TreeMap<>();
+        for (ItemDefinition piece : pieces()) {
+            List<String> lore = piece.lore();
+            assertTrue(lore.size() >= 2, piece.fullId() + " has a description and a click line");
+            String description = lore.stream().filter(line -> line.startsWith("<#b5a48a>"))
+                    .map(line -> line.substring("<#b5a48a>".length())).collect(Collectors.joining(" "));
+            assertTrue(description.length() > 20, piece.fullId() + ": " + description);
+            String before = seen.put(description, piece.fullId());
+            assertEquals(null, before, piece.fullId() + " has the description of " + before);
+            assertTrue(lore.get(lore.size() - 1).startsWith("<gray>"), piece.fullId() + " ends with what a click does");
+        }
+    }
+
     /** Every file of the four packs is listed for servers upgrading to 3.5, and every listed file is shipped. */
     @Test
     void theUpgradeListHasEveryFile() throws IOException {

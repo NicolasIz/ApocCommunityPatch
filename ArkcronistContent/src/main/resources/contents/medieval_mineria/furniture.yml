@@ -11,6 +11,9 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Montón de carbón'
     lore:
+      - '<#b5a48a>Carbón recién sacado de la veta, aún'
+      - '<#b5a48a>tiznado de polvo negro. Alimenta las'
+      - '<#b5a48a>forjas del reino.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/monton_carbon'
@@ -29,6 +32,9 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Montón de hierro'
     lore:
+      - '<#b5a48a>Mineral de hierro rojizo con su roca'
+      - '<#b5a48a>pegada. Lo esperan los hornos de'
+      - '<#b5a48a>fundición.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/monton_hierro'
@@ -47,6 +53,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Montón de cobre'
     lore:
+      - '<#b5a48a>Cobre en bruto, con vetas verdes donde el'
+      - '<#b5a48a>aire ya lo ha tocado.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/monton_cobre'
@@ -65,6 +73,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Montón de oro'
     lore:
+      - '<#b5a48a>Pepitas y terrones de oro entre piedra'
+      - '<#b5a48a>suelta. Mejor no dejarlo sin vigilar.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/monton_oro'
@@ -83,6 +93,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Montón de piedra roja'
     lore:
+      - '<#b5a48a>Piedra roja que chisporrotea al golpearla.'
+      - '<#b5a48a>Los alquimistas pagan bien por ella.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/monton_redstone'
@@ -101,6 +113,9 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Montón de lapislázuli'
     lore:
+      - '<#b5a48a>Lapislázuli azul profundo con zafiros'
+      - '<#b5a48a>asomando. De él sale el pigmento de los'
+      - '<#b5a48a>mantos reales.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/monton_lapislazuli'
@@ -119,6 +134,9 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Montón de esmeralda'
     lore:
+      - '<#b5a48a>Mineral verde con esmeraldas en punta. Los'
+      - '<#b5a48a>mercaderes del valle cambian por esto lo'
+      - '<#b5a48a>que sea.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/monton_esmeralda'
@@ -137,6 +155,9 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Montón de diamante'
     lore:
+      - '<#b5a48a>Terrones con diamantes a la vista. Hay'
+      - '<#b5a48a>mineros que trabajan una vida entera por'
+      - '<#b5a48a>un montón así.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/monton_diamante'
@@ -155,6 +176,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Montón de amatista'
     lore:
+      - '<#b5a48a>Amatista violeta arrancada de una geoda,'
+      - '<#b5a48a>con sus puntas de cristal intactas.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/monton_amatista'
@@ -173,6 +196,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Montón de cuarzo'
     lore:
+      - '<#b5a48a>Cuarzo blanco de las minas profundas,'
+      - '<#b5a48a>cortante como el cristal.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/monton_cuarzo'
@@ -191,6 +216,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Montón de plata'
     lore:
+      - '<#b5a48a>Mineral de plata brillante. Con él se'
+      - '<#b5a48a>acuñan las monedas del rey.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/monton_plata'
@@ -209,6 +236,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Montón de estaño'
     lore:
+      - '<#b5a48a>Estaño gris y blando. Mezclado con cobre'
+      - '<#b5a48a>da el bronce de las campanas.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/monton_estano'
@@ -227,6 +256,9 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Vagoneta de carbón'
     lore:
+      - '<#b5a48a>Una vagoneta de hierro llena de carbón'
+      - '<#b5a48a>hasta arriba, lista para salir de la'
+      - '<#b5a48a>galería.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/vagoneta_carbon'
@@ -240,6 +272,9 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Vagoneta de hierro'
     lore:
+      - '<#b5a48a>Vagoneta cargada de mineral de hierro.'
+      - '<#b5a48a>Pesa tanto que hacen falta dos para'
+      - '<#b5a48a>empujarla.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/vagoneta_hierro'
@@ -253,6 +288,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Vagoneta de cobre'
     lore:
+      - '<#b5a48a>Vagoneta de cobre en bruto camino del'
+      - '<#b5a48a>horno.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/vagoneta_cobre'
@@ -266,6 +303,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Vagoneta de oro'
     lore:
+      - '<#b5a48a>Vagoneta con oro. El capataz la cuenta dos'
+      - '<#b5a48a>veces antes de dejarla pasar.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/vagoneta_oro'
@@ -279,6 +318,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Vagoneta de piedra roja'
     lore:
+      - '<#b5a48a>Vagoneta de piedra roja; de noche se ve'
+      - '<#b5a48a>brillar en el fondo de la mina.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/vagoneta_redstone'
@@ -292,6 +333,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Vagoneta de esmeralda'
     lore:
+      - '<#b5a48a>Vagoneta con mineral de esmeralda y sus'
+      - '<#b5a48a>cristales verdes asomando.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/vagoneta_esmeralda'
@@ -305,6 +348,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Vagoneta de diamante'
     lore:
+      - '<#b5a48a>La vagoneta más vigilada de la mina:'
+      - '<#b5a48a>mineral de diamante.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/vagoneta_diamante'
@@ -318,6 +363,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Vagoneta de plata'
     lore:
+      - '<#b5a48a>Vagoneta de mineral de plata para la casa'
+      - '<#b5a48a>de la moneda.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/vagoneta_plata'
@@ -331,6 +378,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cesta de carbón'
     lore:
+      - '<#b5a48a>Cesta de mimbre con carbón para la fragua'
+      - '<#b5a48a>de casa.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/cesta_carbon'
@@ -344,6 +393,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cesta de hierro'
     lore:
+      - '<#b5a48a>Cesta de mimbre con mineral de hierro'
+      - '<#b5a48a>escogido a mano.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/cesta_hierro'
@@ -357,6 +408,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cesta de cobre'
     lore:
+      - '<#b5a48a>Cesta de mimbre con terrones de cobre.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/cesta_cobre'
@@ -370,6 +422,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cesta de oro'
     lore:
+      - '<#b5a48a>Cesta de mimbre con oro; más vale llevarla'
+      - '<#b5a48a>tapada.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/cesta_oro'
@@ -383,6 +437,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cesta de lapislázuli'
     lore:
+      - '<#b5a48a>Cesta de mimbre con lapislázuli para el'
+      - '<#b5a48a>tintorero.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/cesta_lapislazuli'
@@ -396,6 +452,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cesta de amatista'
     lore:
+      - '<#b5a48a>Cesta de mimbre con amatistas que'
+      - '<#b5a48a>tintinean al moverla.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/cesta_amatista'
@@ -409,6 +467,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de carbón'
     lore:
+      - '<#b5a48a>Caja de madera reforzada, llena de carbón.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_carbon'
@@ -422,6 +481,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de hierro'
     lore:
+      - '<#b5a48a>Caja de madera con mineral de hierro para'
+      - '<#b5a48a>la herrería.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_hierro'
@@ -435,6 +496,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de cobre'
     lore:
+      - '<#b5a48a>Caja de madera con cobre en bruto.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_cobre'
@@ -448,6 +510,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de oro'
     lore:
+      - '<#b5a48a>Caja de oro en bruto con cerradura en la'
+      - '<#b5a48a>tapa... que alguien dejó abierta.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_oro'
@@ -461,6 +525,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de piedra roja'
     lore:
+      - '<#b5a48a>Caja de piedra roja con rubíes entre el'
+      - '<#b5a48a>mineral.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_redstone'
@@ -474,6 +540,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de cuarzo'
     lore:
+      - '<#b5a48a>Caja de cuarzo blanco con sus puntas de'
+      - '<#b5a48a>cristal.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_cuarzo'
@@ -487,6 +555,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Bloque de veta de hierro'
     lore:
+      - '<#b5a48a>Un bloque entero de veta de hierro,'
+      - '<#b5a48a>cortado y subido sobre su patín.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/bloque_veta_hierro'
@@ -503,6 +573,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Bloque de veta de oro'
     lore:
+      - '<#b5a48a>Un bloque de veta de oro tal como salió de'
+      - '<#b5a48a>la pared.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/bloque_veta_oro'
@@ -519,6 +591,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Bloque de veta de diamante'
     lore:
+      - '<#b5a48a>Un bloque de veta de diamante; todavía hay'
+      - '<#b5a48a>que picarlo con cuidado.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/bloque_veta_diamante'
@@ -535,6 +609,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Bloque de veta de esmeralda'
     lore:
+      - '<#b5a48a>Un bloque de veta de esmeralda, verde'
+      - '<#b5a48a>entre la piedra gris.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/bloque_veta_esmeralda'
@@ -551,6 +627,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cristales de amatista'
     lore:
+      - '<#b5a48a>Un racimo de amatista sobre pizarra. Su'
+      - '<#b5a48a>luz violeta guía en la oscuridad.'
       - '<gray>Clic derecho para mirarlo de cerca.'
       - '<gray>Da algo de luz.'
     resource:
@@ -573,6 +651,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cristales de esmeralda'
     lore:
+      - '<#b5a48a>Cristales de esmeralda que brillan con luz'
+      - '<#b5a48a>verde.'
       - '<gray>Clic derecho para mirarlo de cerca.'
       - '<gray>Da algo de luz.'
     resource:
@@ -595,6 +675,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cristales de rubí'
     lore:
+      - '<#b5a48a>Cristales de rubí rojos como brasas.'
       - '<gray>Clic derecho para mirarlo de cerca.'
       - '<gray>Da algo de luz.'
     resource:
@@ -617,6 +698,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cristales de zafiro'
     lore:
+      - '<#b5a48a>Cristales de zafiro de un azul de noche'
+      - '<#b5a48a>clara.'
       - '<gray>Clic derecho para mirarlo de cerca.'
       - '<gray>Da algo de luz.'
     resource:
@@ -639,6 +722,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cristales de topacio'
     lore:
+      - '<#b5a48a>Cristales de topacio dorados como la miel.'
       - '<gray>Clic derecho para mirarlo de cerca.'
       - '<gray>Da algo de luz.'
     resource:
@@ -661,6 +745,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cristales de cuarzo'
     lore:
+      - '<#b5a48a>Cristales de cuarzo puro, blancos y'
+      - '<#b5a48a>transparentes.'
       - '<gray>Clic derecho para mirarlo de cerca.'
       - '<gray>Da algo de luz.'
     resource:
@@ -683,6 +769,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cristales de diamante'
     lore:
+      - '<#b5a48a>Cristales de diamante en bruto, el tesoro'
+      - '<#b5a48a>más raro de las profundidades.'
       - '<gray>Clic derecho para mirarlo de cerca.'
       - '<gray>Da algo de luz.'
     resource:
@@ -705,6 +793,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Geoda de amatista'
     lore:
+      - '<#b5a48a>Una geoda partida en dos, con su hueco'
+      - '<#b5a48a>forrado de amatista.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/geoda_amatista'
@@ -721,6 +811,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Geoda de esmeralda'
     lore:
+      - '<#b5a48a>Una geoda partida que guardaba esmeraldas'
+      - '<#b5a48a>por dentro.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/geoda_esmeralda'
@@ -737,6 +829,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Geoda de zafiro'
     lore:
+      - '<#b5a48a>Una geoda partida llena de zafiros azules.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/geoda_zafiro'
@@ -753,6 +846,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Rocas de piedra'
     lore:
+      - '<#b5a48a>Rocas redondeadas con musgo encima. Buen'
+      - '<#b5a48a>sitio para descansar.'
       - '<gray>Clic derecho para sentarte.'
     resource:
       model: 'furniture/rocas_piedra'
@@ -765,6 +860,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Rocas de granito'
     lore:
+      - '<#b5a48a>Rocas de granito rosado, duras como'
+      - '<#b5a48a>ninguna.'
       - '<gray>Clic derecho para sentarte.'
     resource:
       model: 'furniture/rocas_granito'
@@ -777,6 +874,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Rocas de diorita'
     lore:
+      - '<#b5a48a>Rocas de diorita blanca moteada.'
       - '<gray>Clic derecho para sentarte.'
     resource:
       model: 'furniture/rocas_diorita'
@@ -789,6 +887,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Rocas de andesita'
     lore:
+      - '<#b5a48a>Rocas de andesita gris, gastadas por el'
+      - '<#b5a48a>agua.'
       - '<gray>Clic derecho para sentarte.'
     resource:
       model: 'furniture/rocas_andesita'
@@ -801,6 +901,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Rocas de pizarra'
     lore:
+      - '<#b5a48a>Rocas de pizarra oscura de las galerías'
+      - '<#b5a48a>hondas.'
       - '<gray>Clic derecho para sentarte.'
     resource:
       model: 'furniture/rocas_pizarra'
@@ -813,6 +915,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Rocas de arenisca'
     lore:
+      - '<#b5a48a>Rocas de arenisca dorada, blandas al'
+      - '<#b5a48a>tacto.'
       - '<gray>Clic derecho para sentarte.'
     resource:
       model: 'furniture/rocas_arenisca'
@@ -825,6 +929,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Estalagmita de piedra'
     lore:
+      - '<#b5a48a>Estalagmita de piedra que el agua tardó'
+      - '<#b5a48a>siglos en levantar.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/estalagmita_piedra'
@@ -843,6 +949,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Estalagmita de pizarra'
     lore:
+      - '<#b5a48a>Estalagmita de pizarra, alta y afilada.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/estalagmita_pizarra'
@@ -864,6 +971,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Estalagmita de basalto'
     lore:
+      - '<#b5a48a>Una gran estalagmita de basalto negro de'
+      - '<#b5a48a>las cuevas más profundas.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/estalagmita_basalto'
@@ -885,6 +994,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Puntal de mina'
     lore:
+      - '<#b5a48a>Dos postes y una viga: lo único que'
+      - '<#b5a48a>aguanta el techo de la galería.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/puntal_mina'
@@ -904,6 +1015,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Puntal de mina doble'
     lore:
+      - '<#b5a48a>El puntal doble de la galería principal,'
+      - '<#b5a48a>con su poste central.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/puntal_mina_doble'
@@ -923,6 +1036,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Farol de minero'
     lore:
+      - '<#b5a48a>Un farol en su poste para alumbrar la boca'
+      - '<#b5a48a>de la mina.'
       - '<gray>Clic derecho: enciende o apaga.'
     resource:
       model: 'furniture/farol_minero'
@@ -943,6 +1058,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Farol colgante de mina'
     lore:
+      - '<#b5a48a>Farol colgado de una cadena desde la viga'
+      - '<#b5a48a>de la galería.'
       - '<gray>Clic derecho: enciende o apaga.'
     resource:
       model: 'furniture/farol_colgante_mina'
@@ -963,6 +1080,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Pico de hierro apoyado'
     lore:
+      - '<#b5a48a>Un pico de hierro apoyado en la roca, a'
+      - '<#b5a48a>mitad de jornada.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/pico_apoyado_hierro'
@@ -981,6 +1100,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Pico de acero apoyado'
     lore:
+      - '<#b5a48a>Un pico de acero templado, el favorito del'
+      - '<#b5a48a>capataz.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/pico_apoyado_acero'
@@ -999,6 +1120,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Pico de oro apoyado'
     lore:
+      - '<#b5a48a>Un pico con cabeza de oro: más vistoso que'
+      - '<#b5a48a>útil.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/pico_apoyado_oro'
@@ -1017,6 +1140,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Pala apoyada'
     lore:
+      - '<#b5a48a>Una pala de hierro con su mango en D,'
+      - '<#b5a48a>apoyada en una roca.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/pala_apoyada'
@@ -1036,6 +1161,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Carretilla de carbón'
     lore:
+      - '<#b5a48a>Carretilla de madera llena de carbón.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/carretilla_carbon'
@@ -1049,6 +1175,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Carretilla de hierro'
     lore:
+      - '<#b5a48a>Carretilla con mineral de hierro hacia la'
+      - '<#b5a48a>fundición.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/carretilla_hierro'
@@ -1062,6 +1190,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Carretilla de oro'
     lore:
+      - '<#b5a48a>Carretilla de oro en bruto; la rueda'
+      - '<#b5a48a>chirría del peso.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/carretilla_oro'
@@ -1075,6 +1205,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Criba de mina'
     lore:
+      - '<#b5a48a>Una criba para separar la grava del'
+      - '<#b5a48a>mineral bueno.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/criba_mina'
@@ -1093,6 +1225,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Batea de oro'
     lore:
+      - '<#b5a48a>Batea de hierro para lavar arena del río y'
+      - '<#b5a48a>quedarse con las pepitas.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/batea_oro'
@@ -1109,6 +1243,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Barril de pólvora'
     lore:
+      - '<#b5a48a>Barril de pólvora con su mecha. Lejos de'
+      - '<#b5a48a>las antorchas.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/barril_polvora'
@@ -1122,6 +1258,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de cartuchos'
     lore:
+      - '<#b5a48a>Caja de cartuchos para volar la roca dura.'
+      - '<#b5a48a>Lejos del fuego, por favor.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/caja_dinamita'
@@ -1140,6 +1278,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Tope de vías'
     lore:
+      - '<#b5a48a>El tope al final de las vías, para que las'
+      - '<#b5a48a>vagonetas no se escapen.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/tope_vias'
@@ -1156,6 +1296,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Tramo de vías'
     lore:
+      - '<#b5a48a>Un tramo de vías de hierro sobre traviesas'
+      - '<#b5a48a>de roble.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/vias_mina'
@@ -1172,6 +1314,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Torno de pozo de mina'
     lore:
+      - '<#b5a48a>El torno que sube los cubos de mineral'
+      - '<#b5a48a>desde el fondo del pozo.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/torno_pozo_mina'
@@ -1191,6 +1335,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cartel de la mina'
     lore:
+      - '<#b5a48a>El cartel de la entrada de la mina, con el'
+      - '<#b5a48a>pico y la pala pintados.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/cartel_mina'
@@ -1210,6 +1356,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Casco de minero'
     lore:
+      - '<#b5a48a>Gorro de cuero de minero con su vela de'
+      - '<#b5a48a>sebo en la frente.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/casco_minero'
@@ -1228,6 +1376,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Mesa del tasador'
     lore:
+      - '<#b5a48a>La mesa del tasador: balanza, muestras y'
+      - '<#b5a48a>el libro de cuentas.'
       - '<gray>Clic derecho: mesa de cartografía.'
     resource:
       model: 'furniture/mesa_tasador'
@@ -1244,6 +1394,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Balanza de minero'
     lore:
+      - '<#b5a48a>Balanza de bronce para pesar el mineral y'
+      - '<#b5a48a>fijar su precio.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/balanza_minero'
@@ -1260,6 +1412,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cuenco de pepitas de oro'
     lore:
+      - '<#b5a48a>Un cuenco de madera lleno de pepitas de'
+      - '<#b5a48a>oro.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/cuenco_pepitas'
@@ -1276,6 +1430,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Expositor de rubíes'
     lore:
+      - '<#b5a48a>Rubíes tallados sobre terciopelo azul,'
+      - '<#b5a48a>bajo un tejadillo de madera.'
       - '<gray>Clic derecho para mirarlo de cerca.'
       - '<gray>Da algo de luz.'
     resource:
@@ -1294,6 +1450,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Expositor de esmeraldas'
     lore:
+      - '<#b5a48a>Esmeraldas talladas sobre terciopelo rojo.'
       - '<gray>Clic derecho para mirarlo de cerca.'
       - '<gray>Da algo de luz.'
     resource:
@@ -1312,6 +1469,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Expositor de zafiros'
     lore:
+      - '<#b5a48a>Zafiros tallados expuestos para los'
+      - '<#b5a48a>compradores.'
       - '<gray>Clic derecho para mirarlo de cerca.'
       - '<gray>Da algo de luz.'
     resource:
@@ -1330,6 +1489,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Expositor de diamantes'
     lore:
+      - '<#b5a48a>Diamantes tallados; el dueño no les quita'
+      - '<#b5a48a>ojo.'
       - '<gray>Clic derecho para mirarlo de cerca.'
       - '<gray>Da algo de luz.'
     resource:
@@ -1348,6 +1509,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Soporte de picos'
     lore:
+      - '<#b5a48a>Un soporte con tres picos: hierro, acero y'
+      - '<#b5a48a>oro.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/soporte_picos'
@@ -1364,6 +1527,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Muestra de hierro'
     lore:
+      - '<#b5a48a>Muestra de veta de hierro con su etiqueta,'
+      - '<#b5a48a>para el tasador.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/muestra_hierro'
@@ -1380,6 +1545,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Muestra de oro'
     lore:
+      - '<#b5a48a>Muestra de veta de oro con su etiqueta.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/muestra_oro'
@@ -1396,6 +1562,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Muestra de diamante'
     lore:
+      - '<#b5a48a>Muestra de veta de diamante; la etiqueta'
+      - '<#b5a48a>dice de qué galería salió.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/muestra_diamante'
@@ -1412,6 +1580,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Muestra de esmeralda'
     lore:
+      - '<#b5a48a>Muestra de veta de esmeralda, etiquetada y'
+      - '<#b5a48a>numerada.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/muestra_esmeralda'

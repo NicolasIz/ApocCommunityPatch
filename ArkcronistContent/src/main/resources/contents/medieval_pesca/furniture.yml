@@ -11,6 +11,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Secadero de bacalao'
     lore:
+      - '<#b5a48a>Bacalaos colgados por la cola, secándose'
+      - '<#b5a48a>al viento del puerto.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/secadero_bacalao'
@@ -32,6 +34,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Secadero de salmón'
     lore:
+      - '<#b5a48a>Salmones colgados a secar, rojos como el'
+      - '<#b5a48a>atardecer.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/secadero_salmon'
@@ -53,6 +57,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Secadero de pez tropical'
     lore:
+      - '<#b5a48a>Peces tropicales de rayas puestos a secar;'
+      - '<#b5a48a>vinieron de mares lejanos.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/secadero_tropical'
@@ -74,6 +80,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Secadero de pez globo'
     lore:
+      - '<#b5a48a>Peces globo colgados. Nadie se atreve a'
+      - '<#b5a48a>comérselos.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/secadero_globo'
@@ -95,6 +103,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Secadero de trucha'
     lore:
+      - '<#b5a48a>Truchas del río colgadas a secar.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/secadero_trucha'
@@ -116,6 +125,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Secadero de carpa'
     lore:
+      - '<#b5a48a>Carpas del estanque puestas a secar.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/secadero_carpa'
@@ -137,6 +147,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de bacalao'
     lore:
+      - '<#b5a48a>Caja de bacalao sobre hielo, pescado esta'
+      - '<#b5a48a>misma mañana.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_bacalao'
@@ -150,6 +162,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de salmón'
     lore:
+      - '<#b5a48a>Caja de salmones sobre hielo picado.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_salmon'
@@ -163,6 +176,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de pez tropical'
     lore:
+      - '<#b5a48a>Caja de peces tropicales de colores vivos.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_tropical'
@@ -176,6 +190,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de trucha'
     lore:
+      - '<#b5a48a>Caja de truchas recién pescadas en el río.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_trucha'
@@ -189,6 +204,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de carpa'
     lore:
+      - '<#b5a48a>Caja de carpas doradas sobre hielo.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_carpa'
@@ -202,6 +218,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de sardinas'
     lore:
+      - '<#b5a48a>Caja de sardinas plateadas, bien'
+      - '<#b5a48a>ordenadas.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_sardina'
@@ -215,6 +233,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Barril de bacalao'
     lore:
+      - '<#b5a48a>Barril de bacalao en hielo para el'
+      - '<#b5a48a>mercado.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/barril_bacalao'
@@ -228,6 +248,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Barril de salmón'
     lore:
+      - '<#b5a48a>Barril de salmón listo para la travesía.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/barril_salmon'
@@ -241,6 +262,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Barril de sardinas'
     lore:
+      - '<#b5a48a>Barril de sardinas, el pan de cada día del'
+      - '<#b5a48a>puerto.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/barril_sardina'
@@ -254,6 +277,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Barril de lucio'
     lore:
+      - '<#b5a48a>Barril de lucios, el pez más fiero del'
+      - '<#b5a48a>río.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/barril_lucio'
@@ -267,6 +292,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cesta de bacalao'
     lore:
+      - '<#b5a48a>Cesta de mimbre con bacalao y hielo.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/cesta_bacalao'
@@ -280,6 +306,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cesta de trucha'
     lore:
+      - '<#b5a48a>Cesta de mimbre con truchas del río.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/cesta_trucha'
@@ -293,6 +320,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cesta de sardinas'
     lore:
+      - '<#b5a48a>Cesta de mimbre con sardinas plateadas.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/cesta_sardina'
@@ -306,6 +334,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Red colgada'
     lore:
+      - '<#b5a48a>Una red tendida a secar entre dos postes,'
+      - '<#b5a48a>con sus conchas enganchadas.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/red_colgada'
@@ -325,6 +355,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Red con peces'
     lore:
+      - '<#b5a48a>Red recién sacada del agua, con peces'
+      - '<#b5a48a>todavía atrapados.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/red_con_peces'
@@ -344,6 +376,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Montón de redes'
     lore:
+      - '<#b5a48a>Redes amontonadas con sus corchos,'
+      - '<#b5a48a>esperando la próxima marea.'
       - '<gray>Clic derecho para sentarte.'
     resource:
       model: 'furniture/monton_redes'
@@ -356,6 +390,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Montón de redes verdes'
     lore:
+      - '<#b5a48a>Redes verdes amontonadas con sus corchos'
+      - '<#b5a48a>de flotar.'
       - '<gray>Clic derecho para sentarte.'
     resource:
       model: 'furniture/monton_redes_verdes'
@@ -368,6 +404,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Boya roja'
     lore:
+      - '<#b5a48a>Boya roja que marca el canal de entrada al'
+      - '<#b5a48a>puerto.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/boya_rojo'
@@ -384,6 +422,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Boya azul'
     lore:
+      - '<#b5a48a>Boya azul que señala las nasas del'
+      - '<#b5a48a>pescador.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/boya_azul'
@@ -400,6 +440,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Boya verde'
     lore:
+      - '<#b5a48a>Boya verde del lado de babor.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/boya_verde'
@@ -416,6 +457,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Boya amarilla'
     lore:
+      - '<#b5a48a>Boya amarilla que avisa de las rocas.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/boya_amarillo'
@@ -432,6 +474,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Ancla'
     lore:
+      - '<#b5a48a>Ancla de hierro forjado con su cabo.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/ancla'
@@ -451,6 +494,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Ancla oxidada'
     lore:
+      - '<#b5a48a>Ancla oxidada que pasó años en el fondo'
+      - '<#b5a48a>del puerto.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/ancla_oxidada'
@@ -470,6 +515,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Nasa con cangrejo'
     lore:
+      - '<#b5a48a>Nasa de madera y red con un cangrejo'
+      - '<#b5a48a>dentro.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/nasa_cangrejo'
@@ -483,6 +530,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Nasa con langosta'
     lore:
+      - '<#b5a48a>Nasa con una langosta que intenta salir.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/nasa_langosta'
@@ -496,6 +544,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Nasa vacía'
     lore:
+      - '<#b5a48a>Nasa vacía, lista para echarla al agua.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/nasa_vacia'
@@ -509,6 +558,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Soporte de cañas'
     lore:
+      - '<#b5a48a>Soporte con tres cañas de pescar y sus'
+      - '<#b5a48a>sedales.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/soporte_canas'
@@ -525,6 +576,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Soporte de cañas pequeño'
     lore:
+      - '<#b5a48a>Soporte con dos cañas de pescar.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/soporte_canas_pequeno'
@@ -541,6 +593,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Remos cruzados'
     lore:
+      - '<#b5a48a>Dos remos cruzados sobre su base.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/remos_cruzados'
@@ -560,6 +613,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Bote de remos'
     lore:
+      - '<#b5a48a>Bote de remos de roble con sus bancos.'
       - '<gray>Clic derecho para sentarte.'
     resource:
       model: 'furniture/bote_remos'
@@ -575,6 +629,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Bote de remos azul'
     lore:
+      - '<#b5a48a>Bote de remos pintado de azul.'
       - '<gray>Clic derecho para sentarte.'
     resource:
       model: 'furniture/bote_remos_azul'
@@ -590,6 +645,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cubo de gusanos'
     lore:
+      - '<#b5a48a>Cubo de tierra con gusanos para cebo.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/cubo_gusanos'
@@ -603,6 +659,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cubo de pececillos'
     lore:
+      - '<#b5a48a>Cubo de agua con pececillos vivos para'
+      - '<#b5a48a>cebo.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/cubo_pececillos'
@@ -616,6 +674,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cubo de cangrejos'
     lore:
+      - '<#b5a48a>Cubo de arena con cangrejos pequeños.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/cubo_cangrejos'
@@ -629,6 +688,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Conchas blancas'
     lore:
+      - '<#b5a48a>Conchas blancas sobre la arena, con una'
+      - '<#b5a48a>caracola y una estrella de mar.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/conchas_blanca'
@@ -645,6 +706,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Conchas rosas'
     lore:
+      - '<#b5a48a>Conchas rosas recogidas en la playa.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/conchas_rosa'
@@ -661,6 +723,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Conchas naranjas'
     lore:
+      - '<#b5a48a>Conchas naranjas, como el sol del'
+      - '<#b5a48a>atardecer.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/conchas_naranja'
@@ -677,6 +741,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Conchas azules'
     lore:
+      - '<#b5a48a>Conchas azules muy raras de encontrar.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/conchas_azul'
@@ -693,6 +758,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Estrella de mar'
     lore:
+      - '<#b5a48a>Una estrella de mar de cinco brazos, seca'
+      - '<#b5a48a>al sol.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/estrella_mar'
@@ -709,6 +776,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Rollo de cuerda pequeño'
     lore:
+      - '<#b5a48a>Un rollo pequeño de cuerda de cáñamo.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/cuerda_pequeno'
@@ -725,6 +793,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Rollo de cuerda'
     lore:
+      - '<#b5a48a>Un rollo de cuerda para amarrar barcas.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/cuerda_mediano'
@@ -741,6 +810,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Rollo de cuerda grande'
     lore:
+      - '<#b5a48a>Un gran rollo de cuerda; también sirve de'
+      - '<#b5a48a>asiento.'
       - '<gray>Clic derecho para sentarte.'
     resource:
       model: 'furniture/cuerda_grande'
@@ -753,6 +824,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Soporte de arpones'
     lore:
+      - '<#b5a48a>Soporte con tres arpones de punta de'
+      - '<#b5a48a>acero.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/soporte_arpones'
@@ -769,6 +842,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Mesa del pescadero'
     lore:
+      - '<#b5a48a>La mesa del pescadero, con el pescado del'
+      - '<#b5a48a>día y el cuchillo.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/mesa_pescadero'
@@ -790,6 +865,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Pescado ahumado colgado'
     lore:
+      - '<#b5a48a>Pescado colgado sobre las brasas para'
+      - '<#b5a48a>ahumarlo.'
       - '<gray>Clic derecho con comida cruda: la ahumas.'
     resource:
       model: 'furniture/pescado_ahumado'
@@ -813,6 +890,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Poste de muelle'
     lore:
+      - '<#b5a48a>Poste de muelle con su cabo enrollado.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/poste_muelle_16'
@@ -829,6 +907,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Poste de muelle alto'
     lore:
+      - '<#b5a48a>Poste alto del muelle, con argolla de'
+      - '<#b5a48a>hierro.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/poste_muelle_24'
@@ -848,6 +928,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Poste de amarre'
     lore:
+      - '<#b5a48a>Poste bajo de amarre para las barcas'
+      - '<#b5a48a>pequeñas.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/poste_muelle_12'
@@ -864,6 +946,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Salvavidas'
     lore:
+      - '<#b5a48a>Salvavidas rojo y blanco, por si alguien'
+      - '<#b5a48a>cae al agua.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/salvavidas'
@@ -885,6 +969,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Farol del puerto'
     lore:
+      - '<#b5a48a>El farol del puerto que guía a las barcas'
+      - '<#b5a48a>de noche.'
       - '<gray>Clic derecho: enciende o apaga.'
     resource:
       model: 'furniture/farol_puerto'
@@ -905,6 +991,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Timón de barco'
     lore:
+      - '<#b5a48a>Un timón de barco de madera con su centro'
+      - '<#b5a48a>de bronce.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/timon'
@@ -926,6 +1014,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cofre pirata'
     lore:
+      - '<#b5a48a>Un cofre pirata con oro y un rubí asomando'
+      - '<#b5a48a>por la tapa.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/cofre_pirata'
@@ -939,6 +1029,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Secadero de algas'
     lore:
+      - '<#b5a48a>Algas puestas a secar al sol.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/secadero_algas'
@@ -955,6 +1046,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Trofeo de salmón'
     lore:
+      - '<#b5a48a>Un salmón enorme montado en su tabla.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/trofeo_salmon'
@@ -971,6 +1063,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Trofeo de lucio'
     lore:
+      - '<#b5a48a>Un lucio gigante; su pescador aún cuenta'
+      - '<#b5a48a>la historia.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/trofeo_lucio'
@@ -987,6 +1081,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Trofeo de pez globo'
     lore:
+      - '<#b5a48a>Un pez globo hinchado, montado como'
+      - '<#b5a48a>trofeo.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/trofeo_globo'
@@ -1003,6 +1099,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Barril de agua dulce'
     lore:
+      - '<#b5a48a>Barril de agua dulce para la travesía.'
       - '<gray>Clic derecho: bebe, quita la sed.'
     resource:
       model: 'furniture/barril_agua_dulce'
@@ -1020,6 +1117,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Pecera con pez tropical'
     lore:
+      - '<#b5a48a>Pecera con un pez tropical, algas y una'
+      - '<#b5a48a>concha.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/pecera_tropical'
@@ -1036,6 +1135,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Pecera con carpa'
     lore:
+      - '<#b5a48a>Pecera con una carpa dorada.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/pecera_carpa'
@@ -1052,6 +1152,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Tabla de cortar pescado'
     lore:
+      - '<#b5a48a>Tabla de cortar con un bacalao y el'
+      - '<#b5a48a>cuchillo.'
       - '<gray>Clic derecho: mesa de trabajo.'
     resource:
       model: 'furniture/tabla_pescado'
@@ -1068,6 +1170,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cangrejo'
     lore:
+      - '<#b5a48a>Un cangrejo rojo con las pinzas en alto.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/cangrejo'
@@ -1084,6 +1187,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cubo con pulpo'
     lore:
+      - '<#b5a48a>Un cubo con un pulpo que te mira'
+      - '<#b5a48a>fijamente.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/cubo_pulpo'
@@ -1100,6 +1205,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caña apoyada'
     lore:
+      - '<#b5a48a>Una caña de pescar apoyada en una roca,'
+      - '<#b5a48a>esperando que piquen.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/cana_apoyada'

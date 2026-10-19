@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.5.0.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.5.1.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -2762,6 +2762,52 @@ pequeñas se ven sin girar.
 | `/arkcontent showcase` de los cuatro, con un cliente Java 1.21.8 real | las 305 colocadas (87 + 66 + 69 + 83), todas con su modelo y su textura |
 | Bedrock, mismo contenido | 1141 portadores; lo de antes, igual; de lo nuevo, 10 fuera (arriba) |
 | Tests | 557, todos pasan |
+
+#### 3.5.1: las 305 piezas, rehechas y cada una con su descripción
+
+Las mismas piezas, con los mismos nombres, tamaños y lo que hacen al clic; cambian su forma y su
+texto:
+
+- **La cosecha tiene forma.** Manzanas y peras redondas con su rabito, tomates con sus hojas,
+  zanahorias que se afinan hacia la punta con sus hojas verdes, patatas alargadas, cebollas y ajos con
+  su cuello, nabos blancos y morados, remolachas con su raíz, calabazas con gajos, sandías rayadas a lo
+  largo, coles y lechugas en capas de hojas, mazorcas con su camisa, haces de trigo y avena atados por
+  la cintura, racimos de uva. Llenan las cajas, cestas, carretillas, el barril de manzanas, la mesa del
+  granjero, los bancales, las macetas y la tina de las uvas.
+- **Los peces son peces.** Cabeza, cuerpo que se estrecha, cola en horquilla, aleta en el lomo y en la
+  tripa, y ojo; tumbados de lado en cajas, barriles y cestas, colgados de la cola en los secaderos y el
+  ahumadero, de perfil en los trofeos, la red y las peceras. El pez globo es redondo y con púas.
+- **Los montones de mineral** mezclan terrones del mineral, mineral aún en su roca y piedra suelta, de
+  tamaños distintos (los grandes abajo); en los de diamante, esmeralda, amatista, lapislázuli, piedra
+  roja y cuarzo asoman cristales. Igual en vagonetas, cestas, cajas, carretillas y el cuenco de pepitas.
+- **Cestas de mimbre de verdad**: tejidas, más estrechas en el pie, con el borde trenzado y el asa en
+  arco (las de mineral, de pescado, de la cosecha y la de huevos).
+- **Las más flojas, rehechas:** quesos con corteza y la cuña cortada, regadera de cobre con su pico y
+  su alcachofa, fuelles en cuña con los pliegues de cuero, lingotes con forma de lingote, geodas
+  redondas forradas de cristales, rocas redondeadas con musgo, estalagmitas redondas, pala con su mango
+  en D, gorro de minero con su vela, cota de malla con mangas, yelmo con cuernos curvos, herraduras en U,
+  nasas de listones y red donde se ve lo que hay dentro, conchas con forma de vieira y una caracola,
+  estrella de mar de cinco brazos, rollos de cuerda con sus vueltas, montón de redes con sus corchos,
+  cangrejo con pinzas, ristras con las cabezas trenzadas, ramos de hierbas, bandeja de semillas con
+  brotes, huevos ovalados.
+- **Cada pieza tiene su descripción**, distinta de las demás, encima de la línea que dice lo que hace
+  el clic (por ejemplo, el secadero de bacalao: «Bacalaos colgados por la cola, secándose al viento del
+  puerto.»).
+
+Todo sigue dentro de su bloque, así que en Bedrock no cambia nada: los mismos portadores que en 3.5.
+
+**Al actualizar** se renuevan solos los archivos de estas cuatro carpetas que no hayas tocado (350: los
+cuatro `furniture.yml` y los modelos y texturas que cambiaron). Lo que hayas editado se queda como está;
+si quieres la versión nueva de un archivo que editaste, bórralo y reinicia.
+
+| Prueba (3.5.1), Paper 1.21.8 | Resultado |
+|---|---|
+| Arranque sobre un servidor con los archivos de 3.5.0 sin tocar | `Updated 350 example file(s) you had not changed to this version's` |
+| Carga | 1980 ítems, sin problemas; las 305 piezas con su descripción, todas distintas |
+| `/arkcontent showcase` de los cuatro, con un cliente Java 1.21.8 real | 83 + 69 + 66 + 87 colocadas, con sus formas nuevas y sus texturas |
+| La descripción en el juego | el secadero de bacalao muestra su nombre, la descripción en dos líneas y «Clic derecho: te da fuerzas.» |
+| Bedrock, mismo contenido | 1141 portadores, igual que 3.5; fuera, las mismas 11 (las 10 de dos bloques de arriba y el pozo de los deseos) |
+| Tests | 558, todos pasan |
 
 ## 5. Integraciones
 

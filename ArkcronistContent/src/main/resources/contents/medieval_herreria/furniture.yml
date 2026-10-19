@@ -11,6 +11,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Yunque de hierro'
     lore:
+      - '<#b5a48a>Yunque de hierro sobre un tocón de roble.'
+      - '<#b5a48a>Aquí nace cada herradura del pueblo.'
       - '<gray>Clic derecho: yunque (reparar y renombrar).'
     resource:
       model: 'furniture/yunque_hierro'
@@ -27,6 +29,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Yunque de acero'
     lore:
+      - '<#b5a48a>Yunque de acero pulido que suena como una'
+      - '<#b5a48a>campana.'
       - '<gray>Clic derecho: yunque (reparar y renombrar).'
     resource:
       model: 'furniture/yunque_acero'
@@ -43,6 +47,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Yunque de bronce'
     lore:
+      - '<#b5a48a>Yunque de bronce, viejo y fiable.'
       - '<gray>Clic derecho: yunque (reparar y renombrar).'
     resource:
       model: 'furniture/yunque_bronce'
@@ -59,6 +64,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Yunque de hierro oxidado'
     lore:
+      - '<#b5a48a>Un yunque oxidado que ya forjó para tres'
+      - '<#b5a48a>generaciones de herreros.'
       - '<gray>Clic derecho: yunque (reparar y renombrar).'
     resource:
       model: 'furniture/yunque_oxido'
@@ -75,6 +82,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Yunque sobre piedra'
     lore:
+      - '<#b5a48a>Yunque de hierro sobre un bloque de piedra'
+      - '<#b5a48a>tallada.'
       - '<gray>Clic derecho: yunque (reparar y renombrar).'
     resource:
       model: 'furniture/yunque_piedra'
@@ -91,6 +100,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Yunque pequeño'
     lore:
+      - '<#b5a48a>Un yunque pequeño para trabajos finos:'
+      - '<#b5a48a>anillos, clavos y hebillas.'
       - '<gray>Clic derecho: yunque (reparar y renombrar).'
     resource:
       model: 'furniture/yunque_suelto'
@@ -107,6 +118,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Yunque del maestro herrero'
     lore:
+      - '<#b5a48a>El gran yunque del maestro herrero, con'
+      - '<#b5a48a>una pieza al rojo encima.'
       - '<gray>Clic derecho: yunque (reparar y renombrar).'
     resource:
       model: 'furniture/yunque_maestro'
@@ -127,6 +140,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Pila de temple'
     lore:
+      - '<#b5a48a>Pila de agua para templar el acero recién'
+      - '<#b5a48a>forjado.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/pila_temple'
@@ -145,6 +160,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Pila de temple en aceite'
     lore:
+      - '<#b5a48a>Pila de aceite para templar las hojas más'
+      - '<#b5a48a>finas.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/pila_temple_aceite'
@@ -163,6 +180,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Fuelle'
     lore:
+      - '<#b5a48a>Fuelle de cuero y madera para avivar las'
+      - '<#b5a48a>brasas.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/fuelle'
@@ -181,6 +200,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Fuelle grande'
     lore:
+      - '<#b5a48a>Fuelle grande sobre su banco, se acciona'
+      - '<#b5a48a>tirando de la cuerda.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/fuelle_grande'
@@ -202,6 +223,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Carbonera'
     lore:
+      - '<#b5a48a>La carbonera de la fragua, con su pala'
+      - '<#b5a48a>dentro.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/carbonera'
@@ -215,6 +238,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Saco de carbón'
     lore:
+      - '<#b5a48a>Un saco de arpillera lleno de carbón.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/saco_carbon'
@@ -228,6 +252,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cubo de carbón'
     lore:
+      - '<#b5a48a>Cubo de hierro con carbón para echar al'
+      - '<#b5a48a>fuego.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/cubo_carbon'
@@ -241,6 +267,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Lingotes de hierro'
     lore:
+      - '<#b5a48a>Lingotes de hierro apilados en cruz sobre'
+      - '<#b5a48a>un palé.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/lingotes_hierro'
@@ -257,6 +285,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Lingotes de oro'
     lore:
+      - '<#b5a48a>Lingotes de oro: el tesoro de cualquier'
+      - '<#b5a48a>gremio.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/lingotes_oro'
@@ -273,6 +303,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Lingotes de cobre'
     lore:
+      - '<#b5a48a>Lingotes de cobre rojizo recién salidos'
+      - '<#b5a48a>del molde.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/lingotes_cobre'
@@ -289,6 +321,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Lingotes de bronce'
     lore:
+      - '<#b5a48a>Lingotes de bronce para campanas y'
+      - '<#b5a48a>estatuas.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/lingotes_bronce'
@@ -305,6 +339,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Lingotes de acero'
     lore:
+      - '<#b5a48a>Lingotes de acero listos para espadas.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/lingotes_acero'
@@ -321,6 +356,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Lingotes de plata'
     lore:
+      - '<#b5a48a>Lingotes de plata para la orfebrería.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/lingotes_plata'
@@ -337,6 +373,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Lingotes de estaño'
     lore:
+      - '<#b5a48a>Lingotes de estaño para alear con el'
+      - '<#b5a48a>cobre.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/lingotes_estano'
@@ -353,6 +391,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de lingotes de hierro'
     lore:
+      - '<#b5a48a>Caja de madera con lingotes de hierro.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_lingotes_hierro'
@@ -366,6 +405,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de lingotes de oro'
     lore:
+      - '<#b5a48a>Caja de lingotes de oro, demasiado pesada'
+      - '<#b5a48a>para un hombre solo.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_lingotes_oro'
@@ -379,6 +420,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de lingotes de cobre'
     lore:
+      - '<#b5a48a>Caja de lingotes de cobre para el'
+      - '<#b5a48a>calderero.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_lingotes_cobre'
@@ -392,6 +435,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de lingotes de plata'
     lore:
+      - '<#b5a48a>Caja de lingotes de plata destinada a la'
+      - '<#b5a48a>ceca.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_lingotes_plata'
@@ -405,6 +450,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Molde de lingotes de hierro'
     lore:
+      - '<#b5a48a>Molde de lingotes con hierro todavía al'
+      - '<#b5a48a>rojo.'
       - '<gray>Clic derecho para mirarlo de cerca.'
       - '<gray>Da algo de luz.'
     resource:
@@ -427,6 +474,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Molde de lingotes de oro'
     lore:
+      - '<#b5a48a>Molde con oro fundido que se va enfriando.'
       - '<gray>Clic derecho para mirarlo de cerca.'
       - '<gray>Da algo de luz.'
     resource:
@@ -449,6 +497,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Molde de lingotes de cobre'
     lore:
+      - '<#b5a48a>Molde de lingotes con cobre recién'
+      - '<#b5a48a>vertido.'
       - '<gray>Clic derecho para mirarlo de cerca.'
       - '<gray>Da algo de luz.'
     resource:
@@ -471,6 +521,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Crisol de hierro'
     lore:
+      - '<#b5a48a>Crisol de barro sobre las brasas, con'
+      - '<#b5a48a>hierro fundido.'
       - '<gray>Clic derecho con mineral en la mano: lo fundes.'
     resource:
       model: 'furniture/crisol_hierro'
@@ -492,6 +544,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Crisol de oro'
     lore:
+      - '<#b5a48a>Crisol con oro líquido, brillante como el'
+      - '<#b5a48a>sol.'
       - '<gray>Clic derecho con mineral en la mano: lo fundes.'
     resource:
       model: 'furniture/crisol_oro'
@@ -513,6 +567,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Pared de martillos'
     lore:
+      - '<#b5a48a>Martillos de todos los tamaños colgados en'
+      - '<#b5a48a>la pared de la fragua.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/pared_martillos'
@@ -529,6 +585,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Pared de tenazas y cinceles'
     lore:
+      - '<#b5a48a>Tenazas y cinceles en orden, cada uno en'
+      - '<#b5a48a>su gancho.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/pared_tenazas'
@@ -545,6 +603,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Barril de espadas'
     lore:
+      - '<#b5a48a>Un barril lleno de espadas recién'
+      - '<#b5a48a>forjadas.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/barril_espadas'
@@ -561,6 +621,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Barril de lanzas'
     lore:
+      - '<#b5a48a>Un barril de lanzas para la guardia de la'
+      - '<#b5a48a>ciudad.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/barril_lanzas'
@@ -577,6 +639,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Barril de hachas'
     lore:
+      - '<#b5a48a>Un barril de hachas de guerra.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/barril_hachas'
@@ -593,6 +656,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Escudo del león'
     lore:
+      - '<#b5a48a>Escudo rojo con el león dorado de la casa'
+      - '<#b5a48a>real.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/escudo_rojo'
@@ -611,6 +676,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Escudo de la flor de lis'
     lore:
+      - '<#b5a48a>Escudo azul con la flor de lis.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/escudo_azul'
@@ -629,6 +695,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Escudo de la torre'
     lore:
+      - '<#b5a48a>Escudo verde con la torre blanca del'
+      - '<#b5a48a>castillo.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/escudo_verde'
@@ -647,6 +715,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Escudo del águila'
     lore:
+      - '<#b5a48a>Escudo dorado con el águila negra.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/escudo_oro'
@@ -665,6 +734,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Escudo de la cruz'
     lore:
+      - '<#b5a48a>Escudo blanco con la cruz roja de los'
+      - '<#b5a48a>cruzados.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/escudo_blanco'
@@ -683,6 +754,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Yelmo de caballero en su soporte'
     lore:
+      - '<#b5a48a>Yelmo cerrado de caballero con su penacho'
+      - '<#b5a48a>rojo.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/yelmo_caballero'
@@ -699,6 +772,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Yelmo con cuernos en su soporte'
     lore:
+      - '<#b5a48a>Yelmo de hierro con cuernos de hueso,'
+      - '<#b5a48a>traído de tierras del norte.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/yelmo_vikingo'
@@ -715,6 +790,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Yelmo dorado en su soporte'
     lore:
+      - '<#b5a48a>Yelmo dorado con un rubí en la frente,'
+      - '<#b5a48a>digno de un príncipe.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/yelmo_oro'
@@ -731,6 +808,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Yelmo de hierro en su soporte'
     lore:
+      - '<#b5a48a>Yelmo sencillo de hierro con nasal.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/yelmo_hierro'
@@ -747,6 +825,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Mesa del herrero'
     lore:
+      - '<#b5a48a>La mesa del herrero con martillo, planos y'
+      - '<#b5a48a>lingotes.'
       - '<gray>Clic derecho: mesa de herrería.'
     resource:
       model: 'furniture/mesa_herrero'
@@ -766,6 +846,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Mesa de cadenas'
     lore:
+      - '<#b5a48a>Mesa donde se remachan cadenas y cota de'
+      - '<#b5a48a>malla.'
       - '<gray>Clic derecho: mesa de trabajo.'
     resource:
       model: 'furniture/mesa_cadenas'
@@ -785,6 +867,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Muela de afilar'
     lore:
+      - '<#b5a48a>Muela de piedra para afilar hojas y'
+      - '<#b5a48a>herramientas.'
       - '<gray>Clic derecho: piedra de afilar.'
     resource:
       model: 'furniture/muela'
@@ -801,6 +885,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Muela grande con pila'
     lore:
+      - '<#b5a48a>Muela grande con su pila de agua para no'
+      - '<#b5a48a>quemar el filo.'
       - '<gray>Clic derecho: piedra de afilar.'
     resource:
       model: 'furniture/muela_grande'
@@ -817,6 +903,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Afiladora de pedal'
     lore:
+      - '<#b5a48a>Afiladora que gira al pisar el pedal.'
       - '<gray>Clic derecho: piedra de afilar.'
     resource:
       model: 'furniture/afiladora_pedal'
@@ -833,6 +920,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Soporte de herraduras'
     lore:
+      - '<#b5a48a>Soporte con herraduras listas para el'
+      - '<#b5a48a>establo.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/soporte_herraduras'
@@ -849,6 +938,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cubo de herraduras'
     lore:
+      - '<#b5a48a>Un cubo lleno de herraduras nuevas.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/cubo_herraduras'
@@ -867,6 +957,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de clavos'
     lore:
+      - '<#b5a48a>Caja de clavos de herrar, cuadrados y bien'
+      - '<#b5a48a>afilados.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_clavos'
@@ -880,6 +972,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cadenas colgantes'
     lore:
+      - '<#b5a48a>Cadenas de hierro colgando de una viga.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/cadenas_colgantes'
@@ -899,6 +992,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Espada en la piedra'
     lore:
+      - '<#b5a48a>Una espada clavada en la roca. Dicen que'
+      - '<#b5a48a>solo el elegido podrá sacarla.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/espada_en_piedra'
@@ -920,6 +1015,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Soporte de lanzas'
     lore:
+      - '<#b5a48a>Un largo soporte con seis lanzas en fila.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/soporte_lanzas'
@@ -936,6 +1032,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Soporte de arcos'
     lore:
+      - '<#b5a48a>Soporte con dos arcos largos y un carcaj'
+      - '<#b5a48a>de flechas.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/soporte_arcos'
@@ -952,6 +1050,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Barril de flechas'
     lore:
+      - '<#b5a48a>Barril de flechas con plumas blancas.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/barril_flechas'
@@ -965,6 +1064,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Mesa del armero'
     lore:
+      - '<#b5a48a>La mesa del armero, con yelmos, cota de'
+      - '<#b5a48a>malla y cuero.'
       - '<gray>Clic derecho: mesa de herrería.'
     resource:
       model: 'furniture/mesa_armero'
@@ -984,6 +1085,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Horno de fundición'
     lore:
+      - '<#b5a48a>Horno de ladrillo donde el mineral se'
+      - '<#b5a48a>convierte en metal.'
       - '<gray>Clic derecho con mineral en la mano: lo fundes.'
     resource:
       model: 'furniture/horno_fundicion'
@@ -1008,6 +1111,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cota de malla en su soporte'
     lore:
+      - '<#b5a48a>Una cota de malla en su soporte, cada'
+      - '<#b5a48a>anilla remachada a mano.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/soporte_cota_malla'
@@ -1027,6 +1132,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cubo de agua del herrero'
     lore:
+      - '<#b5a48a>Cubo de agua fresca para el herrero'
+      - '<#b5a48a>sediento.'
       - '<gray>Clic derecho: bebe, quita la sed.'
     resource:
       model: 'furniture/cubo_agua_herrero'
@@ -1044,6 +1151,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Carro del herrero'
     lore:
+      - '<#b5a48a>El carro del herrero ambulante con'
+      - '<#b5a48a>lingotes, carbón y cuero.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/carro_herrero'
@@ -1060,6 +1169,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cartel de la herradura'
     lore:
+      - '<#b5a48a>El cartel de la herrería con la herradura'
+      - '<#b5a48a>pintada.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/cartel_herradura'
@@ -1079,6 +1190,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de armaduras'
     lore:
+      - '<#b5a48a>Caja de armaduras: yelmos, cota de malla y'
+      - '<#b5a48a>piezas de acero.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_armaduras'
@@ -1092,6 +1205,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Banco de afilar'
     lore:
+      - '<#b5a48a>Banco con piedra de afilar y agua para'
+      - '<#b5a48a>mojarla.'
       - '<gray>Clic derecho: piedra de afilar.'
     resource:
       model: 'furniture/banco_afilar'
@@ -1108,6 +1223,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Hojas sin forjar'
     lore:
+      - '<#b5a48a>Hojas de espada en bruto esperando el'
+      - '<#b5a48a>martillo.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/hojas_sin_forjar'

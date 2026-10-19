@@ -11,6 +11,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de zanahorias'
     lore:
+      - '<#b5a48a>Caja de zanahorias recién arrancadas, con'
+      - '<#b5a48a>sus hojas.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_zanahoria'
@@ -24,6 +26,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de patatas'
     lore:
+      - '<#b5a48a>Caja de patatas con la tierra aún pegada.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_patata'
@@ -37,6 +40,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de remolachas'
     lore:
+      - '<#b5a48a>Caja de remolachas rojas con sus tallos.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_remolacha'
@@ -50,6 +54,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de manzanas'
     lore:
+      - '<#b5a48a>Caja de manzanas rojas del huerto.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_manzana'
@@ -63,6 +68,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de calabazas'
     lore:
+      - '<#b5a48a>Caja de calabazas para el otoño.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_calabaza'
@@ -76,6 +82,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de sandías'
     lore:
+      - '<#b5a48a>Caja de sandías rayadas, dulces por'
+      - '<#b5a48a>dentro.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_sandia'
@@ -89,6 +97,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de trigo'
     lore:
+      - '<#b5a48a>Caja con haces de trigo atados.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_trigo'
@@ -102,6 +111,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de coles'
     lore:
+      - '<#b5a48a>Caja de coles verdes y prietas.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_col'
@@ -115,6 +125,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de cebollas'
     lore:
+      - '<#b5a48a>Caja de cebollas doradas.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_cebolla'
@@ -128,6 +139,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de nabos'
     lore:
+      - '<#b5a48a>Caja de nabos blancos y morados.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_nabo'
@@ -141,6 +153,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de maíz'
     lore:
+      - '<#b5a48a>Caja de mazorcas de maíz con su camisa.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_maiz'
@@ -154,6 +167,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de tomates'
     lore:
+      - '<#b5a48a>Caja de tomates maduros.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_tomate'
@@ -167,6 +181,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de peras'
     lore:
+      - '<#b5a48a>Caja de peras jugosas.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_pera'
@@ -180,6 +195,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de lechugas'
     lore:
+      - '<#b5a48a>Caja de lechugas frescas.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_lechuga'
@@ -193,6 +209,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cesta de zanahorias'
     lore:
+      - '<#b5a48a>Cesta de mimbre con zanahorias.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/cesta_zanahoria'
@@ -211,6 +228,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cesta de patatas'
     lore:
+      - '<#b5a48a>Cesta de mimbre con patatas.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/cesta_patata'
@@ -229,6 +247,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cesta de manzanas'
     lore:
+      - '<#b5a48a>Cesta de mimbre con manzanas rojas.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/cesta_manzana'
@@ -247,6 +266,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cesta de manzanas verdes'
     lore:
+      - '<#b5a48a>Cesta de mimbre con manzanas verdes,'
+      - '<#b5a48a>ácidas y crujientes.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/cesta_manzana_verde'
@@ -265,6 +286,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cesta de tomates'
     lore:
+      - '<#b5a48a>Cesta de mimbre con tomates del huerto.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/cesta_tomate'
@@ -283,6 +305,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cesta de cebollas'
     lore:
+      - '<#b5a48a>Cesta de mimbre con cebollas.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/cesta_cebolla'
@@ -301,6 +324,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cesta de fresas'
     lore:
+      - '<#b5a48a>Cesta de mimbre con fresas del bosque.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/cesta_fresa'
@@ -319,6 +343,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cesta de uvas'
     lore:
+      - '<#b5a48a>Cesta de mimbre con racimos de uva.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/cesta_uva'
@@ -337,6 +362,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cesta de pimientos'
     lore:
+      - '<#b5a48a>Cesta de mimbre con pimientos rojos y'
+      - '<#b5a48a>verdes.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/cesta_pimiento'
@@ -355,6 +382,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cesta de ajos'
     lore:
+      - '<#b5a48a>Cesta de mimbre con cabezas de ajo.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/cesta_ajo'
@@ -373,6 +401,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Saco de harina'
     lore:
+      - '<#b5a48a>Saco de harina recién molida.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/saco_harina'
@@ -386,6 +415,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Saco de trigo'
     lore:
+      - '<#b5a48a>Saco de grano de trigo.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/saco_trigo'
@@ -399,6 +429,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Saco de semillas'
     lore:
+      - '<#b5a48a>Saco de semillas para la siembra.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/saco_semillas'
@@ -412,6 +443,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Saco de patatas'
     lore:
+      - '<#b5a48a>Saco de patatas para el invierno.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/saco_patata'
@@ -425,6 +457,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Saco de maíz'
     lore:
+      - '<#b5a48a>Saco de granos de maíz.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/saco_maiz'
@@ -438,6 +471,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Saco de avena'
     lore:
+      - '<#b5a48a>Saco de avena para los caballos.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/saco_avena'
@@ -451,6 +485,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Saco cerrado'
     lore:
+      - '<#b5a48a>Saco atado con la espiga de trigo pintada.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/saco_cerrado'
@@ -464,6 +499,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Fardo de heno pequeño'
     lore:
+      - '<#b5a48a>Un fardo de heno atado con cuerda.'
       - '<gray>Clic derecho para sentarte.'
     resource:
       model: 'furniture/fardo_pequeno'
@@ -476,6 +512,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Fardos de heno apilados'
     lore:
+      - '<#b5a48a>Fardos de heno apilados, buenos para'
+      - '<#b5a48a>sentarse.'
       - '<gray>Clic derecho para sentarte.'
     resource:
       model: 'furniture/fardo_apilado'
@@ -491,6 +529,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Rulo de heno'
     lore:
+      - '<#b5a48a>Un rulo de heno enrollado.'
       - '<gray>Clic derecho para sentarte.'
     resource:
       model: 'furniture/fardo_redondo'
@@ -503,6 +542,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Carretilla vacía'
     lore:
+      - '<#b5a48a>Una carretilla de madera vacía, lista para'
+      - '<#b5a48a>trabajar.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/carretilla_vacia'
@@ -516,6 +557,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Carretilla de heno'
     lore:
+      - '<#b5a48a>Carretilla cargada de heno.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/carretilla_hay'
@@ -529,6 +571,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Carretilla de calabazas'
     lore:
+      - '<#b5a48a>Carretilla llena de calabazas.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/carretilla_calabaza'
@@ -542,6 +585,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Carretilla de coles'
     lore:
+      - '<#b5a48a>Carretilla llena de coles.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/carretilla_col'
@@ -555,6 +599,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Carretilla de patatas'
     lore:
+      - '<#b5a48a>Carretilla de patatas recién sacadas.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/carretilla_patata'
@@ -568,6 +613,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Espantapájaros'
     lore:
+      - '<#b5a48a>Espantapájaros con camisa roja y sombrero'
+      - '<#b5a48a>de paja.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/espantapajaros_rojo'
@@ -589,6 +636,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Espantapájaros de camisa azul'
     lore:
+      - '<#b5a48a>Espantapájaros con camisa azul.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/espantapajaros_azul'
@@ -610,6 +658,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Espantapájaros de saco'
     lore:
+      - '<#b5a48a>Espantapájaros vestido de arpillera.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/espantapajaros_paja'
@@ -631,6 +680,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Arado'
     lore:
+      - '<#b5a48a>Arado de madera con reja de hierro.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/arado'
@@ -650,6 +700,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Comedero de animales'
     lore:
+      - '<#b5a48a>Comedero largo con grano y heno para los'
+      - '<#b5a48a>animales.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/comedero'
@@ -666,6 +718,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Lechera'
     lore:
+      - '<#b5a48a>Lechera de estaño llena de leche fresca.'
       - '<gray>Clic derecho: bebe, quita la sed.'
     resource:
       model: 'furniture/lechera'
@@ -685,6 +738,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Mantequera'
     lore:
+      - '<#b5a48a>Mantequera de madera con su batidor.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/mantequera'
@@ -704,6 +758,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cesta de huevos'
     lore:
+      - '<#b5a48a>Cesta de mimbre con huevos sobre paja.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/cesta_huevos'
@@ -717,6 +772,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Nido con huevos'
     lore:
+      - '<#b5a48a>Un nido de paja con tres huevos todavía'
+      - '<#b5a48a>calientes.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/nido_huevos'
@@ -733,6 +790,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Gallinero'
     lore:
+      - '<#b5a48a>Gallinero de madera con tejado de paja y'
+      - '<#b5a48a>una gallina asomando.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/gallinero'
@@ -752,6 +811,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Colmena de paja'
     lore:
+      - '<#b5a48a>Colmena de paja trenzada en el suelo.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/colmena_suelo'
@@ -772,6 +832,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Colmena de paja en soporte'
     lore:
+      - '<#b5a48a>Colmena de paja sobre su soporte de'
+      - '<#b5a48a>madera.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/colmena_soporte'
@@ -795,6 +857,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Colmena con panal'
     lore:
+      - '<#b5a48a>Colmena con un panal de miel al lado.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/colmena_miel'
@@ -815,6 +878,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Tarros de miel'
     lore:
+      - '<#b5a48a>Tarros de miel tapados con tela.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/tarros_miel'
@@ -833,6 +897,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Rueda de queso'
     lore:
+      - '<#b5a48a>Rueda de queso curado con una cuña cortada'
+      - '<#b5a48a>y el cuchillo.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/quesos_1'
@@ -851,6 +917,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Dos ruedas de queso'
     lore:
+      - '<#b5a48a>Dos ruedas de queso y un quesito pequeño.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/quesos_2'
@@ -869,6 +936,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Torre de quesos'
     lore:
+      - '<#b5a48a>Torre de tres quesos de mayor a menor.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/quesos_3'
@@ -887,6 +955,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Quesos apilados'
     lore:
+      - '<#b5a48a>Quesos apilados para la feria.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/quesos_4'
@@ -905,6 +974,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Montón de calabazas'
     lore:
+      - '<#b5a48a>Montón de calabazas de la cosecha de'
+      - '<#b5a48a>otoño.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/monton_calabazas'
@@ -921,6 +992,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Montón de sandías'
     lore:
+      - '<#b5a48a>Montón de sandías rayadas.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/monton_sandias'
@@ -939,6 +1011,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Soporte de aperos'
     lore:
+      - '<#b5a48a>Soporte con rastrillo, azada y pala.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/soporte_aperos'
@@ -955,6 +1028,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Regadera'
     lore:
+      - '<#b5a48a>Regadera de cobre con su alcachofa para'
+      - '<#b5a48a>regar el huerto.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/regadera'
@@ -973,6 +1048,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Horca en el heno'
     lore:
+      - '<#b5a48a>Una horca clavada en un montón de heno.'
       - '<gray>Clic derecho para sentarte.'
     resource:
       model: 'furniture/horca_heno'
@@ -988,6 +1064,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Soporte de guadañas'
     lore:
+      - '<#b5a48a>Soporte con dos guadañas para la siega.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/soporte_guadanas'
@@ -1004,6 +1081,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Silo de grano'
     lore:
+      - '<#b5a48a>Silo de ladrillo para guardar el grano.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/silo_grano'
@@ -1020,6 +1098,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Molinillo de mano'
     lore:
+      - '<#b5a48a>Molinillo de piedra para moler el grano a'
+      - '<#b5a48a>mano.'
       - '<gray>Clic derecho: muele (cortapiedras).'
     resource:
       model: 'furniture/molinillo'
@@ -1036,6 +1116,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Ristra de ajos'
     lore:
+      - '<#b5a48a>Ristras de ajos colgadas de una viga.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/ristra_ajo'
@@ -1055,6 +1136,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Ristra de cebollas'
     lore:
+      - '<#b5a48a>Ristras de cebollas trenzadas.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/ristra_cebolla'
@@ -1074,6 +1156,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Ristra de pimientos'
     lore:
+      - '<#b5a48a>Ristras de pimientos rojos y verdes'
+      - '<#b5a48a>secándose.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/ristra_pimiento'
@@ -1093,6 +1177,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Secadero de hierbas'
     lore:
+      - '<#b5a48a>Ramos de lavanda, romero y tomillo'
+      - '<#b5a48a>colgados a secar.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/secadero_hierbas'
@@ -1114,6 +1200,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Maceta de flores'
     lore:
+      - '<#b5a48a>Maceta de barro con flores de colores.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/maceta_flores'
@@ -1130,6 +1217,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Maceta con tomatera'
     lore:
+      - '<#b5a48a>Maceta con una tomatera cargada de'
+      - '<#b5a48a>tomates.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/maceta_tomatera'
@@ -1146,6 +1235,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Maceta de hierbas'
     lore:
+      - '<#b5a48a>Maceta de hierbas aromáticas para la'
+      - '<#b5a48a>cocina.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/maceta_hierbas'
@@ -1162,6 +1253,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Barril de manzanas'
     lore:
+      - '<#b5a48a>Barril lleno de manzanas rojas.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/barril_manzanas'
@@ -1175,6 +1267,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Prensa de sidra'
     lore:
+      - '<#b5a48a>Prensa de madera para hacer sidra con las'
+      - '<#b5a48a>manzanas.'
       - '<gray>Clic derecho: bebe, quita la sed.'
     resource:
       model: 'furniture/prensa_sidra'
@@ -1197,6 +1291,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Mesa del granjero'
     lore:
+      - '<#b5a48a>La mesa del granjero, con pan, verduras,'
+      - '<#b5a48a>queso y leche.'
       - '<gray>Clic derecho: mesa de trabajo.'
     resource:
       model: 'furniture/mesa_granjero'
@@ -1216,6 +1312,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Cubo de leche'
     lore:
+      - '<#b5a48a>Cubo de leche recién ordeñada.'
       - '<gray>Clic derecho: bebe, quita la sed.'
     resource:
       model: 'furniture/cubo_leche'
@@ -1233,6 +1330,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Bancal de zanahorias'
     lore:
+      - '<#b5a48a>Bancal de madera con zanahorias creciendo.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/bancal_zanahoria'
@@ -1254,6 +1352,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Bancal de coles'
     lore:
+      - '<#b5a48a>Bancal de madera con coles.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/bancal_col'
@@ -1275,6 +1374,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Bancal de trigo'
     lore:
+      - '<#b5a48a>Bancal de madera con trigo espigado.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/bancal_trigo'
@@ -1296,6 +1396,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Bandeja de semillas'
     lore:
+      - '<#b5a48a>Bandeja con semillas de trigo, avena y'
+      - '<#b5a48a>brotes nuevos.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/bandeja_semillas'
@@ -1309,6 +1411,7 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Caja de uvas'
     lore:
+      - '<#b5a48a>Caja de racimos de uva para el lagar.'
       - '<gray>Clic derecho para abrirlo.'
     resource:
       model: 'furniture/caja_uvas'
@@ -1322,6 +1425,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Tina de pisar uvas'
     lore:
+      - '<#b5a48a>Tina de madera para pisar las uvas y hacer'
+      - '<#b5a48a>vino.'
       - '<gray>Clic derecho: te da fuerzas.'
     resource:
       model: 'furniture/pisadera_uvas'
@@ -1340,6 +1445,8 @@ items:
     type: 'custom_furniture'
     display-name: '<#c8a165>Valla con heno'
     lore:
+      - '<#b5a48a>Un tramo de valla del corral con heno a'
+      - '<#b5a48a>los pies.'
       - '<gray>Clic derecho para mirarlo de cerca.'
     resource:
       model: 'furniture/valla_heno'
