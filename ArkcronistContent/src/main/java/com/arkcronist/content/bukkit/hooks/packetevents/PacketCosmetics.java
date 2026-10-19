@@ -16,6 +16,7 @@ import com.github.retrooper.packetevents.protocol.player.User;
 import com.github.retrooper.packetevents.util.Quaternion4f;
 import com.github.retrooper.packetevents.util.Vector3d;
 import com.github.retrooper.packetevents.util.Vector3f;
+import com.github.retrooper.packetevents.wrapper.PacketWrapper;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDestroyEntities;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSetPassengers;
@@ -99,7 +100,7 @@ public final class PacketCosmetics implements CosmeticRenderer {
         }
         viewers.computeIfAbsent(worn.player(), ignored -> ConcurrentHashMap.newKeySet()).add(user);
         Location at = wearer.getLocation();
-        user.sendPacketSilently(new WrapperPlayServerSpawnEntity(worn.displayId(), Optional.of(worn.displayUuid()),
+        send(user, new WrapperPlayServerSpawnEntity(worn.displayId(), Optional.of(worn.displayUuid()),
                 EntityTypes.ITEM_DISPLAY, new Vector3d(at.getX(), at.getY() + wearer.getHeight(), at.getZ()), 0, 0, 0, 0,
                 Optional.empty()));
         List<EntityData<?>> data = new ArrayList<>();
@@ -109,9 +110,9 @@ public final class PacketCosmetics implements CosmeticRenderer {
         if (pose != null) {
             data.addAll(pose(pose));
         }
-        user.sendPacketSilently(new WrapperPlayServerEntityMetadata(worn.displayId(), data));
+        send(user, new WrapperPlayServerEntityMetadata(worn.displayId(), data));
         int[] riders = wearer.getPassengers().stream().mapToInt(Entity::getEntityId).toArray();
-        user.sendPacketSilently(new WrapperPlayServerSetPassengers(wearer.getEntityId(), withDisplay(riders, worn)));
+        send(user, new WrapperPlayServerSetPassengers(wearer.getEntityId(), withDisplay(riders, worn)));
     }
 
     @Override
@@ -121,7 +122,7 @@ public final class PacketCosmetics implements CosmeticRenderer {
         if (user == null || seeing == null || !seeing.remove(user)) {
             return;
         }
-        user.sendPacketSilently(new WrapperPlayServerDestroyEntities(worn.displayId()));
+        send(user, new WrapperPlayServerDestroyEntities(worn.displayId()));
     }
 
     /** Straight from the physics thread: one small packet per viewer. */
@@ -135,7 +136,9 @@ public final class PacketCosmetics implements CosmeticRenderer {
         data.add(0, new EntityData<>(INTERPOLATION_DELAY, EntityDataTypes.INT, 0));
         WrapperPlayServerEntityMetadata packet = new WrapperPlayServerEntityMetadata(worn.displayId(), data);
         for (User user : seeing) {
-            user.sendPacketSilently(packet);
+            if (!send(user, packet)) {
+                seeing.remove(user);
+            }
         }
     }
 
@@ -150,7 +153,7 @@ public final class PacketCosmetics implements CosmeticRenderer {
         Set<User> seeing = viewers.remove(worn.player());
         if (seeing != null) {
             for (User user : seeing) {
-                user.sendPacketSilently(new WrapperPlayServerDestroyEntities(worn.displayId()));
+                send(user, new WrapperPlayServerDestroyEntities(worn.displayId()));
             }
         }
     }
@@ -178,6 +181,20 @@ public final class PacketCosmetics implements CosmeticRenderer {
         if (Arrays.stream(riders).noneMatch(id -> id == worn.displayId())) {
             packet.setPassengers(withDisplay(riders, worn));
             event.markForReEncode(true);
+        }
+    }
+
+    /**
+     * 3.5.2: sends one packet, or reports that it could not. A player whose connection is closing - as
+     * when the server stops, or they leave mid-tick - no longer has PacketEvents in their channel, and
+     * PacketEvents throws rather than dropping the packet; there is nothing left to show them anyway.
+     */
+    private static boolean send(User user, PacketWrapper<?> packet) {
+        try {
+            user.sendPacketSilently(packet);
+            return true;
+        } catch (RuntimeException gone) {
+            return false;
         }
     }
 

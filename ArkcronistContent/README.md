@@ -66,7 +66,7 @@ pero solo se ha verificado contra 1.21.8.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.5.1.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.5.2.jar
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ```
@@ -2808,6 +2808,30 @@ si quieres la versión nueva de un archivo que editaste, bórralo y reinicia.
 | La descripción en el juego | el secadero de bacalao muestra su nombre, la descripción en dos líneas y «Clic derecho: te da fuerzas.» |
 | Bedrock, mismo contenido | 1141 portadores, igual que 3.5; fuera, las mismas 11 (las 10 de dos bloques de arriba y el pozo de los deseos) |
 | Tests | 558, todos pasan |
+
+#### 3.5.2: el apagado ya no se corta
+
+Al apagar el servidor con PacketEvents, quitar la mochila de la espalda a un jugador cuya conexión ya
+se estaba cerrando hacía saltar `Error occurred while disabling ArkcronistContent`
+(`NullPointerException ... ChannelPipeline.context(String) is null`, desde `PacketCosmetics.takeOff`).
+Ese error cortaba el resto del apagado: no se cerraba la base de datos (lo que quedaba por guardar se
+perdía) ni el servidor web del pack.
+
+- Cada paso del apagado va por separado: si uno falla, se avisa en la consola y los demás siguen,
+  sobre todo el cierre de la base de datos y el del servidor web.
+- Un paquete que no se puede mandar a un jugador que se está desconectando se descarta sin error. Ese
+  jugador deja de contar como alguien que ve la mochila, así que tampoco se repite el error en cada paso
+  de la física ni se quedan quietas las mochilas de los demás.
+- Lo mismo para los bloques de los muebles que se mandan a los jugadores de Bedrock por PacketEvents.
+
+| Prueba (3.5.2), Paper 1.21.8 con PacketEvents 2.13.0 | Resultado |
+|---|---|
+| Apagar con un jugador con la mochila puesta y otro que la vio y se fue | `Disabling ArkcronistContent v3.5.2`, sin errores; el proceso termina |
+| Tests | 558, todos pasan |
+
+El error exacto de la consola no se pudo provocar en el servidor de prueba (allí PacketEvents aún
+tenía su sitio en la conexión al apagar). El arreglo cubre ese caso: el envío que fallaba ahora se
+descarta, y aunque fallara otro paso, el apagado sigue.
 
 ## 5. Integraciones
 

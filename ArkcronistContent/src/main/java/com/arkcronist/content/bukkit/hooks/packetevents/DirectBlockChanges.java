@@ -68,25 +68,31 @@ public final class DirectBlockChanges implements BlockChangeSender {
             sections.computeIfAbsent(section(x >> 4, y >> 4, z >> 4), key -> new ArrayList<>())
                     .add(new WrapperPlayServerMultiBlockChange.EncodedBlock(id, x, y, z));
         }
-        for (List<WrapperPlayServerMultiBlockChange.EncodedBlock> blocks : sections.values()) {
-            WrapperPlayServerMultiBlockChange.EncodedBlock first = blocks.get(0);
-            WrapperPlayServerMultiBlockChange packet = new WrapperPlayServerMultiBlockChange(
-                    new Vector3i(first.getX() >> 4, first.getY() >> 4, first.getZ() >> 4), null,
-                    blocks.toArray(WrapperPlayServerMultiBlockChange.EncodedBlock[]::new));
-            if (start.equals(PacketEvents.ENCODER_NAME)) {
-                PacketEvents.getAPI().getProtocolManager().sendPacketSilently(channel, packet);
-                continue;
+        // 3.5.2: a player whose connection is closing has no handlers left in their channel, and the
+        // write throws; there is no one left to send the blocks to.
+        try {
+            for (List<WrapperPlayServerMultiBlockChange.EncodedBlock> blocks : sections.values()) {
+                WrapperPlayServerMultiBlockChange.EncodedBlock first = blocks.get(0);
+                WrapperPlayServerMultiBlockChange packet = new WrapperPlayServerMultiBlockChange(
+                        new Vector3i(first.getX() >> 4, first.getY() >> 4, first.getZ() >> 4), null,
+                        blocks.toArray(WrapperPlayServerMultiBlockChange.EncodedBlock[]::new));
+                if (start.equals(PacketEvents.ENCODER_NAME)) {
+                    PacketEvents.getAPI().getProtocolManager().sendPacketSilently(channel, packet);
+                    continue;
+                }
+                Object[] buffers;
+                try {
+                    buffers = PacketEvents.getAPI().getProtocolManager().transformWrappers(packet, channel, true);
+                } catch (LinkageError older) {
+                    BlockChangeSender.BUKKIT.send(player, changes);
+                    return;
+                }
+                for (Object buffer : buffers) {
+                    ChannelHelper.writeAndFlushInContext(channel, start, buffer);
+                }
             }
-            Object[] buffers;
-            try {
-                buffers = PacketEvents.getAPI().getProtocolManager().transformWrappers(packet, channel, true);
-            } catch (LinkageError older) {
-                BlockChangeSender.BUKKIT.send(player, changes);
-                return;
-            }
-            for (Object buffer : buffers) {
-                ChannelHelper.writeAndFlushInContext(channel, start, buffer);
-            }
+        } catch (RuntimeException gone) {
+            // nothing to do: they are leaving
         }
     }
 

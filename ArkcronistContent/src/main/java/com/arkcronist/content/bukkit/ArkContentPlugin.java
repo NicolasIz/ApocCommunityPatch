@@ -484,74 +484,90 @@ public final class ArkContentPlugin extends JavaPlugin {
     public void onDisable() {
         // First, while the worker and the database still run: open editors are saved, saves in flight waited for.
         if (editor != null) {
-            editor.shutdown();
+            shutdownStep(() -> editor.shutdown());
         }
         if (sanity != null) {
-            sanity.stop();
+            shutdownStep(() -> sanity.stop());
         }
         if (menus != null) {
-            menus.closeAll();
+            shutdownStep(() -> menus.closeAll());
         }
         // Counted progress is queued for writing ahead of the database closing; open boards shut.
         if (questBoards != null) {
-            questBoards.stop();
-            questBoards.closeAll();
+            shutdownStep(() -> questBoards.stop());
+        }
+        if (questBoards != null) {
+            shutdownStep(() -> questBoards.closeAll());
         }
         if (seats != null) {
-            seats.releaseAll();
+            shutdownStep(() -> seats.releaseAll());
         }
         if (ambience != null) {
-            ambience.shutdown();
+            shutdownStep(() -> ambience.shutdown());
         }
         // Open storage is saved - queued ahead of the database closing below - and closed.
         if (backpacks != null) {
-            backpacks.shutdown();
+            shutdownStep(() -> backpacks.shutdown());
         }
         if (shownContents != null) {
-            shownContents.shutdown();
+            shutdownStep(() -> shownContents.shutdown());
         }
         if (storage != null) {
-            storage.shutdown();
+            shutdownStep(() -> storage.shutdown());
         }
         if (animations != null) {
-            animations.stopAll();
+            shutdownStep(() -> animations.stopAll());
         }
         // Rounds still in memory go onto the guns before the players' inventories are saved.
         if (guns != null) {
-            guns.shutdown();
+            shutdownStep(() -> guns.shutdown());
         }
         if (liquids != null) {
-            liquids.shutdown();
+            shutdownStep(() -> liquids.shutdown());
         }
         // HUD values are queued for writing ahead of the database closing below.
         if (minigames != null) {
-            minigames.stop();
+            shutdownStep(() -> minigames.stop());
         }
         if (cosmetics != null) {
-            cosmetics.stop();
+            shutdownStep(() -> cosmetics.stop());
         }
         if (huds != null) {
-            huds.shutdown();
+            shutdownStep(() -> huds.shutdown());
         }
         if (hooks != null) {
-            hooks.disable();
+            shutdownStep(() -> hooks.disable());
         }
         if (cropTicker != null) {
-            cropTicker.stop();
+            shutdownStep(() -> cropTicker.stop());
         }
         // Progress within a stage lives in memory; queued here, it is written before the database closes.
         if (cropStore != null) {
-            cropStore.worlds().forEach(cropStore::saveWorld);
+            shutdownStep(() -> cropStore.worlds().forEach(cropStore::saveWorld));
         }
         if (pipeline != null) {
-            pipeline.shutdown();
+            shutdownStep(() -> pipeline.shutdown());
         }
         // The one wait on storage: queued writes are flushed rather than lost.
         if (database != null) {
-            database.close();
+            shutdownStep(() -> database.close());
         }
         if (webHost != null) {
-            webHost.stop();
+            shutdownStep(() -> webHost.stop());
+        }
+    }
+
+    /**
+     * 3.5.2: one step of shutting down. One that fails - a cosmetic that cannot be taken off a player
+     * whose connection is already gone - is reported and the rest still run: above all the database
+     * closing, so queued writes are not lost, and the web server stopping, whose port would otherwise
+     * stay held and keep the server's process from ending.
+     */
+    private void shutdownStep(Runnable step) {
+        try {
+            step.run();
+        } catch (RuntimeException | LinkageError failed) {
+            getLogger().log(java.util.logging.Level.SEVERE, "A shutdown step failed; the rest still run.", failed);
         }
     }
 
