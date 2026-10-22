@@ -1,6 +1,6 @@
 # ArkcronistContent
 
-Motor de contenido personalizado para **Paper 1.21.8+**, Java 21: define ítems, bloques, muebles
+Motor de contenido personalizado para **Paper 1.21.4 a 1.21.11**, Java 21: define ítems, bloques, muebles
 (también asientos, muebles con inventario, cofres con animaciones de Blockbench que se unen en cofres
 dobles, camas de dos bloques, muebles de varios bloques, tablones de misiones y muebles interactivos:
 bebidas y calderos con partículas, carteles que ejecutan comandos y una guillotina animada; se incluyen
@@ -57,23 +57,29 @@ ExcellentJobs, HMCCosmetics, zAuctionHouse, eco (EcoItems, EcoArmor, EcoEnchants
 PacketEvents, LuckPerms, Lands o Towny instalados se integra con ellos (sección 5); sin ellos funciona igual —verificado arrancando sin ninguno—. La
 sección 10 compara, plugin por plugin, con la lista de compatibilidad de ItemsAdder.
 
-El plugin se compila contra la API de Paper 1.21.8 y declara esa versión como mínima. El componente
-`item_model` y la carpeta `assets/<namespace>/items/`, en los que se apoya todo, existen desde 1.21.4,
-pero solo se ha verificado contra 1.21.8.
+**Versiones: Paper 1.21.4 a 1.21.11.** Desde 3.6.0 el plugin se compila contra la API de Paper 1.21.4
+(`api-version: '1.21.4'`) y se comprueba que también compila contra la de 1.21.11. Por debajo de 1.21.4
+no puede funcionar: el componente `item_model` y la carpeta `assets/<namespace>/items/`, en los que se
+apoya todo, llegaron en 1.21.4. Se ha probado arrancando un servidor Paper real de cada versión, de
+1.21.4 a 1.21.11, con un jugador que coloca, lleva y rompe el contenido, y con el cliente real de
+Minecraft en los dos extremos (1.21.4 y 1.21.11); ver «3.6.0» en la sección 4. Ni 26.x ni Folia.
 
 ---
 
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.5.4.jar
+./gradlew build          # -> build/libs/ArkcronistContent-3.6.0.jar (contra la API de 1.21.4)
 ./gradlew test           # pruebas del núcleo, sin servidor
+./gradlew test -PpaperVersion=1.21.11-R0.1-SNAPSHOT   # lo mismo contra la API de 1.21.11
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
+./gradlew runServer -PrunServerVersion=1.21.4         # u otra versión de 1.21.4 a 1.21.11
 ```
 
 `paper-api` se descarga del repositorio de Paper. En una máquina que no llega a `repo.papermc.io`,
-deja `paper-api.jar` y `brigadier.jar` (1.3.10) en `libs/` y el build los usa en su lugar; ver
-`libs/README.md`.
+deja `paper-api.jar` y `brigadier.jar` (1.3.10) en `libs/` y compila con
+`./gradlew build -PlocalPaperApi`; ver `libs/README.md`. Esa copia es de una sola versión: si no es la
+de 1.21.4, el build ya no avisa de un uso de la API posterior a 1.21.4.
 
 Las APIs de los plugins integrados son todas `compileOnly`: solo hacen falta para compilar los
 ganchos y ninguna va dentro del JAR.
@@ -2909,6 +2915,47 @@ Antes se ignoraba, y `blossom_studios:b_invisible_item` salía como un papel nor
 | `/arkcontent import` del pack de Blossom | `b_invisible_item` con `item-model: invisible_item`; en la mano, invisible |
 | Tests | 561, todos pasan |
 
+#### 3.6.0: de 1.21.4 a 1.21.11
+
+Hasta 3.5.4 el plugin se compilaba contra la API de Paper 1.21.8, declaraba `api-version: '1.21.8'`
+y solo se había probado en 1.21.8. Paper 1.21.4 lo carga igual (comprobado: no mira esa línea en un
+plugin de Paper), pero nada aseguraba que no usara algo que 1.21.4 no tiene. Ahora:
+
+- **Compila contra la API de 1.21.4** (`paperVersion` en `gradle.properties`) y declara
+  `api-version: '1.21.4'`, así que el compilador avisa si algo usa una función posterior. Con
+  `-PpaperVersion=1.21.11-R0.1-SNAPSHOT` compila y pasa las mismas pruebas contra la de 1.21.11.
+- **El pack** ya declaraba los formatos 46 a 99 (`pack_format` con `supported_formats` para hasta
+  1.21.8, y `min_format`/`max_format` para 1.21.9 en adelante). El cliente 1.21.11 usa el formato 75.
+- **Los bloques** usan estados de note block y cuerda que existen igual en las ocho versiones; los
+  materiales de los ejemplos existen todos en 1.21.4. Un material que no exista en la versión del
+  servidor (uno de 1.21.9 en un 1.21.4, por ejemplo) se rechaza al cargar con
+  `'...' is not an item material on this server`, sin parar lo demás.
+- **Arreglado de paso:** en un servidor nuevo, la primera vez salían 60 avisos `Could not save ...
+  already exists` (las texturas de 1.9.5 que 1.9.6 vuelve a listar). Ahora se copian una vez. Y al
+  actualizar desde antes de 1.9.5, los ejemplos que versiones posteriores añaden a
+  `medieval_props/` (el mapa de 3.2, por ejemplo) ya no se saltan.
+
+| Prueba (3.6.0): un servidor Paper nuevo de cada versión, solo con este plugin, y un jugador (bot de mineflayer de esa versión) | Resultado |
+|---|---|
+| Paper 1.21.4-232, 1.21.5-114, 1.21.6-48, 1.21.7-32, 1.21.8-60, 1.21.9-59, 1.21.10-130, 1.21.11-132 | arrancan con el plugin; 390 ítems, 2 bloques, el mismo pack (1270 archivos, SHA-1 `e4805355…`) en las ocho; ningún aviso ni error del plugin en la consola |
+| Pack | se le ofrece al jugador, se descarga del servidor web integrado y el SHA-1 coincide (las ocho) |
+| Ítems | llevan su `item_model` (las ocho) |
+| Bloque personalizado | se coloca con su estado de note block, no cambia con clic derecho ni con redstone, y roto en supervivencia suelta su propio ítem (las ocho) |
+| Note block vanilla | se fija en el estado reservado (las ocho) |
+| Muebles | sobre barrera y sobre bloque de luz, con su display; al romperlos no queda nada (las ocho) |
+| Armadura | el jugador se pone casco y coraza; el componente `equippable` lo permite y el `asset_id` es `demo:ruby_armor` (las ocho) |
+| `/arkcontent menu` | se abre el menú de 54 casillas (las ocho) |
+| Tests | 562 contra la API de 1.21.4 y 562 contra la de 1.21.11, todos pasan |
+
+| Prueba (3.6.0): el cliente real de Minecraft en los dos extremos, con el pack aceptado | Resultado |
+|---|---|
+| Cliente 1.21.4 en Paper 1.21.4 | carga el pack sin avisos de texturas o modelos que falten; se ven el bloque de rubí y la mena, el pedestal y el tablón, la armadura completa (casco 3D) en un soporte y puesta, la espada en la mano del soporte, los iconos del inventario, el HUD y el menú con forma de libro |
+| Cliente 1.21.11 en Paper 1.21.11 | lo mismo. 1.21.11 separa las texturas de ítems en un atlas propio (`items`); los modelos de ítem siguen pudiendo usar las del atlas de bloques, donde el plugin pone las de muebles, y ninguna sale morada |
+
+Lo que no se ha probado en todas: los plugins integrados (sección 5) se verificaron en 1.21.8, y cada
+uno tiene sus propias versiones; Bedrock (Geyser) también en 1.21.8. Las comprobaciones de shaders
+siguen comparando con el cliente 1.21.8 (sección 9).
+
 ## 5. Integraciones
 
 Todas opcionales. `paper-plugin.yml` declara cada plugin como dependencia con
@@ -4390,6 +4437,12 @@ con `join-classpath: true` para ver sus clases.
 - 3.0, minijuegos: la barra va en la barra de acción, así que otro plugin que la use a la vez (la de
   AuraSkills, por ejemplo) se alterna con ella. Una mena de minijuego solo se mina jugando: ni
   pistones, ni explosiones, ni otros plugins la rompen por esa vía.
+- 3.6, versiones: Paper 1.21.4 a 1.21.11, ni anteriores (falta `item_model`) ni 26.x, que no se ha
+  probado; tampoco Folia. Las tablas que el plugin trae del cliente son de 1.21.8: el validador de
+  shaders avisa según lo que carga un cliente 1.21.8 (con 1.21.4 o 1.21.9+ algún aviso puede no
+  aplicar, o faltar), la lista de ítems vanilla de un solo modelo (`custom_model_data`, sección 4)
+  no incluye los ítems añadidos después de 1.21.8, que se quedan sin número (siguen dibujándose
+  por su `item_model`), y la posición de las barras de HUD sale de la interfaz de 1.21.8.
 
 ## 10. Compatibilidad frente a ItemsAdder
 

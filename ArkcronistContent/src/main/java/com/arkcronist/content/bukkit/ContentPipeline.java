@@ -247,8 +247,9 @@ public final class ContentPipeline {
     }
 
     /** Copied into contents/ the first time the plugin starts. */
+    /** Every example once: later sets list some files again (1.9.6 repainted 1.9.5's textures). */
     private static final List<String> EXAMPLES = Stream.concat(FIRST_EXAMPLES.stream(),
-            ADDED_EXAMPLES.values().stream().flatMap(List::stream)).toList();
+            ADDED_EXAMPLES.values().stream().flatMap(List::stream)).distinct().toList();
 
     /**
      * What one rebuild did.

@@ -1,8 +1,12 @@
 # libs/
 
-Solo hace falta cuando la máquina que compila **no llega a `repo.papermc.io`**. Si este directorio
-tiene `paper-api.jar`, `build.gradle` compila contra él en lugar de descargar `paper-api` de Paper;
-si no, lo ignora.
+Solo hace falta cuando la máquina que compila **no llega a `repo.papermc.io`**. Con
+`./gradlew build -PlocalPaperApi`, `build.gradle` compila contra el `paper-api.jar` de este directorio
+en lugar de descargar `paper-api` de Paper; sin esa opción lo ignora.
+
+Desde la 3.6 el plugin se compila contra la API de **1.21.4**, la versión más antigua en la que
+funciona. Un `paper-api.jar` de otra versión sirve para compilar sin red, pero no comprueba que no se
+use nada posterior a 1.21.4: eso lo hace solo la compilación normal, contra la API descargada.
 
 | Archivo | Qué es | De dónde sale |
 |---|---|---|

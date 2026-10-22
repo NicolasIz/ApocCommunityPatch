@@ -62,6 +62,8 @@ public final class ExampleUpdates {
     private static List<String> copy(Set<String> knownPacks, Map<String, List<String>> sets, Set<String> offered,
                                      Path dataFolder) {
         Set<String> known = new java.util.HashSet<>(knownPacks);
+        // Packs an earlier set of this same upgrade brings: their folders are not there yet, but will be.
+        Set<String> coming = new java.util.HashSet<>();
         List<String> copy = new ArrayList<>();
         sets.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
@@ -78,10 +80,13 @@ public final class ExampleUpdates {
                         return;
                     }
                     for (String example : set.getValue()) {
-                        if (brought.contains(pack(example)) || Files.isDirectory(packFolder(dataFolder, example))) {
+                        // A later set may list a file again (1.9.6 repainted 1.9.5's textures): copied once.
+                        if ((brought.contains(pack(example)) || coming.contains(pack(example))
+                                || Files.isDirectory(packFolder(dataFolder, example))) && !copy.contains(example)) {
                             copy.add(example);
                         }
                     }
+                    coming.addAll(brought);
                 });
         return copy;
     }

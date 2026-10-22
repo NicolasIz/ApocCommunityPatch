@@ -66,6 +66,19 @@ class ExampleUpdatesTest {
         assertEquals(List.of(), ExampleUpdates.toCopy(first, sets, Set.of("1.1.0", "1.3.0", "1.4.0", "1.9.5"), plugin));
     }
 
+    /** 3.6: 1.9.6 lists 1.9.5's textures again (repainted); an upgrade from before both copies each once. */
+    @Test
+    void aFileTwoSetsListIsCopiedOnce() throws IOException {
+        write("contents/demo/items.yml");
+        List<String> first = List.of("contents/demo/items.yml");
+        Map<String, List<String>> sets = Map.of(
+                "1.9.5", List.of("contents/medieval_props/furniture.yml", "contents/medieval_props/textures/forja.png"),
+                "1.9.6", List.of("contents/medieval_props/textures/forja.png", "contents/medieval_props/more.yml"));
+        assertEquals(List.of("contents/medieval_props/furniture.yml", "contents/medieval_props/textures/forja.png",
+                        "contents/medieval_props/more.yml"),
+                ExampleUpdates.toCopy(first, sets, Set.of(), plugin));
+    }
+
     @Test
     void anExampleIsUpdatedOnlyWhileItIsAsShipped() throws IOException {
         write("contents/demo/blocks.yml");                       // "owner's": not a shipped version

@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'com.arkcronist'
-version = '3.5.4'
+version = '3.6.0'
 description = 'Custom items from YAML, drawn by a resource pack the plugin compiles, zips, hashes and serves itself.'
 
 java {
@@ -44,10 +44,12 @@ configurations {
     betterhudApiCompileOnly.extendsFrom paperApi
 }
 
-// Paper's API comes from Paper's repository, or from libs/ when a local copy is there - for a
-// machine that cannot reach repo.papermc.io. See libs/README.md for what goes in it.
+// Paper's API comes from Paper's repository, or from libs/ - for a machine that cannot reach
+// repo.papermc.io. See libs/README.md for what goes in it.
 def localPaperApi = file('libs/paper-api.jar')
-def useLocalPaperApi = localPaperApi.isFile()
+// Only with -PlocalPaperApi: a copy there is one fixed version, and the plugin is compiled against
+// the oldest API it supports (paperVersion), with the newest checked through -PpaperVersion=...
+def useLocalPaperApi = localPaperApi.isFile() && project.hasProperty('localPaperApi')
 
 repositories {
     mavenCentral {
