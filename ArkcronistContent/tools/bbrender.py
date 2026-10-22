@@ -8,6 +8,9 @@ player mannequin. Pure Python: z-buffer, nearest texel, alpha test, per-face lig
 --ymin crops the frame below a height (21 shows just the head). ItemsAdder-protected PNGs are read
 through the plugin: compile java/Unprotect.java against build/classes/java/main and set ARK_CLASSES
 to that folder.
+
+As a library: load_bbmodel(path, only={"head"}) loads some bones only, and icon(quads, yaw, pitch) draws a
+32x32 inventory icon with a darker contour on its lower-right edges.
 """
 import base64, json, math, os, struct, sys, zlib
 
@@ -149,7 +152,7 @@ class Quad:
         self.p, self.uv, self.tex, self.solid = p, uv, tex, solid
 
 
-def load_bbmodel(path, tex_index=None):
+def load_bbmodel(path, tex_index=None, only=None):
     d = json.load(open(path))
     res = d.get("resolution", {"width": 16, "height": 16})
     textures = []
@@ -164,17 +167,22 @@ def load_bbmodel(path, tex_index=None):
     groups = {g["uuid"]: g for g in d.get("groups", [])}
     quads = []
 
+    names = []
+
     def walk(nodes, chain):
         for n in nodes:
             if isinstance(n, str):
                 e = els.get(n)
                 if e and e.get("visibility", True) is not False and e.get("type", "cube") == "cube":
-                    add_cube(e, chain)
+                    if only is None or (names and names[0] in only):
+                        add_cube(e, chain)
             else:
                 g = groups.get(n.get("uuid"), n)
                 if g.get("visibility", True) is False:
                     continue
+                names.append(g.get("name"))
                 walk(n.get("children", []), chain + [(g.get("rotation", [0, 0, 0]), g.get("origin", [0, 0, 0]))])
+                names.pop()
 
     def add_cube(e, chain):
         inf = e.get("inflate", 0)
@@ -372,6 +380,29 @@ def compose(images, gap=12, bg=(32, 34, 40, 255)):
                     out[(top + yy) * W + x + xx] = c
         x += w + gap
     return W, H, out
+
+
+def icon(quads, yaw, pitch, size=32):
+    """A piece drawn to fill an inventory icon, with a darker contour on its lower-right edges."""
+    W, H, pix = render(quads, yaw, pitch, 1.0, pad=0)
+    sc = (size - 2) / max(W, H)
+    W, H, pix = render(quads, yaw, pitch, sc, pad=0)
+    out = [(0, 0, 0, 0)] * (size * size)
+    ox, oy = (size - W) // 2, (size - H) // 2
+    for y in range(H):
+        for x in range(W):
+            if 0 <= x + ox < size and 0 <= y + oy < size:
+                out[(y + oy) * size + x + ox] = pix[y * W + x]
+    res = list(out)
+    for y in range(size):
+        for x in range(size):
+            c = out[y * size + x]
+            if not c[3]:
+                continue
+            edge = (x + 1 >= size or not out[y * size + x + 1][3]) or (y + 1 >= size or not out[(y + 1) * size + x][3])
+            if edge:
+                res[y * size + x] = (int(c[0] * 0.55), int(c[1] * 0.55), int(c[2] * 0.6), 255)
+    return size, size, res
 
 
 VIEWS = {"front": (0, 0), "threequarter": (-35, 12), "side": (-90, 0), "back": (180, 0), "backthreequarter": (145, 12)}

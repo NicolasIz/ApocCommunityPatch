@@ -215,3 +215,47 @@ y sin tramado. Pero no tiene forma de armadura profesional:
      (con `--head`, un yelmo puesto) sobre un maniquí, sin tarjeta gráfica;
    - fotos en el juego a 3, 8 y 16 bloques;
    - medir con las mismas cifras de las tablas de §2 y §4.
+
+## 7. Prueba de la guía: Guardián del Bosque Antiguo
+
+Primera armadura hecha con esta guía. No forma parte del plugin; se entregó como contenido suelto.
+
+Se hizo en dos versiones:
+
+- **Técnica B** (ArkcronistContent): yelmo 3D y cuerpo en capas. Se probó en el juego con un cliente
+  1.21.8.
+- **Técnica C** (un `.bbmodel` para MythicArmor): 107 piezas en los huesos del jugador. Se comprobó
+  renderizándola. No se probó en el juego: no se disponía del plugin MythicArmor, y su shader necesita una
+  tarjeta gráfica.
+
+| | Guardián | Guía (§2 y §4) |
+|---|---|---|
+| Gancho sobre la cabeza | +12 (astas) | +3 a +14 |
+| El yelmo baja | 4,5 bajo la cabeza | 2 a 7 |
+| Yelmo | 34 piezas, `display.head` ×1,6 | 14-31 piezas, ×1,5-1,98 |
+| Hombros | ×1,44 | ×1,3 a ×1,6 |
+| Caderas | 8,6 | 8,5 a 9,9 |
+| Piezas giradas (3D) | 62 % | 52 a 88 % |
+| Colores en las capas | 29 | 7 a 42 (escuela gráfica) |
+| Gris | 1 % | hasta ~40 % |
+| Acento visible (oro y ámbar) | 31 % de frente, 23 % de espalda | 10 a 40 % |
+| Dominante visible (verdes) | 56-67 % | 40 a 60 % |
+
+Lo aprendido al hacerla:
+
+- **Hojas y adornos pequeños.** A 1 texel por unidad, una hoja de 2 o 3 texels girada 45° se ve como una
+  cruz o un rombo.
+  - Las hojas se dibujan a mano, píxel a píxel, y miden 4×6 o más.
+  - Las diagonales se hacen con un plano cuadrado sin girar, con la hoja pintada en su diagonal.
+- **La sombra índigo del oro.** En piezas de 1-2 texels se ve como una mancha morada. Se reserva para
+  líneas dibujadas a propósito. El sombreado automático del oro no baja del oro oscuro (`#C27F34`), y los
+  remaches dorados usan la sombra de la placa.
+- **El oro se mide en el render, no en la textura.** Con los bordes de todas las láminas dorados, el oro
+  visible llegó al 39 %. Bastó dejarlos de bronce y conservar el filo de la última lámina para bajar al
+  31 %.
+- **El sentido de los giros.** Las piezas que cuelgan de su pivote (escarcelas, costados) giran con el
+  signo contrario a las que salen hacia fuera (hombreras). Un signo cambiado las mete hacia dentro sin que
+  el modelo dé error: se comprueba midiendo la silueta.
+- **Un tabardo entre las piernas** va delante de las rodilleras (z ≤ −3,5). Si no, las rodilleras lo
+  atraviesan.
+- **La textura del `.bbmodel` cuadrada** (128×128), como todos los modelos de MythicArmor estudiados.
