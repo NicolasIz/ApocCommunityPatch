@@ -25,6 +25,7 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.bukkit.World;
 import org.bukkit.advancement.Advancement;
 import org.bukkit.advancement.AdvancementProgress;
 import org.bukkit.entity.Player;
@@ -33,6 +34,9 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -78,6 +82,11 @@ public final class AdvancementService {
     private List<AdvancementCompiler.Compiled> desired = List.of();
     /** What this server has registered, as registered. */
     private final Map<NamespacedKey, String> registered = new LinkedHashMap<>();
+    /**
+     * What the plugin handed the server since it started, by key: the copy a 26.2+ server keeps of
+     * one of these, read back by a data reload, is that one.
+     */
+    private final Map<NamespacedKey, String> handedOver = new LinkedHashMap<>();
     private final Map<NamespacedKey, AdvancementDefinition> definitions = new LinkedHashMap<>();
 
     public AdvancementService(Plugin plugin, ItemRegistry items, ItemFactory factory, DatabaseManager database) {
@@ -113,6 +122,12 @@ public final class AdvancementService {
         } else {
             logger.info("Advancements changed or were removed: reloading the server's data so they can be"
                     + " registered again (this is /minecraft:reload).");
+            // 26.2+ would read them back from its own datapack: all of them go - an unchanged one
+            // under a changed parent would not load - and all are registered again.
+            for (NamespacedKey key : registered.keySet()) {
+                forgetKept(key);
+            }
+            handedOver.clear();
             Bukkit.reloadData();
             // The reload fires ServerResourcesReloadedEvent, which calls reregister(); in case a
             // listener ran before ours and the event did not reach it, make sure.
@@ -148,11 +163,20 @@ public final class AdvancementService {
         if (saveFirst && !Bukkit.getOnlinePlayers().isEmpty()) {
             Bukkit.savePlayers();
         }
+        boolean stale = false;
         for (AdvancementCompiler.Compiled advancement : missing) {
             NamespacedKey key = key(advancement.key());
             if (Bukkit.getAdvancement(key) != null) {
-                logger.warning("Advancement " + key + " already exists on the server - from a datapack? Ours is"
-                        + " not registered.");
+                if (keptFile(key) != null && advancement.json().equals(handedOver.get(key))) {
+                    // Ours, read back from the server's copy by a data reload.
+                    registered.put(key, advancement.json());
+                } else if (keptFile(key) != null) {
+                    // Ours from before a server stopped without the plugin clearing it (a crash).
+                    stale |= forgetKept(key);
+                } else {
+                    logger.warning("Advancement " + key + " already exists on the server - from a datapack? Ours is"
+                            + " not registered.");
+                }
                 continue;
             }
             try {
@@ -160,6 +184,7 @@ public final class AdvancementService {
                 Advancement loaded = Bukkit.getUnsafe().loadAdvancement(key, advancement.json());
                 if (loaded != null) {
                     registered.put(key, advancement.json());
+                    handedOver.put(key, advancement.json());
                 } else {
                     logger.warning("The server did not take advancement " + key + ".");
                 }
@@ -168,8 +193,59 @@ public final class AdvancementService {
                         + exception.getMessage(), exception);
             }
         }
+        if (stale) {
+            logger.info("The server still had the plugin's advancements from before it last stopped; they were"
+                    + " removed, and its data is reloaded so they can be registered as they are now (this is"
+                    + " /minecraft:reload).");
+            // Fires ServerResourcesReloadedEvent, which registers them again: their old files are gone.
+            Bukkit.reloadData();
+            return;
+        }
         for (Player player : Bukkit.getOnlinePlayers()) {
             checkWorn(player);
+        }
+    }
+
+    /**
+     * Where the server keeps an advancement registered at run time, if it reads it back on its next
+     * start: from 26.2 on, the "bukkit" datapack of the main world, under {@code advancement/} - the
+     * folder datapacks have used since 1.21. (Before, it was written under {@code advancements/},
+     * which nothing reads.)
+     */
+    private static @Nullable Path keptFile(NamespacedKey key) {
+        List<World> worlds = Bukkit.getWorlds();
+        if (worlds.isEmpty()) {
+            return null;
+        }
+        Path file = Bukkit.getWorldContainer().toPath().resolve(worlds.getFirst().getName()).resolve("datapacks")
+                .resolve("bukkit").resolve("data").resolve(key.getNamespace()).resolve("advancement")
+                .resolve(key.getKey() + ".json");
+        return Files.isRegularFile(file) ? file : null;
+    }
+
+    /** Deletes the server's kept copy of {@code key}, if it has one; whether it did. */
+    private boolean forgetKept(NamespacedKey key) {
+        Path kept = keptFile(key);
+        if (kept == null) {
+            return false;
+        }
+        try {
+            Files.delete(kept);
+            return true;
+        } catch (IOException exception) {
+            logger.warning("Could not delete " + kept + ", the server's copy of an older " + key + ": "
+                    + exception.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * The server is stopping: the copies it kept of the plugin's advancements are deleted, so that
+     * the next start registers them afresh, as the content then has them.
+     */
+    public void shutdown() {
+        for (NamespacedKey key : registered.keySet()) {
+            forgetKept(key);
         }
     }
 

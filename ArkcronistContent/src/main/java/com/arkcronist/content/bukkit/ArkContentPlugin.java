@@ -519,6 +519,9 @@ public final class ArkContentPlugin extends JavaPlugin {
         if (seats != null) {
             shutdownStep(() -> seats.releaseAll());
         }
+        if (advancements != null) {
+            shutdownStep(() -> advancements.shutdown());
+        }
         if (ambience != null) {
             shutdownStep(() -> ambience.shutdown());
         }

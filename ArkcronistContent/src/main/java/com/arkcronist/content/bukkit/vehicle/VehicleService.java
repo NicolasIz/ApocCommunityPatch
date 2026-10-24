@@ -262,10 +262,15 @@ public final class VehicleService {
             y = clicked.getY() + (top == null ? 0 : top.getMaxY());
         }
         State state = State.parked(target.getX() + 0.5, y, target.getZ() + 0.5, player.getLocation().getYaw());
-        Terrain around = terrain(target.getWorld(), VehiclePhysics.footprint(definition, state.x(), state.y() + 0.01,
-                state.z(), state.yaw()));
-        if (collides(VehiclePhysics.footprint(definition, state.x(), state.y() + 0.01, state.z(), state.yaw()),
-                around.solid())) {
+        Aabb footprint = VehiclePhysics.footprint(definition, state.x(), state.y() + 0.01, state.z(), state.yaw());
+        List<Aabb> taken = new ArrayList<>(terrain(target.getWorld(), footprint).solid());
+        for (Live other : live.values()) {
+            if (other.world.equals(target.getWorld())) {
+                taken.add(VehiclePhysics.footprint(other.definition, other.state.x(), other.state.y(), other.state.z(),
+                        other.state.yaw()));
+            }
+        }
+        if (collides(footprint, taken)) {
             player.sendActionBar(Component.text("No room for it here", NamedTextColor.GRAY));
             return false;
         }
@@ -301,17 +306,26 @@ public final class VehicleService {
             return true;
         }
         if (driver(vehicle) == null) {
+            faceForward(player, vehicle);
             vehicle.root.addPassenger(player);
             return true;
         }
         for (ItemDisplay seat : vehicle.seats) {
             if (seat.getPassengers().isEmpty()) {
+                faceForward(player, vehicle);
                 seat.addPassenger(player);
                 return true;
             }
         }
         player.sendActionBar(Component.text("Every seat is taken", NamedTextColor.GRAY));
         return true;
+    }
+
+    /** Whoever gets in starts looking the way it faces; they look around freely after. */
+    private static void faceForward(Player player, Live vehicle) {
+        Location facing = player.getLocation();
+        facing.setYaw((float) vehicle.state.yaw());
+        player.teleport(facing);
     }
 
     /** Back into the hands of whoever placed it, or of anyone allowed to - with whoever was in it let off. */
@@ -330,6 +344,52 @@ public final class VehicleService {
                 player.getWorld().dropItemNaturally(player.getLocation(), left);
             }
         }
+    }
+
+    /**
+     * {@code rider} got off {@code from}, a seat of a vehicle: they step down beside it, on their
+     * seat's side - or the other, or, with no room on either, where the game put them.
+     */
+    public void dismounted(Entity rider, Entity from) {
+        UUID id = byEntity.get(from.getUniqueId());
+        Live vehicle = id == null ? null : live.get(id);
+        if (vehicle == null) {
+            return;
+        }
+        int seat = from.equals(vehicle.root) ? 0 : vehicle.seats.indexOf(from) + 1;
+        if (seat == 0 && !from.equals(vehicle.root)) {
+            return;
+        }
+        Offset at = vehicle.definition.seats().get(seat);
+        double out = vehicle.definition.width() / 2 + 0.45;
+        double first = at.x() >= 0 ? 1 : -1;
+        Location exit = null;
+        for (double side : new double[]{first, -first}) {
+            double[] point = VehiclePhysics.point(vehicle.state, new Offset(side * out, 0, at.z()));
+            if (standable(vehicle.world, point[0], vehicle.state.y(), point[2])) {
+                exit = new Location(vehicle.world, point[0], vehicle.state.y(), point[2]);
+                break;
+            }
+        }
+        if (exit == null) {
+            return;
+        }
+        Location target = exit;
+        plugin.getServer().getScheduler().runTask(plugin, () -> {
+            if (rider.isValid() && !rider.isInsideVehicle()) {
+                target.setYaw(rider.getLocation().getYaw());
+                target.setPitch(rider.getLocation().getPitch());
+                rider.teleport(target);
+            }
+        });
+    }
+
+    /** Room for a player standing at x, y, z, and ground under them within a step. */
+    private static boolean standable(World world, double x, double y, double z) {
+        Aabb body = new Aabb(x - 0.3, y + 0.01, z - 0.3, x + 0.3, y + 1.8, z + 0.3);
+        Aabb under = new Aabb(x - 0.3, y - 0.6, z - 0.3, x + 0.3, y + 0.01, z + 0.3);
+        Terrain around = terrain(world, new Aabb(x - 0.3, y - 0.6, z - 0.3, x + 0.3, y + 1.8, z + 0.3));
+        return !collides(body, around.solid()) && collides(under, around.solid());
     }
 
     /** Whether {@code entity} is part of a vehicle. */
@@ -516,7 +576,7 @@ public final class VehicleService {
         World world = vehicle.world;
         VehicleDefinition definition = vehicle.definition;
         State state = vehicle.state;
-        boolean newRoot = vehicle.root == null || !vehicle.root.isValid();
+        boolean newRoot = gone(vehicle.root);
         if (newRoot) {
             if (vehicle.root != null) {
                 forget(vehicle.root);
@@ -542,7 +602,7 @@ public final class VehicleService {
             }
             ItemDisplay part = vehicle.parts.get(i);
             // A part that has no item to draw is left out, and only looked for again with a new root.
-            if (newRoot || part != null && !part.isValid()) {
+            if (newRoot || part != null && gone(part)) {
                 if (part != null) {
                     forget(part);
                 }
@@ -554,7 +614,7 @@ public final class VehicleService {
         }
         for (int i = 1; i < definition.seats().size(); i++) {
             ItemDisplay seat = i - 1 < vehicle.seats.size() ? vehicle.seats.get(i - 1) : null;
-            if (seat != null && seat.isValid()) {
+            if (!gone(seat)) {
                 continue;
             }
             if (seat != null) {
@@ -571,7 +631,7 @@ public final class VehicleService {
                 vehicle.seats.add(fresh);
             }
         }
-        if (vehicle.hitbox == null || !vehicle.hitbox.isValid()) {
+        if (gone(vehicle.hitbox)) {
             if (vehicle.hitbox != null) {
                 forget(vehicle.hitbox);
             }
@@ -605,20 +665,28 @@ public final class VehicleService {
 
     /** Every entity it is drawn with is there; a part with nothing to draw counts as there. */
     private static boolean whole(Live vehicle) {
-        if (vehicle.root == null || !vehicle.root.isValid() || vehicle.hitbox == null || !vehicle.hitbox.isValid()) {
+        if (gone(vehicle.root) || gone(vehicle.hitbox)) {
             return false;
         }
         for (ItemDisplay part : vehicle.parts) {
-            if (part != null && !part.isValid()) {
+            if (part != null && gone(part)) {
                 return false;
             }
         }
         for (ItemDisplay seat : vehicle.seats) {
-            if (!seat.isValid()) {
+            if (gone(seat)) {
                 return false;
             }
         }
         return true;
+    }
+
+    /**
+     * Removed, or never let into the world. Not {@link Entity#isValid()}: an entity just spawned in a
+     * chunk the server has not started tracking entities in yet is not valid either, but is there.
+     */
+    private static boolean gone(@Nullable Entity entity) {
+        return entity == null || entity.isDead() || !entity.isInWorld();
     }
 
     /** Another plugin stopped its entities: left parked, not tried again every tick. */

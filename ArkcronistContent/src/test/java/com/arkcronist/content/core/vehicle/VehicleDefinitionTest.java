@@ -108,12 +108,12 @@ class VehicleDefinitionTest {
         VehiclePose.Transform facingSouth = VehiclePose.of(State.parked(0, 64, 0, 0), body, driver);
         // The driver sits 0.4 to the right - west, facing south - so the body's middle is 0.4 east of them.
         assertTrue(facingSouth.translation().equals(new Vector3f(0.4f, -0.2f, 0), 1e-6f), facingSouth.translation().toString());
-        Vector3f front = facingSouth.rotation().transform(new Vector3f(0, 0, 1));
+        Vector3f front = drawn(facingSouth, new Vector3f(0, 0, 1));
         assertTrue(front.equals(new Vector3f(0, 0, 1), 1e-6f));
 
         VehiclePose.Transform facingWest = VehiclePose.of(State.parked(0, 64, 0, 90), body, driver);
         assertTrue(facingWest.translation().equals(new Vector3f(0, -0.2f, 0.4f), 1e-6f), facingWest.translation().toString());
-        Vector3f turned = facingWest.rotation().transform(new Vector3f(0, 0, 1));
+        Vector3f turned = drawn(facingWest, new Vector3f(0, 0, 1));
         assertTrue(turned.equals(new Vector3f(-1, 0, 0), 1e-6f), "a model's south faces west: " + turned);
     }
 
@@ -122,8 +122,13 @@ class VehicleDefinitionTest {
         Part wheel = new Part("demo:wheel", new Offset(0.7, 0.3, 0.8), 1, true, 0.25);
         State rolled = new State(0, 64, 0, 0, 4, 0, true, Math.PI * 0.25 / 2);   // a quarter turn
         VehiclePose.Transform pose = VehiclePose.of(rolled, wheel, new Offset(0, 0.6, 0));
-        Vector3f top = pose.rotation().transform(new Vector3f(0, 1, 0));
+        Vector3f top = drawn(pose, new Vector3f(0, 1, 0));
         assertTrue(top.equals(new Vector3f(0, 0, 1), 1e-5f), "its top has turned to the front: " + top);
+    }
+
+    /** Where a model's {@code v} ends up as the client draws it: its own half turn, then the rotation. */
+    private static Vector3f drawn(VehiclePose.Transform pose, Vector3f v) {
+        return pose.rotation().transform(VehiclePose.CLIENT_TURN.transform(v, new Vector3f()));
     }
 
     private static ItemDefinition item(LoadReport report, String id) {

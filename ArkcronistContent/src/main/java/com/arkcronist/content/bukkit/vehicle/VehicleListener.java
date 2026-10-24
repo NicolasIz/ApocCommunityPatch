@@ -7,6 +7,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.entity.EntityDismountEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
@@ -18,7 +19,8 @@ import java.util.Optional;
 
 /**
  * 4.0: a vehicle's item put down with a right click on a block; a right click on a vehicle gets in,
- * a sneaking one picks it up; vehicles come and go with their chunks.
+ * a sneaking one picks it up; whoever gets out steps down beside it; vehicles come and go with their
+ * chunks.
  */
 public final class VehicleListener implements Listener {
 
@@ -60,6 +62,11 @@ public final class VehicleListener implements Listener {
         if (vehicles.clicked(event.getPlayer(), event.getRightClicked())) {
             event.setCancelled(true);
         }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onDismount(EntityDismountEvent event) {
+        vehicles.dismounted(event.getEntity(), event.getDismounted());
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

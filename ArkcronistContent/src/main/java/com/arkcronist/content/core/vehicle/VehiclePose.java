@@ -13,8 +13,14 @@ import org.joml.Vector3f;
  * from there by its transformation alone - moved to its own place on the vehicle, turned to the
  * vehicle's heading and, for a wheel, rolled. A model faces the vehicle's front with its own south
  * side (+z), as Blockbench shows a model's front.</p>
+ *
+ * <p>The client draws an item display's model turned half a turn about y before its transformation
+ * ({@link #CLIENT_TURN}); each rotation here ends with that half turn again, which undoes it.</p>
  */
 public final class VehiclePose {
+
+    /** What the client does to an item display's model before its transformation: half a turn about y. */
+    public static final Quaternionf CLIENT_TURN = new Quaternionf().rotationY((float) Math.PI);
 
     private VehiclePose() {
     }
@@ -23,7 +29,8 @@ public final class VehiclePose {
      * One display's transformation.
      *
      * @param translation from the seat it rides to where its model's centre is, in blocks
-     * @param rotation    its heading and, for a wheel, how far it has rolled
+     * @param rotation    its heading and, for a wheel, how far it has rolled - after the client's own
+     *                    half turn ({@link #CLIENT_TURN})
      * @param scale       the same on every axis
      */
     public record Transform(Vector3f translation, Quaternionf rotation, float scale) {
@@ -42,6 +49,7 @@ public final class VehiclePose {
             // already turned with it.
             rotation.rotateX((float) (state.rolled() / part.radius()));
         }
+        rotation.rotateY((float) Math.PI);
         return new Transform(translation, rotation, (float) part.scale());
     }
 
