@@ -74,7 +74,7 @@ public final class VehicleService {
     static final double STEP_SECONDS = 0.05;
     /** How often a moving vehicle's place is written, besides when it stops. */
     private static final long SAVE_EVERY_MILLIS = 10_000;
-    private static final TeleportFlag[] KEEP_RIDERS = {TeleportFlag.EntityState.RETAIN_PASSENGERS};
+    private static final TeleportFlag[] KEEP_RIDERS = keepRiders();
     public static final String ADMIN = "arkcontent.vehicles.admin";
 
     private final Plugin plugin;
@@ -109,6 +109,19 @@ public final class VehicleService {
         this.physics = physics;
         this.logger = plugin.getLogger();
         this.vehicleTag = new NamespacedKey(plugin, "vehicle");
+    }
+
+    /**
+     * The flag that keeps riders on through a teleport - needed up to 1.21.9; the default since
+     * 1.21.10, where it is deprecated for removal. A server without it keeps them anyway.
+     */
+    @SuppressWarnings("removal")
+    private static TeleportFlag[] keepRiders() {
+        try {
+            return new TeleportFlag[]{TeleportFlag.EntityState.RETAIN_PASSENGERS};
+        } catch (NoClassDefFoundError | NoSuchFieldError gone) {
+            return new TeleportFlag[0];
+        }
     }
 
     /** A spawned vehicle. Main thread, but for {@link #result}, which the physics thread leaves. */

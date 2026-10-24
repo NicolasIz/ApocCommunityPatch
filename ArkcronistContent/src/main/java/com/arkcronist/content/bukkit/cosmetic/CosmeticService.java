@@ -10,6 +10,8 @@ import com.arkcronist.content.core.storage.StoredCosmetic;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.GameMode;
+import org.bukkit.UnsafeValues;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Pose;
 import org.bukkit.inventory.ItemStack;
@@ -20,6 +22,7 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -64,6 +67,8 @@ public final class CosmeticService {
     private java.util.function.BiConsumer<UUID, ItemStack> comingBack = (wearer, stack) -> { };
     private final ScheduledExecutorService physics;
     private @Nullable java.util.concurrent.ScheduledFuture<?> stepping;
+    /** The server's entity id counter: see {@link #nextEntityId(World)}. */
+    private @Nullable Method nextEntityId;
     private final AtomicLong stepNanos = new AtomicLong();
     private final AtomicLong steps = new AtomicLong();
     private @Nullable BukkitTask ticker;
@@ -142,8 +147,17 @@ public final class CosmeticService {
      */
     static boolean same(@Nullable BackPose.Transform before, BackPose.Transform now) {
         return before != null && before.translation().distanceSquared(now.translation()) < 1e-6
-                && Math.abs(before.rotation().dot(now.rotation())) > 1 - 2e-7
+                && Math.abs(dot(before.rotation(), now.rotation())) > 1 - 2e-7
                 && before.scale().equals(now.scale(), 1e-4f);
+    }
+
+    /**
+     * Written out, not JOML's {@code Quaternionf.dot}: that takes a {@code Quaternionf} in the JOML
+     * 1.21.x and 26.1/26.2 servers ship (1.10.8) and a {@code Quaternionfc} in 26.3's (1.10.9), so a
+     * call compiled against one is missing from the other.
+     */
+    private static float dot(Quaternionf a, Quaternionf b) {
+        return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
     }
 
     // ---------------------------------------------------------------- main thread
@@ -285,7 +299,7 @@ public final class CosmeticService {
         if (previous != null) {
             renderer.takeOff(previous);
         }
-        Worn on = new Worn(player.getUniqueId(), player.getEntityId(), itemId, definition, item, nextEntityId());
+        Worn on = new Worn(player.getUniqueId(), player.getEntityId(), itemId, definition, item, nextEntityId(player.getWorld()));
         on.sample = new BackPhysics.Sample(player.getX(), player.getY(), player.getZ(), player.getBodyYaw(),
                 player.isSneaking(), System.nanoTime());
         on.hidden = hidden(player);
@@ -349,11 +363,28 @@ public final class CosmeticService {
     /**
      * An entity id from the server's own counter, so a display that exists only on the clients
      * never shares an id with a real entity. Paper keeps this under its "unsafe" values, deprecated
-     * but there for exactly this.
+     * but there for exactly this - taking nothing before 26.3, and from 26.3 the world the entity is
+     * in. Whichever this server has is looked up once, by name.
      */
     @SuppressWarnings("deprecation")
-    private int nextEntityId() {
-        return plugin.getServer().getUnsafe().nextEntityId();
+    private int nextEntityId(World world) {
+        UnsafeValues unsafe = plugin.getServer().getUnsafe();
+        try {
+            if (nextEntityId == null) {
+                Method found;
+                try {
+                    found = UnsafeValues.class.getMethod("nextEntityId");
+                } catch (NoSuchMethodException since26_3) {
+                    found = UnsafeValues.class.getMethod("nextEntityId", World.class);
+                }
+                nextEntityId = found;
+            }
+            Object id = nextEntityId.getParameterCount() == 0 ? nextEntityId.invoke(unsafe)
+                    : nextEntityId.invoke(unsafe, world);
+            return (Integer) id;
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("This server hands out no entity ids", exception);
+        }
     }
 
     private static void give(Player player, ItemStack stack) {

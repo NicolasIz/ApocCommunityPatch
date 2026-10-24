@@ -59,7 +59,16 @@ public final class VehiclePose {
      */
     public static boolean same(Transform before, Transform now) {
         return before.translation().distanceSquared(now.translation()) < 1e-6
-                && Math.abs(before.rotation().dot(now.rotation())) > 1 - 1e-6
+                && Math.abs(dot(before.rotation(), now.rotation())) > 1 - 1e-6
                 && Math.abs(before.scale() - now.scale()) < 1e-4f;
+    }
+
+    /**
+     * Written out, not JOML's {@code Quaternionf.dot}: that takes a {@code Quaternionf} in the JOML
+     * 1.21.x and 26.1/26.2 servers ship (1.10.8) and a {@code Quaternionfc} in 26.3's (1.10.9), so a
+     * call compiled against one is missing from the other.
+     */
+    private static float dot(Quaternionf a, Quaternionf b) {
+        return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
     }
 }

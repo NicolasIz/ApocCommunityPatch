@@ -318,12 +318,12 @@ dependencies {
 }
 
 if (project.hasProperty('compileJdk')) {
-    // Gradle picks libraries for the JVM the classes are compiled for (21); a 26.x API says it needs
-    // 25. A check build with -PcompileJdk=25 asks for libraries of that JVM, still emitting Java 21.
-    configurations.matching { it.name.endsWith('CompileClasspath') || it.name.endsWith('RuntimeClasspath') }
-            .configureEach {
-                attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, project.property('compileJdk') as int)
-            }
+    // Gradle picks libraries for the JVM the classes are compiled for (21), and a 26.x API says it
+    // needs 25. A check build with -PcompileJdk=25 takes them anyway, still emitting Java 21: what it
+    // checks is that the plugin compiles, and its tests pass, against that API.
+    java {
+        disableAutoTargetJvm()
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {

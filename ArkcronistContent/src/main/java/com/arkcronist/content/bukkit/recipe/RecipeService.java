@@ -285,7 +285,8 @@ public final class RecipeService {
             return new RecipeChoice.MaterialChoice(new ArrayList<>(materials));
         }
         materials.forEach(material -> stacks.add(ItemStack.of(material)));
-        return new RecipeChoice.ExactChoice(stacks);
+        // The varargs constructor: the list one is to go (deprecated for removal in 26.x).
+        return new RecipeChoice.ExactChoice(stacks.toArray(ItemStack[]::new));
     }
 
     private @Nullable ItemStack stack(ItemRef ref, int amount, String prefix, List<String> problems) {
