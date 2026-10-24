@@ -26,7 +26,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -64,27 +63,28 @@ public final class CosmeticService {
     private java.util.function.Consumer<ItemStack> puttingOn = stack -> { };
     private java.util.function.BiConsumer<UUID, ItemStack> comingBack = (wearer, stack) -> { };
     private final ScheduledExecutorService physics;
+    private @Nullable java.util.concurrent.ScheduledFuture<?> stepping;
     private final AtomicLong stepNanos = new AtomicLong();
     private final AtomicLong steps = new AtomicLong();
     private @Nullable BukkitTask ticker;
 
+    /**
+     * @param physics {@code ArkContent-Physics}, shared with the vehicles (4.0); the plugin owns it and
+     *                shuts it down
+     */
     public CosmeticService(Plugin plugin, ItemRegistry items, DatabaseManager database,
-                           Executor mainThread, CosmeticRenderer renderer) {
+                           Executor mainThread, CosmeticRenderer renderer, ScheduledExecutorService physics) {
         this.plugin = plugin;
         this.items = items;
         this.database = database;
         this.mainThread = mainThread;
         this.logger = plugin.getLogger();
         this.renderer = renderer;
-        this.physics = Executors.newSingleThreadScheduledExecutor(runnable -> {
-            Thread thread = new Thread(runnable, "ArkContent-Physics");
-            thread.setDaemon(true);
-            return thread;
-        });
+        this.physics = physics;
     }
 
     public void start() {
-        physics.scheduleAtFixedRate(this::step, STEP_MILLIS, STEP_MILLIS, TimeUnit.MILLISECONDS);
+        stepping = physics.scheduleAtFixedRate(this::step, STEP_MILLIS, STEP_MILLIS, TimeUnit.MILLISECONDS);
         ticker = plugin.getServer().getScheduler().runTaskTimer(plugin, this::tick, 1, 1);
         logger.info("Cosmetics: drawn as " + renderer.describe() + ".");
     }
@@ -372,7 +372,10 @@ public final class CosmeticService {
             ticker.cancel();
             ticker = null;
         }
-        physics.shutdownNow();
+        if (stepping != null) {
+            stepping.cancel(false);
+            stepping = null;
+        }
         renderer.close();
         worn.clear();
     }

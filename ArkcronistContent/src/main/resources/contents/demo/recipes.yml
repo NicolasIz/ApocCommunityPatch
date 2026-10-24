@@ -1,0 +1,150 @@
+# ---------------------------------------------------------------------------
+#  Recipes (4.0)
+# ---------------------------------------------------------------------------
+#  Each entry under 'recipes:' is a recipe of the server's own: it is in every
+#  player's recipe book and placed in the grid with a click, as vanilla's are.
+#
+#  type             shaped, shapeless, furnace, blasting, smoking, campfire,
+#                   stonecutting or smithing
+#  result           what it makes: demo:ruby, or "demo:ruby 9" for nine
+#                   (or 'amount: 9'). A vanilla item: DIAMOND or minecraft:diamond
+#  pattern          shaped: one to three rows of one to three characters, all
+#                   the same length; a space is an empty slot
+#  ingredients      shaped: the item for each character of the pattern
+#                   shapeless: a list of one to nine items; "demo:ruby 2" is two
+#                   An item can be custom (demo:ruby), vanilla (STICK), a tag
+#                   ("#minecraft:planks" - quoted) or a list of any of these,
+#                   any one of which fits: [demo:ruby, DIAMOND]
+#  input            furnace, blasting, smoking, campfire, stonecutting
+#  experience       cooking: experience for each one taken out (default 0.1)
+#  cook-seconds     cooking: default 10 in a furnace, 5 in a blast furnace or
+#                   smoker, 30 on a campfire
+#  template, base, addition   smithing: the base becomes the result
+#  keep-components  smithing: the result keeps the base's enchantments, name
+#                   and damage, as netherite does (default true)
+#  group            recipes of one group share one place in the recipe book
+#  category         recipe book tab - crafting: building, redstone, equipment,
+#                   misc; cooking: food, blocks, misc
+#  recipe-book      false: not shown in the recipe book until crafted once
+#  permission       only players with it can make it, or see it in the book
+#
+#  A custom ingredient is matched as the plugin makes the item: a stack from
+#  before its name or lore changed in the YAML does not count as it, nor does
+#  one that carries data of its own (a loaded gun, a full backpack).
+#
+#  Custom items do not count as their material in vanilla recipes - three
+#  rubies (made of paper) are not a book - unless 'recipes.protect-custom-items'
+#  is false in config.yml.
+# ---------------------------------------------------------------------------
+
+namespace: demo
+
+recipes:
+
+  ruby_block:
+    type: shaped
+    pattern:
+      - "RRR"
+      - "RRR"
+      - "RRR"
+    ingredients:
+      R: demo:ruby
+    result: demo:ruby_block
+    category: building
+
+  ruby_from_block:
+    type: shapeless
+    ingredients: [demo:ruby_block]
+    result: demo:ruby 9
+    category: misc
+
+  ruby_sword:
+    type: shaped
+    pattern:
+      - "R"
+      - "R"
+      - "S"
+    ingredients:
+      R: demo:ruby
+      S: STICK
+    result: demo:ruby_sword
+    group: ruby_tools
+    category: equipment
+
+  ruby_helmet:
+    type: shaped
+    pattern:
+      - "RRR"
+      - "R R"
+    ingredients:
+      R: demo:ruby
+    result: demo:ruby_helmet
+    group: ruby_armour
+    category: equipment
+
+  ruby_chestplate:
+    type: shaped
+    pattern:
+      - "R R"
+      - "RRR"
+      - "RRR"
+    ingredients:
+      R: demo:ruby
+    result: demo:ruby_chestplate
+    group: ruby_armour
+    category: equipment
+
+  ruby_leggings:
+    type: shaped
+    pattern:
+      - "RRR"
+      - "R R"
+      - "R R"
+    ingredients:
+      R: demo:ruby
+    result: demo:ruby_leggings
+    group: ruby_armour
+    category: equipment
+
+  ruby_boots:
+    type: shaped
+    pattern:
+      - "R R"
+      - "R R"
+    ingredients:
+      R: demo:ruby
+    result: demo:ruby_boots
+    group: ruby_armour
+    category: equipment
+
+  # A letter: vanilla paper and a ruby. A ruby is made of paper, but it is not
+  # paper - two rubies do not make it.
+  sealed_letter:
+    type: shapeless
+    ingredients: [PAPER, demo:ruby]
+    result: demo:sealed_letter
+
+  # The star ore of the minigame, smelted: two rubies in a blast furnace, one
+  # in a furnace.
+  star_ore_blasting:
+    type: blasting
+    input: demo:star_ore
+    result: demo:ruby 2
+    experience: 1.0
+    category: blocks
+
+  star_ore_furnace:
+    type: furnace
+    input: demo:star_ore
+    result: demo:ruby
+    experience: 0.7
+    category: blocks
+
+  # A diamond sword upgraded to a ruby one at a smithing table, keeping its
+  # enchantments - as netherite upgrades diamond.
+  ruby_sword_upgrade:
+    type: smithing
+    template: NETHERITE_UPGRADE_SMITHING_TEMPLATE
+    base: DIAMOND_SWORD
+    addition: demo:ruby_block
+    result: demo:ruby_sword

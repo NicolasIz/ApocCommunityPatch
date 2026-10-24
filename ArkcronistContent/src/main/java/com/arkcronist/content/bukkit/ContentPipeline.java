@@ -30,6 +30,8 @@ import com.arkcronist.content.core.liquid.TripwireState;
 import com.arkcronist.content.core.loader.ContentLoader;
 import com.arkcronist.content.core.loader.ExampleUpdates;
 import com.arkcronist.content.core.loader.LoadReport;
+import com.arkcronist.content.core.recipe.RecipeDefinition;
+import com.arkcronist.content.core.recipe.RecipeReader;
 import com.arkcronist.content.core.menu.GuiPicture;
 import com.arkcronist.content.core.minigame.MinigameRenderer;
 import com.arkcronist.content.core.pack.ExternalPack;
@@ -231,7 +233,14 @@ public final class ContentPipeline {
                     "contents/medieval_props/textures/item/cantimplora.png")),
             // 3.5: four packs of medieval props - the mine, the smithy, the harbour, the farm - listed in a
             // file of their own, being six hundred.
-            Map.entry("3.5.0", exampleList("examples-3.5.0.txt")));
+            Map.entry("3.5.0", exampleList("examples-3.5.0.txt")),
+            Map.entry("4.0.0", List.of(
+                    "contents/demo/recipes.yml",
+                    "contents/demo/vehicles.yml",
+                    "contents/demo/models/vehicle/ruby_cart.json",
+                    "contents/demo/models/vehicle/ruby_cart_wheel.json",
+                    "contents/demo/textures/vehicle/ruby_cart.png",
+                    "contents/demo/textures/vehicle/ruby_cart_wheel.png")));
 
     /** The example files a resource lists, one path a line; # starts a comment. */
     private static List<String> exampleList(String resource) {
@@ -257,8 +266,8 @@ public final class ContentPipeline {
      * @param changed  whether the pack's content moved, and players were sent it again
      * @param problems everything that was skipped or looked wrong, already logged
      */
-    public record Report(int items, int blocks, int emojis, int advancements, int files, String sha1Hex, int bytes,
-                         boolean changed,
+    public record Report(int items, int blocks, int emojis, int advancements, int recipes, int files, String sha1Hex,
+                         int bytes, boolean changed,
                          @Nullable String url, String hosting, List<String> problems, long millis) {
     }
 
@@ -389,20 +398,25 @@ public final class ContentPipeline {
      *                      player's client fails to apply it
      */
     record Extras(@Nullable MinigameRenderer.Glyphs minigame, @Nullable BedrockConverter.Build bedrock,
-                  @Nullable Path bedrockPack, List<String> brokenShaders) {
+                  @Nullable Path bedrockPack, List<String> brokenShaders, List<RecipeDefinition> recipes) {
 
-        static final Extras NONE = new Extras(null, null, null, List.of());
+        static final Extras NONE = new Extras(null, null, null, List.of(), List.of());
 
         Extras withMinigame(@Nullable MinigameRenderer.Glyphs minigame) {
-            return new Extras(minigame, bedrock, bedrockPack, brokenShaders);
+            return new Extras(minigame, bedrock, bedrockPack, brokenShaders, recipes);
         }
 
         Extras withBedrock(BedrockConverter.Build bedrock, Path bedrockPack) {
-            return new Extras(minigame, bedrock, bedrockPack, brokenShaders);
+            return new Extras(minigame, bedrock, bedrockPack, brokenShaders, recipes);
         }
 
         Extras withBrokenShaders(List<String> brokenShaders) {
-            return new Extras(minigame, bedrock, bedrockPack, List.copyOf(brokenShaders));
+            return new Extras(minigame, bedrock, bedrockPack, List.copyOf(brokenShaders), recipes);
+        }
+
+        /** 4.0: the recipes to register, each naming only items this build has. */
+        Extras withRecipes(List<RecipeDefinition> recipes) {
+            return new Extras(minigame, bedrock, bedrockPack, brokenShaders, List.copyOf(recipes));
         }
     }
 
@@ -689,14 +703,16 @@ public final class ContentPipeline {
                 }
             }
             checkCrops(items, problems);
+            checkVehicles(items, problems);
             Map<String, ItemDefinition> definitions = new LinkedHashMap<>();
             items.values().forEach(item -> definitions.put(item.id(), item.definition()));
             AdvancementCompiler.Result advancements = AdvancementCompiler.compile(report.advancements(), definitions,
                     ContentPipeline::textComponent);
             problems.addAll(advancements.problems());
+            List<RecipeDefinition> recipes = RecipeReader.withKnownItems(report.recipes(), items.keySet(), problems);
             return new Build(items, Map.of(), report.emojis(), Map.of(), advancements.advancements(), Map.of(),
                     report.huds(), Map.of(), List.of(), List.of(), report.fontImages(), FontImages.EMPTY, problems, 0,
-                    null, null, Extras.NONE);
+                    null, null, Extras.NONE.withRecipes(recipes));
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
@@ -705,6 +721,22 @@ public final class ContentPipeline {
     /** MiniMessage to the JSON text component an advancement's title and description are written in. */
     private static JsonElement textComponent(String miniMessage) {
         return GsonComponentSerializer.gson().serializeToTree(MiniMessage.miniMessage().deserialize(miniMessage));
+    }
+
+    /** 4.0: a vehicle's parts name items; one that is not loaded is reported, and not drawn. */
+    private static void checkVehicles(Map<String, CustomItem> items, List<String> problems) {
+        for (CustomItem item : items.values()) {
+            com.arkcronist.content.core.vehicle.VehicleDefinition vehicle = item.definition().vehicle();
+            if (vehicle == null) {
+                continue;
+            }
+            for (com.arkcronist.content.core.vehicle.VehicleDefinition.Part part : vehicle.parts()) {
+                if (part.item() != null && !items.containsKey(part.item())) {
+                    problems.add(item.definition().source().getFileName() + " > " + item.id() + ": vehicle: part "
+                            + part.item() + " is not a loaded item - it is not drawn");
+                }
+            }
+        }
     }
 
     /**
@@ -1502,12 +1534,18 @@ public final class ContentPipeline {
         if (plugin.cosmetics() != null) {
             plugin.cosmetics().contentReloaded();
         }
+        if (plugin.vehicles() != null) {
+            plugin.vehicles().contentReloaded();
+        }
         if (plugin.bedrock() != null && build.extras().bedrock() != null) {
             plugin.bedrock().update(build.extras().bedrock());
         }
         plugin.fontImages().replace(build.fontImages());
         emojis.replace(build.emojis());
         int advancements = plugin.advancements() == null ? 0 : plugin.advancements().publish(build.advancements());
+        // After the advancements: a changed one reloads the server's data, which drops added recipes.
+        List<String> problems = new ArrayList<>(build.problems());
+        int recipes = plugin.recipes() == null ? 0 : plugin.recipes().publish(build.extras().recipes(), problems);
         if (plugin.hooks() != null) {
             plugin.hooks().contentReloaded();
         }
@@ -1526,9 +1564,9 @@ public final class ContentPipeline {
 
         PackArtifact pack = build.artifact();
         Report report = new Report(build.items().size(), customBlocks.size(), build.emojis().size(), advancements,
-                pack.entries(),
+                recipes, pack.entries(),
                 pack.sha1Hex(), pack.size(),
-                changed, url, hosted.note(), List.copyOf(build.problems()),
+                changed, url, hosted.note(), List.copyOf(problems),
                 TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started));
         log(report);
         return report;
@@ -1539,7 +1577,7 @@ public final class ContentPipeline {
             logger.warning(problem);
         }
         logger.info(report.items() + " custom item(s) (" + report.blocks() + " block(s)), " + report.emojis()
-                + " emoji(s), " + report.advancements() + " advancement(s), pack of "
+                + " emoji(s), " + report.advancements() + " advancement(s), " + report.recipes() + " recipe(s), pack of "
                 + report.files() + " file(s), "
                 + (report.bytes() / 1024) + " KiB, sha1 " + report.sha1Hex()
                 + (report.changed() ? "" : " (unchanged)")

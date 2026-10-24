@@ -39,10 +39,22 @@ public record ItemDefinition(String namespace, String id, String material, Strin
                              @Nullable GunDefinition gun,
                              @Nullable com.arkcronist.content.core.minigame.MinigameDefinition minigame,
                              @Nullable com.arkcronist.content.core.cosmetic.CosmeticDefinition cosmetic,
-                             @Nullable DrinkDefinition drink, @Nullable BackpackDefinition backpack) {
+                             @Nullable DrinkDefinition drink, @Nullable BackpackDefinition backpack,
+                             @Nullable com.arkcronist.content.core.vehicle.VehicleDefinition vehicle) {
 
     public ItemDefinition {
         lore = List.copyOf(lore);
+    }
+
+    /** An item that is not a vehicle. */
+    public ItemDefinition(String namespace, String id, String material, String displayName, List<String> lore,
+                          ModelSource model, ItemBehaviour behaviour, Placement placement, Path source, double price,
+                          @Nullable Equipment equipment, @Nullable GunDefinition gun,
+                          @Nullable com.arkcronist.content.core.minigame.MinigameDefinition minigame,
+                          @Nullable com.arkcronist.content.core.cosmetic.CosmeticDefinition cosmetic,
+                          @Nullable DrinkDefinition drink, @Nullable BackpackDefinition backpack) {
+        this(namespace, id, material, displayName, lore, model, behaviour, placement, source, price, equipment, gun,
+                minigame, cosmetic, drink, backpack, null);
     }
 
     /** An item neither drunk from nor holding anything. */
@@ -85,43 +97,49 @@ public record ItemDefinition(String namespace, String id, String material, Strin
     /** The same item with a price: what one costs in the content shop, through Vault. 0 is not for sale. */
     public ItemDefinition withPrice(double price) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment, gun, minigame, cosmetic, drink, backpack);
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle);
     }
 
     /** The same item, worn as {@code equipment}. */
     public ItemDefinition withEquipment(@Nullable Equipment equipment) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment, gun, minigame, cosmetic, drink, backpack);
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle);
     }
 
     /** The same item, played as {@code minigame} (3.0): a rare ore's, or a fishing rod's. */
     public ItemDefinition withMinigame(@Nullable com.arkcronist.content.core.minigame.MinigameDefinition minigame) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment, gun, minigame, cosmetic, drink, backpack);
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle);
     }
 
     /** The same item, worn as {@code cosmetic} (3.0). */
     public ItemDefinition withCosmetic(@Nullable com.arkcronist.content.core.cosmetic.CosmeticDefinition cosmetic) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment, gun, minigame, cosmetic, drink, backpack);
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle);
     }
 
     /** The same item, shooting as {@code gun}. */
     public ItemDefinition withGun(@Nullable GunDefinition gun) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment, gun, minigame, cosmetic, drink, backpack);
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle);
     }
 
     /** The same item, drunk from as {@code drink} (3.4). */
     public ItemDefinition withDrink(@Nullable DrinkDefinition drink) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment, gun, minigame, cosmetic, drink, backpack);
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle);
     }
 
     /** The same item, holding others as {@code backpack} (3.4). */
     public ItemDefinition withBackpack(@Nullable BackpackDefinition backpack) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment, gun, minigame, cosmetic, drink, backpack);
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle);
+    }
+
+    /** The same item, driven as {@code vehicle} (4.0). */
+    public ItemDefinition withVehicle(@Nullable com.arkcronist.content.core.vehicle.VehicleDefinition vehicle) {
+        return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle);
     }
 
     /** {@code namespace:id}, the key the item is registered, given and recognised by. */

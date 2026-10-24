@@ -339,3 +339,21 @@ bedrock:
   # and per quarter turn: a 6x6 well takes over 400), and when they run out
   # the biggest pieces are left out. Listing some here leaves those out instead.
   skip-furniture: []
+
+# ---------------------------------------------------------------------------
+#  Recipes (4.0)
+# ---------------------------------------------------------------------------
+#  The recipes: of the content files are the server's own: crafting table,
+#  furnace, blast furnace, smoker, campfire, stonecutter and smithing table,
+#  each in every player's recipe book (see contents/demo/recipes.yml).
+#
+#  A custom item is made of a vanilla material - a ruby of paper - and to the
+#  game's recipes it would be that material: a book from rubies, a netherite
+#  sword from a custom diamond one. With this on, a vanilla recipe gives
+#  nothing while a custom item is among its ingredients (crafting table,
+#  crafter, smithing table), and furnaces and campfires do not cook one by a
+#  vanilla recipe. The plugin's own recipes take custom items only where they
+#  name them. Other plugins' recipes are left alone.
+# ---------------------------------------------------------------------------
+recipes:
+  protect-custom-items: true

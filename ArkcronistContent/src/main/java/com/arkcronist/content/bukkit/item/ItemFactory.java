@@ -177,6 +177,12 @@ public final class ItemFactory {
         return changed;
     }
 
+    /** 4.0: whether a stack carries the plugin's id at all, loaded right now or not. */
+    public boolean hasId(@Nullable ItemStack stack) {
+        return stack != null && !stack.isEmpty()
+                && stack.getPersistentDataContainer().has(idKey, PersistentDataType.STRING);
+    }
+
     /**
      * The custom item a stack is, if it is one that is loaded right now.
      *

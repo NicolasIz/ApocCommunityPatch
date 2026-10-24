@@ -6,6 +6,7 @@ import com.arkcronist.content.core.definition.FontImageDefinition;
 import com.arkcronist.content.core.definition.ItemDefinition;
 import com.arkcronist.content.core.quest.QuestDefinition;
 import com.arkcronist.content.core.hud.HudDefinition;
+import com.arkcronist.content.core.recipe.RecipeDefinition;
 
 import java.util.List;
 
@@ -18,7 +19,8 @@ import java.util.List;
  */
 public record LoadReport(List<ItemDefinition> items, List<EmojiDefinition> emojis,
                          List<AdvancementDefinition> advancements, List<HudDefinition> huds,
-                         List<FontImageDefinition> fontImages, List<QuestDefinition> quests, List<String> problems) {
+                         List<FontImageDefinition> fontImages, List<QuestDefinition> quests,
+                         List<RecipeDefinition> recipes, List<String> problems) {
 
     public LoadReport {
         items = List.copyOf(items);
@@ -27,7 +29,14 @@ public record LoadReport(List<ItemDefinition> items, List<EmojiDefinition> emoji
         huds = List.copyOf(huds);
         fontImages = List.copyOf(fontImages);
         quests = List.copyOf(quests);
+        recipes = List.copyOf(recipes);
         problems = List.copyOf(problems);
+    }
+
+    public LoadReport(List<ItemDefinition> items, List<EmojiDefinition> emojis,
+                      List<AdvancementDefinition> advancements, List<HudDefinition> huds,
+                      List<FontImageDefinition> fontImages, List<QuestDefinition> quests, List<String> problems) {
+        this(items, emojis, advancements, huds, fontImages, quests, List.of(), problems);
     }
 
     public LoadReport(List<ItemDefinition> items, List<EmojiDefinition> emojis,

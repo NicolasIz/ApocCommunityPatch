@@ -70,11 +70,11 @@ public final class DatabaseManager {
      * advancement_unlocks added. 5: liquid_sources and hud_values added. 6: furniture_transforms
      * added. 7: furniture_pairs, quest_notices and quest_progress added. 8: furniture_pieces and
      * recovered_storage added. 9: player_cosmetics and minigame_stats added. 10: item_storage
-     * added. An older file gains the tables it lacks on open, all of them and the
+     * added. 11: vehicles added. An older file gains the tables it lacks on open, all of them and the
      * new version number in one transaction - or none of it; nothing existing is touched, so an
      * older plugin still opens the file and leaves the tables it does not know alone.
      */
-    public static final int SCHEMA_VERSION = 10;
+    public static final int SCHEMA_VERSION = 11;
 
     /**
      * Each piece of furniture as a whole, by its anchor block: which way it faces. Written in the
@@ -116,6 +116,23 @@ public final class DatabaseManager {
      * 3.4: what each item that holds others - a backpack - holds, by the id the item carries. A
      * rowid table, as furniture_storage: its rows carry a blob of a few kilobytes.
      */
+    /**
+     * 4.0: every vehicle in the world, where it was last left. Its entities are not saved with the
+     * chunk - this row is what puts it back when the chunk loads.
+     */
+    private static final String CREATE_VEHICLE_TABLE = """
+            CREATE TABLE IF NOT EXISTS vehicles (
+                vehicle_id TEXT    NOT NULL PRIMARY KEY,
+                item_id    TEXT    NOT NULL,
+                world      TEXT    NOT NULL,
+                x          REAL    NOT NULL,
+                y          REAL    NOT NULL,
+                z          REAL    NOT NULL,
+                yaw        REAL    NOT NULL,
+                owner      TEXT,
+                updated_at INTEGER NOT NULL
+            )""";
+
     private static final String CREATE_ITEM_STORAGE_TABLE = """
             CREATE TABLE IF NOT EXISTS item_storage (
                 storage_id TEXT    NOT NULL PRIMARY KEY,
@@ -647,6 +664,64 @@ public final class DatabaseManager {
                 statement.setInt(3, slots);
                 statement.setBytes(4, contents);
                 statement.setLong(5, System.currentTimeMillis());
+                statement.executeUpdate();
+            }
+            return null;
+        }, false);
+    }
+
+    /** 4.0: every vehicle in every world, where it was last left. */
+    public CompletableFuture<List<StoredVehicle>> vehicles() {
+        return submit(connection -> {
+            List<StoredVehicle> vehicles = new ArrayList<>();
+            try (Statement statement = connection.createStatement();
+                 ResultSet result = statement.executeQuery(
+                         "SELECT vehicle_id, item_id, world, x, y, z, yaw, owner FROM vehicles ORDER BY vehicle_id")) {
+                while (result.next()) {
+                    try {
+                        String owner = result.getString(8);
+                        vehicles.add(new StoredVehicle(UUID.fromString(result.getString(1)), result.getString(2),
+                                UUID.fromString(result.getString(3)), result.getDouble(4), result.getDouble(5),
+                                result.getDouble(6), result.getFloat(7), owner == null ? null : UUID.fromString(owner)));
+                    } catch (IllegalArgumentException unreadable) {
+                        logger.warning("vehicles: a row with an unreadable id or world is skipped: "
+                                + result.getString(1));
+                    }
+                }
+            }
+            return vehicles;
+        }, false);
+    }
+
+    /** 4.0: where a vehicle is now - a new one, or one that moved. */
+    public CompletableFuture<Void> saveVehicle(StoredVehicle vehicle) {
+        return submit(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement("""
+                    INSERT INTO vehicles (vehicle_id, item_id, world, x, y, z, yaw, owner, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (vehicle_id) DO UPDATE SET item_id = excluded.item_id, world = excluded.world,
+                        x = excluded.x, y = excluded.y, z = excluded.z, yaw = excluded.yaw, owner = excluded.owner,
+                        updated_at = excluded.updated_at""")) {
+                statement.setString(1, vehicle.id().toString());
+                statement.setString(2, vehicle.itemId());
+                statement.setString(3, vehicle.world().toString());
+                statement.setDouble(4, vehicle.x());
+                statement.setDouble(5, vehicle.y());
+                statement.setDouble(6, vehicle.z());
+                statement.setFloat(7, vehicle.yaw());
+                statement.setString(8, vehicle.owner() == null ? null : vehicle.owner().toString());
+                statement.setLong(9, System.currentTimeMillis());
+                statement.executeUpdate();
+            }
+            return null;
+        }, false);
+    }
+
+    /** 4.0: a vehicle picked up: its row goes. */
+    public CompletableFuture<Void> deleteVehicle(UUID id) {
+        return submit(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement("DELETE FROM vehicles WHERE vehicle_id = ?")) {
+                statement.setString(1, id.toString());
                 statement.executeUpdate();
             }
             return null;
@@ -1563,7 +1638,7 @@ public final class DatabaseManager {
                         CREATE_UNLOCK_TABLE, CREATE_LIQUID_TABLE, CREATE_HUD_TABLE, CREATE_TRANSFORM_TABLE,
                         CREATE_PAIR_TABLE, CREATE_NOTICE_TABLE, CREATE_PROGRESS_TABLE, CREATE_PIECE_TABLE,
                         CREATE_RECOVERED_TABLE, CREATE_COSMETIC_TABLE, CREATE_MINIGAME_TABLE,
-                        CREATE_ITEM_STORAGE_TABLE)) {
+                        CREATE_ITEM_STORAGE_TABLE, CREATE_VEHICLE_TABLE)) {
                     statement.execute(create);
                 }
                 if (version < SCHEMA_VERSION) {

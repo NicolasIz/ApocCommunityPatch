@@ -25,6 +25,9 @@ import com.arkcronist.content.core.liquid.LiquidModels;
 import com.arkcronist.content.core.minigame.MinigameDefinition;
 import com.arkcronist.content.core.quest.QuestDefinition;
 import com.arkcronist.content.core.quest.QuestReader;
+import com.arkcronist.content.core.recipe.RecipeDefinition;
+import com.arkcronist.content.core.recipe.RecipeReader;
+import com.arkcronist.content.core.vehicle.VehicleDefinition;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
@@ -117,13 +120,15 @@ public final class ContentLoader {
         Map<String, HudDefinition> huds = new LinkedHashMap<>();
         Map<String, FontImageDefinition> fontImages = new LinkedHashMap<>();
         Map<String, QuestDefinition> quests = new LinkedHashMap<>();
+        Map<String, RecipeDefinition> recipes = new LinkedHashMap<>();
         List<String> problems = new ArrayList<>();
         for (Path file : files) {
-            readFile(contentsDir, file, items, emojis, advancements, huds, fontImages, quests, problems);
+            readFile(contentsDir, file, items, emojis, advancements, huds, fontImages, quests, recipes, problems);
         }
         return new LoadReport(new ArrayList<>(items.values()), new ArrayList<>(emojis.values()),
                 new ArrayList<>(advancements.values()), new ArrayList<>(huds.values()),
-                new ArrayList<>(fontImages.values()), new ArrayList<>(quests.values()), problems);
+                new ArrayList<>(fontImages.values()), new ArrayList<>(quests.values()),
+                new ArrayList<>(recipes.values()), problems);
     }
 
     /**
@@ -190,7 +195,8 @@ public final class ContentLoader {
     private void readFile(Path contentsDir, Path file, Map<String, ItemDefinition> items,
                           Map<String, EmojiDefinition> emojis, Map<String, AdvancementDefinition> advancements,
                           Map<String, HudDefinition> huds, Map<String, FontImageDefinition> fontImages,
-                          Map<String, QuestDefinition> quests, List<String> problems) {
+                          Map<String, QuestDefinition> quests, Map<String, RecipeDefinition> recipes,
+                          List<String> problems) {
         String where = unix(contentsDir.relativize(file));
 
         Object document;
@@ -228,6 +234,13 @@ public final class ContentLoader {
         for (QuestDefinition quest : QuestReader.read(root.get("quests"), where, problems)) {
             if (quests.putIfAbsent(quest.id(), quest) != null) {
                 problems.add(where + " > quest " + quest.id() + ": already defined in another file - this one is ignored");
+            }
+        }
+        for (RecipeDefinition recipe : RecipeReader.read(root.get("recipes"), namespace, where, problems)) {
+            RecipeDefinition earlier = recipes.putIfAbsent(recipe.fullId(), recipe);
+            if (earlier != null) {
+                problems.add(where + " > recipe " + recipe.fullId() + ": already defined in " + earlier.where()
+                        + " - this one is ignored");
             }
         }
 
@@ -376,7 +389,103 @@ public final class ContentLoader {
                 item = item.withBackpack(new BackpackDefinition(slots, text(backpack, "title", prefix, problems)));
             }
         }
+        Map<?, ?> vehicle = section(section, "vehicle", prefix, problems);
+        if (vehicle != null) {
+            if (type != ContentType.ITEM) {
+                problems.add(prefix + "'vehicle' is only read on items (type: item) - the item placed to put it down");
+            } else {
+                item = item.withVehicle(vehicle(vehicle, prefix + "vehicle: ", problems));
+            }
+        }
         return item;
+    }
+
+    /**
+     * {@code vehicle:} (4.0) - speeds, steering, size, seats and the displays it is drawn with. With
+     * no {@code parts}, it is drawn with its own item's model, its middle half its height up.
+     */
+    private static VehicleDefinition vehicle(Map<?, ?> section, String where, List<String> problems) {
+        double maxSpeed = number(section, "max-speed", 8, 0.5, 40, where, problems);
+        double reverse = number(section, "reverse-speed", 3, 0, 40, where, problems);
+        double acceleration = number(section, "acceleration", 6, 0.1, 100, where, problems);
+        double braking = number(section, "braking", 16, 0.1, 200, where, problems);
+        double coasting = number(section, "coasting", 3, 0, 100, where, problems);
+        double turnRate = number(section, "turn-rate", 90, 0, 720, where, problems);
+        double step = number(section, "step-height", 0.6, 0, 1.5, where, problems);
+        double waterSpeed = number(section, "water-speed", 0.35, 0, 1, where, problems);
+        Placement.Vec3 size = vector(section, "size", new Placement.Vec3(1.2f, 1f, 2f), where, problems);
+        double width = Math.max(0.2, Math.min(8, size.x()));
+        double height = Math.max(0.2, Math.min(8, size.y()));
+        double length = Math.max(0.2, Math.min(8, size.z()));
+        if (width != size.x() || height != size.y() || length != size.z()) {
+            problems.add(where + "'size' is width, height, length, each from 0.2 to 8 blocks; kept within that");
+        }
+
+        List<VehicleDefinition.Offset> seats = new ArrayList<>();
+        Object seatNode = section.get("seats");
+        if (seatNode != null) {
+            if (!(seatNode instanceof List<?> list) || list.isEmpty() || list.size() > 8) {
+                problems.add(where + "'seats' should be a list of one to eight [right, up, forward] offsets;"
+                        + " using one seat in the middle");
+            } else {
+                for (Object entry : list) {
+                    VehicleDefinition.Offset seat = offset(entry, where + "seat " + (seats.size() + 1) + ": ", problems);
+                    if (seat != null) {
+                        seats.add(seat);
+                    }
+                }
+            }
+        }
+        if (seats.isEmpty()) {
+            seats.add(new VehicleDefinition.Offset(0, Math.min(height, 0.6), 0));
+        }
+
+        List<VehicleDefinition.Part> parts = new ArrayList<>();
+        Object partNode = section.get("parts");
+        if (partNode != null) {
+            if (!(partNode instanceof List<?> list) || list.size() > 16) {
+                problems.add(where + "'parts' should be a list of up to sixteen displays; drawing its own model");
+            } else {
+                for (Object entry : list) {
+                    String at = where + "part " + (parts.size() + 1) + ": ";
+                    if (!(entry instanceof Map<?, ?> part)) {
+                        problems.add(at + "should be a section with 'item' and 'offset'");
+                        continue;
+                    }
+                    Object itemId = part.get("item");
+                    String id = itemId == null ? null : String.valueOf(itemId).trim().toLowerCase(Locale.ROOT);
+                    if (id != null && !id.matches("[a-z0-9_.\\-]+:[a-z0-9_./\\-]+")) {
+                        problems.add(at + "'item' should be an item id like demo:ruby_cart_wheel");
+                        continue;
+                    }
+                    VehicleDefinition.Offset offset = part.get("offset") == null ? VehicleDefinition.Offset.ZERO
+                            : offset(part.get("offset"), at, problems);
+                    if (offset == null) {
+                        continue;
+                    }
+                    boolean wheel = flag(part, "wheel", false, at, problems);
+                    double radius = number(part, "radius", 0.3, 0.05, 4, at, problems);
+                    double scale = number(part, "scale", 1, 0.05, 16, at, problems);
+                    parts.add(new VehicleDefinition.Part(id, offset, scale, wheel, radius));
+                }
+            }
+        }
+        if (parts.isEmpty()) {
+            parts.add(new VehicleDefinition.Part(null, new VehicleDefinition.Offset(0, height / 2, 0), 1, false, 0.3));
+        }
+        return new VehicleDefinition(maxSpeed, reverse, acceleration, braking, coasting, turnRate, step, width,
+                length, height, waterSpeed, seats, parts);
+    }
+
+    /** {@code [right, up, forward]}, in blocks, each from -8 to 8. */
+    private static VehicleDefinition.Offset offset(Object node, String where, List<String> problems) {
+        if (node instanceof List<?> list && list.size() == 3 && list.stream().allMatch(value -> value instanceof Number
+                && Math.abs(((Number) value).doubleValue()) <= 8)) {
+            return new VehicleDefinition.Offset(((Number) list.get(0)).doubleValue(),
+                    ((Number) list.get(1)).doubleValue(), ((Number) list.get(2)).doubleValue());
+        }
+        problems.add(where + "an offset is [right, up, forward] in blocks, each from -8 to 8, not " + node);
+        return null;
     }
 
     /**

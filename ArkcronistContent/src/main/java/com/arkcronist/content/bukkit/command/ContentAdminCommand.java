@@ -122,6 +122,13 @@ public final class ContentAdminCommand {
                                                                 StringArgumentType.getString(context, "change"),
                                                                 DoubleArgumentType.getDouble(context, "amount"))))))))
                 .then(Commands.literal("liquids").requires(ContentAdminCommand::admin).executes(this::liquids))
+                .then(Commands.literal("vehicles").requires(ContentAdminCommand::admin).executes(this::vehicles)
+                        .then(Commands.literal("reset").executes(context -> {
+                            plugin.vehicles().resetTiming();
+                            context.getSource().getSender().sendMessage(Component.text("Vehicle timings reset.",
+                                    NamedTextColor.GRAY));
+                            return Command.SINGLE_SUCCESS;
+                        })))
                 .then(Commands.literal("bedrock").requires(ContentAdminCommand::admin).executes(this::bedrock)
                         .then(Commands.literal("look").executes(this::bedrockLook)))
                 .then(Commands.literal("legacy").requires(ContentAdminCommand::admin)
@@ -336,6 +343,18 @@ public final class ContentAdminCommand {
         return Command.SINGLE_SUCCESS;
     }
 
+    /** 4.0: {@code /arkcontent vehicles} - how many, and what they cost each tick. */
+    private int vehicles(CommandContext<CommandSourceStack> context) {
+        CommandSender sender = context.getSource().getSender();
+        int[] counts = plugin.vehicles().counts();
+        double[] timing = plugin.vehicles().timing();
+        sender.sendMessage(Component.text(String.format(Locale.ROOT,
+                "Vehicles: %d in loaded chunks (%d driven), %d parked elsewhere. Main thread %.1f µs a tick;"
+                        + " ArkContent-Physics %.1f µs a vehicle step over %.0f step(s).",
+                counts[0], counts[2], counts[1], timing[0], timing[1], timing[2]), NamedTextColor.GRAY));
+        return Command.SINGLE_SUCCESS;
+    }
+
     /**
      * {@code /arkcontent editor [furniture]}: the furniture editor on the piece the player is looking
      * at, or the nearest piece of the furniture named.
@@ -433,7 +452,7 @@ public final class ContentAdminCommand {
                 return;
             }
             sender.sendMessage(Component.text(report.items() + " item(s), " + report.blocks() + " block(s), "
-                    + report.emojis() + " emoji(s), pack "
+                    + report.emojis() + " emoji(s), " + report.recipes() + " recipe(s), pack "
                     + shortHash(report.sha1Hex())
                     + (report.changed() ? ", sent to online players" : ", unchanged")
                     + " (" + report.millis() + " ms).", NamedTextColor.GREEN));

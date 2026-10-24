@@ -476,7 +476,45 @@ class DatabaseManagerTest {
         try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
              Statement statement = connection.createStatement();
              ResultSet version = statement.executeQuery("PRAGMA user_version")) {
-            assertEquals(10, version.getInt(1));
+            assertEquals(DatabaseManager.SCHEMA_VERSION, version.getInt(1));
+        }
+    }
+
+    /**
+     * 4.0: a file from 3.4-3.6 (schema 10) gains the vehicles table, and nothing it had is touched;
+     * a vehicle is saved, moved and picked up.
+     */
+    @Test
+    void aVersion10FileGainsVehiclesAndKeepsItsRows() throws Exception {
+        Path file = temp.resolve("content.db");
+        database = open();
+        get(database.saveItemStorage("pack", "medieval_props:mochila_viaje", 27, new byte[]{7}));
+        database.close();
+        database = null;
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+             Statement statement = connection.createStatement()) {
+            statement.execute("DROP TABLE vehicles");
+            statement.execute("PRAGMA user_version=10");
+        }
+        database = open();
+        assertArrayEquals(new byte[]{7}, get(database.loadItemStorage("pack")).orElseThrow());
+        assertTrue(get(database.vehicles()).isEmpty());
+        UUID cart = UUID.fromString("00000000-0000-0000-0000-0000000000c1");
+        UUID owner = UUID.fromString("00000000-0000-0000-0000-0000000000aa");
+        get(database.saveVehicle(new StoredVehicle(cart, "demo:ruby_cart", OVERWORLD, 10.5, 64, -3.25, 90f, owner)));
+        get(database.saveVehicle(new StoredVehicle(cart, "demo:ruby_cart", OVERWORLD, 40.5, 65, -3.25, 180f, owner)));
+        List<StoredVehicle> vehicles = get(database.vehicles());
+        assertEquals(List.of(new StoredVehicle(cart, "demo:ruby_cart", OVERWORLD, 40.5, 65, -3.25, 180f, owner)),
+                vehicles);
+        assertEquals(BlockKey.pack(2, 0, -1), vehicles.getFirst().chunk(), "x 40.5 is chunk 2, z -3.25 is chunk -1");
+        get(database.deleteVehicle(cart));
+        assertTrue(get(database.vehicles()).isEmpty());
+        database.close();
+        database = null;
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+             Statement statement = connection.createStatement();
+             ResultSet version = statement.executeQuery("PRAGMA user_version")) {
+            assertEquals(11, version.getInt(1));
         }
     }
 

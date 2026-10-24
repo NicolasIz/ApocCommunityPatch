@@ -132,6 +132,9 @@ public final class ArkContentPlugin extends JavaPlugin {
     private HookManager hooks;
     private ContentMenus menus;
     private AdvancementService advancements;
+    private com.arkcronist.content.bukkit.recipe.RecipeService recipes;
+    private java.util.concurrent.ScheduledExecutorService physics;
+    private com.arkcronist.content.bukkit.vehicle.VehicleService vehicles;
     private CustomBlockService blockService;
     private ActionBars actionBars;
     private GunService guns;
@@ -217,6 +220,7 @@ public final class ArkContentPlugin extends JavaPlugin {
         this.menus = new ContentMenus(this, pipeline.worker(), items, itemFactory, settings.menus(), fontImages,
                 pipeline.contentsDir());
         this.advancements = new AdvancementService(this, items, itemFactory, database);
+        this.recipes = new com.arkcronist.content.bukkit.recipe.RecipeService(this, items, itemFactory);
         this.actionBars = new ActionBars(() -> getServer().getCurrentTick());
         this.guns = new GunService(this, items, itemFactory, hooks, protection, actionBars, settings.guns());
         hooks.addPlaceholders(guns::placeholder);
@@ -236,9 +240,17 @@ public final class ArkContentPlugin extends JavaPlugin {
         this.minigames = new com.arkcronist.content.bukkit.minigame.MinigameService(this, items, itemFactory,
                 blockService, protection, database, actionBars, pipeline.mainThread());
         com.arkcronist.content.bukkit.cosmetic.CosmeticRenderer cosmeticRenderer = hooks.packetCosmetics();
+        // 4.0: one ArkContent-Physics for back cosmetics and vehicles alike.
+        this.physics = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "ArkContent-Physics");
+            thread.setDaemon(true);
+            return thread;
+        });
         this.cosmetics = new com.arkcronist.content.bukkit.cosmetic.CosmeticService(this, items, database,
                 pipeline.mainThread(), cosmeticRenderer != null ? cosmeticRenderer
-                : new com.arkcronist.content.bukkit.cosmetic.EntityCosmetics(this));
+                : new com.arkcronist.content.bukkit.cosmetic.EntityCosmetics(this), physics);
+        this.vehicles = new com.arkcronist.content.bukkit.vehicle.VehicleService(this, items, itemFactory, database,
+                protection, physics);
         this.sanity = new SanityChecker(this, settings.sanity(), database, placed, transforms, furniture, blockService,
                 liquids, liquidRegistry, seats, storage);
 
@@ -344,6 +356,9 @@ public final class ArkContentPlugin extends JavaPlugin {
         }
         plugins.registerEvents(new ContentMenuListener(this), this);
         plugins.registerEvents(new AdvancementListener(this, advancements), this);
+        plugins.registerEvents(new com.arkcronist.content.bukkit.vehicle.VehicleListener(vehicles, itemFactory), this);
+        plugins.registerEvents(new com.arkcronist.content.bukkit.recipe.RecipeListener(recipes, itemFactory,
+                getConfig().getBoolean("recipes.protect-custom-items", true)), this);
         plugins.registerEvents(new GunListener(this, guns), this);
         plugins.registerEvents(new LiquidListener(liquids, liquidRegistry, itemFactory, protection), this);
         plugins.registerEvents(new HudListener(huds, itemFactory), this);
@@ -384,6 +399,8 @@ public final class ArkContentPlugin extends JavaPlugin {
         liquids.start(getServer().getWorlds());
         huds.start();
         cosmetics.start();
+        // Queued behind the database opening: the vehicles left in the world, put back as their chunks load.
+        vehicles.start();
         // The first audit an interval from now, driven from the database's thread.
         sanity.start();
         // Smoke, steam and flames: picked on the main thread each tick, drawn on ArkContent-Effects.
@@ -532,6 +549,13 @@ public final class ArkContentPlugin extends JavaPlugin {
         if (cosmetics != null) {
             shutdownStep(() -> cosmetics.stop());
         }
+        // Every vehicle's place is queued for writing ahead of the database closing below.
+        if (vehicles != null) {
+            shutdownStep(() -> vehicles.shutdown());
+        }
+        if (physics != null) {
+            shutdownStep(() -> physics.shutdownNow());
+        }
         if (huds != null) {
             shutdownStep(() -> huds.shutdown());
         }
@@ -674,6 +698,16 @@ public final class ArkContentPlugin extends JavaPlugin {
     /** The plugin's advancements on the server; null before enable. */
     public AdvancementService advancements() {
         return advancements;
+    }
+
+    /** 4.0: vehicles; null before enable. */
+    public com.arkcronist.content.bukkit.vehicle.VehicleService vehicles() {
+        return vehicles;
+    }
+
+    /** 4.0: the plugin's recipes on the server; null before enable. */
+    public com.arkcronist.content.bukkit.recipe.RecipeService recipes() {
+        return recipes;
     }
 
     /** Guns: shooting, magazines, reloading. Null before enable. */

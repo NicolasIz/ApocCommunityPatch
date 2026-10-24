@@ -1,0 +1,72 @@
+# ---------------------------------------------------------------------------
+#  Vehicles (4.0)
+# ---------------------------------------------------------------------------
+#  An item with a 'vehicle:' section is placed as a vehicle with a right click
+#  on the ground. Right click it to get in - the first seat drives - and drive
+#  with your movement keys: forward, back (brakes, then reverses), left and
+#  right to steer, jump to brake. Sneak to get out; sneak and right click it
+#  to pick it up again. Vehicles stay where they were left, across restarts.
+#
+#  The driving is worked out off the main thread (ArkContent-Physics), and the
+#  vehicle is drawn by item displays that the client moves smoothly between
+#  ticks. /arkcontent vehicles shows how long it takes.
+#
+#  max-speed        blocks a second, forward (default 8; a horse is about 10)
+#  reverse-speed    blocks a second, backward (default 3)
+#  acceleration     blocks a second, each second (default 6)
+#  braking          how fast it stops when braking or reversing (default 16)
+#  coasting         how fast it slows with no key held (default 3)
+#  turn-rate        degrees a second at full speed (default 90); slower when slow,
+#                   and nothing turns standing still
+#  step-height      it drives up anything this high (default 0.6: slabs, paths)
+#  water-speed      share of its top speed in water (default 0.35)
+#  size             [width, height, length] in blocks: what it collides with,
+#                   and where it can be clicked (default [1.2, 1, 2])
+#  seats            each [right, up, forward] from its middle, on the ground;
+#                   the first is the driver's (default one, in the middle)
+#  parts            what it looks like: each an item's model, at an offset
+#                   [right, up, forward] - where the model's centre goes.
+#                   Without an item, the vehicle item's own model. A model faces
+#                   the front with its south side, as Blockbench shows a front.
+#     wheel: true   it turns as the vehicle moves - about its own x axis -
+#     radius        by its radius (default 0.3)
+#     scale         its size (default 1)
+# ---------------------------------------------------------------------------
+
+namespace: demo
+
+items:
+
+  ruby_cart:
+    material: PAPER
+    display-name: "<#d63048>Ruby Cart"
+    lore:
+      - "<gray>An oak cart with iron-banded wheels."
+      - "<gray>Right click the ground to set it down."
+      - "<dark_gray>Sneak and right click it to pick it up."
+    resource:
+      model: vehicle/ruby_cart
+    vehicle:
+      max-speed: 9
+      reverse-speed: 3
+      acceleration: 5
+      turn-rate: 100
+      size: [1.6, 1.0, 2.1]
+      seats:
+        - [0.22, 0.68, -0.69]     # the driver, on the bench
+        - [-0.22, 0.68, -0.69]    # beside them
+        - [0, 0.5, 0.45]          # in the back
+      parts:
+        - { offset: [0, 0.494, 0] }
+        - { item: demo:ruby_cart_wheel, offset: [0.76, 0.3, -0.62], wheel: true, radius: 0.3 }
+        - { item: demo:ruby_cart_wheel, offset: [-0.76, 0.3, -0.62], wheel: true, radius: 0.3 }
+        - { item: demo:ruby_cart_wheel, offset: [0.76, 0.3, 0.62], wheel: true, radius: 0.3 }
+        - { item: demo:ruby_cart_wheel, offset: [-0.76, 0.3, 0.62], wheel: true, radius: 0.3 }
+
+  ruby_cart_wheel:
+    material: PAPER
+    display-name: "<gray>Cart Wheel"
+    lore:
+      - "<dark_gray>A wheel of the ruby cart."
+    resource:
+      model: vehicle/ruby_cart_wheel
