@@ -186,11 +186,17 @@ no.
 
 ### Lo comprobado para la 5.0.0
 
-- 611 pruebas unitarias en verde.
+- 612 pruebas unitarias en verde.
 - Compatibilidad binaria: cada método y campo externo que usa el JAR, buscado en las clases reales de
   los 11 servidores (1.21.4 a 1.21.11, 26.1.2, 26.2, 26.3): ninguno falta.
 - Servidores reales con bots (vehículos, integridad, emotes, menas) y el cliente real de 26.3 para los
   emotes; la migración de carpeta, en un servidor 26.3 y otro 1.21.8 que venían de la 4.0.
+- La batería completa con bots (general, recetas, vehículos 4.0 y 5.0, integridad, emotes) pasa en
+  1.21.4 a 1.21.11, 26.1.2 y 26.2. En 26.3 los bots no pueden entrar (mineflayer aún no habla su
+  protocolo); allí se comprobó que el plugin carga, y los emotes, con el cliente real.
+- Una primera pasada en 1.21.11 dio un carro que apenas avanzó (2,45 bloques en 3 s); no se ha
+  repetido en cuatro intentos limpios, uno con la misma secuencia de pruebas y otro entrando desde
+  lejos. Aquella versión del arnés aún no comprobaba que el bot iba montado.
 
 ---
 
