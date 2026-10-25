@@ -1,6 +1,6 @@
 # ArkcronistContent
 
-Motor de contenido personalizado para **Paper 1.21.4 a 1.21.11**, Java 21: define ítems, bloques, muebles
+Motor de contenido personalizado para **Paper 1.21.4 a 26.3** (Java 21; 26.x pide Java 25): define ítems, bloques, muebles
 (también asientos, muebles con inventario, cofres con animaciones de Blockbench que se unen en cofres
 dobles, camas de dos bloques, muebles de varios bloques, tablones de misiones y muebles interactivos:
 bebidas y calderos con partículas, carteles que ejecutan comandos y una guillotina animada; se incluyen
@@ -14,7 +14,9 @@ verificador de integridad repara o retira los muebles que un rollback, `/fill` o
 a medias (2.0). La 3.0 lleva el contenido a los jugadores de **Bedrock** a través de Geyser sin
 configurar nada, añade **cosméticos con física** (una mochila que se balancea a la espalda,
 calculada en su propio hilo) y **minijuegos de precisión** en la barra de acción para menas raras
-y cañas de pescar. El mismo
+y cañas de pescar. La 4.0 añade **recetas propias** (en el libro de recetas de vanilla) y
+**vehículos** que se conducen con las teclas de movimiento, con su física calculada en un hilo
+aparte, y llega a **Paper 26.1, 26.2 y 26.3**. El mismo
 concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer.
 
 ```
@@ -36,6 +38,7 @@ concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer
 /arkcontent bedrock                        qué recibió Geyser y qué se enseña a los jugadores de Bedrock (sección 4)
 /emojis                                    los emojis de chat disponibles, dibujados (sección 4)
 /cosmetic [off]                            lo que llevas puesto, o quitártelo (sección 4)
+/arkcontent vehicles [reset]               vehículos: cuántos hay y cuánto cuestan por tick (sección 4)
 ```
 
 | Permiso | Por defecto | Para |
@@ -48,6 +51,7 @@ concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer
 | `arkcontent.board` | todos | usar los tablones de misiones: aceptar, entregar y abandonar avisos |
 | `arkcontent.board.admin` | op | `/arkcontent board` (también lo permite `arkcontent.admin`) |
 | `arkcontent.cosmetic` | todos | ponerse un cosmético (clic derecho con él) y `/cosmetic` |
+| `arkcontent.vehicles.admin` | op | recoger vehículos que puso otro jugador (el dueño siempre puede) |
 
 Con MythicMobs, ModelEngine, MythicArmor, MMOItems, PlaceholderAPI (y a través de él TAB y
 DeluxeMenus), ShopGUI+, Iris, WorldGuard, GriefPrevention, AuraSkills, mcMMO, SkillAPI/ProSkillAPI,
@@ -57,21 +61,24 @@ ExcellentJobs, HMCCosmetics, zAuctionHouse, eco (EcoItems, EcoArmor, EcoEnchants
 PacketEvents, LuckPerms, Lands o Towny instalados se integra con ellos (sección 5); sin ellos funciona igual —verificado arrancando sin ninguno—. La
 sección 10 compara, plugin por plugin, con la lista de compatibilidad de ItemsAdder.
 
-**Versiones: Paper 1.21.4 a 1.21.11.** Desde 3.6.0 el plugin se compila contra la API de Paper 1.21.4
-(`api-version: '1.21.4'`) y se comprueba que también compila contra la de 1.21.11. Por debajo de 1.21.4
-no puede funcionar: el componente `item_model` y la carpeta `assets/<namespace>/items/`, en los que se
-apoya todo, llegaron en 1.21.4. Se ha probado arrancando un servidor Paper real de cada versión, de
-1.21.4 a 1.21.11, con un jugador que coloca, lleva y rompe el contenido, y con el cliente real de
-Minecraft en los dos extremos (1.21.4 y 1.21.11); ver «3.6.0» en la sección 4. Ni 26.x ni Folia.
+**Versiones: Paper 1.21.4 a 26.3.** El plugin se compila contra la API de Paper 1.21.4
+(`api-version: '1.21.4'`) en bytecode de Java 21, que corre tanto en 1.21.x (Java 21) como en 26.x
+(Java 25), y se comprueba que también compila y pasa sus pruebas contra la API de 26.3. Por debajo de
+1.21.4 no puede funcionar: el componente `item_model` y la carpeta `assets/<namespace>/items/`, en los
+que se apoya todo, llegaron en 1.21.4. Se ha probado arrancando un servidor Paper real de cada versión
+—1.21.4 a 1.21.11, 26.1.2, 26.2 y 26.3—, con un jugador que coloca, lleva y rompe el contenido, y con
+el cliente real de Minecraft en 1.21.4, 1.21.11 y 26.3; ver «3.6.0» y «4.0.0» en la sección 4. Folia
+no.
 
 ---
 
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-3.6.0.jar (contra la API de 1.21.4)
+./gradlew build          # -> build/libs/ArkcronistContent-4.0.0.jar (contra la API de 1.21.4)
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew test -PpaperVersion=1.21.11-R0.1-SNAPSHOT   # lo mismo contra la API de 1.21.11
+./gradlew test -PcompileJdk=25 -PpaperVersion=26.3.build.222-stable   # contra la de 26.3 (necesita un JDK 25)
 ./gradlew runServer      # levanta un Paper 1.21.8 desechable con el plugin instalado
 ./gradlew runServer -PrunServerVersion=1.21.4         # u otra versión de 1.21.4 a 1.21.11
 ```
@@ -660,7 +667,9 @@ Con un bot (mineflayer) y la consola, en el servidor de pruebas con 1608 ítems 
   *Logros*), 5 (+ `liquid_sources` y `hud_values`, ver *Líquidos* y *HUDs*), 6 (+ `furniture_transforms`,
   ver *Editor visual de muebles*) y 7 (+ `furniture_pairs`, `quest_notices` y `quest_progress`, ver
   *Cofres dobles* y *Tablón de misiones*) y 8 (2.0: + `furniture_pieces`, una fila por mueble con su
-  ancla y hacia dónde mira, y `recovered_storage`, ver *Verificador de integridad*). Un archivo de una
+  ancla y hacia dónde mira, y `recovered_storage`, ver *Verificador de integridad*), 9 (3.0:
+  + `player_cosmetics` y `minigame_stats`), 10 (3.4: + `item_storage`, lo que guarda cada mochila) y
+  11 (4.0: + `vehicles`, dónde se dejó cada vehículo, ver *Vehículos*). Un archivo de una
   versión anterior gana al abrirse las tablas que le faltan; no se toca nada de lo que ya hay. Las
   tablas nuevas y el `user_version` se escriben en **una sola transacción**: si falla una, el archivo
   sigue en la versión de antes, sin media migración (probado con una sentencia que falla después de crear la tabla y subir la versión: las dos cosas se deshacen). Una
@@ -2956,6 +2965,154 @@ Lo que no se ha probado en todas: los plugins integrados (sección 5) se verific
 uno tiene sus propias versiones; Bedrock (Geyser) también en 1.21.8. Las comprobaciones de shaders
 siguen comparando con el cliente 1.21.8 (sección 9).
 
+### 4.0: recetas, vehículos y Paper 26.x
+
+#### Recetas (`recipes:`)
+
+Cada entrada de `recipes:` en un YAML de contenido es una receta del propio servidor: sale en el
+libro de recetas de todos los jugadores y se coloca en la mesa con un clic, como las de vanilla. Su
+clave es `arkcontent:<namespace>/<id>`. Tipos: `shaped`, `shapeless`, `furnace`, `blasting`,
+`smoking`, `campfire`, `stonecutting` y `smithing`. El ejemplo `contents/demo/recipes.yml` trae once
+(la referencia completa de claves está en su cabecera):
+
+```yaml
+# contents/demo/recipes.yml
+namespace: demo
+recipes:
+  ruby_sword:                    # con forma: cada letra del patrón es un ingrediente
+    type: shaped
+    pattern: ["R", "R", "S"]
+    ingredients: { R: demo:ruby, S: STICK }
+    result: demo:ruby_sword
+    group: ruby_tools            # comparten hueco en el libro
+    category: equipment          # pestaña del libro
+  ruby_from_block:               # sin forma; "demo:ruby 9" son nueve
+    type: shapeless
+    ingredients: [demo:ruby_block]
+    result: demo:ruby 9
+  star_ore_blasting:             # horno de fundición; furnace, smoking y campfire igual
+    type: blasting
+    input: demo:star_ore
+    result: demo:ruby 2
+    experience: 1.0              # cook-seconds: por defecto 10 en horno, 5 en fundición, 30 en hoguera
+  ruby_sword_upgrade:            # mesa de herrería: la base se convierte en el resultado
+    type: smithing
+    template: NETHERITE_UPGRADE_SMITHING_TEMPLATE
+    base: DIAMOND_SWORD
+    addition: demo:ruby_block
+    result: demo:ruby_sword      # keep-components (por defecto true): conserva encantamientos, nombre y daño
+```
+
+- **Ingredientes**: un ítem del plugin (`demo:ruby`), uno vanilla (`STICK` o `minecraft:stick`),
+  una etiqueta (`"#minecraft:planks"`, entre comillas) o una lista de cualquiera de ellos, que vale
+  cualquiera. `permission:` limita quién la hace y la ve en el libro; `recipe-book: false` la oculta
+  hasta hacerla una vez.
+- **Un ingrediente del plugin se compara entero**, como lo fabrica el plugin: una stack de antes de
+  cambiar su nombre o lore en el YAML no cuenta como él, ni una que lleve datos propios (un arma
+  cargada, una mochila llena). En una receta sin forma que mezcla ítems del plugin y vanilla, Paper no
+  encaja nunca ingredientes «por material» junto a ingredientes exactos, así que ahí todos se comparan
+  exactos: el papel tiene que ser papel normal, no uno renombrado.
+- **Los ítems del plugin no cuentan como su material en recetas vanilla**: tres rubíes (hechos de
+  papel) y un cuero no son un libro. Vale para la mesa de crafteo, el crafter, la mesa de herrería y
+  los hornos. Se desactiva con `recipes.protect-custom-items: false` en `config.yml`.
+- **Recargas**: `/arkcontent reload` las vuelve a registrar; `/minecraft:reload` también (el plugin
+  escucha el aviso de recarga y las pone otra vez). Una receta con un ítem que no existe o un patrón
+  mal formado sale en el informe de la recarga y no se registra; un resultado de más de una stack se
+  recorta a una stack, con aviso.
+
+#### Vehículos (`vehicle:`)
+
+Un ítem con una sección `vehicle:` se coloca como vehículo con clic derecho en el suelo, mirando
+hacia donde mira el jugador. Clic derecho en él para subir: el primer asiento conduce. Se conduce con
+las teclas de movimiento —adelante; atrás frena y luego da marcha atrás; izquierda y derecha giran;
+salto frena—. Agacharse baja (el jugador aparece al lado de su asiento, no dentro), y agacharse + clic
+derecho lo recoge (su dueño, o quien tenga `arkcontent.vehicles.admin`). El ejemplo
+`contents/demo/vehicles.yml` es un carro de rubí de roble con cuatro ruedas, tres asientos y un rubí en
+el frontal:
+
+```yaml
+# contents/demo/vehicles.yml
+  ruby_cart:
+    material: PAPER
+    display-name: "<#d63048>Ruby Cart"
+    resource:
+      model: vehicle/ruby_cart
+    vehicle:
+      max-speed: 9              # bloques por segundo (un caballo, unos 10)
+      reverse-speed: 3
+      acceleration: 5           # bloques/s por segundo; braking 16 y coasting 3 por defecto
+      turn-rate: 100            # grados por segundo a toda velocidad; parado no gira
+      size: [1.6, 1.0, 2.1]     # ancho, alto, largo: con qué choca y dónde se le hace clic
+      seats:                    # [derecha, arriba, adelante] desde su centro, a ras de suelo
+        - [0.22, 0.68, -0.69]   # el conductor, en el banco
+        - [-0.22, 0.68, -0.69]
+        - [0, 0.5, 0.45]        # atrás
+      parts:                    # cómo se ve: modelos de ítems colocados en el vehículo
+        - { offset: [0, 0.494, 0] }    # sin item: el modelo del propio ítem
+        - { item: demo:ruby_cart_wheel, offset: [0.76, 0.3, -0.62], wheel: true, radius: 0.3 }
+        # ...las otras tres ruedas igual
+```
+
+Además: `step-height` (sube losas y caminos; 0.6 por defecto) y `water-speed` (en agua, esa parte de su
+velocidad; 0.35). Un modelo mira al frente del vehículo con su cara sur (+z), como Blockbench enseña
+el frente; una pieza con `wheel: true` gira sobre su eje x según avanza, a razón de su `radius`.
+
+**De qué está hecho.** Un *item display* vacío en el asiento del conductor es la raíz, y el
+conductor va montado en él. Las piezas (carrocería, ruedas) van montadas en la raíz, así que cada
+cliente las lleva con ella, y se colocan y giran solo con su transformación. Cada asiento más es otro
+display, y una entidad *interaction* del tamaño de su huella es lo que se clica. El cliente interpola
+el movimiento entre ticks (dos ticks de teleporte suave), así que se ve fluido.
+
+**Hilos.** En cada tick, el hilo principal lee lo que solo él puede leer: las teclas del conductor y
+las cajas de colisión de los bloques que el vehículo puede alcanzar en ese paso (un chunk sin cargar
+cuenta como macizo). Se lo pasa al hilo `ArkContent-Physics` —el mismo de los cosméticos—, que calcula
+el estado siguiente (velocidad, rumbo, gravedad, choques, escalón, agua; un giro que metería una
+esquina en una pared no se hace) y la transformación de cada pieza. Al tick siguiente el hilo principal
+mueve la raíz, los asientos y la caja de clic, y manda solo las transformaciones que cambiaron. Un
+vehículo aparcado y vacío no cuesta nada. `/arkcontent vehicles` dice cuántos hay y cuánto cuestan;
+`/arkcontent vehicles reset` empieza a medir de cero.
+
+**Persistencia.** Sus entidades no se guardan con el chunk; lo guarda la tabla `vehicles` (esquema
+11): al pararse, cada 10 s mientras se mueve y al apagar el servidor. Vuelve a aparecer cuando su
+chunk carga. Si algo le quita entidades —un `/kill`, un limpiador de entidades, o el propio juego, que
+se lleva el vehículo de un conductor que sale del servidor montado— se reponen solo las que faltan, sin
+bajar a nadie de los demás asientos. Si otro plugin impide crearlas, se avisa una vez y se reintenta
+cuando su chunk vuelva a cargar. No se puede colocar un vehículo encima de otro.
+
+#### De 1.21.4 a 26.3
+
+Las versiones 26.1, 26.2 y 26.3 piden Java 25; el jar es bytecode de Java 21 y corre igual en ellas.
+Para comprobar que nada de lo que usa el plugin falta en una versión, se buscaron **todas** las
+llamadas del plugin a clases ajenas (Paper, Bukkit, Adventure, Gson, JOML, el JDK…), 5671, en las
+clases que trae de verdad cada servidor, siguiendo la herencia: en las once versiones, de 1.21.4 a
+26.3. En 3.6.0 había dos que faltaban en 26.3, y ahora no falta ninguna en ninguna versión:
+
+- **JOML 1.10.9** (la que trae 26.3; las demás traen 1.10.8) cambió `Quaternionf.dot` para que tome
+  un `Quaternionfc`. Los cosméticos y los vehículos lo usaban para no mandar transformaciones
+  repetidas: en 26.3 la física de la mochila fallaba en cada paso. Ahora el producto se calcula a mano.
+- **`getUnsafe().nextEntityId()`** pide el mundo desde 26.3. Con PacketEvents instalado, ponerse un
+  cosmético fallaba. Ahora se busca la que tenga el servidor, sin o con mundo.
+
+Y un cambio de comportamiento, que no sale en esa búsqueda: **desde 26.2, Paper guarda en su
+datapack `bukkit` los logros que registra un plugin** y los vuelve a leer al arrancar, antes que el
+plugin. En el segundo arranque, el plugin veía sus logros «ya registrados por un datapack» y no los
+manejaba (y si se cambiaban en el YAML, seguía el viejo). Ahora borra esas copias al apagar el
+servidor; tras un `/minecraft:reload` reconoce como suyas las que él registró, y si el contenido de
+los logros cambia las borra todas antes de recargar. Si el servidor se cayó sin apagarse, las
+encuentra al arrancar, las borra y recarga una vez.
+
+`./gradlew test -PcompileJdk=25 -PpaperVersion=26.3.build.222-stable` compila el plugin y pasa las
+583 pruebas contra la API de 26.3 con Java 25 (sigue emitiendo Java 21). Algunas funciones que el
+plugin usa están marcadas en 26.3 como «se quitará» —`ParticleBuilder.extra(double)`, la forma de
+`RecipeChoice.ExactChoice` con varias stacks, `Bukkit.addRecipe(receta, boolean)`— y aún funcionan;
+la que mantiene a los pasajeros en un teletransporte (`RETAIN_PASSENGERS`, lo normal desde 1.21.10) se
+busca de modo que un servidor sin ella siga moviendo vehículos.
+
+El cliente 26.3 usa el formato de pack 97.1; el pack declara del 46 al 99, y el cliente real 26.3 lo
+carga sin avisos.
+
+<!--PRUEBAS-4.0.0-->
+
 ## 5. Integraciones
 
 Todas opcionales. `paper-plugin.yml` declara cada plugin como dependencia con
@@ -4437,12 +4594,27 @@ con `join-classpath: true` para ver sus clases.
 - 3.0, minijuegos: la barra va en la barra de acción, así que otro plugin que la use a la vez (la de
   AuraSkills, por ejemplo) se alterna con ella. Una mena de minijuego solo se mina jugando: ni
   pistones, ni explosiones, ni otros plugins la rompen por esa vía.
-- 3.6, versiones: Paper 1.21.4 a 1.21.11, ni anteriores (falta `item_model`) ni 26.x, que no se ha
-  probado; tampoco Folia. Las tablas que el plugin trae del cliente son de 1.21.8: el validador de
+- Versiones: Paper 1.21.4 a 26.3; ni anteriores (falta `item_model`) ni Folia. Las tablas que el
+  plugin trae del cliente son de 1.21.8: el validador de
   shaders avisa según lo que carga un cliente 1.21.8 (con 1.21.4 o 1.21.9+ algún aviso puede no
   aplicar, o faltar), la lista de ítems vanilla de un solo modelo (`custom_model_data`, sección 4)
   no incluye los ítems añadidos después de 1.21.8, que se quedan sin número (siguen dibujándose
-  por su `item_model`), y la posición de las barras de HUD sale de la interfaz de 1.21.8.
+  por su `item_model`), y la posición de las barras de HUD sale de la interfaz de 1.21.8. En 26.x no
+  se han probado los plugins integrados (sección 5) ni Bedrock; en 26.3 los bots de prueba no pueden
+  entrar (la librería llega a 26.1 y ViaBackwards los echa), así que allí se probó con el cliente real.
+- 4.0, recetas: un ingrediente del plugin se compara con la stack entera (ver *Recetas*), así que
+  una stack antigua o con datos propios no vale. Las recetas no se han probado desde Bedrock.
+- 4.0, vehículos:
+  - Chocan con los bloques, no entre sí ni con mobs o jugadores: dos vehículos pueden atravesarse.
+  - No se inclinan en cuestas: suben escalones de hasta `step-height` y caen, siempre horizontales.
+  - En agua van a `water-speed` por el fondo; no flotan. No tienen vida ni combustible y no se rompen.
+  - La cámara del conductor no gira con el vehículo: el jugador empieza mirando al frente y luego
+    mira libremente (el servidor no puede girar la vista sin pelearse con el ratón).
+  - Los jugadores de Bedrock no los ven: Geyser no dibuja *item displays* (como los muebles de Java
+    que van con display, sección 4).
+  - Se mueven en el hilo principal (un teletransporte por tick de la raíz, de cada asiento y de la
+    caja de clic): 8 vehículos conducidos a la vez costaron 0,6 ms por tick (ver las pruebas).
+
 
 ## 10. Compatibilidad frente a ItemsAdder
 
@@ -4553,3 +4725,32 @@ en las stacks como hace ItemsAdderAdditions, pero no están hechos.
 ItemsAdder lleva años siendo el estándar y gran parte de su lista son integraciones que escribieron
 los otros plugins. La cifra que ArkcronistContent puede cambiar por sí solo es la de sus propios
 ganchos y puentes.
+
+### ¿Y un emulador de la API de ItemsAdder? (estudiado en 4.0, no hecho)
+
+La idea: hacer pasar a ArkcronistContent por ItemsAdder, para que esos 12 plugins que solo hablan
+con ItemsAdder reciban los ítems de este. Se estudió y **no se ha hecho**, por cuatro razones:
+
+1. **Habría que hacerse pasar por ItemsAdder de verdad.** Esos plugins comprueban que el plugin
+   «ItemsAdder» esté cargado (`softdepend: [ItemsAdder]`) y luego llaman a sus clases
+   (`dev.lone.itemsadder.api.CustomStack.getInstance(...)`, `CustomBlock`, `CustomFurniture`; no
+   existe `CustomItems.getCustomItem`). Para eso habría que registrar un plugin llamado ItemsAdder y
+   reescribir esas clases con el mismo nombre de paquete. Si alguien tiene el ItemsAdder real
+   instalado, chocan: dos plugins con el mismo nombre no cargan, y dos copias de las mismas clases
+   rompen a cualquiera de los dos.
+2. **Es la API de un producto de pago**, con su licencia. Reproducirla clase por clase, con su
+   paquete, para suplantarla, no es algo que convenga publicar en un plugin.
+3. **La mayoría de esos 12 piden bloques y muebles, no ítems**: generadores de menas, minas y
+   regeneradores de bloques (AdvancedOreGen, JetsPrisonMines, Ore Regenerator, Ouroboros-Mines,
+   RealisticWorldGenerator), tumbas con muebles (Graves). Emular solo `CustomStack` no les sirve; habría
+   que imitar también cómo ItemsAdder coloca y reconoce bloques, que es distinto de cómo lo hace este
+   plugin (note blocks propios, muebles con barrera).
+4. **No hay ninguno instalado en el servidor de prueba**, así que no se podría comprobar nada contra
+   el plugin real; sería código a ciegas.
+
+Lo que sí funciona hoy para la mayoría de plugins que «soportan ItemsAdder»: casi todos aceptan
+también la stack completa, un número de CustomModelData, PlaceholderAPI o un registro compartido
+(Mimic, ItemBridge, eco, nightcore), y ArkcronistContent los alimenta todos (tabla de arriba). Para
+pasar el contenido de ItemsAdder a este plugin está `/arkcontent import` (sección 6). Y el camino
+limpio para los 12 restantes es el que siguió ItemsAdder: que cada plugin añada soporte, para lo que
+ArkcronistContent ya publica su propia API (sección 8).
