@@ -14,3 +14,4 @@ ArkcronistContent/run/
 .settings/
 .classpath
 .project
+__pycache__/

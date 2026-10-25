@@ -80,6 +80,58 @@ no.
 
 ---
 
+## 5.1.0 — La decoración medieval, rehecha
+
+Las 367 piezas de `medieval_props`, `medieval_herreria`, `medieval_mineria`, `medieval_pesca` y
+`medieval_granja` se han vuelto a pintar y a componer. La base es un estudio a fondo de 302 muebles
+y objetos de decoración comprados: los del zip de texturas y los de los packs de ItemsAdder del
+servidor. El estudio, con sus cifras y reglas, está en `docs/decoracion-profesional.md`.
+
+- **Una paleta de la casa.**
+  - Cada material sale de una rampa fija de cinco tonos: pasos de luminosidad de 6 a 10 y la misma
+    saturación, con el tono girando hacia la luz.
+  - Así trabajan los packs profesionales: `workshop_six` pinta 29 muebles con 47 colores.
+  - Antes cada pieza inventaba los suyos y cada pack tenía entre 2.900 y 11.000 colores. Ahora tiene
+    entre 149 y 277 (sin contar el mapa mural, que es una imagen).
+- **Pintura sin ruido.**
+  - La madera son tablas con su costura, una luz arriba y vetas largas.
+  - El metal tiene una fila de luz, otra de sombra y remaches.
+  - La piedra son bloques con juntas; la tela, pliegues y costuras.
+  - Ningún píxel lleva azar ni bisel propio: el juego ya sombrea las caras.
+  - Mediana de colores por textura: de 190 a 14 (las referencias, 15).
+- **Lo que hay dentro, como en los packs comprados.**
+  - Una caja, cesta, barril, carretilla o vagoneta llena es una superficie pintada a ras del borde con
+    lo que contiene, y unas pocas piezas encima, la mayoría giradas.
+  - Antes eran ~50 cubitos de fruta o mineral; las referencias usan 9.
+- **Plantas de verdad.** Flores, hierbas, tomateras, trigo, zanahorias y brotes son planos cruzados
+  con hojas recortadas, no cubos.
+- **Lo suelto, girado.**
+  - Lo que descansa sobre algo más grande (en una mesa, en una caja, sobre un pedestal) se gira 22,5°,
+    como hacen las referencias.
+  - Patas, tejados, tapas y filas de libros se quedan como estaban.
+  - Piezas con algún cubo girado o un plano: del 19 % al 55 % (las referencias, el 67 %).
+- **Nada más cambia.** Los nombres, los bloques que ocupa cada pieza, lo que hacen al usarlas, sus
+  inventarios y sus descripciones son los mismos. Los YAML no se han tocado.
+- **Los servidores que ya las tenían.** Al arrancar, el plugin sustituye los modelos y las texturas
+  de ejemplo que nadie ha modificado, por su huella SHA-1. Son 573 archivos en
+  `examples-history.txt`. Los que el dueño cambió se respetan.
+
+Lo comprobado para la 5.1.0:
+
+- **Pruebas**: las 612 pruebas unitarias pasan. Entre ellas está la compilación de las cinco carpetas en
+  un resource pack sin problemas y su conversión a Bedrock.
+- **Servidor 26.3 con el cliente real de Minecraft**:
+  - Se sacaron las cinco carpetas con `/arkcontent showcase` y se hicieron 50 capturas, de lejos y de
+    cerca.
+  - Las plantas de planos se ven con sus hojas recortadas. El fuego, el humo y las piezas grandes
+    salen bien.
+- **Actualización**: un servidor 26.3 que tenía los ejemplos de la 5.0 sin tocar recibió los 573
+  archivos nuevos al arrancar, y en su registro no hubo errores.
+- **Sin probar**: no se ha probado con un jugador de Bedrock en esta versión. Solo pasan las pruebas
+  de conversión.
+
+---
+
 ## 5.0.0 — OverlordContent
 
 ### El nombre nuevo, sin perder nada
@@ -203,7 +255,7 @@ no.
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/OverlordContent-5.0.0.jar (contra la API de 1.21.4)
+./gradlew build          # -> build/libs/OverlordContent-5.1.0.jar (contra la API de 1.21.4)
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew test -PpaperVersion=1.21.11-R0.1-SNAPSHOT   # lo mismo contra la API de 1.21.11
 ./gradlew test -PcompileJdk=25 -PpaperVersion=26.3.build.222-stable   # contra la de 26.3 (necesita un JDK 25)
