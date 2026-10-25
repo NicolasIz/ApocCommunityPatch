@@ -3111,7 +3111,56 @@ busca de modo que un servidor sin ella siga moviendo vehículos.
 El cliente 26.3 usa el formato de pack 97.1; el pack declara del 46 al 99, y el cliente real 26.3 lo
 carga sin avisos.
 
-<!--PRUEBAS-4.0.0-->
+#### Pruebas de la 4.0.0
+
+Con el jar definitivo, en un servidor Paper de cada versión que venía de 3.6.0 (así que la 4.0.0
+añade sola `recipes.yml`, `vehicles.yml` y sus modelos, y pasa la base de datos del esquema 10 al 11).
+Los jugadores son bots de mineflayer de esa versión (26.1 para 26.1.2, y para 26.2 a través de
+ViaVersion y ViaBackwards); en 26.3, el cliente real de Minecraft.
+
+| Paper | Prueba general (pack, ítems, bloque, muebles, armadura, menú) | Recetas | Vehículos (conducir · tras reiniciar) | Avisos del plugin |
+|---|---|---|---|---|
+| 1.21.4 | 12/12 | 13/13 | 15/15 · 6/6 | ninguno |
+| 1.21.5 | 12/12 | 13/13 | 15/15 · 6/6 | ninguno |
+| 1.21.6 | 12/12 | 13/13 | 15/15 · 6/6 | ninguno |
+| 1.21.7 | 12/12 | 13/13 | 15/15 · 6/6 | ninguno |
+| 1.21.8 | 12/12 | 13/13 | 15/15 · 6/6 | ninguno |
+| 1.21.9 | 12/12 | 13/13 | 15/15 · 6/6 | ninguno |
+| 1.21.10 | 12/12 | 13/13 | 15/15 · 6/6 | ninguno |
+| 1.21.11 | 12/12 | 13/13 | 15/15 · 6/6 | ninguno |
+| 26.1.2 | 12/12 | 13/13 | 15/15 · 6/6 | ninguno |
+| 26.2 | 12/12 | 13/13 | 15/15 · 6/6 | ninguno del plugin (Paper: «Skipping Entity … slime», slimes de pruebas anteriores descartados en pacífico) |
+| 26.3 (cliente real; el bot no puede entrar) | bloque, mueble y casco 6/6, capturas | registradas (11); sin probar crafteando | colocar, ver desde cuatro lados, subir, conducir, girar, bajar | ninguno |
+
+- **Recetas (13):** el libro de recetas las recibe; 9 rubíes → bloque de rubí; bloque → 9 rubíes;
+  espada de rubí; 3 rubíes y un cuero **no** hacen un libro, 3 papeles y un cuero sí; 2 rubíes no
+  valen por papel + rubí; papel + rubí → carta sellada; mena estelar → 2 rubíes en el alto horno;
+  espada de diamante con Afilado III + bloque de rubí en la mesa de herrería → espada de rubí que
+  conserva Afilado III; y la receta sigue registrada tras `/arkcontent reload` y tras
+  `/minecraft:reload`.
+- **Vehículos, conduciendo (15):** se coloca con sus 8 entidades y el ítem se gasta; se sube al
+  asiento del conductor; adelante recorre unos 10 bloques en 2 s hacia el sur, a ras de suelo;
+  adelante + derecha gira a la derecha; saltar lo frena en seco; contra un anillo de piedra se para
+  (o se desliza a lo largo de la pared si llega de lado) y no lo atraviesa; sube a una losa y baja al
+  quitarla; agacharse lo baja y deja al jugador a su lado; no se puede poner otro carro encima.
+- **Vehículos, tras reiniciar (6):** está donde se dejó, con sus 8 entidades; al descargarse su chunk
+  se van las entidades y queda la fila, y al volver a cargarse reaparece; agachado + clic lo recoge
+  (vuelve el ítem, se van las entidades).
+
+| Otras pruebas (4.0.0) | Resultado |
+|---|---|
+| Pruebas unitarias | 583, todas pasan contra la API de 1.21.4, y las mismas 583 contra la de 26.3 con Java 25 |
+| Llamadas del plugin a clases ajenas (5671), buscadas en las clases de cada servidor | ninguna falta en las 11 versiones (con el jar de 3.6.0 faltaban 2 en 26.3) |
+| Cliente real 1.21.4 y 26.3: el carro | el frontal del rubí mira hacia donde avanza; sentado en el banco, conduce, gira, se baja con mayúsculas |
+| Cliente real 26.3 con PacketEvents 2.14.0: la mochila | se pone con clic derecho y se dibuja a la espalda (por paquetes); sin errores en la consola |
+| Cliente real 26.3: el pack | carga sin avisos (el único aviso del cliente sale igual sin el pack) |
+| 8 carros conducidos a la vez (Paper 1.21.4) | hilo principal 0,6 ms por tick para todos, física 7 µs por paso en `ArkContent-Physics`; MSPT medio 4,1 ms, 20 TPS |
+| Conductor que sale del servidor montado (1.21.4) | al volver, el carro está entero y en su sitio |
+| Logros en 26.2 | dos arranques seguidos: 3 logros y ningún aviso; cambiar un título + `/arkcontent reload`: una sola recarga y el título nuevo; `/minecraft:reload`: sin errores; al parar no queda copia |
+| El mismo pack en todas | SHA-1 `88743b54…`, 1276 archivos, en las once versiones |
+
+Lo que no se ha probado en 26.x: los plugins integrados (sección 5) y Bedrock (Geyser).
+
 
 ## 5. Integraciones
 
