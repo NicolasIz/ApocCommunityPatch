@@ -12,6 +12,7 @@ import com.arkcronist.content.core.storage.StoredVehicle;
 import com.arkcronist.content.core.vehicle.VehicleDefinition;
 import com.arkcronist.content.core.vehicle.VehicleDefinition.Offset;
 import com.arkcronist.content.core.vehicle.VehiclePhysics;
+import com.arkcronist.content.core.vehicle.VehiclePhysics.Body;
 import com.arkcronist.content.core.vehicle.VehiclePhysics.Input;
 import com.arkcronist.content.core.vehicle.VehiclePhysics.State;
 import com.arkcronist.content.core.vehicle.VehiclePhysics.Terrain;
@@ -276,14 +277,12 @@ public final class VehicleService {
         }
         State state = State.parked(target.getX() + 0.5, y, target.getZ() + 0.5, player.getLocation().getYaw());
         Aabb footprint = VehiclePhysics.footprint(definition, state.x(), state.y() + 0.01, state.z(), state.yaw());
-        List<Aabb> taken = new ArrayList<>(terrain(target.getWorld(), footprint).solid());
+        boolean crowded = collides(footprint, terrain(target.getWorld(), footprint).solid());
+        Body placed = Body.of(definition, state);
         for (Live other : live.values()) {
-            if (other.world.equals(target.getWorld())) {
-                taken.add(VehiclePhysics.footprint(other.definition, other.state.x(), other.state.y(), other.state.z(),
-                        other.state.yaw()));
-            }
+            crowded |= other.world.equals(target.getWorld()) && placed.overlaps(Body.of(other.definition, other.state));
         }
-        if (collides(footprint, taken)) {
+        if (crowded) {
             player.sendActionBar(Component.text("No room for it here", NamedTextColor.GRAY));
             return false;
         }
@@ -429,6 +428,16 @@ public final class VehicleService {
                 vehicle.stepping = false;
                 apply(vehicle, result);
             }
+        }
+        // 5.0: every vehicle where it is now, by world - what each step can run into. The physics
+        // thread works the steps one after another and moves each one's body as it goes, so no two
+        // end a tick inside each other.
+        Map<UUID, Map<UUID, Body>> bodies = new HashMap<>();
+        for (Live vehicle : live.values()) {
+            bodies.computeIfAbsent(vehicle.world.getUID(), world -> new java.util.LinkedHashMap<>())
+                    .put(vehicle.id, Body.of(vehicle.definition, vehicle.state));
+        }
+        for (Live vehicle : List.copyOf(live.values())) {
             if (vehicle.stepping) {
                 continue;
             }
@@ -443,9 +452,17 @@ public final class VehicleService {
             Terrain terrain = terrain(vehicle.world, VehiclePhysics.reach(vehicle.definition, vehicle.state, STEP_SECONDS));
             VehicleDefinition definition = vehicle.definition;
             State state = vehicle.state;
+            Map<UUID, Body> around = bodies.get(vehicle.world.getUID());
             vehicle.stepping = true;
             steps.add(() -> {
-                State next = VehiclePhysics.step(definition, state, input, terrain, STEP_SECONDS);
+                List<Body> others = new ArrayList<>(around.size());
+                for (Map.Entry<UUID, Body> other : around.entrySet()) {
+                    if (!other.getKey().equals(vehicle.id)) {
+                        others.add(other.getValue());
+                    }
+                }
+                State next = VehiclePhysics.step(definition, state, input, terrain, others, STEP_SECONDS);
+                around.put(vehicle.id, Body.of(definition, next));
                 List<VehiclePose.Transform> poses = new ArrayList<>(definition.parts().size());
                 for (VehicleDefinition.Part part : definition.parts()) {
                     poses.add(VehiclePose.of(next, part, definition.seats().getFirst()));

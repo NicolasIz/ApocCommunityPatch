@@ -296,10 +296,15 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
      *
      * @param intervalSeconds  time between audits; a finding is acted on when two in a row agree
      * @param maxMillisPerTick server-thread time an audit may take in one tick; it spreads over ticks
+     * @param rebuild          5.0: a custom block or liquid source found gone - air where it was, or
+     *                         its note block or tripwire in another state - is put back rather than
+     *                         its row purged
+     * @param rebuildsPerDay   5.0: how often one position is put back in 24 hours before it is let go
      */
-    public record Sanity(boolean enabled, int intervalSeconds, double maxMillisPerTick) {
+    public record Sanity(boolean enabled, int intervalSeconds, double maxMillisPerTick, boolean rebuild,
+                         int rebuildsPerDay) {
 
-        public static final Sanity DEFAULT = new Sanity(true, 120, 1.0);
+        public static final Sanity DEFAULT = new Sanity(true, 120, 1.0, true, 3);
     }
 
     /**
@@ -345,7 +350,10 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
                 new Sanity(sanity.getBoolean("enabled", Sanity.DEFAULT.enabled()),
                         Math.max(10, Math.min(86_400, sanity.getInt("interval-seconds", Sanity.DEFAULT.intervalSeconds()))),
                         Math.max(0.1, Math.min(20, sanity.getDouble("max-millis-per-tick",
-                                Sanity.DEFAULT.maxMillisPerTick())))),
+                                Sanity.DEFAULT.maxMillisPerTick()))),
+                        sanity.getBoolean("rebuild-missing-blocks", Sanity.DEFAULT.rebuild()),
+                        Math.max(0, Math.min(1000, sanity.getInt("max-rebuilds-per-block-per-day",
+                                Sanity.DEFAULT.rebuildsPerDay())))),
                 new FontImageText(fontImages.getBoolean("titles", true), fontImages.getBoolean("placeholders", true)),
                 readMenus(menus, logger),
                 new DoubleChests(Math.max(0, Math.min(2000, furniture.getInt("double-chest-animation-delay-ms",

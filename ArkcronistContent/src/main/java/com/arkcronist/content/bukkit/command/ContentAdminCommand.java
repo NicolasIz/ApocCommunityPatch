@@ -595,11 +595,17 @@ public final class ContentAdminCommand {
                         + " in %.1f ms over %d tick(s); %d finding(s) waiting for a second look.",
                 (System.currentTimeMillis() - audit.finishedAtMillis()) / 1000, audit.chunks(), audit.millis(),
                 audit.ticks(), audit.suspects()), NamedTextColor.GOLD));
-        sender.sendMessage(Component.text(String.format(Locale.ROOT, "Since start: %d broken piece(s) taken out,"
-                        + " %d drawn again, %d left-over display(s) removed, %d row(s) and %d liquid source(s) purged,"
-                        + " %d storage(s) recovered, %d piece(s) placed before 2.0 given their facing.",
-                audit.piecesRemoved(), audit.piecesRedrawn(), audit.displaysRemoved(), audit.rowsPurged(),
-                audit.liquidsPurged(), audit.storageRecovered(), audit.piecesAdopted()), NamedTextColor.GRAY));
+        sender.sendMessage(Component.text(String.format(Locale.ROOT, "Since start: %d custom block(s) and %d liquid"
+                        + " source(s) put back, %d broken piece(s) taken out, %d drawn again, %d left-over display(s)"
+                        + " removed, %d row(s) and %d liquid source(s) purged, %d storage(s) recovered, %d piece(s)"
+                        + " placed before 2.0 given their facing.",
+                audit.blocksRebuilt(), audit.liquidsRebuilt(), audit.piecesRemoved(), audit.piecesRedrawn(),
+                audit.displaysRemoved(), audit.rowsPurged(), audit.liquidsPurged(), audit.storageRecovered(),
+                audit.piecesAdopted()), NamedTextColor.GRAY));
+        if (!plugin.settings().sanity().rebuild() || plugin.settings().sanity().rebuildsPerDay() == 0) {
+            sender.sendMessage(Component.text("Custom blocks and liquid sources found gone are not put back"
+                    + " (sanity.rebuild-missing-blocks in config.yml): their rows are purged.", NamedTextColor.GRAY));
+        }
         return Command.SINGLE_SUCCESS;
     }
 
@@ -903,9 +909,11 @@ public final class ContentAdminCommand {
         sender.sendMessage(Component.text("Sanity check: " + (!plugin.sanity().enabled() ? "off"
                 : audit == null ? "first audit pending (every " + plugin.settings().sanity().intervalSeconds() + " s)"
                 : String.format(Locale.ROOT, "last audit %d s ago, %d chunk(s) in %.1f ms over %d tick(s), %d finding(s)"
-                        + " waiting for a second look; removed so far: %d display(s), %d row(s), %d liquid source(s)",
+                        + " waiting for a second look; put back so far: %d block(s), %d liquid source(s); removed so"
+                        + " far: %d display(s), %d row(s), %d liquid source(s)",
                 (System.currentTimeMillis() - audit.finishedAtMillis()) / 1000, audit.chunks(), audit.millis(),
-                audit.ticks(), audit.suspects(), audit.displaysRemoved(), audit.rowsPurged(), audit.liquidsPurged())),
+                audit.ticks(), audit.suspects(), audit.blocksRebuilt(), audit.liquidsRebuilt(), audit.displaysRemoved(),
+                audit.rowsPurged(), audit.liquidsPurged())),
                 NamedTextColor.GRAY));
         sender.sendMessage(Component.text("Font images by name: " + plugin.fontImages().current().size() + " ("
                 + plugin.fontImages().current().defined() + " from font_images:)"

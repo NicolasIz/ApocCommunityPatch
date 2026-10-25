@@ -514,7 +514,51 @@ class DatabaseManagerTest {
         try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
              Statement statement = connection.createStatement();
              ResultSet version = statement.executeQuery("PRAGMA user_version")) {
-            assertEquals(11, version.getInt(1));
+            assertEquals(DatabaseManager.SCHEMA_VERSION, version.getInt(1));
+        }
+    }
+
+    /**
+     * 5.0: a version 11 file gains block_repairs in the same transaction as the version number, and
+     * keeps its vehicles. A repair saved again replaces the count; forgotten, it is gone.
+     */
+    @Test
+    void aVersion11FileGainsBlockRepairsAndKeepsItsRows() throws Exception {
+        Path file = temp.resolve("content.db");
+        database = open();
+        UUID cart = UUID.fromString("00000000-0000-0000-0000-0000000000c1");
+        get(database.saveVehicle(new StoredVehicle(cart, "demo:ruby_cart", OVERWORLD, 1.5, 64, 2.5, 0f, null)));
+        database.close();
+        database = null;
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+             Statement statement = connection.createStatement()) {
+            statement.execute("DROP TABLE block_repairs");
+            statement.execute("PRAGMA user_version=11");
+        }
+        database = open();
+        assertEquals(1, get(database.vehicles()).size(), "the vehicle is still there");
+        assertTrue(get(database.blockRepairs()).isEmpty());
+        BlockRepair first = new BlockRepair(OVERWORLD, 3, 64, -7, BlockRepair.BLOCK, "demo:ruby_block", 1, 1000, 1000);
+        BlockRepair again = new BlockRepair(OVERWORLD, 3, 64, -7, BlockRepair.BLOCK, "demo:ruby_block", 2, 1000, 5000);
+        BlockRepair liquid = new BlockRepair(OVERWORLD, 3, 64, -7, BlockRepair.LIQUID, "demo:mana", 1, 2000, 2000);
+        get(database.saveRepair(first));
+        get(database.saveRepair(again));
+        get(database.saveRepair(liquid));
+        List<BlockRepair> repairs = get(database.blockRepairs());
+        assertEquals(2, repairs.size(), "one row per position and kind");
+        assertTrue(repairs.contains(again));
+        assertTrue(repairs.contains(liquid));
+        get(database.forgetRepair(OVERWORLD, 3, 64, -7, BlockRepair.BLOCK));
+        assertEquals(List.of(liquid), get(database.blockRepairs()));
+        get(database.saveRepair(first));
+        assertEquals(1, get(database.forgetRepairsBefore(1500)), "only the window that began before");
+        assertEquals(List.of(liquid), get(database.blockRepairs()));
+        database.close();
+        database = null;
+        try (Connection connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+             Statement statement = connection.createStatement();
+             ResultSet version = statement.executeQuery("PRAGMA user_version")) {
+            assertEquals(12, version.getInt(1));
         }
     }
 

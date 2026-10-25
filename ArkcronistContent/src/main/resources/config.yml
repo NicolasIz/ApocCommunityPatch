@@ -298,6 +298,16 @@ sanity:
   # Server-thread time an audit may take per tick; a large world spreads over
   # more ticks.
   max-millis-per-tick: 1.0
+  # 5.0: a custom block or a liquid source whose block was found turned to air
+  # (a rollback, /fill, a crash) - or its note block / tripwire put in another
+  # state - is put back, exactly as it was, instead of having its row purged.
+  # Anything else found there (stone, a chest...) is left, and the row purged.
+  # WorldEdit is not fought: what it removes, the plugin forgets at once.
+  rebuild-missing-blocks: true
+  # Something that keeps taking the same block away means it - a plugin that
+  # regenerates an area, say: after this many times in 24 hours, the block is
+  # let go and its row purged. 0: never put back.
+  max-rebuilds-per-block-per-day: 3
 
 # ---------------------------------------------------------------------------
 #  Bedrock players (3.0), through Geyser - on this server or (3.3) on a proxy

@@ -95,6 +95,29 @@ public final class CustomBlockService {
         }
     }
 
+    /**
+     * 5.0: whether a recorded custom block can be put back at {@code block}: it is air, or a note
+     * block in another state - never anything else, nor another plugin's note block.
+     */
+    public boolean restorable(Block block) {
+        Material there = block.getType();
+        return (there.isAir() || there == Material.NOTE_BLOCK) && !foreign.test(block);
+    }
+
+    /**
+     * 5.0: puts a recorded custom block back - the integrity check found its block gone. Its record
+     * stays as it was; the block is set without physics, as {@link #place} sets it.
+     *
+     * @return whether the block is set again
+     */
+    public boolean restore(Block block, CustomBlock custom) {
+        if (!restorable(block)) {
+            return false;
+        }
+        block.setBlockData(custom.data(), false);
+        return true;
+    }
+
     /** Drops the record of a custom block at {@code block}, whatever stands there now. */
     public void forgetAt(Block block) {
         store.remove(block.getWorld().getUID(), block.getX(), block.getY(), block.getZ());

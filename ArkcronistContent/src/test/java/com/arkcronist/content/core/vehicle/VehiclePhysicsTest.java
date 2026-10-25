@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/** 4.0: driving, turning, walls, steps, falls and water. */
+/** 4.0: driving, turning, walls, steps, falls and water; 5.0: leaning with the ground, and other vehicles. */
 class VehiclePhysicsTest {
 
     private static final double STEP = 0.05;
@@ -159,5 +159,140 @@ class VehiclePhysicsTest {
         assertEquals(2.0, across.maxX() - across.minX(), 1e-9);
         assertEquals(-180, VehiclePhysics.wrap(180), 1e-9);
         assertEquals(170, VehiclePhysics.wrap(-190), 1e-9);
+    }
+
+    // ---------------------------------------------------------------- 5.0: leaning
+
+    @Test
+    void withItsFrontOnASlabTheNoseIsUpAndTheBodySinksToTheGroundBehind() {
+        List<Aabb> boxes = ground();
+        boxes.add(new Aabb(-5, 0, 0.5, 5, 0.5, 30));
+        // Stepped up onto the slab with its front: its back axle (0.8 behind) is over the ground.
+        State parked = new State(0, 0.5, 0.5, 0, 0, 0, true, 0);
+        State leaning = VehiclePhysics.step(CART, parked, Input.NONE, new Terrain(boxes, List.of()), STEP);
+        assertEquals(Math.toDegrees(Math.atan2(0.5, 1.6)), leaning.pitch(), 1e-6, "front 0, back 0.5 down, 1.6 apart");
+        assertEquals(0, leaning.roll(), 1e-9);
+        assertTrue(leaning.lift() < 0, "drawn lower, to sit on the ground: " + leaning.lift());
+        double[] nose = VehiclePhysics.point(leaning, new Offset(0, 0, 1));
+        double[] tail = VehiclePhysics.point(leaning, new Offset(0, 0, -1));
+        assertTrue(nose[1] > tail[1], "the front is drawn higher than the back");
+    }
+
+    @Test
+    void drivingOverASlabItTiltsAsItCrossesTheEdgeAndLevelsOnTop() {
+        List<Aabb> slab = ground();
+        slab.add(new Aabb(-5, 0, 4, 5, 0.5, 30));
+        Terrain terrain = new Terrain(slab, List.of());
+        State state = State.parked(0, 0, 0, 0);
+        double most = 0;
+        for (int i = 0; i < 60; i++) {
+            state = VehiclePhysics.step(CART, state, FORWARD, terrain, STEP);
+            most = Math.max(most, state.pitch());
+        }
+        assertTrue(most > 5, "nose up while crossing: " + most);
+        assertEquals(0.5, state.y(), 1e-6);
+        assertEquals(0, state.pitch(), 0.01, "level on top");
+        assertEquals(0, state.lift(), 0.01);
+    }
+
+    @Test
+    void aSlabUnderTheLeftSideRollsItRight() {
+        List<Aabb> boxes = ground();
+        boxes.add(new Aabb(0.3, 0, -10, 5, 0.5, 10));   // facing south, its left is +x
+        State parked = new State(0, 0.5, 0, 0, 0, 0, true, 0);
+        State leaning = VehiclePhysics.step(CART, parked, Input.NONE, new Terrain(boxes, List.of()), STEP);
+        assertTrue(leaning.roll() > 20, "the left side up: " + leaning.roll());
+        assertEquals(0, leaning.pitch(), 1e-9);
+        double[] left = VehiclePhysics.point(leaning, new Offset(-0.5, 0, 0));
+        double[] right = VehiclePhysics.point(leaning, new Offset(0.5, 0, 0));
+        assertTrue(left[1] > right[1]);
+    }
+
+    @Test
+    void inTheAirItLevelsOut() {
+        State tilted = new State(0, 5, 0, 0, 0, 0, false, 0, 20, -10, -0.3);
+        State falling = VehiclePhysics.step(CART, tilted, Input.NONE, Terrain.EMPTY, STEP);
+        assertTrue(Math.abs(falling.pitch()) < 20 && Math.abs(falling.roll()) < 10, "easing back toward level");
+        State later = falling;
+        for (int i = 0; i < 40; i++) {
+            later = VehiclePhysics.step(CART, later, Input.NONE, Terrain.EMPTY, STEP);
+        }
+        assertEquals(0, later.pitch(), 1e-3);
+        assertEquals(0, later.roll(), 1e-3);
+    }
+
+    // ---------------------------------------------------------------- 5.0: other vehicles
+
+    private static VehiclePhysics.Body body(State state) {
+        return VehiclePhysics.Body.of(CART, state);
+    }
+
+    @Test
+    void headOnTwoVehiclesStopAtTheTouchAndBounceBackWithoutEverOverlapping() {
+        Terrain flat = new Terrain(ground(), List.of());
+        State a = State.parked(0, 0, 0, 0);       // facing south
+        State b = State.parked(0, 0, 8, 180);     // facing north, toward a
+        boolean bounced = false;
+        for (int i = 0; i < 80; i++) {
+            a = VehiclePhysics.step(CART, a, FORWARD, flat, List.of(body(b)), STEP);
+            b = VehiclePhysics.step(CART, b, FORWARD, flat, List.of(body(a)), STEP);
+            assertFalse(body(a).overlaps(body(b)), "step " + i + ": " + a + " / " + b);
+            bounced |= a.speed() < 0 || b.speed() < 0;
+        }
+        assertTrue(bounced, "they were thrown back");
+        assertTrue(b.z() - a.z() >= CART.length() - 1e-6, "never closer than touching: " + (b.z() - a.z()));
+    }
+
+    @Test
+    void intoAParkedVehicleTheDriverBouncesAndTheParkedOneStays() {
+        Terrain flat = new Terrain(ground(), List.of());
+        State parked = new State(0, 0, 6, 90, 0, 0, true, 0);   // across the way
+        State a = State.parked(0, 0, 0, 0);
+        double slowest = 0;
+        for (int i = 0; i < 50; i++) {
+            a = VehiclePhysics.step(CART, a, FORWARD, flat, List.of(body(parked)), STEP);
+            assertFalse(body(a).overlaps(body(parked)));
+            slowest = Math.min(slowest, a.speed());
+        }
+        assertTrue(slowest < 0, "thrown back at the touch: " + slowest);
+        assertTrue(a.z() < 6 - CART.width() / 2 - CART.length() / 2 + 1e-6, "its front no further than the other's side");
+    }
+
+    @Test
+    void sideBySideTheyDriveOnUntouched() {
+        Terrain flat = new Terrain(ground(), List.of());
+        State a = State.parked(0, 0, 0, 0);
+        State b = State.parked(1.7, 0, 0, 0);    // half a block apart
+        for (int i = 0; i < 60; i++) {
+            a = VehiclePhysics.step(CART, a, FORWARD, flat, List.of(body(b)), STEP);
+            b = VehiclePhysics.step(CART, b, FORWARD, flat, List.of(body(a)), STEP);
+        }
+        assertEquals(8, a.speed(), 1e-9);
+        assertEquals(8, b.speed(), 1e-9);
+    }
+
+    @Test
+    void twoPutDownTooCloseCanDriveApart() {
+        Terrain flat = new Terrain(ground(), List.of());
+        State a = State.parked(0, 0, 0, 0);
+        State b = new State(0.5, 0, 0.5, 0, 0, 0, true, 0);   // overlapping a
+        for (int i = 0; i < 30; i++) {
+            a = VehiclePhysics.step(CART, a, BACKWARD, flat, List.of(body(b)), STEP);
+        }
+        assertTrue(a.z() < -1, "it got out: " + a.z());
+    }
+
+    @Test
+    void turnedRectanglesTouchOnlyWhereTheyReallyDo() {
+        // Two vehicles turned 45 degrees, side by side with 0.3 between them: the boxes along the
+        // axes that hold them overlap, the vehicles do not.
+        double r = Math.sqrt(0.5);
+        VehiclePhysics.Body a = new VehiclePhysics.Body(0, 0, 0, 45, 1.2, 2.0, 1);
+        VehiclePhysics.Body b = new VehiclePhysics.Body(-1.5 * r, 0, -1.5 * r, 45, 1.2, 2.0, 1);
+        assertFalse(a.overlaps(b));
+        VehiclePhysics.Body closer = new VehiclePhysics.Body(-1.1 * r, 0, -1.1 * r, 45, 1.2, 2.0, 1);
+        assertTrue(a.overlaps(closer));
+        VehiclePhysics.Body above = new VehiclePhysics.Body(0, 1.5, 0, 0, 1.2, 2.0, 1);
+        assertFalse(a.overlaps(above), "one on top of the other's height does not touch");
     }
 }

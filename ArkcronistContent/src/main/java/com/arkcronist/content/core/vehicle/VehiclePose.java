@@ -11,7 +11,8 @@ import org.joml.Vector3f;
  *
  * <p>The displays ride the driver's seat, so the client carries them along with it; each is drawn
  * from there by its transformation alone - moved to its own place on the vehicle, turned to the
- * vehicle's heading and, for a wheel, rolled. A model faces the vehicle's front with its own south
+ * vehicle's heading - leaning with the ground, from 5.0 - and, for a wheel, rolled. A model faces
+ * the vehicle's front with its own south
  * side (+z), as Blockbench shows a model's front.</p>
  *
  * <p>The client draws an item display's model turned half a turn about y before its transformation
@@ -42,8 +43,16 @@ public final class VehiclePose {
         double[] seat = VehiclePhysics.point(state, anchor);
         Vector3f translation = new Vector3f((float) (at[0] - seat[0]), (float) (at[1] - seat[1]),
                 (float) (at[2] - seat[2]));
-        // A turn of -yaw about y takes a model's south (+z) to the vehicle's forward, (-sin, 0, cos).
+        // A turn of -yaw about y takes a model's south (+z) to the vehicle's forward, (-sin, 0, cos);
+        // before it (5.0), the lean: nose up about the model's x, left side up about its z - in the
+        // order VehiclePhysics.point leans an offset.
         Quaternionf rotation = new Quaternionf().rotationY((float) Math.toRadians(-state.yaw()));
+        if (state.pitch() != 0) {
+            rotation.rotateX((float) Math.toRadians(-state.pitch()));
+        }
+        if (state.roll() != 0) {
+            rotation.rotateZ((float) Math.toRadians(state.roll()));
+        }
         if (part.wheel()) {
             // Rolling forward turns its top forward: about its own x axis, which the heading has
             // already turned with it.

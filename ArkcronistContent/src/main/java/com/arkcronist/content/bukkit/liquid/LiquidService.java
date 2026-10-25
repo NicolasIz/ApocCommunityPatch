@@ -252,6 +252,37 @@ public final class LiquidService {
         return true;
     }
 
+    /**
+     * 5.0: whether the source at {@code block} can be put back: it is {@code liquid}'s known source,
+     * that liquid is defined, and the block is air or a tripwire in another state. Main thread.
+     */
+    public boolean restorable(Block block, String liquid) {
+        Map<Long, Source> inWorld = sources.get(block.getWorld().getUID());
+        Source source = inWorld == null ? null : inWorld.get(BlockKey.pack(block.getX(), block.getY(), block.getZ()));
+        Optional<LiquidRegistry.Liquid> defined = registry.get(liquid);
+        return source != null && source.liquid().equals(liquid) && defined.isPresent()
+                && (block.getType().isAir() || block.getType() == defined.get().sourceData().getMaterial());
+    }
+
+    /**
+     * 5.0: puts the source at {@code block} back - its block was found gone, and the integrity
+     * check chose to restore it rather than forget it. The source is still known; its block is set,
+     * without physics, and its flow worked out again. Main thread.
+     *
+     * @return whether it could be put back ({@link #restorable}), and its block is set again
+     */
+    public boolean restoreSource(Block block, String liquid) {
+        if (!restorable(block, liquid)) {
+            return false;
+        }
+        UUID world = block.getWorld().getUID();
+        long key = BlockKey.pack(block.getX(), block.getY(), block.getZ());
+        block.setBlockData(registry.get(liquid).orElseThrow().sourceData(), false);
+        flows(world).remove(key);
+        markDirty(world, key);
+        return true;
+    }
+
     /** Every source in a world, for commands. */
     public Map<Long, Source> sources(World world) {
         return Map.copyOf(sources.getOrDefault(world.getUID(), Map.of()));

@@ -77,11 +77,13 @@ class EngineSettingsTest {
                   enabled: false
                   interval-seconds: 2
                   max-millis-per-tick: 50
+                  rebuild-missing-blocks: false
+                  max-rebuilds-per-block-per-day: -4
                 """);
         assertEquals(List.of(8200, 8201), set.http().fallbackPorts(), "its own port, and what is not a port, skipped");
         assertTrue(set.http().addressConfigured());
         assertEquals(List.of("https://ip.example.org"), set.http().addressServices());
-        assertEquals(new EngineSettings.Sanity(false, 10, 20), set.sanity(), "kept within bounds");
+        assertEquals(new EngineSettings.Sanity(false, 10, 20, false, 0), set.sanity(), "kept within bounds");
         assertEquals(3, warnings.stream().filter(w -> w.startsWith("http.fallback-ports")).count());
     }
 

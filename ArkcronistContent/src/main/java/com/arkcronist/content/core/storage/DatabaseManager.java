@@ -70,11 +70,12 @@ public final class DatabaseManager {
      * advancement_unlocks added. 5: liquid_sources and hud_values added. 6: furniture_transforms
      * added. 7: furniture_pairs, quest_notices and quest_progress added. 8: furniture_pieces and
      * recovered_storage added. 9: player_cosmetics and minigame_stats added. 10: item_storage
-     * added. 11: vehicles added. An older file gains the tables it lacks on open, all of them and the
+     * added. 11: vehicles added. 12: block_repairs added. An older file gains the tables it lacks on
+     * open, all of them and the
      * new version number in one transaction - or none of it; nothing existing is touched, so an
      * older plugin still opens the file and leaves the tables it does not know alone.
      */
-    public static final int SCHEMA_VERSION = 11;
+    public static final int SCHEMA_VERSION = 12;
 
     /**
      * Each piece of furniture as a whole, by its anchor block: which way it faces. Written in the
@@ -131,6 +132,24 @@ public final class DatabaseManager {
                 yaw        REAL    NOT NULL,
                 owner      TEXT,
                 updated_at INTEGER NOT NULL
+            )""";
+
+    /**
+     * 5.0: each custom block or liquid source the integrity check put back, and how often in its
+     * current window - so it stops fighting something that takes the block away on purpose.
+     */
+    private static final String CREATE_REPAIR_TABLE = """
+            CREATE TABLE IF NOT EXISTS block_repairs (
+                world      TEXT    NOT NULL,
+                x          INTEGER NOT NULL,
+                y          INTEGER NOT NULL,
+                z          INTEGER NOT NULL,
+                kind       TEXT    NOT NULL,
+                content_id TEXT    NOT NULL,
+                repairs    INTEGER NOT NULL,
+                first_at   INTEGER NOT NULL,
+                last_at    INTEGER NOT NULL,
+                PRIMARY KEY (world, x, y, z, kind)
             )""";
 
     private static final String CREATE_ITEM_STORAGE_TABLE = """
@@ -725,6 +744,78 @@ public final class DatabaseManager {
                 statement.executeUpdate();
             }
             return null;
+        }, false);
+    }
+
+    /** 5.0: every block the integrity check has put back, with how often. */
+    public CompletableFuture<List<BlockRepair>> blockRepairs() {
+        return submit(connection -> {
+            List<BlockRepair> repairs = new ArrayList<>();
+            try (Statement statement = connection.createStatement();
+                 ResultSet result = statement.executeQuery("SELECT world, x, y, z, kind, content_id, repairs, "
+                         + "first_at, last_at FROM block_repairs")) {
+                while (result.next()) {
+                    try {
+                        repairs.add(new BlockRepair(UUID.fromString(result.getString(1)), result.getInt(2),
+                                result.getInt(3), result.getInt(4), result.getString(5), result.getString(6),
+                                result.getInt(7), result.getLong(8), result.getLong(9)));
+                    } catch (IllegalArgumentException unreadable) {
+                        logger.warning("block_repairs: a row with an unreadable world is skipped: "
+                                + result.getString(1));
+                    }
+                }
+            }
+            return repairs;
+        }, false);
+    }
+
+    /** 5.0: a block was put back: its count, as worked out by the caller, replaces what was kept. */
+    public CompletableFuture<Void> saveRepair(BlockRepair repair) {
+        return submit(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement("""
+                    INSERT INTO block_repairs (world, x, y, z, kind, content_id, repairs, first_at, last_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (world, x, y, z, kind) DO UPDATE SET content_id = excluded.content_id,
+                        repairs = excluded.repairs, first_at = excluded.first_at, last_at = excluded.last_at""")) {
+                statement.setString(1, repair.world().toString());
+                statement.setInt(2, repair.x());
+                statement.setInt(3, repair.y());
+                statement.setInt(4, repair.z());
+                statement.setString(5, repair.kind());
+                statement.setString(6, repair.contentId());
+                statement.setInt(7, repair.repairs());
+                statement.setLong(8, repair.firstAt());
+                statement.setLong(9, repair.lastAt());
+                statement.executeUpdate();
+            }
+            return null;
+        }, false);
+    }
+
+    /** 5.0: a block let go - its row purged, or broken by a player: its repairs are forgotten. */
+    public CompletableFuture<Void> forgetRepair(UUID world, int x, int y, int z, String kind) {
+        return submit(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "DELETE FROM block_repairs WHERE world = ? AND x = ? AND y = ? AND z = ? AND kind = ?")) {
+                statement.setString(1, world.toString());
+                statement.setInt(2, x);
+                statement.setInt(3, y);
+                statement.setInt(4, z);
+                statement.setString(5, kind);
+                statement.executeUpdate();
+            }
+            return null;
+        }, false);
+    }
+
+    /** 5.0: forgets the repairs whose window began before {@code firstAt}; how many. */
+    public CompletableFuture<Integer> forgetRepairsBefore(long firstAt) {
+        return submit(connection -> {
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "DELETE FROM block_repairs WHERE first_at < ?")) {
+                statement.setLong(1, firstAt);
+                return statement.executeUpdate();
+            }
         }, false);
     }
 
@@ -1638,7 +1729,7 @@ public final class DatabaseManager {
                         CREATE_UNLOCK_TABLE, CREATE_LIQUID_TABLE, CREATE_HUD_TABLE, CREATE_TRANSFORM_TABLE,
                         CREATE_PAIR_TABLE, CREATE_NOTICE_TABLE, CREATE_PROGRESS_TABLE, CREATE_PIECE_TABLE,
                         CREATE_RECOVERED_TABLE, CREATE_COSMETIC_TABLE, CREATE_MINIGAME_TABLE,
-                        CREATE_ITEM_STORAGE_TABLE, CREATE_VEHICLE_TABLE)) {
+                        CREATE_ITEM_STORAGE_TABLE, CREATE_VEHICLE_TABLE, CREATE_REPAIR_TABLE)) {
                     statement.execute(create);
                 }
                 if (version < SCHEMA_VERSION) {

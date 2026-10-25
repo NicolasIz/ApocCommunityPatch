@@ -14,8 +14,10 @@ import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.furniture.Footprint;
 import com.arkcronist.content.core.sanity.AuditPlan;
 import com.arkcronist.content.core.sanity.PieceAudit;
+import com.arkcronist.content.core.sanity.RepairBudget;
 import com.arkcronist.content.core.sanity.SanityJudge;
 import com.arkcronist.content.core.storage.BlockKey;
+import com.arkcronist.content.core.storage.BlockRepair;
 import com.arkcronist.content.core.storage.DatabaseManager;
 import com.arkcronist.content.core.storage.FurniturePiece;
 import com.arkcronist.content.core.storage.FurnitureTransformStore;
@@ -60,8 +62,11 @@ import java.util.logging.Logger;
  *       display is gone while every support stayed is drawn again, as it faced;</li>
  *   <li>a display of this plugin's with no rows behind it, or a bone without its root, is removed;</li>
  *   <li>a stored custom block whose note block is no longer that block's state, and a liquid source
- *       whose tripwire is no longer the liquid's, are purged - each only if it still says what it
- *       said when it was found;</li>
+ *       whose tripwire is no longer the liquid's, are put back (5.0) when their block was turned to
+ *       air or is still a note block or tripwire - at most {@code sanity.max-rebuilds-per-block-per-day}
+ *       times a day each ({@link RepairBudget}, kept in {@code block_repairs}). Anything else found
+ *       there, or past that, has its row purged - each only if it still says what it said when it
+ *       was found;</li>
  *   <li>storage rows furniture purged before 2.0 left behind are recovered.</li>
  * </ul>
  *
@@ -132,7 +137,7 @@ public final class SanityChecker {
     /** The last audit, for {@code /arkcontent info} and {@code /arkcontent integrity}. */
     public record Status(long finishedAtMillis, int chunks, int ticks, double millis, int suspects,
                          int displaysRemoved, int rowsPurged, int liquidsPurged, int piecesRemoved, int piecesRedrawn,
-                         int storageRecovered, int piecesAdopted) {
+                         int storageRecovered, int piecesAdopted, int blocksRebuilt, int liquidsRebuilt) {
     }
 
     /** What two looks in a row are judged by. The cycle keeps one set; a targeted audit has its own. */
@@ -171,6 +176,12 @@ public final class SanityChecker {
     private final AtomicInteger piecesRedrawn = new AtomicInteger();
     private final AtomicInteger storageRecovered = new AtomicInteger();
     private final AtomicInteger piecesAdopted = new AtomicInteger();
+    private final AtomicInteger blocksRebuilt = new AtomicInteger();
+    private final AtomicInteger liquidsRebuilt = new AtomicInteger();
+    private final RepairBudget budget;
+    /** 5.0: what was put back in the current window, by {@link BlockRepair#key()}: loaded once, then the server thread's. */
+    private final Map<String, BlockRepair> repairs = new ConcurrentHashMap<>();
+    private volatile CompletableFuture<Void> repairsLoaded = CompletableFuture.completedFuture(null);
     private final Set<String> reported = ConcurrentHashMap.newKeySet();
     /** Chunks to look at soon, by world: touched by a world edit or a display's removal. */
     private final Map<UUID, Set<Long>> touched = new ConcurrentHashMap<>();
@@ -194,12 +205,26 @@ public final class SanityChecker {
         this.seats = seats;
         this.storage = storage;
         this.logger = plugin.getLogger();
+        this.budget = new RepairBudget(settings.rebuildsPerDay(), RepairBudget.DEFAULT.windowMillis());
     }
 
     public void start() {
         if (settings.enabled()) {
+            repairsLoaded = loadRepairs();
             schedule();
         }
+    }
+
+    /** 5.0: the repairs of the current window, the ones before it forgotten; the first audit waits for them. */
+    private CompletableFuture<Void> loadRepairs() {
+        long now = System.currentTimeMillis();
+        return database.forgetRepairsBefore(now - budget.windowMillis())
+                .thenCompose(ignored -> database.blockRepairs())
+                .thenAccept(found -> found.forEach(repair -> repairs.put(repair.key(), repair)))
+                .exceptionally(error -> {
+                    quietly(error);
+                    return null;
+                });
     }
 
     public void stop() {
@@ -297,7 +322,7 @@ public final class SanityChecker {
     // ---------------------------------------------------------------- ArkContent-DB: plan
 
     private CompletableFuture<Plan> plan(boolean sweepStorage) {
-        return database.onThread(() -> {
+        return repairsLoaded.thenCompose(loaded -> database.onThread(() -> {
             Map<UUID, Map<Long, List<PlacedContent>>> rows = new HashMap<>();
             for (UUID world : placed.worlds()) {
                 // Until a world's rows are all in, memory is not the whole story.
@@ -306,7 +331,7 @@ public final class SanityChecker {
                 }
             }
             return rows;
-        }).thenCompose(rows -> {
+        })).thenCompose(rows -> {
             Map<UUID, Map<Long, FurniturePiece>> pieces = new ConcurrentHashMap<>();
             List<CompletableFuture<?>> reads = new ArrayList<>();
             for (UUID world : rows.keySet()) {
@@ -651,9 +676,18 @@ public final class SanityChecker {
 
     // ---------------------------------------------------------------- server thread: act
 
+    /**
+     * What was done on the server thread, and the database writes it started.
+     *
+     * @param rebuiltBlocks  5.0: custom blocks put back
+     * @param rebuiltLiquids 5.0: liquid sources put back
+     * @param letGo          5.0: blocks and sources that could have been put back, but were too often today
+     * @param repairs        5.0: the repair counts saved or forgotten
+     */
     private record Purges(int displays, List<CompletableFuture<Boolean>> rows, List<CompletableFuture<Boolean>> liquids,
                           List<CompletableFuture<DatabaseManager.PieceRemoval>> pieces, int redrawn,
-                          List<FurniturePiece> adopt) {
+                          List<FurniturePiece> adopt, int rebuiltBlocks, int rebuiltLiquids, int letGo,
+                          List<CompletableFuture<Void>> repairs) {
     }
 
     private CompletableFuture<Void> act(Plan plan, Confirmed confirmed, Judges judges) {
@@ -669,6 +703,7 @@ public final class SanityChecker {
                     all.addAll(purges.rows());
                     all.addAll(purges.liquids());
                     all.addAll(purges.pieces());
+                    all.addAll(purges.repairs());
                     all.add(adopted);
                     return CompletableFuture.allOf(all.toArray(CompletableFuture[]::new))
                             .thenAccept(ignored -> report(plan, confirmed, purges, adopted.join(), judges));
@@ -686,12 +721,33 @@ public final class SanityChecker {
                 displays++;
             }
         }
+        long now = System.currentTimeMillis();
+        List<CompletableFuture<Void>> repairWrites = new ArrayList<>();
+        int rebuiltBlocks = 0;
+        int rebuiltLiquids = 0;
+        int letGo = 0;
         List<CompletableFuture<Boolean>> rows = new ArrayList<>();
         for (StaleRow found : confirmed.rows()) {
             PlacedContent row = found.row();
             World world = plugin.getServer().getWorld(row.world());
             if (world == null || !found.found().equals(staleRow(world, row))) {
                 continue;
+            }
+            if (row.kind() == PlacedContent.Kind.BLOCK) {
+                Block block = world.getBlockAt(row.x(), row.y(), row.z());
+                Optional<CustomBlock> defined = plugin.blocks().get(row.contentId());
+                if (rebuilding() && defined.isPresent() && blocks.restorable(block)) {
+                    BlockRepair past = repairs.get(BlockRepair.key(row.world(), row.x(), row.y(), row.z(),
+                            BlockRepair.BLOCK));
+                    if (budget.allows(past, now) && blocks.restore(block, defined.get())) {
+                        repairWrites.add(repaired(budget.after(past, row.world(), row.x(), row.y(), row.z(),
+                                BlockRepair.BLOCK, row.contentId(), now)));
+                        rebuiltBlocks++;
+                        continue;
+                    }
+                    letGo++;
+                }
+                forgetRepair(row.world(), row.x(), row.y(), row.z(), BlockRepair.BLOCK, repairWrites);
             }
             if (row.kind() == PlacedContent.Kind.FURNITURE) {
                 furniture.forgetStale(world.getBlockAt(row.x(), row.y(), row.z()));
@@ -709,11 +765,24 @@ public final class SanityChecker {
             if (world == null) {
                 continue;
             }
-            Optional<LiquidService.Source> source = liquids.source(world.getBlockAt(found.x(), found.y(), found.z()));
+            Block block = world.getBlockAt(found.x(), found.y(), found.z());
+            Optional<LiquidService.Source> source = liquids.source(block);
             if (source.isEmpty() || !found.equals(staleLiquid(world, found.x(), found.y(), found.z(), source.get()))) {
                 continue;
             }
-            if (liquids.forgetStale(world.getBlockAt(found.x(), found.y(), found.z()), found.liquid())) {
+            if (rebuilding() && liquids.restorable(block, found.liquid())) {
+                BlockRepair past = repairs.get(BlockRepair.key(found.world(), found.x(), found.y(), found.z(),
+                        BlockRepair.LIQUID));
+                if (budget.allows(past, now) && liquids.restoreSource(block, found.liquid())) {
+                    repairWrites.add(repaired(budget.after(past, found.world(), found.x(), found.y(), found.z(),
+                            BlockRepair.LIQUID, found.liquid(), now)));
+                    rebuiltLiquids++;
+                    continue;
+                }
+                letGo++;
+            }
+            forgetRepair(found.world(), found.x(), found.y(), found.z(), BlockRepair.LIQUID, repairWrites);
+            if (liquids.forgetStale(block, found.liquid())) {
                 stale.add(database.purgeLiquidIfUnchanged(found.world(), new DatabaseManager.LiquidSource(found.x(),
                         found.y(), found.z(), found.liquid(), found.owner())).exceptionally(error -> {
                             quietly(error);
@@ -756,7 +825,32 @@ public final class SanityChecker {
                 quietly(error);
             }
         }
-        return new Purges(displays, rows, stale, pieces, redrawn, adopt);
+        return new Purges(displays, rows, stale, pieces, redrawn, adopt, rebuiltBlocks, rebuiltLiquids, letGo,
+                repairWrites);
+    }
+
+    /** 5.0: whether blocks and sources found gone are put back, rather than their rows purged. */
+    private boolean rebuilding() {
+        return settings.rebuild() && budget.max() > 0;
+    }
+
+    /** 5.0: a block or source was put back: its count kept, in memory now and in SQLite after. */
+    private CompletableFuture<Void> repaired(BlockRepair repair) {
+        repairs.put(repair.key(), repair);
+        return database.saveRepair(repair).exceptionally(error -> {
+            quietly(error);
+            return null;
+        });
+    }
+
+    /** 5.0: a block or source let go: what was counted of it goes with its row. */
+    private void forgetRepair(UUID world, int x, int y, int z, String kind, List<CompletableFuture<Void>> writes) {
+        if (repairs.remove(BlockRepair.key(world, x, y, z, kind)) != null) {
+            writes.add(database.forgetRepair(world, x, y, z, kind).exceptionally(error -> {
+                quietly(error);
+                return null;
+            }));
+        }
     }
 
     private boolean redraw(World world, PieceFinding found) {
@@ -831,13 +925,26 @@ public final class SanityChecker {
         piecesRedrawn.addAndGet(purges.redrawn());
         storageRecovered.addAndGet(recovered);
         piecesAdopted.addAndGet(adopted);
+        blocksRebuilt.addAndGet(purges.rebuiltBlocks());
+        liquidsRebuilt.addAndGet(purges.rebuiltLiquids());
         Findings findings = confirmed.findings();
         double millis = findings.nanos() / 1_000_000.0;
         last = new Status(System.currentTimeMillis(), findings.chunks(), findings.ticks(), millis, judges.suspects(),
                 displaysRemoved.get(), rowsPurged.get(), liquidsPurged.get(), piecesRemoved.get(), piecesRedrawn.get(),
-                storageRecovered.get(), piecesAdopted.get());
-        if (purges.displays() + rows + stale + removed + purges.redrawn() + recovered > 0) {
+                storageRecovered.get(), piecesAdopted.get(), blocksRebuilt.get(), liquidsRebuilt.get());
+        int rebuilt = purges.rebuiltBlocks() + purges.rebuiltLiquids();
+        if (purges.displays() + rows + stale + removed + purges.redrawn() + recovered + rebuilt > 0) {
             List<String> done = new ArrayList<>();
+            if (purges.rebuiltBlocks() > 0) {
+                done.add("put back " + purges.rebuiltBlocks() + " custom block(s) found gone");
+            }
+            if (purges.rebuiltLiquids() > 0) {
+                done.add("put back " + purges.rebuiltLiquids() + " liquid source(s) found gone");
+            }
+            if (purges.letGo() > 0) {
+                done.add("let " + purges.letGo() + " go that something keeps taking away (more than "
+                        + budget.max() + " time(s) today)");
+            }
             if (removed > 0) {
                 done.add("took out " + removed + " broken piece(s) of furniture (" + pieceRows + " row(s))");
             }
