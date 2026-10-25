@@ -128,6 +128,26 @@ El estudio, con las cifras por tipo de objeto y las reglas, está en `docs/geome
     huella SHA-1: 681 archivos de la 5.1, anotados en `examples-history.txt`.
   - Los que el dueño cambió se respetan.
 
+Lo comprobado para la 5.2.0:
+
+- **Pruebas**: pasan las 612 pruebas unitarias, entre ellas la compilación de las cinco carpetas en un
+  resource pack y su conversión a Bedrock.
+- **Modelos**: se revisaron los 367. Todas las coordenadas caen entre -16 y 32, los giros son los
+  permitidos (±22,5° y ±45°) y ninguna cara se quedó sin UV.
+- **Comparación pieza a pieza**: las 367 se renderizaron antes y después, una al lado de la otra. Cada
+  una que empeoraba se corrigió antes de publicar.
+- **Actualización en vivo**:
+  - Un servidor 26.3 con los ejemplos de la 5.1 sin tocar arrancó con el JAR 5.2.0.
+  - Avisó de que había actualizado los 681 archivos.
+  - Construyó el resource pack sin problemas.
+  - En el registro no hubo errores del plugin. El único error es la búsqueda de versiones de
+    PacketEvents en internet, que la red de pruebas bloquea.
+- **Cliente real de Minecraft 26.3**: se sacaron las cinco carpetas con `/arkcontent showcase` y se
+  hicieron 25 capturas de cerca. Mesas, sillas, taburetes, montones, barriles y el resto se ven con su
+  forma nueva y sus texturas.
+- **Sin probar**: no se ha probado con un jugador de Bedrock en esta versión. Solo pasan las pruebas
+  de conversión.
+
 ---
 
 ## 5.1.0 — La decoración medieval, rehecha
