@@ -108,6 +108,45 @@ class VehiclePhysicsTest {
         assertEquals(3, stopped.z(), 1e-6);
     }
 
+    /** The demo's ruby cart: 1.6 wide, 2.1 long, its four wheels where vehicles.yml puts them. */
+    private static final VehicleDefinition RUBY_CART = new VehicleDefinition(9, 3, 5, 16, 3, 100, 0.6, 1.6, 2.1, 1.0,
+            0.35, List.of(new Offset(0.22, 0.68, -0.69)), List.of(
+            new VehicleDefinition.Part(null, new Offset(0, 0.494, 0), 1, false, 0.3),
+            new VehicleDefinition.Part("demo:ruby_cart_wheel", new Offset(0.76, 0.3, -0.62), 1, true, 0.3),
+            new VehicleDefinition.Part("demo:ruby_cart_wheel", new Offset(-0.76, 0.3, -0.62), 1, true, 0.3),
+            new VehicleDefinition.Part("demo:ruby_cart_wheel", new Offset(0.76, 0.3, 0.62), 1, true, 0.3),
+            new VehicleDefinition.Part("demo:ruby_cart_wheel", new Offset(-0.76, 0.3, 0.62), 1, true, 0.3)));
+
+    /**
+     * As the live check on 1.21.4 had it: the ruby cart in a 5 by 5 hole among slabs, heading 125 degrees -
+     * at a slant, into a corner of the hole - and driven forward for a second and a half. It is on the
+     * slabs at the end, level.
+     */
+    @Test
+    void outOfAHoleAtASlantIntoACornerItClimbsTheSlabs() {
+        for (double yaw : new double[] {125, 135, 145, 100, 45, -60, 180}) {
+            List<Aabb> boxes = ground();
+            // Slabs from -10 to 10 around the middle, but a hole from -2 to 3 (five blocks) where it stands.
+            for (int x = -10; x < 10; x++) {
+                for (int z = -10; z < 10; z++) {
+                    if (x < -2 || x > 2 || z < -2 || z > 2) {
+                        boxes.add(new Aabb(x, 0, z, x + 1, 0.5, z + 1));
+                    }
+                }
+            }
+            Terrain terrain = new Terrain(boxes, List.of());
+            State state = run(State.parked(0.32, 0, 0.26, yaw), Input.NONE, terrain, 2);
+            for (int i = 0; i < 30; i++) {
+                state = VehiclePhysics.step(RUBY_CART, state, FORWARD, terrain, STEP);
+            }
+            for (int i = 0; i < 16; i++) {
+                state = VehiclePhysics.step(RUBY_CART, state, BRAKE, terrain, STEP);
+            }
+            assertEquals(0.5, state.y(), 1e-6, "yaw " + yaw + ": on the slabs - at " + state.x() + ", " + state.z());
+            assertEquals(0, state.pitch(), 0.5, "yaw " + yaw + ": level");
+        }
+    }
+
     @Test
     void offAnEdgeItFallsAndLandsBelow() {
         List<Aabb> boxes = new ArrayList<>();
