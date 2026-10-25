@@ -1,4 +1,7 @@
-# ArkcronistContent
+# OverlordContent
+
+*(Antes **ArkcronistContent**. La 5.0.0 le cambia el nombre; un servidor que ya lo tenía no
+pierde nada: ver «5.0.0 — OverlordContent» más abajo.)*
 
 Motor de contenido personalizado para **Paper 1.21.4 a 26.3** (Java 21; 26.x pide Java 25): define ítems, bloques, muebles
 (también asientos, muebles con inventario, cofres con animaciones de Blockbench que se unen en cofres
@@ -16,7 +19,9 @@ configurar nada, añade **cosméticos con física** (una mochila que se balancea
 calculada en su propio hilo) y **minijuegos de precisión** en la barra de acción para menas raras
 y cañas de pescar. La 4.0 añade **recetas propias** (en el libro de recetas de vanilla) y
 **vehículos** que se conducen con las teclas de movimiento, con su física calculada en un hilo
-aparte, y llega a **Paper 26.1, 26.2 y 26.3**. El mismo
+aparte, y llega a **Paper 26.1, 26.2 y 26.3**. La 5.0 inclina los vehículos según el suelo
+y los hace chocar entre sí, devuelve a su sitio los bloques y líquidos que un rollback deja en aire,
+genera **menas propias** en los mundos nuevos y añade **emotes** corporales animados con Blockbench. El mismo
 concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer.
 
 ```
@@ -39,6 +44,8 @@ concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer
 /emojis                                    los emojis de chat disponibles, dibujados (sección 4)
 /cosmetic [off]                            lo que llevas puesto, o quitártelo (sección 4)
 /arkcontent vehicles [reset]               vehículos: cuántos hay y cuánto cuestan por tick (sección 4)
+/emote [nombre|stop]                       emotes: lista, reproduce o termina uno (5.0; también /emotes)
+/overlord ...                              lo mismo que /arkcontent (5.0)
 ```
 
 | Permiso | Por defecto | Para |
@@ -52,6 +59,7 @@ concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer
 | `arkcontent.board.admin` | op | `/arkcontent board` (también lo permite `arkcontent.admin`) |
 | `arkcontent.cosmetic` | todos | ponerse un cosmético (clic derecho con él) y `/cosmetic` |
 | `arkcontent.vehicles.admin` | op | recoger vehículos que puso otro jugador (el dueño siempre puede) |
+| `arkcontent.emote` | todos | `/emote`, y usar el ítem de un emote (5.0) |
 
 Con MythicMobs, ModelEngine, MythicArmor, MMOItems, PlaceholderAPI (y a través de él TAB y
 DeluxeMenus), ShopGUI+, Iris, WorldGuard, GriefPrevention, AuraSkills, mcMMO, SkillAPI/ProSkillAPI,
@@ -72,10 +80,124 @@ no.
 
 ---
 
+## 5.0.0 — OverlordContent
+
+### El nombre nuevo, sin perder nada
+
+- El plugin se llama **OverlordContent**: el JAR es `OverlordContent-5.0.0.jar` y su carpeta,
+  `plugins/OverlordContent/`.
+- **Para actualizar**: quita `ArkcronistContent-4.0.0.jar` de `plugins/`, pon `OverlordContent-5.0.0.jar`
+  y arranca. Al cargar, el plugin **renombra** `plugins/ArkcronistContent/` a `plugins/OverlordContent/`
+  tal cual (configuración, contenido, base de datos): no copia ni borra nada. Lo dice en la consola.
+- Si dejas los dos JAR, OverlordContent **no arranca** y explica por qué: los dos a la vez se pisarían.
+- Se conserva todo lo que ya está en los mundos: los ítems, muebles, cultivos y vehículos llevan
+  claves con el espacio de nombres `arkcronistcontent`, y ese no cambia. También siguen igual
+  `/arkcontent` (ahora con el alias `/overlord`), todos los permisos `arkcontent.*`, el paquete
+  Java `com.arkcronist.content` y los hilos `ArkContent-Physics`, `ArkContent-DB` y demás.
+- La base de datos pasa al **esquema 12** en una transacción (solo añade la tabla `block_repairs`).
+
+### Vehículos: inclinación y choques
+
+- **Inclinación**: se miran las alturas del suelo bajo los dos ejes (delante/detrás) y los dos lados
+  (izquierda/derecha). De ahí salen el cabeceo y el alabeo, que se suavizan (≈0,08 s) y se aplican a
+  todas las piezas de `ItemDisplay`; en el aire vuelve a nivelarse. Todo en `ArkContent-Physics`.
+- **Choques entre vehículos**: cada vehículo es una caja orientada y se comprueba por ejes separados
+  (más exacto que una caja alineada o un círculo, porque los carros son alargados y giran). Los pasos
+  se calculan uno tras otro con las posiciones ya movidas, así que **dos vehículos nunca se solapan**:
+  el que avanza se para justo al tocar y su velocidad rebota hacia atrás (30 %). Uno aparcado no se
+  mueve. Tampoco se puede poner un vehículo encima de otro.
+- Verificado en un servidor 1.21.8 con un bot que conduce: 18,6° de inclinación al cruzar el borde de
+  una losa y 0° encima; en el choque, los centros se quedan a 2,10 bloques —el largo del carro—.
+
+### Verificador de integridad: devuelve lo que falta
+
+- Si un bloque personalizado o una fuente de líquido registrados aparecen convertidos en **aire**
+  (un rollback, `/fill`, `/setblock`, un fallo), o su note block o tripwire en otro estado, el
+  verificador los **vuelve a poner** como estaban, en vez de solo borrar la fila.
+- Nunca pisa otra cosa: si donde estaba hay piedra, un cofre o el bloque de otro plugin, se deja y se
+  borra la fila, como antes. Lo que WorldEdit quita, el plugin lo olvida al momento: no se le lleva
+  la contraria a un admin.
+- Si algo insiste en quitar el mismo bloque (otro plugin que regenera una zona), después de
+  `sanity.max-rebuilds-per-block-per-day` veces en 24 h (3 por defecto) se deja ir. Se cuenta en la
+  tabla `block_repairs`. `sanity.rebuild-missing-blocks: false` lo desactiva.
+- Verificado con un bot en 1.21.8: un bloque de rubí quitado con `/setblock` volvió idéntico tres
+  veces y la cuarta se dejó ir; uno cambiado por piedra se respetó; una fuente de ácido volvió.
+
+### Menas propias (`generation:`)
+
+```yaml
+  ruby_ore:
+    type: custom_block
+    block:
+      generation:
+        min-y: -48
+        max-y: 24
+        veins-per-chunk: 3      # intentos de veta por chunk
+        vein-size: 5            # bloques por veta, como mucho
+        chance: 0.8             # probabilidad de cada intento
+        replace: [stone, deepslate, tuff, granite, diorite, andesite]
+        # worlds: [world]  environments: [normal]  biomes: [minecraft:plains]
+```
+
+- Se pone en la sección `block:` de un bloque personalizado (una o varias entradas). La demo trae una
+  **mena de rubí** nueva (se funde en un rubí) y la **mena de estrella** del minijuego, rara y profunda.
+- Funciona como un *populador* de Paper: el servidor lo llama en **sus propios hilos de generación**
+  mientras decora cada chunk nuevo. No usa el hilo principal, funciona con pregeneradores (Chunky) y
+  un chunk nunca se ve sin sus menas. Por eso no usa `ChunkPopulateEvent`: ese evento llega en el
+  hilo principal y cuando el chunk ya está hecho.
+- Las vetas salen de la semilla del mundo: el mismo mundo da siempre las mismas vetas, y añadir una
+  mena no mueve las de otra. Las menas generadas no se guardan una a una en la base de datos (un mundo
+  tiene millones); se reconocen por su estado, como cualquier bloque personalizado.
+- Solo afecta a los **chunks nuevos**: lo ya generado no cambia. `generation.enabled` en `config.yml`.
+- Verificado en un mundo normal 1.21.8: 1581 bloques en 139 chunks nuevos, todos entre y −47 y 24.
+
+### Emotes (`emote:`)
+
+```yaml
+  wave:
+    material: PAPER
+    resource: {texture: item/emote_scroll}
+    emote:
+      model: emotes/squire      # un .bbmodel bajo models/
+      animation: wave           # una de sus animaciones
+```
+
+- Un ítem con `emote:` reproduce una animación del cuerpo al usarlo, o con `/emote <nombre>`. La demo
+  trae `wave`, `bow`, `cheer` y `sit` (saludar, reverencia, celebrar, sentarse).
+- Mientras dura, el jugador se vuelve invisible y en su lugar aparece un muñeco de Blockbench con un
+  hueso por parte del cuerpo (`head`, `body`, `right_arm`, `left_arm`, `right_leg`, `left_leg`). El
+  hueso `head` muestra **la cabeza real del jugador, con su skin**. A los demás se les envía sin
+  armadura ni ítems en la mano, y la mochila cosmética se oculta.
+- Las animaciones se convierten en fotogramas **al compilar el contenido** (en el hilo de trabajo).
+  Al reproducirlas solo se envían, desde un hilo propio, `ArkContent-Emotes`, cada 50 ms, y el
+  cliente interpola entre ellos. Con **PacketEvents** el muñeco existe solo en los clientes (paquetes
+  directos, sin tocar el hilo principal); sin él, se hace con displays reales.
+- Termina al acabar la animación (o tras `max-seconds` si es en bucle o se mantiene), y al moverse,
+  saltar, agacharse, recibir daño, cambiar de ítem, teletransportarse, salir o morir.
+- Verificado con el cliente real en 26.3 (PacketEvents) y con dos bots en 1.21.8 (sin él).
+
+**Límites, dichos claramente:**
+- El cuerpo del muñeco es la textura del modelo (en la demo, un escudero con formato de skin de
+  64×64), no la skin del jugador: sin shaders, el cliente solo dibuja la skin en la cabeza.
+- El propio jugador, en tercera persona, sigue viendo su armadura y el ítem de su mano, porque su
+  cliente los dibuja desde su inventario. Los demás no los ven.
+- "0 lag de ticks" en el sentido práctico: los fotogramas salen a su hora desde su propio hilo aunque
+  el servidor vaya lento, y el cliente suaviza entre ellos; la red sigue teniendo su latencia.
+
+### Lo comprobado para la 5.0.0
+
+- 611 pruebas unitarias en verde.
+- Compatibilidad binaria: cada método y campo externo que usa el JAR, buscado en las clases reales de
+  los 11 servidores (1.21.4 a 1.21.11, 26.1.2, 26.2, 26.3): ninguno falta.
+- Servidores reales con bots (vehículos, integridad, emotes, menas) y el cliente real de 26.3 para los
+  emotes; la migración de carpeta, en un servidor 26.3 y otro 1.21.8 que venían de la 4.0.
+
+---
+
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/ArkcronistContent-4.0.0.jar (contra la API de 1.21.4)
+./gradlew build          # -> build/libs/OverlordContent-5.0.0.jar (contra la API de 1.21.4)
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew test -PpaperVersion=1.21.11-R0.1-SNAPSHOT   # lo mismo contra la API de 1.21.11
 ./gradlew test -PcompileJdk=25 -PpaperVersion=26.3.build.222-stable   # contra la de 26.3 (necesita un JDK 25)
@@ -111,7 +233,7 @@ no importa nada de Bukkit (y por eso se prueba sin arrancar Minecraft) y la **ca
 lo conecta con el servidor.
 
 ```
-ArkcronistContent/
+OverlordContent/
 ├── build.gradle · settings.gradle · gradle.properties · gradlew
 └── src/main/
     ├── resources/
@@ -288,7 +410,7 @@ ArkcronistContent/
 
 ## 3. Definir contenido
 
-Cada carpeta directamente bajo `plugins/ArkcronistContent/contents/` es un pack de contenido. Todo
+Cada carpeta directamente bajo `plugins/OverlordContent/contents/` es un pack de contenido. Todo
 `.yml` dentro de ella, a cualquier profundidad, puede declarar ítems; sus carpetas `models/` y
 `textures/` guardan los archivos a los que apuntan.
 
@@ -4088,7 +4210,7 @@ gancho. Mientras tanto, dos formas que funcionan sin gancho:
 ## 6. Importar desde ItemsAdder
 
 ```
-plugins/ArkcronistContent/import/     <- copia aquí plugins/ItemsAdder/contents/ (o un pack suelto),
+plugins/OverlordContent/import/     <- copia aquí plugins/ItemsAdder/contents/ (o un pack suelto),
                                          y/o el pack generado de ItemsAdder (.zip, entero o en partes)
 /arkcontent import                    <- convierte, copia recursos y recompila
 ```
@@ -4159,7 +4281,7 @@ El zip que genera ItemsAdder —el que se envía a los jugadores, a menudo parti
 cliente. Así que no se convierte: **se absorbe entero**.
 
 1. Las partes se reconocen por el nombre (`generated_4 - parte 1.zip`, `pack_part2.zip`, `x.pt3.zip`)
-   y se juntan en `plugins/ArkcronistContent/packs/<nombre>/`: cada archivo byte a byte, en su misma
+   y se juntan en `plugins/OverlordContent/packs/<nombre>/`: cada archivo byte a byte, en su misma
    ruta, con `assets/`, **los overlays** (`ia_overlay_1_21_6_plus/`, `mythicarmors_1_21_6/`...) y el
    `pack.mcmeta` que los declara. Si falta una parte o no hay `pack.mcmeta`, se avisa.
 2. Todo lo que hay en `packs/` (carpetas o `.zip`) se funde con nuestro pack en cada recompilación,
@@ -4672,7 +4794,7 @@ lista 73 plugins. «Compatible» ahí significa cosas muy distintas, según su p
 integración que escribió ItemsAdder; una que escribió el otro plugin (que llama a la API de
 ItemsAdder y solo a la suya); emojis a través de PlaceholderAPI; fusionar el pack del otro; poner
 un número de CustomModelData; o un apaño o un «probado y funciona». Esta tabla dice, para cada uno,
-cómo lo cubre ArkcronistContent.
+cómo lo cubre OverlordContent.
 
 Leyenda: **gancho** – integración propia de este plugin · **puente** – a través de un registro
 compartido que este plugin alimenta (eco, nightcore, Mimic, PlaceholderAPI, `pack.merge`, números
@@ -4686,7 +4808,7 @@ Fuera de esa lista, la 3.0 añade Geyser (todo el contenido para Bedrock, sin co
 un cliente de Bedrock por protocolo), PacketEvents (✔), LuckPerms (✔), Towny (◐: cargado, sin
 ciudades) y Lands (◐: compilado).
 
-| Plugin | Cómo lo hace ItemsAdder | ArkcronistContent | |
+| Plugin | Cómo lo hace ItemsAdder | OverlordContent | |
 |---|---|---|---|
 | AdditionsPlus | sin detalle en su wiki | puente: PlaceholderAPI (emojis); ítems desde la mano | ○ |
 | AdvancedEnchantments | declarar el encantamiento en el ítem | sin gancho: los encantamientos van por el material base, que es vanilla | ○ |
@@ -4767,17 +4889,17 @@ puente, 14 sin necesitar gancho— y en **7 la cuestión no aplica**. De los 52,
 en el servidor de prueba con el plugin real, 19 compilados contra su API real o verificados a
 través de su librería (eco, nightcore, Mimic, PlaceholderAPI) y 23 sin probar con ese plugin. Los
 **14 restantes no están cubiertos**: 12 solo funcionarían si ese plugin añadiera soporte para
-ArkcronistContent, como lo añadió para ItemsAdder (llaman a la API de ItemsAdder y a ninguna
+OverlordContent, como lo añadió para ItemsAdder (llaman a la API de ItemsAdder y a ninguna
 otra), y 2 —ValhallaMMO y ValhallaTrinkets— sí se podrían hacer desde aquí, escribiendo sus datos
 en las stacks como hace ItemsAdderAdditions, pero no están hechos.
 
 ItemsAdder lleva años siendo el estándar y gran parte de su lista son integraciones que escribieron
-los otros plugins. La cifra que ArkcronistContent puede cambiar por sí solo es la de sus propios
+los otros plugins. La cifra que OverlordContent puede cambiar por sí solo es la de sus propios
 ganchos y puentes.
 
 ### ¿Y un emulador de la API de ItemsAdder? (estudiado en 4.0, no hecho)
 
-La idea: hacer pasar a ArkcronistContent por ItemsAdder, para que esos 12 plugins que solo hablan
+La idea: hacer pasar a OverlordContent por ItemsAdder, para que esos 12 plugins que solo hablan
 con ItemsAdder reciban los ítems de este. Se estudió y **no se ha hecho**, por cuatro razones:
 
 1. **Habría que hacerse pasar por ItemsAdder de verdad.** Esos plugins comprueban que el plugin
@@ -4799,7 +4921,7 @@ con ItemsAdder reciban los ítems de este. Se estudió y **no se ha hecho**, por
 
 Lo que sí funciona hoy para la mayoría de plugins que «soportan ItemsAdder»: casi todos aceptan
 también la stack completa, un número de CustomModelData, PlaceholderAPI o un registro compartido
-(Mimic, ItemBridge, eco, nightcore), y ArkcronistContent los alimenta todos (tabla de arriba). Para
+(Mimic, ItemBridge, eco, nightcore), y OverlordContent los alimenta todos (tabla de arriba). Para
 pasar el contenido de ItemsAdder a este plugin está `/arkcontent import` (sección 6). Y el camino
 limpio para los 12 restantes es el que siguió ItemsAdder: que cada plugin añada soporte, para lo que
-ArkcronistContent ya publica su propia API (sección 8).
+OverlordContent ya publica su propia API (sección 8).
