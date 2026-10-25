@@ -22,6 +22,9 @@ se suben a este repositorio, igual que con las armaduras.
 Esta guía completa `perfil-estetico.md` (cómo se pinta en general) y `armaduras-profesionales.md`
 (la forma de una armadura).
 
+La forma de los objetos (con cuántos cubos, de qué grosor, en qué rejilla, cómo se giran) tiene su
+estudio propio en `geometria-profesional.md`.
+
 ## 1. Lo que se midió
 
 | | Referencias (302) | Nuestras (367) |

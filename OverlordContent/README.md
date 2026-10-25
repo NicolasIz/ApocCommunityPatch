@@ -80,6 +80,56 @@ no.
 
 ---
 
+## 5.2.0 — La forma de la decoración medieval, como la de los packs profesionales
+
+La 5.1 cambió la pintura. Esta versión cambia la **forma**. La base es un estudio de cómo están
+construidos, cubo a cubo, 389 objetos comprados:
+
+- los del zip de texturas: decoración, accesorios, cofres y herramientas;
+- los de los packs de decoración de ItemsAdder del servidor.
+
+El estudio, con las cifras por tipo de objeto y las reglas, está en `docs/geometria-profesional.md`.
+
+- **En píxeles enteros.**
+  - Los objetos profesionales tienen la mitad de sus coordenadas en el píxel entero y ningún cubo más
+    fino que un píxel. Lo fino lo hacen con un plano (una cara sola) o lo pintan.
+  - Ahora cada pieza pasa por una limpieza:
+    - todo va al píxel entero, sin abrir huecos;
+    - las láminas finas pegadas a otra cosa pasan a planos: aros, bandas, etiquetas, la superficie de
+      lo que hay en un recipiente;
+    - lo que asomaba menos de un píxel vuelve a asomar.
+  - Coordenadas enteras: del 42 % al 57 % (las referencias, el 50 %).
+- **Muebles con las medidas de los packs.**
+  - **Mesas**:
+    - patas de 3 px (antes 1,5);
+    - tablero de 2 px (antes 1,5) que sobresale 1 px;
+    - faldones de 2 px.
+  - **Sillas**: patas, asiento y respaldo de 2 px.
+  - **Bancos**: asiento de 2 px y caballetes de 2 px.
+  - **Taburetes**: las patas se abren a 22,5°, como en los packs comprados.
+  - **Candelabro**: rehecho en píxeles enteros.
+- **Montones de mineral de pocos bultos grandes.**
+  - De 72 cubos de mediana a 26.
+  - Los tres mayores llevan la mitad del volumen; antes, un tercio.
+- **Más limpio por dentro.**
+  - Se dibujan menos caras que nadie ve: del 28 % al 19 % (las referencias, el 13 %).
+  - En total hay 1.030 cubos menos.
+  - Se arreglaron parpadeos que ya tenía la 5.1: el metal fundido de los moldes, el costado del cofre
+    pirata, la etiqueta de la botella y la fruta de alguna caja.
+- **Lo que se dejó igual, a propósito.**
+  - **Las piezas redondas** (barriles, cubos, cestas, botellas, el cuerpo de los sacos): sus discos y
+    aros encajan al cuarto de píxel y se rompían al redondearlos.
+  - **Los acentos pequeños**: llamas, clavos, ojos.
+  - **Lo ya girado**.
+- **Nada más cambia.** Los nombres, los bloques que ocupa cada pieza, lo que hacen al usarlas y sus
+  descripciones son los mismos. Los YAML no se han tocado.
+- **Los servidores que ya las tenían.**
+  - Al arrancar, el plugin sustituye los modelos y texturas de ejemplo que nadie ha modificado, por su
+    huella SHA-1: 681 archivos de la 5.1, anotados en `examples-history.txt`.
+  - Los que el dueño cambió se respetan.
+
+---
+
 ## 5.1.0 — La decoración medieval, rehecha
 
 Las 367 piezas de `medieval_props`, `medieval_herreria`, `medieval_mineria`, `medieval_pesca` y
@@ -255,7 +305,7 @@ Lo comprobado para la 5.1.0:
 ## 1. Compilar
 
 ```bash
-./gradlew build          # -> build/libs/OverlordContent-5.1.0.jar (contra la API de 1.21.4)
+./gradlew build          # -> build/libs/OverlordContent-5.2.0.jar (contra la API de 1.21.4)
 ./gradlew test           # pruebas del núcleo, sin servidor
 ./gradlew test -PpaperVersion=1.21.11-R0.1-SNAPSHOT   # lo mismo contra la API de 1.21.11
 ./gradlew test -PcompileJdk=25 -PpaperVersion=26.3.build.222-stable   # contra la de 26.3 (necesita un JDK 25)
