@@ -19,6 +19,7 @@ import com.arkcronist.content.core.definition.ModelSource;
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.definition.ResourceLocation;
 import com.arkcronist.content.core.furniture.Footprint;
+import com.arkcronist.content.core.emotes.EmoteDefinition;
 import com.arkcronist.content.core.generation.OreGeneration;
 import com.arkcronist.content.core.hud.HudAnchor;
 import com.arkcronist.content.core.hud.HudDefinition;
@@ -399,7 +400,59 @@ public final class ContentLoader {
                 item = item.withVehicle(vehicle(vehicle, prefix + "vehicle: ", problems));
             }
         }
+        Map<?, ?> emote = section(section, "emote", prefix, problems);
+        if (emote != null) {
+            if (type != ContentType.ITEM) {
+                problems.add(prefix + "'emote' is only read on items (type: item) - the item used to play it");
+            } else {
+                item = item.withEmote(emote(item.itemModel(), emote, sourceRoot, prefix + "emote: ", problems));
+            }
+        }
         return item;
+    }
+
+    /**
+     * {@code emote:} (5.0) - a Blockbench rig under {@code models/} and the animation of it played.
+     * Its frames are worked out here, on the worker, once per build. Null when it cannot be played.
+     */
+    private static EmoteDefinition emote(ResourceLocation itemModel, Map<?, ?> section, Path sourceRoot, String where,
+                                         List<String> problems) {
+        String raw = text(section, "model", where, problems);
+        if (raw == null || raw.isBlank()) {
+            problems.add(where + "needs 'model': a .bbmodel under models/ whose bones are the body (head, body,"
+                    + " right_arm, left_arm, right_leg, left_leg); not played");
+            return null;
+        }
+        String path = raw.trim().replaceFirst("\\.bbmodel$", "");
+        if (path.contains(":")) {
+            path = path.substring(path.indexOf(':') + 1);
+        }
+        Path file = sourceRoot.resolve("models").resolve(path + ".bbmodel").normalize();
+        if (!ResourceLocation.isValidPath(path) || !file.startsWith(sourceRoot.normalize()) || !Files.isRegularFile(file)) {
+            problems.add(where + "'model' " + path + ".bbmodel is not in " + sourceRoot.getFileName() + "/models/;"
+                    + " not played");
+            return null;
+        }
+        AnimatedModel rig = BbModelReader.read(file, sourceRoot, itemModel, where, problems);
+        if (rig == null) {
+            return null;
+        }
+        String animation = text(section, "animation", where, problems);
+        if (animation == null || !rig.clips().containsKey(animation.trim())) {
+            problems.add(where + path + ".bbmodel has no animation '" + animation + "' (it has: "
+                    + (rig.clips().isEmpty() ? "none" : String.join(", ", rig.clips().keySet())) + "); not played");
+            return null;
+        }
+        boolean playerHead = flag(section, "player-head", true, where, problems);
+        boolean hasHead = rig.bones().stream().anyMatch(bone -> bone.name().equals(EmoteDefinition.HEAD));
+        if (playerHead && !hasHead && section.containsKey("player-head")) {
+            problems.add(where + "'player-head' needs a bone named 'head' in " + path + ".bbmodel");
+        }
+        return EmoteDefinition.of(rig, animation.trim(), playerHead && hasHead,
+                (float) number(section, "scale", EmoteDefinition.PLAYER_SCALE, 0.1, 4, where, problems),
+                flag(section, "stop-on-move", true, where, problems),
+                (int) Math.round(number(section, "max-seconds", 30, 1, 600, where, problems) * 20),
+                (int) Math.round(number(section, "cooldown-seconds", 1, 0, 3600, where, problems) * 20));
     }
 
     /**

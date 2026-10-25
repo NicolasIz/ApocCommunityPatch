@@ -136,6 +136,7 @@ public final class ArkContentPlugin extends JavaPlugin {
     private java.util.concurrent.ScheduledExecutorService physics;
     private com.arkcronist.content.bukkit.vehicle.VehicleService vehicles;
     private com.arkcronist.content.bukkit.generation.OreGenerator ores;
+    private com.arkcronist.content.bukkit.emote.EmoteService emotes;
     private CustomBlockService blockService;
     private ActionBars actionBars;
     private GunService guns;
@@ -254,6 +255,9 @@ public final class ArkContentPlugin extends JavaPlugin {
                 protection, physics);
         this.sanity = new SanityChecker(this, settings.sanity(), database, placed, transforms, furniture, blockService,
                 liquids, liquidRegistry, seats, storage);
+        // 5.0: emotes, their frames sent from ArkContent-Emotes - as packets when PacketEvents is there.
+        this.emotes = new com.arkcronist.content.bukkit.emote.EmoteService(this, items, itemFactory,
+                hooks.packetEmotes(), pipeline.mainThread());
         // 5.0: ores laid by Paper's generation threads into each new chunk, once the content is built.
         this.ores = new com.arkcronist.content.bukkit.generation.OreGenerator(getLogger(), settings.generation().enabled());
 
@@ -265,6 +269,7 @@ public final class ArkContentPlugin extends JavaPlugin {
         plugins.registerEvents(new WorldInterceptionListener(itemFactory), this);
         plugins.registerEvents(new CustomBlockListener(blockService, itemFactory, protection, hooks), this);
         plugins.registerEvents(ores, this);
+        plugins.registerEvents(emotes, this);
         ores.attach(getServer().getWorlds());
         plugins.registerEvents(new com.arkcronist.content.bukkit.sanity.IntegrityListener(sanity, furniture), this);
         this.questStore = new QuestBoardStore(database);
@@ -392,6 +397,8 @@ public final class ArkContentPlugin extends JavaPlugin {
                     "What you wear, and taking it off", List.of("cosmetics"));
             commands.register(new com.arkcronist.content.bukkit.command.BackpackCommand(backpacks).build(),
                     "Open your backpack", List.of("mochila"));
+            commands.register(new com.arkcronist.content.bukkit.command.EmoteCommand(emotes).build(),
+                    "Play an emote", List.of("emotes"));
         });
 
         // Queued on the worker ahead of the first rebuild; a port that will not open never stops the start.
@@ -410,6 +417,7 @@ public final class ArkContentPlugin extends JavaPlugin {
         sanity.start();
         // Smoke, steam and flames: picked on the main thread each tick, drawn on ArkContent-Effects.
         ambience.start();
+        emotes.start();
     }
 
     /**
@@ -567,6 +575,9 @@ public final class ArkContentPlugin extends JavaPlugin {
         if (ores != null) {
             shutdownStep(() -> ores.detach(getServer().getWorlds()));
         }
+        if (emotes != null) {
+            shutdownStep(() -> emotes.shutdown());
+        }
         if (huds != null) {
             shutdownStep(() -> huds.shutdown());
         }
@@ -719,6 +730,11 @@ public final class ArkContentPlugin extends JavaPlugin {
     /** 5.0: the ores laid into new chunks. */
     public com.arkcronist.content.bukkit.generation.OreGenerator ores() {
         return ores;
+    }
+
+    /** 5.0: player emotes. */
+    public com.arkcronist.content.bukkit.emote.EmoteService emotes() {
+        return emotes;
     }
 
     /** 4.0: the plugin's recipes on the server; null before enable. */

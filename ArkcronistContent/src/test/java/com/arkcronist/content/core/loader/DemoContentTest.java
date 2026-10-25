@@ -67,6 +67,13 @@ class DemoContentTest {
         assertTrue(starOre.get(0).inBiome("minecraft:deep_dark"));
         assertTrue(((Placement.Block) items.get("demo:ruby_block").placement()).generation().isEmpty());
 
+        // 5.0: four emotes on one squire rig.
+        for (String emote : java.util.List.of("wave", "bow", "cheer", "sit")) {
+            assertNotNull(items.get("demo:" + emote).emote(), emote);
+            assertTrue(items.get("demo:" + emote).emote().playerHead(), emote);
+        }
+        assertEquals(6000, items.get("demo:sit").emote().maxTicks(), "300 seconds");
+
         Placement.Furniture bed = (Placement.Furniture) items.get("demo:ruby_bed").placement();
         assertEquals(Placement.Support.BED, bed.support());
         assertEquals("RED_BED", items.get("demo:ruby_bed").material());

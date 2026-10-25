@@ -316,6 +316,9 @@ permissions:
   arkcontent.backpack:
     description: Open the backpack in hand or on the back (/backpack, /mochila).
     default: true
+  arkcontent.emote:
+    description: Play emotes - /emote, or using an emote's item.
+    default: true
   arkcontent.shop:
     description: Buy custom items that have a price (/arkcontent shop). Needs Vault and an economy plugin.
     default: true

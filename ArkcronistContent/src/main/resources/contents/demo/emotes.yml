@@ -1,0 +1,88 @@
+# ---------------------------------------------------------------------------
+#  Emotes (5.0)
+# ---------------------------------------------------------------------------
+#  An item with an 'emote:' section plays a body animation when used (right
+#  click), or with /emote <name> - its id - for players with arkcontent.emote.
+#  Walking, jumping, sneaking, being hurt or changing the item in hand ends it.
+#
+#     /customgive <player> demo:wave
+#     /emote wave        /emote bow        /emote cheer        /emote sit
+#     /emote stop
+#
+#  While it plays, the player's body is hidden and a rig stands in for it: a
+#  Blockbench model (.bbmodel, under models/) with one bone per body part -
+#  head, body, right_arm, left_arm, right_leg, left_leg - each drawn by an item
+#  display, moved by one of the model's animations. The bone named 'head' shows
+#  the player's own head and skin. Its pivot is the neck. Blockbench's north
+#  is the front.
+#
+#  The animation is turned into frames when the content is built; playing it
+#  only sends those frames, on a thread of its own (ArkContent-Emotes), and the
+#  clients glide between them. With PacketEvents installed the rig exists only
+#  on the clients; without it, it is made of real displays.
+#
+#  model             the .bbmodel, under models/
+#  animation         which of its animations: played once, held, or looped,
+#                    as set in Blockbench
+#  player-head       the 'head' bone shows the player's own head (default true)
+#  scale             the rig's size (default 0.9375, a player's)
+#  stop-on-move      walking or being pushed ends it (default true)
+#  max-seconds       a held or looping emote ends by itself after this (30)
+#  cooldown-seconds  before the same player plays an emote again (1)
+#
+#  The squire's texture is laid out as a player skin (64x64): any skin drawn
+#  in that layout can take its place - the body is the texture's, the head
+#  the player's own.
+# ---------------------------------------------------------------------------
+
+namespace: demo
+
+items:
+
+  wave:
+    material: PAPER
+    display-name: "<gold>Emote: Wave"
+    lore:
+      - "<gray>Use it, or /emote wave."
+    resource:
+      texture: item/emote_scroll
+    emote:
+      model: emotes/squire
+      animation: wave
+
+  bow:
+    material: PAPER
+    display-name: "<gold>Emote: Bow"
+    lore:
+      - "<gray>Use it, or /emote bow."
+    resource:
+      texture: item/emote_scroll
+    emote:
+      model: emotes/squire
+      animation: bow
+
+  cheer:
+    material: PAPER
+    display-name: "<gold>Emote: Cheer"
+    lore:
+      - "<gray>Use it, or /emote cheer. It goes on"
+      - "<gray>until you move, or for 20 seconds."
+    resource:
+      texture: item/emote_scroll
+    emote:
+      model: emotes/squire
+      animation: cheer
+      max-seconds: 20
+
+  sit:
+    material: PAPER
+    display-name: "<gold>Emote: Sit"
+    lore:
+      - "<gray>Use it, or /emote sit. You stay sitting"
+      - "<gray>until you move."
+    resource:
+      texture: item/emote_scroll
+    emote:
+      model: emotes/squire
+      animation: sit
+      max-seconds: 300

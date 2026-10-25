@@ -429,6 +429,10 @@ public final class PackCompiler {
             if (item.placement() instanceof Placement.Furniture furniture && furniture.animated() != null) {
                 bones(item.itemModel(), furniture.animated().model(), origin);
             }
+            if (item.emote() != null) {
+                // 5.0: the emote's rig, bone by bone, as animated furniture's.
+                bones(item.itemModel(), item.emote().rig(), origin + " emote");
+            }
             if (item.placement() instanceof Placement.Furniture furniture && furniture.doubleChest() != null) {
                 Placement.DoubleChest pair = furniture.doubleChest();
                 ResourceLocation key = Placement.DoubleChest.itemModel(item.itemModel());

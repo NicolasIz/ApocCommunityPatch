@@ -915,6 +915,9 @@ public final class ContentAdminCommand {
                 audit.ticks(), audit.suspects(), audit.blocksRebuilt(), audit.liquidsRebuilt(), audit.displaysRemoved(),
                 audit.rowsPurged(), audit.liquidsPurged())),
                 NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("Emotes: " + plugin.emotes().emotes().keySet().stream()
+                .filter(name -> !name.contains(":")).count() + " defined, " + plugin.emotes().playing()
+                + " playing; drawn as " + plugin.emotes().describe(), NamedTextColor.GRAY));
         com.arkcronist.content.bukkit.generation.OreGenerator ores = plugin.ores();
         sender.sendMessage(Component.text("Ore generation: " + (!ores.enabled() ? "off (generation.enabled)"
                 : ores.ores() + " ore(s) laid into new chunks; since start " + ores.blocks() + " block(s) in "

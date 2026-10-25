@@ -99,6 +99,7 @@ public final class HookManager {
     private final List<AutoCloseable> closing = new ArrayList<>();
     private ModelEngineBridge modelEngine;
     private @org.jetbrains.annotations.Nullable com.arkcronist.content.bukkit.cosmetic.CosmeticRenderer packetCosmetics;
+    private @org.jetbrains.annotations.Nullable com.arkcronist.content.bukkit.emote.EmoteRenderer packetEmotes;
     private @org.jetbrains.annotations.Nullable GeyserHook geyser;
     private Shop shop;
     private NpcBridge npcs;
@@ -229,6 +230,14 @@ public final class HookManager {
         // outside create's guard, and that fails without PacketEvents (seen live).
         packetCosmetics = create("PacketEvents", "com.github.retrooper.packetevents.PacketEvents",
                 () -> new PacketCosmetics());
+        // 5.0: emote rigs as packets, sent from their own thread - with the same PacketEvents.
+        if (packetCosmetics != null) {
+            try {
+                packetEmotes = new com.arkcronist.content.bukkit.hooks.packetevents.PacketEmotes();
+            } catch (RuntimeException | LinkageError error) {
+                logger.log(Level.WARNING, "Emotes could not use PacketEvents - drawing them as entities instead.", error);
+            }
+        }
         // 3.0: LuckPerms prefixes, suffixes and meta with emojis, for TAB, chat and menus.
         LuckPermsHook luckPerms = create("LuckPerms", "net.luckperms.api.LuckPermsProvider",
                 () -> new LuckPermsHook(plugin.emojis()));
@@ -541,6 +550,11 @@ public final class HookManager {
     /** Cosmetics drawn by packets, when PacketEvents is installed; null otherwise. */
     public @org.jetbrains.annotations.Nullable com.arkcronist.content.bukkit.cosmetic.CosmeticRenderer packetCosmetics() {
         return packetCosmetics;
+    }
+
+    /** 5.0: emotes as packets, when PacketEvents is installed; null otherwise. */
+    public @org.jetbrains.annotations.Nullable com.arkcronist.content.bukkit.emote.EmoteRenderer packetEmotes() {
+        return packetEmotes;
     }
 
     /** Geyser, when it is installed and Bedrock content is on; null otherwise. */

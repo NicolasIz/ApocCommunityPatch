@@ -243,7 +243,11 @@ public final class ContentPipeline {
                     "contents/demo/textures/vehicle/ruby_cart_wheel.png")),
             // 5.0: an ore laid into new chunks.
             Map.entry("5.0.0", List.of(
-                    "contents/demo/textures/block/ruby_ore.png")));
+                    "contents/demo/textures/block/ruby_ore.png",
+                    // 5.0: emotes - a squire rig with four animations, and the scroll that plays them.
+                    "contents/demo/emotes.yml",
+                    "contents/demo/models/emotes/squire.bbmodel",
+                    "contents/demo/textures/item/emote_scroll.png")));
 
     /** The example files a resource lists, one path a line; # starts a comment. */
     private static List<String> exampleList(String resource) {

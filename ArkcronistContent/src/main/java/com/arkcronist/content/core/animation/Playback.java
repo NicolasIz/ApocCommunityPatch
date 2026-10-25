@@ -27,7 +27,8 @@ public final class Playback {
         this(Animator.frames(model, clip), clip.loop(), clip.length());
     }
 
-    Playback(List<Animator.Frame> frames, AnimatedModel.Loop loop, int length) {
+    /** Frames worked out beforehand - an emote's, once per build (5.0). */
+    public Playback(List<Animator.Frame> frames, AnimatedModel.Loop loop, int length) {
         this.frames = List.copyOf(frames);
         this.loop = loop;
         this.length = length;
