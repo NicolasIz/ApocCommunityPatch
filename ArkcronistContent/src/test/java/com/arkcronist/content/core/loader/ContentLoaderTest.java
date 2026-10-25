@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -882,6 +883,68 @@ class ContentLoaderTest {
         assertEquals(0.0, report.items().get(3).price(), "a bad price means not for sale");
         assertTrue(report.problems().stream().anyMatch(p -> p.contains("'price' should be a positive number")),
                 report.problems().toString());
+    }
+
+    /** 5.0: block: generation: - one section or a list; what cannot be read is said, and given a default. */
+    @Test
+    void oreGenerationIsReadFromTheBlockSection() throws IOException {
+        write("demo/ores.yml", """
+                namespace: demo
+                items:
+                  ruby_ore:
+                    type: custom_block
+                    resource: {texture: block/ruby_ore}
+                    block:
+                      generation:
+                        min-y: -48
+                        max-y: 24
+                        veins-per-chunk: 3
+                        vein-size: 5
+                        chance: 0.8
+                        replace: [STONE, minecraft:deepslate]
+                  star_ore:
+                    type: custom_block
+                    resource: {texture: block/star_ore}
+                    block:
+                      generation:
+                        - {worlds: [Mining], environments: [nether, moon], biomes: [crimson_forest], min-y: 40,
+                           max-y: 10, chance: 3}
+                        - "not a section"
+                  plain_block:
+                    type: custom_block
+                    resource: {texture: block/plain}
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+        Map<String, Placement.Block> blocks = report.items().stream().collect(java.util.stream.Collectors.toMap(
+                ItemDefinition::id, item -> (Placement.Block) item.placement()));
+
+        com.arkcronist.content.core.generation.OreGeneration ruby = blocks.get("ruby_ore").generation().get(0);
+        assertEquals(-48, ruby.minY());
+        assertEquals(24, ruby.maxY());
+        assertEquals(3, ruby.veinsPerChunk());
+        assertEquals(5, ruby.veinSize());
+        assertEquals(0.8, ruby.chance());
+        assertEquals(Set.of("minecraft:stone", "minecraft:deepslate"), ruby.replace());
+        assertTrue(ruby.appliesTo("world", "NORMAL"));
+
+        assertEquals(1, blocks.get("star_ore").generation().size(), "the entry that is not a section is left out");
+        com.arkcronist.content.core.generation.OreGeneration star = blocks.get("star_ore").generation().get(0);
+        assertEquals(Set.of("mining"), star.worlds());
+        assertEquals(Set.of("nether"), star.environments());
+        assertEquals(Set.of("minecraft:crimson_forest"), star.biomes());
+        assertEquals(10, star.minY(), "swapped");
+        assertEquals(40, star.maxY());
+        assertEquals(1.0, star.chance(), "out of range: the default");
+        assertEquals(com.arkcronist.content.core.generation.OreGeneration.STONES, star.replace());
+        assertTrue(blocks.get("plain_block").generation().isEmpty());
+
+        List<String> problems = report.problems();
+        assertTrue(problems.stream().anyMatch(p -> p.contains("unknown environment 'moon'")), problems.toString());
+        assertTrue(problems.stream().anyMatch(p -> p.contains("'min-y' 40 is above 'max-y' 10")), problems.toString());
+        assertTrue(problems.stream().anyMatch(p -> p.contains("'chance' should be a number from 0 to 1")),
+                problems.toString());
+        assertTrue(problems.stream().anyMatch(p -> p.contains("#2: should be a section")), problems.toString());
     }
 
     @Test

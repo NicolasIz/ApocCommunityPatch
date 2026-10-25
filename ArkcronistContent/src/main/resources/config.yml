@@ -309,6 +309,14 @@ sanity:
   # let go and its row purged. 0: never put back.
   max-rebuilds-per-block-per-day: 3
 
+# 5.0: ore generation. A custom block with a 'block: generation:' section (see
+# contents/demo/blocks.yml) is laid into new chunks as they are generated - in
+# the worlds, biomes and heights it names - by the server's own generation
+# threads: no world generator plugin needed, and nothing on the main thread.
+# Chunks generated before are left as they are.
+generation:
+  enabled: true
+
 # ---------------------------------------------------------------------------
 #  Bedrock players (3.0), through Geyser - on this server or (3.3) on a proxy
 # ---------------------------------------------------------------------------

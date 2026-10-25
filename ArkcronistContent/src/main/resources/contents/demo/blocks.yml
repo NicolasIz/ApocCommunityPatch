@@ -6,6 +6,7 @@
 #  says what placing one does. 'material' is implied and cannot be set.
 #
 #     /customgive <player> demo:ruby_block
+#     /customgive <player> demo:ruby_ore
 #     /customgive <player> demo:ruby_pedestal
 #     /customgive <player> demo:ruby_crate
 # ---------------------------------------------------------------------------
@@ -30,6 +31,30 @@ items:
       # ExcellentJobs, to a player who has the job (its id in the jobs plugin).
       jobs:
         Miner: {money: 2.5, xp: 4}
+
+  # 5.0: an ore found in the world. 'generation' lays it into chunks as they
+  # are generated - by the server's own generation threads, with no world
+  # generator plugin. Chunks generated before are left as they are.
+  ruby_ore:
+    type: custom_block
+    display-name: "<#d63048>Ruby Ore"
+    lore:
+      - "<gray>Smelt it for a ruby."
+    resource:
+      texture: block/ruby_ore
+    block:
+      drop-self: true
+      skill-xp: 6
+      generation:
+        # worlds:        [world]       # by name; default every world of...
+        # environments:  [normal]      # normal, nether, the_end, custom (default normal)
+        # biomes:        [minecraft:plains, minecraft:forest]   # default every biome
+        min-y: -48
+        max-y: 24
+        veins-per-chunk: 3            # tries at a vein in each chunk
+        vein-size: 5                  # blocks a vein grows to, at most
+        chance: 0.8                   # the chance each try makes a vein, 0-1
+        replace: [stone, deepslate, tuff, granite, diorite, andesite]
 
   # A 3D model - a Blockbench export - shown by an item display standing on an
   # invisible barrier. Its textures are found through the model file: the gem

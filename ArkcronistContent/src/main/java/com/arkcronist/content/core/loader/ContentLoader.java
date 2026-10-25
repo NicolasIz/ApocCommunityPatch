@@ -19,6 +19,7 @@ import com.arkcronist.content.core.definition.ModelSource;
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.definition.ResourceLocation;
 import com.arkcronist.content.core.furniture.Footprint;
+import com.arkcronist.content.core.generation.OreGeneration;
 import com.arkcronist.content.core.hud.HudAnchor;
 import com.arkcronist.content.core.hud.HudDefinition;
 import com.arkcronist.content.core.liquid.LiquidModels;
@@ -45,6 +46,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -971,7 +973,56 @@ public final class ContentLoader {
             return new Placement.Block(true);
         }
         return new Placement.Block(flag(section, "drop-self", true, prefix, problems),
-                skillXp(section, prefix, problems), jobs(section, prefix, problems));
+                skillXp(section, prefix, problems), jobs(section, prefix, problems),
+                generation(section.get("generation"), prefix + "generation: ", problems));
+    }
+
+    /**
+     * {@code generation:} (5.0) - one section, or a list of them: where the block is laid into new
+     * chunks as an ore. An entry that cannot be read is left out, and said so; the others still are.
+     */
+    private static List<OreGeneration> generation(Object value, String where, List<String> problems) {
+        if (value == null) {
+            return List.of();
+        }
+        List<?> entries = value instanceof List<?> list ? list : List.of(value);
+        List<OreGeneration> generation = new ArrayList<>();
+        for (int i = 0; i < entries.size(); i++) {
+            String at = entries.size() > 1 ? where + "#" + (i + 1) + ": " : where;
+            if (!(entries.get(i) instanceof Map<?, ?> section)) {
+                problems.add(at + "should be a section (min-y, max-y, veins-per-chunk, ...); left out");
+                continue;
+            }
+            Set<String> environments = new LinkedHashSet<>();
+            for (String environment : lines(section, "environments", at, problems)) {
+                String name = environment.trim().toLowerCase(Locale.ROOT);
+                if (OreGeneration.ENVIRONMENTS.contains(name)) {
+                    environments.add(name);
+                } else {
+                    problems.add(at + "unknown environment '" + environment + "' (normal, nether, the_end, custom)");
+                }
+            }
+            Set<String> worlds = new LinkedHashSet<>();
+            lines(section, "worlds", at, problems).forEach(world -> worlds.add(world.trim().toLowerCase(Locale.ROOT)));
+            Set<String> biomes = new LinkedHashSet<>();
+            lines(section, "biomes", at, problems).forEach(biome -> biomes.add(OreGeneration.key(biome)));
+            Set<String> replace = new LinkedHashSet<>();
+            lines(section, "replace", at, problems).forEach(block -> replace.add(OreGeneration.key(block)));
+            int minY = (int) number(section, "min-y", -64, -2048, 2048, at, problems);
+            int maxY = (int) number(section, "max-y", 64, -2048, 2048, at, problems);
+            if (minY > maxY) {
+                problems.add(at + "'min-y' " + minY + " is above 'max-y' " + maxY + "; swapped");
+                int swap = minY;
+                minY = maxY;
+                maxY = swap;
+            }
+            generation.add(new OreGeneration(worlds, environments, biomes, minY, maxY,
+                    (int) number(section, "veins-per-chunk", 4, 0, 64, at, problems),
+                    (int) number(section, "vein-size", 5, 1, 64, at, problems),
+                    number(section, "chance", 1, 0, 1, at, problems),
+                    replace.isEmpty() ? OreGeneration.STONES : replace));
+        }
+        return generation;
     }
 
     /** {@code price:} at the item's top level: what one costs in the content shop. */

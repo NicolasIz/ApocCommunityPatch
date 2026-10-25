@@ -27,11 +27,18 @@ public sealed interface Placement {
      * @param skillXp  skill experience for breaking it, given through AuraSkills (Mining), mcMMO
      *                 (Mining) or SkillAPI, whichever is installed; 0 for none
      * @param jobs     what each job pays for breaking it, by job id; empty for nothing
+     * @param generation 5.0: where it is laid into new chunks as an ore; empty for nowhere
      */
-    record Block(boolean dropSelf, double skillXp, Map<String, JobReward> jobs) implements Placement {
+    record Block(boolean dropSelf, double skillXp, Map<String, JobReward> jobs,
+                 List<com.arkcronist.content.core.generation.OreGeneration> generation) implements Placement {
 
         public Block {
             jobs = Map.copyOf(jobs);
+            generation = List.copyOf(generation);
+        }
+
+        public Block(boolean dropSelf, double skillXp, Map<String, JobReward> jobs) {
+            this(dropSelf, skillXp, jobs, List.of());
         }
 
         public Block(boolean dropSelf, double skillXp) {

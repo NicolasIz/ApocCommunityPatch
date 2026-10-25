@@ -41,6 +41,16 @@ items:
       texture: block/star_ore
     block:
       drop-self: false
+      # 5.0: rare, deep, and only in the deepslate of mountains and caves.
+      generation:
+        biomes: [minecraft:jagged_peaks, minecraft:frozen_peaks, minecraft:stony_peaks,
+                 minecraft:dripstone_caves, minecraft:lush_caves, minecraft:deep_dark]
+        min-y: -64
+        max-y: -16
+        veins-per-chunk: 1
+        vein-size: 2
+        chance: 0.35
+        replace: [deepslate, tuff]
     minigame:
       speed: 1.2
       zone: 22

@@ -915,6 +915,10 @@ public final class ContentAdminCommand {
                 audit.ticks(), audit.suspects(), audit.blocksRebuilt(), audit.liquidsRebuilt(), audit.displaysRemoved(),
                 audit.rowsPurged(), audit.liquidsPurged())),
                 NamedTextColor.GRAY));
+        com.arkcronist.content.bukkit.generation.OreGenerator ores = plugin.ores();
+        sender.sendMessage(Component.text("Ore generation: " + (!ores.enabled() ? "off (generation.enabled)"
+                : ores.ores() + " ore(s) laid into new chunks; since start " + ores.blocks() + " block(s) in "
+                + ores.chunks() + " chunk(s)"), NamedTextColor.GRAY));
         sender.sendMessage(Component.text("Font images by name: " + plugin.fontImages().current().size() + " ("
                 + plugin.fontImages().current().defined() + " from font_images:)"
                 + (plugin.settings().fontImages().titles() ? "; menu titles rewritten" : "")

@@ -462,3 +462,7 @@ contents/medieval_pesca/textures/furniture/tabla_pescado.png f4de0b15f714fbbf21f
 contents/medieval_pesca/textures/furniture/trofeo_globo.png eb15f67f52310d9ff27b2b21ac23330b473a8f8d
 contents/medieval_pesca/textures/furniture/trofeo_lucio.png cea58cf41b30d1476f5125ec5b2d9ca6227cfbfc
 contents/medieval_pesca/textures/furniture/trofeo_salmon.png a21f6af972b7cb32888781476c8adc57fe64b0a1
+# 5.0: blocks gain ore generation (ruby ore, star ore), its smelting recipe
+contents/demo/blocks.yml 76473ae18ca8e0a9a627c936e66a614210dfd2bd
+contents/demo/minigames.yml a5ea969ca28dd796703bcfdd85bc96ae7300b25b
+contents/demo/recipes.yml 82f7875605537202643afeafc7cc424be9eb4f08

@@ -33,7 +33,15 @@ import java.util.regex.PatternSyntaxException;
  */
 public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nullable UploadSettings upload,
                              Delivery delivery, Crops crops, Guns guns, Liquids liquids, Huds huds, Sanity sanity,
-                             FontImageText fontImages, Menus menus, DoubleChests doubleChests, QuestBoards questBoards) {
+                             FontImageText fontImages, Menus menus, DoubleChests doubleChests, QuestBoards questBoards,
+                             Generation generation) {
+
+    public EngineSettings(boolean extractExamples, Pack pack, Http http, @Nullable UploadSettings upload,
+                          Delivery delivery, Crops crops, Guns guns, Liquids liquids, Huds huds, Sanity sanity,
+                          FontImageText fontImages, Menus menus, DoubleChests doubleChests, QuestBoards questBoards) {
+        this(extractExamples, pack, http, upload, delivery, crops, guns, liquids, huds, sanity, fontImages, menus,
+                doubleChests, questBoards, Generation.DEFAULT);
+    }
 
     public EngineSettings(boolean extractExamples, Pack pack, Http http, @Nullable UploadSettings upload,
                           Delivery delivery, Crops crops, Guns guns, Liquids liquids, Huds huds, Sanity sanity,
@@ -320,6 +328,15 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
         public static final FontImageText DEFAULT = new FontImageText(true, true);
     }
 
+    /**
+     * 5.0: ore generation - custom blocks with {@code block: generation:} laid into chunks as they are
+     * generated.
+     */
+    public record Generation(boolean enabled) {
+
+        public static final Generation DEFAULT = new Generation(true);
+    }
+
     static EngineSettings read(FileConfiguration config, String serverIp, Logger logger) {
         UploadSettings upload = readUpload(section(config, "upload"), logger);
         ConfigurationSection guns = section(config, "guns");
@@ -361,7 +378,8 @@ public record EngineSettings(boolean extractExamples, Pack pack, Http http, @Nul
                 new QuestBoards(boards.getString("background", QuestBoards.DEFAULT.background()).trim(),
                         Math.max(1, Math.min(512, boards.getInt("background-width", QuestBoards.DEFAULT.backgroundWidth()))),
                         Math.max(1, Math.min(45, boards.getInt("max-active", QuestBoards.DEFAULT.maxActive()))),
-                        Math.max(2, Math.min(600, boards.getInt("save-seconds", QuestBoards.DEFAULT.saveSeconds())))));
+                        Math.max(2, Math.min(600, boards.getInt("save-seconds", QuestBoards.DEFAULT.saveSeconds())))),
+                new Generation(section(config, "generation").getBoolean("enabled", Generation.DEFAULT.enabled())));
     }
 
     private static Menus readMenus(ConfigurationSection menus, Logger logger) {

@@ -135,6 +135,7 @@ public final class ArkContentPlugin extends JavaPlugin {
     private com.arkcronist.content.bukkit.recipe.RecipeService recipes;
     private java.util.concurrent.ScheduledExecutorService physics;
     private com.arkcronist.content.bukkit.vehicle.VehicleService vehicles;
+    private com.arkcronist.content.bukkit.generation.OreGenerator ores;
     private CustomBlockService blockService;
     private ActionBars actionBars;
     private GunService guns;
@@ -253,6 +254,8 @@ public final class ArkContentPlugin extends JavaPlugin {
                 protection, physics);
         this.sanity = new SanityChecker(this, settings.sanity(), database, placed, transforms, furniture, blockService,
                 liquids, liquidRegistry, seats, storage);
+        // 5.0: ores laid by Paper's generation threads into each new chunk, once the content is built.
+        this.ores = new com.arkcronist.content.bukkit.generation.OreGenerator(getLogger(), settings.generation().enabled());
 
         PluginManager plugins = getServer().getPluginManager();
         plugins.registerEvents(new PackDeliveryListener(delivery, settings, getLogger()), this);
@@ -261,6 +264,8 @@ public final class ArkContentPlugin extends JavaPlugin {
         plugins.registerEvents(new ItemCombatListener(itemFactory), this);
         plugins.registerEvents(new WorldInterceptionListener(itemFactory), this);
         plugins.registerEvents(new CustomBlockListener(blockService, itemFactory, protection, hooks), this);
+        plugins.registerEvents(ores, this);
+        ores.attach(getServer().getWorlds());
         plugins.registerEvents(new com.arkcronist.content.bukkit.sanity.IntegrityListener(sanity, furniture), this);
         this.questStore = new QuestBoardStore(database);
         this.questBoards = new QuestBoardService(this, questStore, items, itemFactory, hooks, settings.questBoards(),
@@ -559,6 +564,9 @@ public final class ArkContentPlugin extends JavaPlugin {
         if (physics != null) {
             shutdownStep(() -> physics.shutdownNow());
         }
+        if (ores != null) {
+            shutdownStep(() -> ores.detach(getServer().getWorlds()));
+        }
         if (huds != null) {
             shutdownStep(() -> huds.shutdown());
         }
@@ -706,6 +714,11 @@ public final class ArkContentPlugin extends JavaPlugin {
     /** 4.0: vehicles; null before enable. */
     public com.arkcronist.content.bukkit.vehicle.VehicleService vehicles() {
         return vehicles;
+    }
+
+    /** 5.0: the ores laid into new chunks. */
+    public com.arkcronist.content.bukkit.generation.OreGenerator ores() {
+        return ores;
     }
 
     /** 4.0: the plugin's recipes on the server; null before enable. */

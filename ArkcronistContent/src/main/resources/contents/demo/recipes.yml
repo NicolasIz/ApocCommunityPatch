@@ -140,6 +140,21 @@ recipes:
     experience: 0.7
     category: blocks
 
+  # 5.0: the ruby ore laid into new chunks, smelted.
+  ruby_ore_blasting:
+    type: blasting
+    input: demo:ruby_ore
+    result: demo:ruby
+    experience: 0.7
+    category: blocks
+
+  ruby_ore_furnace:
+    type: furnace
+    input: demo:ruby_ore
+    result: demo:ruby
+    experience: 0.7
+    category: blocks
+
   # A diamond sword upgraded to a ruby one at a smithing table, keeping its
   # enchantments - as netherite upgrades diamond.
   ruby_sword_upgrade:

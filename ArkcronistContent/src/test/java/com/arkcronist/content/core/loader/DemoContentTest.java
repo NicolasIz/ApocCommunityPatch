@@ -58,6 +58,15 @@ class DemoContentTest {
         assertEquals(Map.of("Farmer", new com.arkcronist.content.core.definition.JobReward(1.5, 3)),
                 ((Placement.Crop) items.get("demo:ruby_seeds").placement()).jobs());
 
+        // 5.0: the ores laid into new chunks.
+        var rubyOre = ((Placement.Block) items.get("demo:ruby_ore").placement()).generation();
+        assertEquals(1, rubyOre.size());
+        assertTrue(rubyOre.get(0).appliesTo("world", "NORMAL"));
+        var starOre = ((Placement.Block) items.get("demo:star_ore").placement()).generation();
+        assertEquals(java.util.Set.of("minecraft:deepslate", "minecraft:tuff"), starOre.get(0).replace());
+        assertTrue(starOre.get(0).inBiome("minecraft:deep_dark"));
+        assertTrue(((Placement.Block) items.get("demo:ruby_block").placement()).generation().isEmpty());
+
         Placement.Furniture bed = (Placement.Furniture) items.get("demo:ruby_bed").placement();
         assertEquals(Placement.Support.BED, bed.support());
         assertEquals("RED_BED", items.get("demo:ruby_bed").material());

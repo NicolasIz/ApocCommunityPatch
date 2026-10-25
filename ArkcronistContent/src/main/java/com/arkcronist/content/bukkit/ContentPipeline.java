@@ -240,7 +240,10 @@ public final class ContentPipeline {
                     "contents/demo/models/vehicle/ruby_cart.json",
                     "contents/demo/models/vehicle/ruby_cart_wheel.json",
                     "contents/demo/textures/vehicle/ruby_cart.png",
-                    "contents/demo/textures/vehicle/ruby_cart_wheel.png")));
+                    "contents/demo/textures/vehicle/ruby_cart_wheel.png")),
+            // 5.0: an ore laid into new chunks.
+            Map.entry("5.0.0", List.of(
+                    "contents/demo/textures/block/ruby_ore.png")));
 
     /** The example files a resource lists, one path a line; # starts a comment. */
     private static List<String> exampleList(String resource) {
@@ -1513,6 +1516,9 @@ public final class ContentPipeline {
                     plugin.getServer().createBlockData(entry.getValue().asBlockData())));
         }
         blocks.replace(customBlocks);
+        if (plugin.ores() != null) {
+            plugin.ores().publish(customBlocks);
+        }
         List<LiquidRegistry.Liquid> liquids = new ArrayList<>();
         for (Map.Entry<String, Integer> entry : build.liquids().entrySet()) {
             CustomItem item = build.items().get(entry.getKey());
