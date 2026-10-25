@@ -110,7 +110,7 @@ class ItemsAdderImporterTest {
                     behaviours:
                       block:
                         placed_model:
-                          type: REAL_NOTE
+                          type: REAL_TRANSPARENT
                 """);
         write(pack, "configs/furniture.yml", """
                 info:
@@ -234,6 +234,9 @@ class ItemsAdderImporterTest {
 
         ModelSource.Generated modern = (ModelSource.Generated) items.get("myitems:modern_block").model();
         assertEquals(ModelSource.CUBE_ALL, modern.parent());
+        // 5.3: see-through in ItemsAdder, see-through here.
+        assertEquals(com.arkcronist.content.core.block.BlockShape.TRANSPARENT,
+                ((Placement.Block) items.get("myitems:modern_block").placement()).shape());
         assertEquals(Map.of("all", new ResourceLocation("myitems", "block/modern_block")), modern.textures());
 
         Placement.Furniture lamp = (Placement.Furniture) items.get("myitems:lava_lamp").placement();

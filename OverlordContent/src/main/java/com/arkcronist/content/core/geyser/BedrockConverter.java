@@ -1,9 +1,13 @@
 package com.arkcronist.content.core.geyser;
 
+import com.arkcronist.content.core.block.BlockShape;
 import com.arkcronist.content.core.block.NoteBlockState;
+import com.arkcronist.content.core.block.ShapedModels;
+import com.arkcronist.content.core.block.ShapedStates;
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.definition.ResourceLocation;
 import com.arkcronist.content.core.furniture.Footprint;
+import com.arkcronist.content.core.pack.BlockStates;
 import com.arkcronist.content.core.pack.ItemModels;
 import com.arkcronist.content.core.pack.PngReader;
 import com.google.gson.Gson;
@@ -58,6 +62,8 @@ public final class BedrockConverter {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
     /** Bedrock's seconds to break a block of hardness 0.8 by hand: a note block's. */
     private static final float NOTE_BLOCK_SECONDS = 1.2f;
+    /** 5.3: the same for copper's hardness, 3: what shaped blocks are drawn through. */
+    private static final float COPPER_SECONDS = 4.5f;
     private static final String FULL_BLOCK = "minecraft:geometry.full_block";
     /** Paths in a Bedrock pack stay under this many characters: some platforms open no longer one. */
     private static final int MAX_PATH = 80;
@@ -196,6 +202,17 @@ public final class BedrockConverter {
     public record BlockSpec(String id, NoteBlockState state, ResourceLocation model, String displayName) {
     }
 
+    /**
+     * 5.3: a shaped block - slab, stairs, transparent block, door, trapdoor - drawn through a vanilla
+     * block of its shape.
+     *
+     * @param base   that block's id, without namespace: {@code waxed_exposed_cut_copper_slab}
+     * @param models the models its block state names, by suffix ({@link ShapedModels#parts})
+     */
+    public record ShapedSpec(String id, BlockShape shape, String base, Map<String, ResourceLocation> models,
+                             String displayName) {
+    }
+
     /** A liquid: its two tripwire states, as block data strings, and their models. */
     public record LiquidSpec(String id, String sourceState, ResourceLocation sourceModel, String flowingState,
                              ResourceLocation flowingModel, String displayName, int glow) {
@@ -222,7 +239,13 @@ public final class BedrockConverter {
      */
     public record Input(PackFiles pack, List<ItemSpec> items, List<BlockSpec> blocks, List<LiquidSpec> liquids,
                         List<FurnitureSpec> furniture, List<EmojiSpec> emojis, Map<String, Integer> previousCarriers,
-                        Set<Integer> blockStates, Set<String> skipFurniture) {
+                        Set<Integer> blockStates, Set<String> skipFurniture, List<ShapedSpec> shaped) {
+
+        public Input(PackFiles pack, List<ItemSpec> items, List<BlockSpec> blocks, List<LiquidSpec> liquids,
+                     List<FurnitureSpec> furniture, List<EmojiSpec> emojis, Map<String, Integer> previousCarriers,
+                     Set<Integer> blockStates, Set<String> skipFurniture) {
+            this(pack, items, blocks, liquids, furniture, emojis, previousCarriers, blockStates, skipFurniture, List.of());
+        }
 
         public Input(PackFiles pack, List<ItemSpec> items, List<BlockSpec> blocks, List<LiquidSpec> liquids,
                      List<FurnitureSpec> furniture, List<EmojiSpec> emojis, Map<String, Integer> previousCarriers,
@@ -270,7 +293,34 @@ public final class BedrockConverter {
      */
     public record BedrockBlock(String name, String javaState, String geometry, Map<String, Material> materials,
                                boolean collision, boolean selection, int light, float destroySeconds, int rotationY,
-                               String displayName) {
+                               String displayName, List<String> moreStates, List<float[]> boxes) {
+
+        /**
+         * @param moreStates 5.3: other Java states drawn the same way - a slab's waterlogged twin, the
+         *                   stairs states vanilla draws with one model and turn
+         * @param boxes      5.3: what is collided with and selected, each {x, y, z, width, height,
+         *                   depth} in Bedrock's block frame before {@code rotationY}; empty for the
+         *                   whole block, or none at all without {@code collision}
+         */
+        public BedrockBlock {
+            moreStates = List.copyOf(moreStates);
+            boxes = List.copyOf(boxes);
+        }
+
+        public BedrockBlock(String name, String javaState, String geometry, Map<String, Material> materials,
+                            boolean collision, boolean selection, int light, float destroySeconds, int rotationY,
+                            String displayName) {
+            this(name, javaState, geometry, materials, collision, selection, light, destroySeconds, rotationY,
+                    displayName, List.of(), List.of());
+        }
+
+        /** Every Java state it stands in for. */
+        public List<String> javaStates() {
+            List<String> all = new ArrayList<>();
+            all.add(javaState);
+            all.addAll(moreStates);
+            return all;
+        }
     }
 
     /**
@@ -357,6 +407,9 @@ public final class BedrockConverter {
         }
         for (LiquidSpec liquid : input.liquids()) {
             liquid(liquid, blocks);
+        }
+        for (ShapedSpec shaped : input.shaped()) {
+            shaped(shaped, blocks);
         }
         unpictured.forEach((reason, ids) -> problems.add(unpicturedLine(reason, ids)));
         unworn.forEach((reason, ids) -> problems.add("Bedrock: " + ids.size() + " armour piece(s) not drawn on Bedrock"
@@ -852,6 +905,90 @@ public final class BedrockConverter {
             blocks.add(new BedrockBlock(name, source ? liquid.sourceState() : liquid.flowingState(), geometry, materials,
                     false, true, liquid.glow(), 0, 0, liquid.displayName()));
         }
+    }
+
+    /**
+     * 5.3: a shaped block, one Bedrock block for each way vanilla draws its copper block - each model
+     * and turn its block state names - standing in for every Java state drawn that way. The turn
+     * about y is the block's transformation, as for furniture; upside-down stairs are turned in their
+     * geometry. What is collided with is the model's own cubes.
+     */
+    private void shaped(ShapedSpec spec, List<BedrockBlock> blocks) {
+        JsonObject variants = ShapedModels.blockState(spec.shape(),
+                suffix -> spec.models().getOrDefault(suffix, spec.models().get("")).toString()).getAsJsonObject("variants");
+        Map<String, List<String>> drawnAlike = new LinkedHashMap<>();
+        for (Map<String, String> state : ShapedStates.all(spec.shape())) {
+            JsonElement variant = BlockStates.resolve(variants, state);
+            if (!(variant instanceof JsonObject drawn)) {
+                continue;
+            }
+            String key = drawn.get("model").getAsString() + "|" + (drawn.has("x") ? drawn.get("x").getAsInt() : 0)
+                    + "|" + (drawn.has("y") ? drawn.get("y").getAsInt() : 0);
+            drawnAlike.computeIfAbsent(key, ignored -> new ArrayList<>()).add(ShapedStates.write(spec.base(), state));
+        }
+        int n = 0;
+        for (Map.Entry<String, List<String>> way : drawnAlike.entrySet()) {
+            String[] parts = way.getKey().split("\\|");
+            JavaModel model = model(ResourceLocation.parse(parts[0], ResourceLocation.MINECRAFT));
+            if (model == null || model.elements().isEmpty()) {
+                problems.add(spec.id() + ": its model " + parts[0] + " could not be read for Bedrock - it shows as "
+                        + spec.base() + " there");
+                return;
+            }
+            List<BedrockCube> cubes = blockCubes(model);
+            if (Integer.parseInt(parts[1]) == 180) {
+                cubes = upsideDown(cubes);
+            }
+            String name = name(spec.id()) + "_" + n++;
+            Map<String, Material> materials = new LinkedHashMap<>();
+            String geometry;
+            if (fullCube(model)) {
+                geometry = FULL_BLOCK;
+                for (Map.Entry<JavaModel.Face, JavaModel.FaceTexture> face : model.elements().get(0).faces().entrySet()) {
+                    materials.put(face.getKey().key(), material(face.getValue().texture(), false));
+                }
+                materials.put("*", materials.getOrDefault("north", materials.values().iterator().next()));
+            } else {
+                geometry = geometry(name, cubes, materials, false);
+            }
+            List<float[]> boxes = new ArrayList<>();
+            for (BedrockCube cube : cubes) {
+                // Bedrock's x runs the other way, as in the geometry.
+                boxes.add(new float[]{-cube.max()[0], cube.min()[1], cube.min()[2], cube.max()[0] - cube.min()[0],
+                        cube.max()[1] - cube.min()[1], cube.max()[2] - cube.min()[2]});
+            }
+            List<String> states = way.getValue();
+            int turn = Math.floorMod(-Integer.parseInt(parts[2]) + 180, 360) - 180;
+            blocks.add(new BedrockBlock(name, states.get(0), geometry, materials, true, true, 0, COPPER_SECONDS, turn,
+                    spec.displayName(), states.subList(1, states.size()), boxes));
+        }
+    }
+
+    /**
+     * Cubes turned half round about the east-west line through the block's middle - Java's
+     * {@code x: 180}, which stands stairs on their heads. Up and down trade places, as do north and
+     * south; the texture on every side face turns half round with it.
+     */
+    static List<BedrockCube> upsideDown(List<BedrockCube> cubes) {
+        List<BedrockCube> turned = new ArrayList<>();
+        for (BedrockCube cube : cubes) {
+            Map<JavaModel.Face, BedrockCube.Face> faces = new java.util.EnumMap<>(JavaModel.Face.class);
+            cube.faces().forEach((face, drawn) -> {
+                float[] uv = drawn.uv();
+                switch (face) {
+                    case UP -> faces.put(JavaModel.Face.DOWN, drawn);
+                    case DOWN -> faces.put(JavaModel.Face.UP, drawn);
+                    default -> faces.put(face == JavaModel.Face.NORTH ? JavaModel.Face.SOUTH
+                                    : face == JavaModel.Face.SOUTH ? JavaModel.Face.NORTH : face,
+                            new BedrockCube.Face(new float[]{uv[2], uv[3], uv[0], uv[1]}, drawn.texture()));
+                }
+            });
+            float angle = cube.axis() == null || cube.axis() == 'x' ? cube.angle() : -cube.angle();
+            turned.add(new BedrockCube(new float[]{cube.min()[0], 16 - cube.max()[1], -cube.max()[2]},
+                    new float[]{cube.max()[0], 16 - cube.min()[1], -cube.min()[2]}, faces, cube.axis(), angle,
+                    new float[]{cube.pivot()[0], 16 - cube.pivot()[1], -cube.pivot()[2]}));
+        }
+        return turned;
     }
 
     /** A block model's cubes in a Bedrock block's frame: no turn, only the origin moved to the floor's middle. */

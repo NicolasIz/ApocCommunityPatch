@@ -1,0 +1,74 @@
+# ---------------------------------------------------------------------------
+#  5.3: custom blocks with a shape - slabs, stairs, see-through blocks, doors
+#  and trapdoors
+# ---------------------------------------------------------------------------
+#  'block: shape:' draws the block through a vanilla block of that shape (a
+#  waxed copper slab, stairs, grate, door or trapdoor), so vanilla places it
+#  with its own rules: a slab on a slab doubles, stairs turn their corners, a
+#  door takes two blocks and opens with a click. They break like copper, with
+#  a pickaxe, and drop their own item.
+#
+#  There are only a few of each (config.yml, 'blocks'): 3 slabs, 2 stairs,
+#  2 see-through blocks, 2 doors and 3 trapdoors. These five examples use one
+#  of each. To give them to your own blocks, delete this file - and, once no
+#  example block is left placed in any world, their lines in
+#  data/copper_block_bases.json.
+#
+#     /customgive <player> demo:ruby_slab
+#     /customgive <player> demo:ruby_stairs
+#     /customgive <player> demo:ruby_glass
+#     /customgive <player> demo:ruby_door
+#     /customgive <player> demo:ruby_trapdoor
+# ---------------------------------------------------------------------------
+
+items:
+
+  # One texture on every face; or 'textures:' with side, top and bottom.
+  ruby_slab:
+    type: custom_block
+    display-name: "<red>Ruby Slab"
+    resource:
+      texture: block/ruby_block
+    block:
+      shape: slab
+
+  ruby_stairs:
+    type: custom_block
+    display-name: "<red>Ruby Stairs"
+    resource:
+      texture: block/ruby_block
+    block:
+      shape: stairs
+      skill-xp: 4
+
+  # The transparent pixels of its texture are see-through - glass, lattices,
+  # cages, leaves - and light passes through it. Pixels are either solid or
+  # clear: half-transparent ones are drawn solid.
+  ruby_glass:
+    type: custom_block
+    display-name: "<#ff6a7f>Ruby Lattice Glass"
+    resource:
+      texture: block/ruby_glass
+    block:
+      shape: transparent
+
+  # The upper half's texture, the lower half's, and the icon in the inventory.
+  # A door's clear pixels are see-through too: a window.
+  ruby_door:
+    type: custom_block
+    display-name: "<red>Ruby Door"
+    resource:
+      textures:
+        top: block/ruby_door_top
+        bottom: block/ruby_door_bottom
+        item: item/ruby_door
+    block:
+      shape: door
+
+  ruby_trapdoor:
+    type: custom_block
+    display-name: "<red>Ruby Trapdoor"
+    resource:
+      texture: block/ruby_trapdoor
+    block:
+      shape: trapdoor

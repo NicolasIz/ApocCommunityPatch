@@ -1,5 +1,6 @@
 package com.arkcronist.content.core.pack;
 
+import com.arkcronist.content.core.block.BlockShape;
 import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.definition.ItemBehaviour;
 import com.arkcronist.content.core.definition.Placement;
@@ -27,6 +28,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -174,6 +176,58 @@ class PackCompilerTest {
         assertEquals("demo:block/amber_block", model(variants, "instrument=basedrum,note=0,powered=true"));
         assertEquals("minecraft:block/note_block", model(variants, "instrument=harp,note=0,powered=false"));
         assertEquals("minecraft:block/note_block", model(variants, "instrument=piglin,note=24,powered=true"));
+    }
+
+    @Test
+    void shapedBlocksRedrawTheirCopperBlockWithVanillasModels() throws IOException {
+        Path demo = temp.resolve("contents/demo");
+        write(demo, "textures/block/oak_top.png", png("top"));
+        write(demo, "textures/block/oak_side.png", png("side"));
+        write(demo, "textures/block/gate_top.png", png("gate top"));
+        write(demo, "textures/block/gate_bottom.png", png("gate bottom"));
+        write(demo, "textures/item/gate.png", png("gate"));
+        Path pack = temp.resolve("pack");
+        ResourceLocation side = loc("demo:block/oak_side");
+        ResourceLocation top = loc("demo:block/oak_top");
+        ModelSource slab = new ModelSource.Generated(demo, loc("demo:block/oak_slab"), loc("minecraft:block/slab"),
+                Map.of("bottom", top, "side", side, "top", top));
+        ModelSource door = new ModelSource.Generated(demo, loc("demo:item/gate"), ModelSource.ITEM_GENERATED,
+                Map.of("bottom", loc("demo:block/gate_bottom"), "top", loc("demo:block/gate_top"),
+                        "layer0", loc("demo:item/gate")));
+
+        PackCompiler.Result result = new PackCompiler(SETTINGS).compile(pack, List.of(
+                shaped("oak_slab", "WAXED_EXPOSED_CUT_COPPER_SLAB", BlockShape.SLAB, slab),
+                shaped("gate", "WAXED_WEATHERED_COPPER_DOOR", BlockShape.DOOR, door),
+                // Left without copper: an item that places nothing, and no block state.
+                shaped("spare_slab", "PAPER", BlockShape.SLAB, slab)), Map.of());
+
+        assertEquals(2, result.customBlockStates());
+        assertEquals("demo:block/oak_slab", itemModelTarget(pack.resolve("assets/demo/items/oak_slab.json")));
+        JsonObject slabTop = json(pack.resolve("assets/demo/models/block/oak_slab_top.json"));
+        assertEquals("minecraft:block/slab_top", slabTop.get("parent").getAsString());
+        assertEquals("demo:block/oak_side", slabTop.getAsJsonObject("textures").get("side").getAsString());
+        assertEquals("minecraft:block/cube_bottom_top", json(pack.resolve("assets/demo/models/block/oak_slab_double.json"))
+                .get("parent").getAsString());
+        JsonObject slabStates = json(pack.resolve("assets/minecraft/blockstates/waxed_exposed_cut_copper_slab.json"))
+                .getAsJsonObject("variants");
+        assertEquals("demo:block/oak_slab_double", model(slabStates, "type=double"));
+        assertFalse(Files.exists(pack.resolve("assets/minecraft/blockstates/paper.json")));
+
+        // A door's icon is flat; its eight halves are vanilla's door models with its two textures.
+        assertEquals("demo:item/gate", itemModelTarget(pack.resolve("assets/demo/items/gate.json")));
+        JsonObject half = json(pack.resolve("assets/demo/models/block/gate_top_right_open.json"));
+        assertEquals("minecraft:block/door_top_right_open", half.get("parent").getAsString());
+        assertEquals(Set.of("bottom", "top"), half.getAsJsonObject("textures").keySet());
+        JsonObject doorStates = json(pack.resolve("assets/minecraft/blockstates/waxed_weathered_copper_door.json"))
+                .getAsJsonObject("variants");
+        assertEquals(32, doorStates.size());
+        assertEquals("demo:block/gate_bottom_left", model(doorStates, "facing=east,half=lower,hinge=left,open=false"));
+        assertTrue(Files.exists(pack.resolve("assets/demo/textures/block/gate_top.png")));
+    }
+
+    private static ItemDefinition shaped(String id, String material, BlockShape shape, ModelSource model) {
+        return new ItemDefinition("demo", id, material, null, List.of(), model, new ItemBehaviour(false, true),
+                new Placement.Block(true, 0, Map.of(), List.of(), shape), Path.of("blocks.yml"));
     }
 
     @Test

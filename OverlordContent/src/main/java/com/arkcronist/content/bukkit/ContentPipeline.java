@@ -9,6 +9,8 @@ import com.arkcronist.content.bukkit.liquid.LiquidRegistry;
 import com.arkcronist.content.bukkit.pack.PackDelivery;
 import com.arkcronist.content.core.advancement.AdvancementCompiler;
 import com.arkcronist.content.core.allocation.StableAllocator;
+import com.arkcronist.content.core.block.BlockShape;
+import com.arkcronist.content.core.block.CopperBaseAllocator;
 import com.arkcronist.content.core.block.NoteBlockAllocator;
 import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.definition.EmojiDefinition;
@@ -247,7 +249,15 @@ public final class ContentPipeline {
                     // 5.0: emotes - a squire rig with four animations, and the scroll that plays them.
                     "contents/demo/emotes.yml",
                     "contents/demo/models/emotes/squire.bbmodel",
-                    "contents/demo/textures/item/emote_scroll.png")));
+                    "contents/demo/textures/item/emote_scroll.png")),
+            // 5.3: blocks with a shape - a slab, stairs, lattice glass, a door and a trapdoor.
+            Map.entry("5.3.0", List.of(
+                    "contents/demo/shapes.yml",
+                    "contents/demo/textures/block/ruby_glass.png",
+                    "contents/demo/textures/block/ruby_door_top.png",
+                    "contents/demo/textures/block/ruby_door_bottom.png",
+                    "contents/demo/textures/block/ruby_trapdoor.png",
+                    "contents/demo/textures/item/ruby_door.png")));
 
     /** The example files a resource lists, one path a line; # starts a comment. */
     private static List<String> exampleList(String resource) {
@@ -443,6 +453,8 @@ public final class ContentPipeline {
     private final Path packDir;
     private final Path zipFile;
     private final Path noteBlockStateFile;
+    /** 5.3: the waxed copper block each shaped custom block is drawn through. */
+    private final Path copperBaseFile;
     /** 3.0: the note block states Bedrock players are shown furniture through. */
     private final Path carrierFile;
     private final Path bedrockDir;
@@ -512,6 +524,7 @@ public final class ContentPipeline {
         this.packDir = data.resolve("pack");
         this.zipFile = data.resolve("output").resolve("resource_pack.zip");
         this.noteBlockStateFile = data.resolve("data").resolve("note_block_states.json");
+        this.copperBaseFile = data.resolve("data").resolve("copper_block_bases.json");
         this.carrierFile = data.resolve("data").resolve("bedrock_carriers.json");
         this.bedrockDir = data.resolve("output").resolve("bedrock");
         this.bedrockActive = bedrockActive(plugin);
@@ -655,6 +668,7 @@ public final class ContentPipeline {
     private CompletableFuture<Report> stages() {
         long started = System.nanoTime();
         return CompletableFuture.supplyAsync(this::loadItems, worker)
+                .thenApplyAsync(this::assignCopperBases, worker)
                 .thenApplyAsync(this::assignNoteBlockStates, worker)
                 .thenApplyAsync(this::assignEmojiCharacters, worker)
                 .thenApplyAsync(this::assignModelData, worker)
@@ -682,9 +696,13 @@ public final class ContentPipeline {
     public int preload() {
         try {
             Build build = loadItems();
-            registry.replace(build.items().values());
+            // 5.3: shaped blocks of the copper blocks they had; a new one waits for the rebuild.
+            Map<String, BlockShape> shapes = shapedBlocks(build.items());
+            Map<String, String> kept = shapes.isEmpty() ? Map.of() : CopperBaseAllocator.allocate(
+                    CopperBaseAllocator.read(copperBaseFile), shapes, allCopperBases(), true).active();
+            registry.replace(withCopperBases(build.items(), kept).values());
             return build.items().size();
-        } catch (RuntimeException exception) {
+        } catch (RuntimeException | IOException exception) {
             logger.log(Level.FINE, "Could not preload the items; the rebuild will report why.", exception);
             return 0;
         }
@@ -803,6 +821,92 @@ public final class ContentPipeline {
     }
 
     /**
+     * 5.3: a waxed copper block for every shaped custom block - slab, stairs, transparent, door,
+     * trapdoor: the one it had before, or the first free one of its shape. Kept in
+     * data/copper_block_bases.json, because a placed slab is only that copper slab in the world. The
+     * item becomes that block, so vanilla places it with its own rules - a slab on a slab doubles, a
+     * door takes two blocks and its hinge from where it is clicked; one left without keeps paper,
+     * which places nothing.
+     */
+    private Build assignCopperBases(Build build) {
+        try {
+            Map<String, BlockShape> shapes = shapedBlocks(build.items());
+            Map<String, String> previous = CopperBaseAllocator.read(copperBaseFile);
+            if (shapes.isEmpty() && previous.isEmpty()) {
+                return build;
+            }
+            // The copper blocks a merged pack - Nexo's, Oraxen's - draws as its own are left to it.
+            Set<String> reserved = new java.util.TreeSet<>();
+            for (ExternalPack pack : mergedPacks()) {
+                try (PackSource source = PackSource.open(pack)) {
+                    reserved.addAll(com.arkcronist.content.core.pack.BlockStates.copperBasesDrawn(source));
+                }
+            }
+            boolean trialChambers = plugin.getConfig().getBoolean("blocks.trial-chamber-copper", false);
+            CopperBaseAllocator.Allocation allocation = CopperBaseAllocator.allocate(previous, shapes, reserved,
+                    trialChambers);
+            if (allocation.changed()) {
+                CopperBaseAllocator.write(copperBaseFile, allocation.assignments());
+            }
+            build.problems().addAll(allocation.problems());
+            List<String> chambers = allocation.active().entrySet().stream()
+                    .filter(entry -> !shapes.get(entry.getKey()).outsideStructures().contains(entry.getValue()))
+                    .map(entry -> entry.getKey() + " (" + entry.getValue() + ")")
+                    .toList();
+            if (!chambers.isEmpty()) {
+                logger.info("[blocks] drawn through copper that trial chambers are built from - chambers generated"
+                        + " from now on show them in their walls: " + String.join(", ", chambers) + ".");
+            }
+            return build.withItems(withCopperBases(build.items(), allocation.active()));
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
+        }
+    }
+
+    /** 5.3: every shaped custom block - not a cube - with its shape. */
+    private static Map<String, BlockShape> shapedBlocks(Map<String, CustomItem> items) {
+        Map<String, BlockShape> shapes = new LinkedHashMap<>();
+        for (CustomItem item : items.values()) {
+            if (item.placement() instanceof Placement.Block block && block.shape().copper()) {
+                shapes.put(item.id(), block.shape());
+            }
+        }
+        return shapes;
+    }
+
+    /** Every copper block a shaped block can be drawn through: reserved, none is handed out anew. */
+    private static Set<String> allCopperBases() {
+        Set<String> bases = new java.util.HashSet<>();
+        for (BlockShape shape : BlockShape.values()) {
+            bases.addAll(shape.bases());
+        }
+        return bases;
+    }
+
+    /**
+     * The items, each shaped block made of its copper block. One left without: a see-through block is
+     * a note block instead - whole, but no longer see-through - and any other shape is made of paper,
+     * which places nothing.
+     */
+    private static Map<String, CustomItem> withCopperBases(Map<String, CustomItem> items, Map<String, String> bases) {
+        Map<String, CustomItem> made = new LinkedHashMap<>();
+        for (CustomItem item : items.values()) {
+            if (item.placement() instanceof Placement.Block block && block.shape().copper()) {
+                String base = bases.get(item.id());
+                Material material = base == null ? null : Material.matchMaterial(base);
+                if (material == null && block.shape() == BlockShape.TRANSPARENT) {
+                    item = item.withPlacement(new Placement.Block(block.dropSelf(), block.skillXp(), block.jobs(),
+                            block.generation(), BlockShape.CUBE), Material.NOTE_BLOCK);
+                } else {
+                    item = item.withMaterial(material == null ? Material.PAPER : material);
+                }
+            }
+            made.put(item.id(), item);
+        }
+        return made;
+    }
+
+    /**
      * A note block state for every custom block: the one it had before, or the lowest free one.
      * The assignments are kept in data/note_block_states.json, because a placed custom block is only
      * its state - hand the state to another block and every placed one changes with it.
@@ -810,7 +914,7 @@ public final class ContentPipeline {
     private Build assignNoteBlockStates(Build build) {
         try {
             List<String> blockIds = build.items().values().stream()
-                    .filter(item -> item.placement() instanceof Placement.Block)
+                    .filter(item -> item.placement() instanceof Placement.Block block && block.noteBlock())
                     .map(CustomItem::id)
                     .toList();
             Map<String, Integer> previous = NoteBlockAllocator.read(noteBlockStateFile);
@@ -1339,6 +1443,7 @@ public final class ContentPipeline {
         List<BedrockConverter.BlockSpec> blocks = new ArrayList<>();
         List<BedrockConverter.LiquidSpec> liquids = new ArrayList<>();
         List<BedrockConverter.FurnitureSpec> furniture = new ArrayList<>();
+        List<BedrockConverter.ShapedSpec> shaped = new ArrayList<>();
         for (CustomItem item : build.items().values()) {
             ItemDefinition definition = item.definition();
             String name = item.displayName() == null ? item.id() : plain.serialize(item.displayName());
@@ -1361,6 +1466,21 @@ public final class ContentPipeline {
                         liquid.source().location(), TripwireState.flowing(slot).blockData(), liquid.flowing().location(),
                         name, liquid.glow()));
             }
+            String base = item.material().name().toLowerCase(Locale.ROOT);
+            if (item.placement() instanceof Placement.Block shapedBlock && shapedBlock.shape().bases().contains(base)
+                    && model != null) {
+                // 5.3: a slab, stairs, door... drawn for Bedrock players over the copper block it is.
+                Map<String, ResourceLocation> shapeModels = new LinkedHashMap<>();
+                if (shapedBlock.shape() == BlockShape.TRANSPARENT) {
+                    shapeModels.put("", model);
+                }
+                for (com.arkcronist.content.core.block.ShapedModels.Part part
+                        : com.arkcronist.content.core.block.ShapedModels.parts(shapedBlock.shape())) {
+                    shapeModels.put(part.suffix(), com.arkcronist.content.core.block.ShapedModels.blockModel(
+                            definition.namespace(), definition.id(), part.suffix()));
+                }
+                shaped.add(new BedrockConverter.ShapedSpec(item.id(), shapedBlock.shape(), base, shapeModels, name));
+            }
             if (item.placement() instanceof Placement.Furniture piece && model != null && piece.modelEngineId() == null
                     && (piece.support() == Placement.Support.BARRIER || piece.support() == Placement.Support.LIGHT)) {
                 furniture.add(new BedrockConverter.FurnitureSpec(item.id(), model, piece.footprint(), piece.display(),
@@ -1377,7 +1497,7 @@ public final class ContentPipeline {
             skip.add(id.trim().toLowerCase(Locale.ROOT));
         }
         return new BedrockConverter.Input(this::builtFile, items, blocks, liquids, furniture, emojis,
-                StableAllocator.read(carrierFile), blockStates, skip);
+                StableAllocator.read(carrierFile), blockStates, skip, shaped);
     }
 
     private CompletableFuture<Build> zipPack(Build build) {
@@ -1520,6 +1640,9 @@ public final class ContentPipeline {
                     plugin.getServer().createBlockData(entry.getValue().asBlockData())));
         }
         blocks.replace(customBlocks);
+        // 5.3: the shaped blocks, by the copper block each is; vanilla's recipes for those taken out.
+        plugin.shapedBlocks().replace(build.items().values());
+        plugin.copperRecipes().update(plugin.shapedBlocks().claimed());
         if (plugin.ores() != null) {
             plugin.ores().publish(customBlocks);
         }

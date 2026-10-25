@@ -65,11 +65,14 @@ public final class CustomBlockListener implements Listener {
         this.hooks = hooks;
     }
 
-    /** A custom block item whose block got no state (all 799 taken) cannot be placed at all. */
+    /**
+     * A custom block item whose block got no state (all 799 taken) cannot be placed at all. Shaped
+     * blocks are not note blocks: theirs is {@link ShapedBlockListener}'s to decide.
+     */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void refuseStatelessBlocks(BlockPlaceEvent event) {
         Optional<CustomItem> item = items.identify(event.getItemInHand());
-        if (item.isPresent() && item.get().placement() instanceof Placement.Block
+        if (item.isPresent() && item.get().placement() instanceof Placement.Block block && block.noteBlock()
                 && blocks.forItem(item.get()).isEmpty()) {
             event.setCancelled(true);
         }

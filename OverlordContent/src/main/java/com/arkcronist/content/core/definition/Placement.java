@@ -1,6 +1,7 @@
 package com.arkcronist.content.core.definition;
 
 import com.arkcronist.content.core.animation.AnimatedModel;
+import com.arkcronist.content.core.block.BlockShape;
 import com.arkcronist.content.core.furniture.Footprint;
 import org.jetbrains.annotations.Nullable;
 
@@ -21,20 +22,30 @@ public sealed interface Placement {
 
     /**
      * A custom block: a note block held in a state of its own, which the pack draws with the item's
-     * model. Which state is decided at build time and remembered, not written here.
+     * model - or, since 5.3, a waxed copper block of its {@link #shape()}. Which state or which copper
+     * block is decided at build time and remembered, not written here.
      *
      * @param dropSelf breaking it outside creative drops the custom item, not a note block
      * @param skillXp  skill experience for breaking it, given through AuraSkills (Mining), mcMMO
      *                 (Mining) or SkillAPI, whichever is installed; 0 for none
      * @param jobs     what each job pays for breaking it, by job id; empty for nothing
      * @param generation 5.0: where it is laid into new chunks as an ore; empty for nowhere
+     * @param shape    5.3: a note block cube, or a slab, stairs, door, trapdoor or see-through block
+     *                 drawn through a waxed copper block of that shape ({@link BlockShape})
      */
     record Block(boolean dropSelf, double skillXp, Map<String, JobReward> jobs,
-                 List<com.arkcronist.content.core.generation.OreGeneration> generation) implements Placement {
+                 List<com.arkcronist.content.core.generation.OreGeneration> generation,
+                 BlockShape shape) implements Placement {
 
         public Block {
             jobs = Map.copyOf(jobs);
             generation = List.copyOf(generation);
+            java.util.Objects.requireNonNull(shape, "shape");
+        }
+
+        public Block(boolean dropSelf, double skillXp, Map<String, JobReward> jobs,
+                     List<com.arkcronist.content.core.generation.OreGeneration> generation) {
+            this(dropSelf, skillXp, jobs, generation, BlockShape.CUBE);
         }
 
         public Block(boolean dropSelf, double skillXp, Map<String, JobReward> jobs) {
@@ -47,6 +58,11 @@ public sealed interface Placement {
 
         public Block(boolean dropSelf) {
             this(dropSelf, 0);
+        }
+
+        /** Whether it is a note block state - false for the shapes drawn through copper. */
+        public boolean noteBlock() {
+            return shape == BlockShape.CUBE;
         }
 
         @Override

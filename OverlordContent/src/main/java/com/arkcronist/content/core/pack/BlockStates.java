@@ -1,5 +1,6 @@
 package com.arkcronist.content.core.pack;
 
+import com.arkcronist.content.core.block.BlockShape;
 import com.arkcronist.content.core.block.NoteBlockState;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -107,5 +108,26 @@ public final class BlockStates {
             }
         }
         return states;
+    }
+
+    /**
+     * 5.3: the waxed copper blocks another pack draws with a block state file of its own - Nexo's and
+     * Oraxen's slabs and stairs are drawn the same way. None is handed to a shaped block of ours.
+     */
+    public static Set<String> copperBasesDrawn(PackSource source) throws IOException {
+        Set<String> bases = new TreeSet<>();
+        for (BlockShape shape : BlockShape.values()) {
+            for (String base : shape.bases()) {
+                String file = "assets/minecraft/blockstates/" + base + ".json";
+                boolean drawn = source.has(file);
+                for (String overlay : source.overlays().keySet()) {
+                    drawn |= source.has(overlay + "/" + file);
+                }
+                if (drawn) {
+                    bases.add(base);
+                }
+            }
+        }
+        return bases;
     }
 }

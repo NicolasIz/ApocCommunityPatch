@@ -51,6 +51,16 @@ public record CustomItem(ItemDefinition definition, Material material, @Nullable
         return new CustomItem(definition, material, name, lore);
     }
 
+    /** 5.3: the same item, made of {@code material} - a shaped block, of the copper block it is drawn through. */
+    public CustomItem withMaterial(Material material) {
+        return new CustomItem(definition.withMaterial(material.name()), material, displayName, lore);
+    }
+
+    /** 5.3: the same item, placing {@code placement} and made of {@code material}. */
+    public CustomItem withPlacement(Placement placement, Material material) {
+        return new CustomItem(definition.withPlacement(placement).withMaterial(material.name()), material, displayName, lore);
+    }
+
     /** {@code namespace:id}. */
     public String id() {
         return definition.fullId();

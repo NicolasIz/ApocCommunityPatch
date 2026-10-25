@@ -1,7 +1,9 @@
 package com.arkcronist.content.core.pack;
 
 import com.arkcronist.content.core.animation.AnimatedModel;
+import com.arkcronist.content.core.block.BlockShape;
 import com.arkcronist.content.core.block.NoteBlockState;
+import com.arkcronist.content.core.block.ShapedModels;
 import com.arkcronist.content.core.definition.AdvancementDefinition;
 import com.arkcronist.content.core.definition.EmojiDefinition;
 import com.arkcronist.content.core.definition.Equipment;
@@ -85,7 +87,8 @@ public final class PackCompiler {
     /**
      * What a compile wrote.
      *
-     * @param customBlockStates note block states mapped to a custom block's model
+     * @param customBlockStates note block states mapped to a custom block's model, and (5.3) copper
+     *                          block state files drawn as shaped custom blocks
      * @param glyphs            emojis written into the font
      * @param externalFiles     files taken from other plugins' packs
      * @param sounds            sound files and {@code sounds.json} files taken from the content packs
@@ -423,6 +426,9 @@ public final class PackCompiler {
                     itemDefinitions++;
                 }
             }
+            if (item.placement() instanceof Placement.Block block && block.shape().copper()) {
+                shapedBlock(item, block.shape(), origin);
+            }
             if (item.placement() instanceof Placement.Crop crop) {
                 stages(item, crop, origin);
             }
@@ -473,6 +479,30 @@ public final class PackCompiler {
                 if (place(key.assetPath("items", ".json"), itemDefinition(key), boneOrigin)) {
                     itemDefinitions++;
                 }
+            }
+        }
+
+        /**
+         * 5.3: a shaped block's other models - a slab's top and double, a door's eight - and the block
+         * state of the waxed copper block it is drawn through, which is its material once the build
+         * has given it one. One left without (every copper block of its shape taken) is not drawn in
+         * the world: it is never placed.
+         */
+        private void shapedBlock(ItemDefinition item, BlockShape shape, String origin) throws IOException {
+            String base = item.material().toLowerCase(Locale.ROOT);
+            if (!shape.bases().contains(base) || item.model() == null) {
+                return;
+            }
+            if (item.model() instanceof ModelSource.Generated generated) {
+                for (ModelSource.Generated model : ShapedModels.extraModels(item.namespace(), item.id(), shape, generated)) {
+                    generateModel(model, origin);
+                }
+            }
+            String main = item.model().location().toString();
+            JsonObject state = ShapedModels.blockState(shape, suffix -> shape == BlockShape.TRANSPARENT ? main
+                    : ShapedModels.blockModel(item.namespace(), item.id(), suffix).toString());
+            if (place("assets/minecraft/blockstates/" + base + ".json", json(state), origin)) {
+                customBlockStates++;
             }
         }
 

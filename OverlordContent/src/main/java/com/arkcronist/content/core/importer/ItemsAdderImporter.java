@@ -825,7 +825,10 @@ public final class ItemsAdderImporter {
             Map<String, Object> block = new LinkedHashMap<>();
             if (map(ia.get("placed_model")) instanceof Map<?, ?> placed && placed.get("type") != null) {
                 String type = String.valueOf(placed.get("type")).trim().toUpperCase(Locale.ROOT);
-                if (!type.equals("REAL_NOTE")) {
+                if (type.equals("REAL_TRANSPARENT")) {
+                    // 5.3: see-through, as it was - while copper grates last; then a note block.
+                    block.put("shape", "transparent");
+                } else if (!type.equals("REAL_NOTE")) {
                     notes.add(prefix + "was a " + type + " block in ItemsAdder; every custom block here is a"
                             + " note block - solid and opaque");
                 }

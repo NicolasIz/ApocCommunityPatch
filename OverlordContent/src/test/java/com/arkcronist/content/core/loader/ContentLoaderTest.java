@@ -2,6 +2,7 @@ package com.arkcronist.content.core.loader;
 
 import com.arkcronist.content.core.animation.AnimatedModel;
 import com.arkcronist.content.core.animation.BbModelReaderTest;
+import com.arkcronist.content.core.block.BlockShape;
 import com.arkcronist.content.core.definition.AdvancementDefinition;
 import com.arkcronist.content.core.definition.ContentType;
 import com.arkcronist.content.core.definition.Equipment;
@@ -323,6 +324,83 @@ class ContentLoaderTest {
         assertEquals(new ModelSource.Generated(contents.resolve("demo"), new ResourceLocation("demo", "block/ruby_block"),
                 ModelSource.CUBE_ALL, Map.of("all", new ResourceLocation("demo", "block/ruby_block"))), block.model());
         assertEquals(new Placement.Block(false), report.items().get(1).placement());
+    }
+
+    @Test
+    void readsShapedBlocks() throws IOException {
+        write("demo/blocks.yml", """
+                items:
+                  oak_slab:
+                    type: custom_block
+                    resource:
+                      textures:
+                        side: block/oak_side
+                        top: block/oak_top
+                    block:
+                      shape: slab
+                  lattice:
+                    type: custom_block
+                    resource:
+                      texture: block/lattice
+                    block:
+                      shape: transparent
+                  gate:
+                    type: custom_block
+                    resource:
+                      textures:
+                        top: block/gate_top
+                        bottom: block/gate_bottom
+                        item: item/gate
+                    block:
+                      shape: door
+                  ore_stairs:
+                    type: custom_block
+                    resource:
+                      texture: block/ore
+                    block:
+                      shape: stairs
+                      generation:
+                        min-y: 0
+                        max-y: 20
+                  odd:
+                    type: custom_block
+                    resource:
+                      texture: block/odd
+                    block:
+                      shape: fence
+                  broken_door:
+                    type: custom_block
+                    resource:
+                      model: block/x
+                    block:
+                      shape: door
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+        Map<String, ItemDefinition> items = new java.util.HashMap<>();
+        report.items().forEach(item -> items.put(item.id(), item));
+
+        ItemDefinition slab = items.get("oak_slab");
+        assertEquals(BlockShape.SLAB, ((Placement.Block) slab.placement()).shape());
+        // Until the build gives it its own, the first copper slab.
+        assertEquals("WAXED_EXPOSED_CUT_COPPER_SLAB", slab.material());
+        ModelSource.Generated model = (ModelSource.Generated) slab.model();
+        assertEquals(new ResourceLocation("minecraft", "block/slab"), model.parent());
+        assertEquals(new ResourceLocation("demo", "block/oak_top"), model.textures().get("bottom"));
+
+        assertEquals(BlockShape.TRANSPARENT, ((Placement.Block) items.get("lattice").placement()).shape());
+        assertEquals(ModelSource.CUBE_ALL, ((ModelSource.Generated) items.get("lattice").model()).parent());
+        assertEquals(new ResourceLocation("demo", "item/gate"), items.get("gate").model().location());
+        assertEquals(new ResourceLocation("demo", "item/gate"),
+                ((ModelSource.Generated) items.get("gate").model()).textures().get("layer0"));
+        assertEquals(List.of(), ((Placement.Block) items.get("ore_stairs").placement()).generation());
+        assertEquals(BlockShape.CUBE, ((Placement.Block) items.get("odd").placement()).shape());
+        assertFalse(items.containsKey("broken_door"));
+
+        assertEquals(3, report.problems().size(), report.problems().toString());
+        assertTrue(report.problems().stream().anyMatch(problem -> problem.contains("only a cube is laid into chunks")));
+        assertTrue(report.problems().stream().anyMatch(problem -> problem.contains("unknown block shape 'fence'")));
+        assertTrue(report.problems().stream().anyMatch(problem -> problem.contains("drawn from textures")));
     }
 
     @Test

@@ -163,6 +163,18 @@ public record ItemDefinition(String namespace, String id, String material, Strin
                 equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote);
     }
 
+    /** The same item, made of another material - 5.3: a shaped block, of the copper block it was given. */
+    public ItemDefinition withMaterial(String material) {
+        return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote);
+    }
+
+    /** The same item, placing something else - 5.3: a see-through block left without copper, as a note block. */
+    public ItemDefinition withPlacement(Placement placement) {
+        return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote);
+    }
+
     /** {@code namespace:id}, the key the item is registered, given and recognised by. */
     public String fullId() {
         return namespace + ":" + id;

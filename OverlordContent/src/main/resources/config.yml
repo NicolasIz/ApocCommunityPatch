@@ -318,6 +318,26 @@ generation:
   enabled: true
 
 # ---------------------------------------------------------------------------
+#  Shaped blocks (5.3): slabs, stairs, see-through blocks, doors, trapdoors
+# ---------------------------------------------------------------------------
+#  A custom block with 'block: shape:' (see contents/demo/shapes.yml) is drawn
+#  through a vanilla block of that shape - a waxed copper slab, stairs, grate,
+#  door or trapdoor, or the petrified oak slab - which the pack redraws, so
+#  vanilla places it with its own rules: a slab on a slab doubles, stairs turn
+#  their corners, a door takes two blocks. They break like copper, with a
+#  pickaxe. There are only a few of each: 3 slabs, 2 stairs, 2 see-through
+#  blocks, 2 doors and 3 trapdoors - the ones no vanilla structure is built
+#  from. Which block each one took is kept in data/copper_block_bases.json.
+#  Vanilla's own versions of the blocks taken can no longer be crafted, waxed
+#  or placed; one already standing in a world shows as your block.
+# ---------------------------------------------------------------------------
+blocks:
+  # Also use the copper trial chambers are built from (2 more of each shape,
+  # 1 more trapdoor), once the others are taken. Chambers generated from then
+  # on show your blocks in their walls.
+  trial-chamber-copper: false
+
+# ---------------------------------------------------------------------------
 #  Bedrock players (3.0), through Geyser - on this server or (3.3) on a proxy
 # ---------------------------------------------------------------------------
 #  Every rebuild also converts the content for Bedrock, on the ArkContent-Worker

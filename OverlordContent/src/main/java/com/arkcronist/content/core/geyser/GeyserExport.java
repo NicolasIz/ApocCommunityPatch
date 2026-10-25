@@ -54,9 +54,17 @@ public final class GeyserExport {
             block.materials().forEach((key, material) -> materials.append(materials.isEmpty() ? "" : "&")
                     .append(encode(key)).append('=').append(encode(material.texture())).append(',')
                     .append(encode(material.renderMethod())));
+            StringBuilder boxes = new StringBuilder();
+            for (float[] box : block.boxes()) {
+                boxes.append(boxes.isEmpty() ? "" : ";");
+                for (int i = 0; i < box.length; i++) {
+                    boxes.append(i == 0 ? "" : ",").append(box[i]);
+                }
+            }
             line(out, "block", block.name(), block.javaState(), block.geometry(), materials.toString(),
                     Boolean.toString(block.collision()), Boolean.toString(block.selection()), Integer.toString(block.light()),
-                    Float.toString(block.destroySeconds()), Integer.toString(block.rotationY()), block.displayName());
+                    Float.toString(block.destroySeconds()), Integer.toString(block.rotationY()), block.displayName(),
+                    String.join("|", block.moreStates()), boxes.toString());
         }
         return out.toString();
     }
@@ -98,9 +106,22 @@ public final class GeyserExport {
                 }
                 case "block" -> {
                     need(field, 11, i);
+                    // The twelfth and thirteenth fields came in 5.3: a shaped block's other states, and its boxes.
+                    List<String> more = field.length > 11 && !field[11].isEmpty() ? List.of(field[11].split("\\|")) : List.of();
+                    List<float[]> boxes = new ArrayList<>();
+                    if (field.length > 12 && !field[12].isEmpty()) {
+                        for (String box : field[12].split(";")) {
+                            String[] numbers = box.split(",");
+                            float[] parsed = new float[numbers.length];
+                            for (int n = 0; n < numbers.length; n++) {
+                                parsed[n] = Float.parseFloat(numbers[n]);
+                            }
+                            boxes.add(parsed);
+                        }
+                    }
                     blocks.add(new BedrockConverter.BedrockBlock(field[1], field[2], field[3], materials(raw[4]),
                             Boolean.parseBoolean(field[5]), Boolean.parseBoolean(field[6]), Integer.parseInt(field[7]),
-                            Float.parseFloat(field[8]), Integer.parseInt(field[9]), field[10]));
+                            Float.parseFloat(field[8]), Integer.parseInt(field[9]), field[10], more, boxes));
                 }
                 default -> throw new IllegalArgumentException("line " + (i + 1) + ": unknown kind '" + field[0] + "'");
             }

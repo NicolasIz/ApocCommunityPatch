@@ -116,12 +116,23 @@ public final class GeyserRegistration {
         List<String> refused = new ArrayList<>();
         for (BedrockConverter.BedrockBlock block : blocks) {
             try {
+                // 5.3: a shaped block collides with its own cubes - a slab's half, a door's edge.
+                BoxComponent shape = block.boxes().isEmpty() ? BoxComponent.fullBox() : around(block.boxes());
                 CustomBlockComponents.Builder components = CustomBlockComponents.builder()
                         .geometry(GeometryComponent.builder().identifier(block.geometry()).build())
-                        .collisionBox(block.collision() ? BoxComponent.fullBox() : BoxComponent.emptyBox())
-                        .selectionBox(block.selection() ? BoxComponent.fullBox() : BoxComponent.emptyBox())
+                        .collisionBox(block.collision() ? shape : BoxComponent.emptyBox())
+                        .selectionBox(block.selection() ? shape : BoxComponent.emptyBox())
                         .destructibleByMining(block.destroySeconds())
                         .displayName(block.displayName());
+                if (block.collision() && block.boxes().size() > 1) {
+                    try {
+                        // Geyser 2.9 and later: each cube its own box - stairs' two steps.
+                        components.collisionBoxes(block.boxes().stream()
+                                .map(box -> new BoxComponent(box[0], box[1], box[2], box[3], box[4], box[5])).toList());
+                    } catch (LinkageError older) {
+                        // One box round them all.
+                    }
+                }
                 block.materials().forEach((key, material) -> components.materialInstance(key, MaterialInstance.builder()
                         .texture(material.texture())
                         .renderMethod(material.renderMethod())
@@ -140,7 +151,9 @@ public final class GeyserRegistration {
                         .components(components.build())
                         .build();
                 event.register(data);
-                event.registerOverride(block.javaState(), data.defaultBlockState());
+                for (String state : block.javaStates()) {
+                    event.registerOverride(state, data.defaultBlockState());
+                }
                 done++;
             } catch (RuntimeException | LinkageError failure) {
                 refused.add(block.name() + " (" + failure + ")");
@@ -151,6 +164,19 @@ public final class GeyserRegistration {
             warning.accept("[bedrock] Geyser refused " + refused.size() + " block(s): " + String.join(", ", refused));
         }
         return done;
+    }
+
+    /** The one box holding all of {@code boxes}, each {x, y, z, width, height, depth}. */
+    private static BoxComponent around(List<float[]> boxes) {
+        float[] min = {Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE};
+        float[] max = {-Float.MAX_VALUE, -Float.MAX_VALUE, -Float.MAX_VALUE};
+        for (float[] box : boxes) {
+            for (int axis = 0; axis < 3; axis++) {
+                min[axis] = Math.min(min[axis], box[axis]);
+                max[axis] = Math.max(max[axis], box[axis] + box[axis + 3]);
+            }
+        }
+        return new BoxComponent(min[0], min[1], min[2], max[0] - min[0], max[1] - min[1], max[2] - min[2]);
     }
 
     /** The .mcpack Bedrock players are sent as they connect. */

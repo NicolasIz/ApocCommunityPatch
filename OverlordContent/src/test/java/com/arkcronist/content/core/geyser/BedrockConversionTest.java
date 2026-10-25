@@ -303,6 +303,83 @@ class BedrockConversionTest {
     }
 
     /**
+     * 5.3: a slab, stairs and a door, each a Bedrock block per way vanilla draws its copper block -
+     * its model and turn - standing in for every Java state drawn that way, colliding with its cubes.
+     */
+    @Test
+    void shapedBlocksStandInForEveryStateOfTheirCopper() throws IOException {
+        Map<String, byte[]> pack = pack();
+        String side = "{\"bottom\":\"demo:block/stone\",\"side\":\"demo:block/stone\",\"top\":\"demo:block/stone\"}";
+        for (String[] model : new String[][]{{"slab", "slab"}, {"slab_top", "slab_top"}, {"slab_double", "cube_bottom_top"},
+                {"stairs", "stairs"}, {"stairs_inner", "inner_stairs"}, {"stairs_outer", "outer_stairs"}}) {
+            pack.put("assets/demo/models/block/" + model[0] + ".json", ("{\"parent\":\"minecraft:block/" + model[1]
+                    + "\",\"textures\":" + side + "}").getBytes(StandardCharsets.UTF_8));
+        }
+        for (com.arkcronist.content.core.block.ShapedModels.Part part
+                : com.arkcronist.content.core.block.ShapedModels.parts(com.arkcronist.content.core.block.BlockShape.DOOR)) {
+            pack.put("assets/demo/models/block/gate" + part.suffix() + ".json", ("{\"parent\":\"" + part.parent()
+                    + "\",\"textures\":{\"bottom\":\"demo:block/stone\",\"top\":\"demo:block/stone\"}}")
+                    .getBytes(StandardCharsets.UTF_8));
+        }
+        BedrockConverter.Input base = input(pack, Map.of());
+        List<BedrockConverter.ShapedSpec> shaped = List.of(
+                shaped("demo:slab", com.arkcronist.content.core.block.BlockShape.SLAB, "waxed_exposed_cut_copper_slab", "slab"),
+                shaped("demo:stairs", com.arkcronist.content.core.block.BlockShape.STAIRS, "waxed_exposed_cut_copper_stairs",
+                        "stairs"),
+                shaped("demo:gate", com.arkcronist.content.core.block.BlockShape.DOOR, "waxed_exposed_copper_door", "gate"));
+        BedrockConverter.Build build = BedrockConverter.convert(new BedrockConverter.Input(base.pack(), base.items(),
+                base.blocks(), base.liquids(), base.furniture(), base.emojis(), Map.of(), base.blockStates(), Set.of(),
+                shaped));
+        assertEquals(List.of(), build.problems());
+
+        List<BedrockConverter.BedrockBlock> slabs = build.blocks().stream()
+                .filter(block -> block.name().startsWith("ark_demo_slab_")).toList();
+        assertEquals(3, slabs.size(), "bottom, top and double");
+        assertEquals(6, slabs.stream().mapToInt(block -> block.javaStates().size()).sum(), "each also waterlogged");
+        BedrockConverter.BedrockBlock bottom = slabs.stream().filter(block -> block.javaStates()
+                .contains("minecraft:waxed_exposed_cut_copper_slab[type=bottom,waterlogged=true]")).findFirst().orElseThrow();
+        assertEquals(1, bottom.boxes().size());
+        assertArrayEquals(new float[]{-8, 0, -8, 16, 8, 16}, bottom.boxes().get(0), "the lower half");
+
+        List<BedrockConverter.BedrockBlock> stairs = build.blocks().stream()
+                .filter(block -> block.name().startsWith("ark_demo_stairs_")).toList();
+        assertEquals(80, stairs.stream().mapToInt(block -> block.javaStates().size()).sum());
+        BedrockConverter.BedrockBlock south = stairs.stream().filter(block -> block.javaStates().contains(
+                "minecraft:waxed_exposed_cut_copper_stairs[facing=south,half=bottom,shape=straight,waterlogged=false]"))
+                .findFirst().orElseThrow();
+        assertEquals(-90, south.rotationY(), "south is Java's y 90: the other way round on Bedrock");
+        assertEquals(2, south.boxes().size(), "the step and the riser");
+        BedrockConverter.BedrockBlock upsideDown = stairs.stream().filter(block -> block.javaStates().contains(
+                "minecraft:waxed_exposed_cut_copper_stairs[facing=east,half=top,shape=straight,waterlogged=false]"))
+                .findFirst().orElseThrow();
+        assertTrue(upsideDown.boxes().stream().anyMatch(box -> box[1] == 8 && box[4] == 8),
+                "upside down, the whole slab part is on top");
+
+        List<BedrockConverter.BedrockBlock> gates = build.blocks().stream()
+                .filter(block -> block.name().startsWith("ark_demo_gate_")).toList();
+        assertEquals(64, gates.stream().mapToInt(block -> block.javaStates().size()).sum(), "powered or not, alike");
+        assertTrue(gates.stream().allMatch(block -> block.boxes().size() == 1 && block.boxes().get(0)[3] == 3),
+                "a door is three pixels thick");
+
+        // Through the proxy file, unchanged.
+        GeyserExport.Content read = GeyserExport.read(GeyserExport.write(build.items(), build.blocks(), 0));
+        BedrockConverter.BedrockBlock back = read.blocks().stream().filter(block -> block.name().equals(south.name()))
+                .findFirst().orElseThrow();
+        assertEquals(south.javaStates(), back.javaStates());
+        assertArrayEquals(south.boxes().get(1), back.boxes().get(1));
+    }
+
+    private static BedrockConverter.ShapedSpec shaped(String id, com.arkcronist.content.core.block.BlockShape shape,
+                                                      String base, String model) {
+        Map<String, ResourceLocation> models = new HashMap<>();
+        for (com.arkcronist.content.core.block.ShapedModels.Part part
+                : com.arkcronist.content.core.block.ShapedModels.parts(shape)) {
+            models.put(part.suffix(), new ResourceLocation("demo", "block/" + model + part.suffix()));
+        }
+        return new BedrockConverter.ShapedSpec(id, shape, base, models, id);
+    }
+
+    /**
      * 3.3.1: ItemsAdder's generated packs give every texture a short sprite name in the atlas
      * ({@code ia:7} for {@code demo:item/ruby}) and the models use that name: the icon is still found.
      */

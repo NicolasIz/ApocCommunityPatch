@@ -3,6 +3,8 @@ package com.arkcronist.content.core.loader;
 import com.arkcronist.content.core.animation.AnimatedModel;
 import com.arkcronist.content.core.animation.BbModelReader;
 import com.arkcronist.content.core.ballistics.DamageFalloff;
+import com.arkcronist.content.core.block.BlockShape;
+import com.arkcronist.content.core.block.ShapedModels;
 import com.arkcronist.content.core.cosmetic.CosmeticDefinition;
 import com.arkcronist.content.core.definition.AdvancementDefinition;
 import com.arkcronist.content.core.definition.BackpackDefinition;
@@ -903,15 +905,24 @@ public final class ContentLoader {
                     + " - without one it would look like its support block");
             return null;
         }
+        BlockShape shape = placement instanceof Placement.Block block ? block.shape() : BlockShape.CUBE;
+        if (shape.copper()) {
+            // 5.3: drawn through a copper block of its shape, from vanilla's models for that shape.
+            model = ShapedModels.itemModel(namespace, id, shape, model, prefix, problems);
+            if (model == null) {
+                return null;
+            }
+        }
         String material = placement instanceof Placement.Furniture furniture
                 ? switch (furniture.support()) {
                     case BED -> furniture.bed().material();
                     default -> furniture.support().name();
                 }
-                : "NOTE_BLOCK";
+                // A shaped block's copper block is decided by the build; until then, the first of its shape.
+                : shape.copper() ? shape.bases().get(0).toUpperCase(Locale.ROOT) : "NOTE_BLOCK";
         if (section.containsKey("material")) {
             problems.add(prefix + "'material' is ignored - a " + type.yamlName() + " is always "
-                    + material + " underneath");
+                    + (shape.copper() ? "a waxed copper " + shape.yamlName() : material) + " underneath");
         }
         if (behaviour.cancelVanillaUse()) {
             problems.add(prefix + "'cancel-vanilla-use' is ignored - it would stop the "
@@ -1025,9 +1036,30 @@ public final class ContentLoader {
         if (section == null) {
             return new Placement.Block(true);
         }
+        BlockShape shape = shape(section, prefix, problems);
+        List<OreGeneration> generation = generation(section.get("generation"), prefix + "generation: ", problems);
+        if (shape.copper() && !generation.isEmpty()) {
+            problems.add(prefix + "generation: only a cube is laid into chunks as an ore, not a "
+                    + shape.yamlName() + " - left out");
+            generation = List.of();
+        }
         return new Placement.Block(flag(section, "drop-self", true, prefix, problems),
-                skillXp(section, prefix, problems), jobs(section, prefix, problems),
-                generation(section.get("generation"), prefix + "generation: ", problems));
+                skillXp(section, prefix, problems), jobs(section, prefix, problems), generation, shape);
+    }
+
+    /** {@code shape:} (5.3) - cube when left out. */
+    private static BlockShape shape(Map<?, ?> section, String prefix, List<String> problems) {
+        String raw = text(section, "shape", prefix, problems);
+        if (raw == null || raw.isBlank()) {
+            return BlockShape.CUBE;
+        }
+        Optional<BlockShape> shape = BlockShape.parse(raw);
+        if (shape.isEmpty()) {
+            problems.add(prefix + "unknown block shape '" + raw.trim() + "' (cube, slab, stairs, transparent, door,"
+                    + " trapdoor) - made a cube");
+            return BlockShape.CUBE;
+        }
+        return shape.get();
     }
 
     /**

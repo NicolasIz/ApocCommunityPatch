@@ -330,7 +330,7 @@ public final class HookManager {
         // 1.6: the registries other plugins share items and blocks through. Each answers from the
         // same place, so an id means the same thing in all of them.
         ContentAccess content = new ContentAccess(plugin.items(), plugin.itemFactory(), plugin.blocks(),
-                plugin::customBlocks);
+                plugin.shapedBlocks(), plugin::customBlocks);
         // 2.0: a hook that changes blocks (WorldEdit) tells the integrity check, made after the hooks.
         content.onSupportTouched((world, x, z) -> {
             var sanity = plugin.sanity();

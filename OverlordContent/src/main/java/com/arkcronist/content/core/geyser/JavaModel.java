@@ -21,7 +21,8 @@ import java.util.function.Function;
  *
  * <p>The vanilla parents a pack does not carry are the few every custom block is made from -
  * {@code block/cube}, {@code cube_all}, {@code cube_column}, {@code cube_bottom_top},
- * {@code cube_top}, {@code orientable} - and are built in here, cube for cube as vanilla has them.
+ * {@code cube_top}, {@code orientable}, and (5.3) the slab, stairs, door and trapdoor templates -
+ * and are built in here, cube for cube as vanilla has them.
  * A flat item ({@code item/generated} and its kin) has no cubes: its first layer is its picture.</p>
  *
  * @param elements  the cubes, in model pixels
@@ -265,7 +266,35 @@ public record JavaModel(List<Element> elements, List<ResourceLocation> layers, M
             case "minecraft:block/block", "minecraft:item/handheld_bow" -> "{}";
             default -> null;
         };
-        return json == null ? null : com.google.gson.JsonParser.parseString(json).getAsJsonObject();
+        if (json == null) {
+            JsonObject shape = Shapes.MODELS.get(name);
+            return shape == null ? null : shape.deepCopy();
+        }
+        return com.google.gson.JsonParser.parseString(json).getAsJsonObject();
+    }
+
+    /**
+     * 5.3: vanilla's slab, stairs, door and trapdoor templates the shaped blocks are drawn with, as
+     * 1.21.4 to 26.3 have them (vanilla-shape-models.json), read once when first needed.
+     */
+    private static final class Shapes {
+
+        static final Map<String, JsonObject> MODELS = read();
+
+        private static Map<String, JsonObject> read() {
+            try (java.io.InputStream in = JavaModel.class.getClassLoader().getResourceAsStream("vanilla-shape-models.json")) {
+                if (in == null) {
+                    return Map.of();
+                }
+                JsonObject all = com.google.gson.JsonParser.parseString(
+                        new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
+                Map<String, JsonObject> models = new HashMap<>();
+                all.entrySet().forEach(entry -> models.put(entry.getKey(), entry.getValue().getAsJsonObject()));
+                return Map.copyOf(models);
+            } catch (java.io.IOException | RuntimeException broken) {
+                return Map.of();
+            }
+        }
     }
 
     /** A copy of the faces' textures, as used: texture to every face using it. */

@@ -3,6 +3,8 @@ package com.arkcronist.content.bukkit;
 import com.arkcronist.content.bukkit.advancement.AdvancementListener;
 import com.arkcronist.content.bukkit.advancement.AdvancementService;
 import com.arkcronist.content.bukkit.block.BlockRegistry;
+import com.arkcronist.content.bukkit.block.CopperRecipes;
+import com.arkcronist.content.bukkit.block.ShapedBlockRegistry;
 import com.arkcronist.content.bukkit.block.CustomBlockService;
 import com.arkcronist.content.bukkit.command.ContentAdminCommand;
 import com.arkcronist.content.bukkit.command.CustomGiveCommand;
@@ -35,6 +37,8 @@ import com.arkcronist.content.bukkit.liquid.LiquidListener;
 import com.arkcronist.content.bukkit.liquid.LiquidRegistry;
 import com.arkcronist.content.bukkit.liquid.LiquidService;
 import com.arkcronist.content.bukkit.listener.CustomBlockListener;
+import com.arkcronist.content.bukkit.listener.PickBlockListener;
+import com.arkcronist.content.bukkit.listener.ShapedBlockListener;
 import com.arkcronist.content.bukkit.listener.FurnitureListener;
 import com.arkcronist.content.bukkit.listener.ItemCombatListener;
 import com.arkcronist.content.bukkit.listener.ItemUseListener;
@@ -82,6 +86,8 @@ import java.util.concurrent.CompletableFuture;
  *   <li>{@link ContentPipeline} - the rebuild, disk work on a worker, the swap on the main thread;</li>
  *   <li>{@link ItemRegistry} / {@link ItemFactory} - the loaded items, and stacks of them;</li>
  *   <li>{@link BlockRegistry} / {@link CustomBlockService} - custom blocks as note block states;</li>
+ *   <li>{@link ShapedBlockRegistry} / {@link ShapedBlockListener} - 5.3: slabs, stairs, doors,
+ *       trapdoors and see-through blocks as waxed copper blocks of that shape;</li>
  *   <li>{@link FurnitureService} / {@link SeatService} / {@link StorageService} - furniture as a
  *       support block plus an item display, sitting on it, and keeping things in it;</li>
  *   <li>{@link CropService} / {@link CropTicker} - crops, and their growth off the main thread;</li>
@@ -110,6 +116,8 @@ public final class ArkContentPlugin extends JavaPlugin {
     private ItemFactory itemFactory;
     private StackRepairListener stackRepair;
     private BlockRegistry blocks;
+    private ShapedBlockRegistry shapedBlocks;
+    private CopperRecipes copperRecipes;
     private EmojiRegistry emojis;
     private DatabaseManager database;
     private PlacedContentStore placed;
@@ -203,6 +211,8 @@ public final class ArkContentPlugin extends JavaPlugin {
         this.itemFactory = new ItemFactory(this, items);
         this.stackRepair = new StackRepairListener(this, itemFactory);
         this.blocks = new BlockRegistry();
+        this.shapedBlocks = new ShapedBlockRegistry();
+        this.copperRecipes = new CopperRecipes(getServer(), getLogger());
         this.emojis = new EmojiRegistry();
         this.database = new DatabaseManager(getDataFolder().toPath().resolve("data").resolve("world_content.db"),
                 getLogger());
@@ -297,6 +307,13 @@ public final class ArkContentPlugin extends JavaPlugin {
         plugins.registerEvents(new ItemCombatListener(itemFactory), this);
         plugins.registerEvents(new WorldInterceptionListener(itemFactory), this);
         plugins.registerEvents(new CustomBlockListener(blockService, itemFactory, protection, hooks), this);
+        plugins.registerEvents(new ShapedBlockListener(shapedBlocks, itemFactory, protection, hooks), this);
+        try {
+            plugins.registerEvents(new PickBlockListener(blockService, shapedBlocks, itemFactory), this);
+        } catch (LinkageError missing) {
+            // A 1.21.4 build from before Paper's pick event: the middle click picks the block underneath.
+            getLogger().fine("No pick event on this server: " + missing);
+        }
         plugins.registerEvents(ores, this);
         plugins.registerEvents(emotes, this);
         ores.attach(getServer().getWorlds());
@@ -564,6 +581,9 @@ public final class ArkContentPlugin extends JavaPlugin {
         if (advancements != null) {
             shutdownStep(() -> advancements.shutdown());
         }
+        if (copperRecipes != null) {
+            shutdownStep(() -> copperRecipes.restore());
+        }
         if (ambience != null) {
             shutdownStep(() -> ambience.shutdown());
         }
@@ -667,6 +687,16 @@ public final class ArkContentPlugin extends JavaPlugin {
     /** Every loaded custom block, by id and by note block state. */
     public BlockRegistry blocks() {
         return blocks;
+    }
+
+    /** 5.3: every loaded slab, stairs, transparent block, door and trapdoor, by the copper block it is. */
+    public ShapedBlockRegistry shapedBlocks() {
+        return shapedBlocks;
+    }
+
+    /** 5.3: vanilla's recipes for the copper blocks those are drawn through, taken out while they are. */
+    public CopperRecipes copperRecipes() {
+        return copperRecipes;
     }
 
     /** Custom blocks in the world; null until the plugin has enabled. */
