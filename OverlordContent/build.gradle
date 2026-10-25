@@ -1,0 +1,356 @@
+plugins {
+    id 'java'
+    // `./gradlew runServer` - a throwaway Paper server with this plugin installed.
+    id 'xyz.jpenilla.run-paper' version '3.1.0'
+}
+
+group = 'com.arkcronist'
+version = '5.0.0'
+description = 'Custom items from YAML, drawn by a resource pack the plugin compiles, zips, hashes and serves itself.'
+
+java {
+    toolchain {
+        // The jar is Java 21 bytecode (options.release below), which 1.21.x (Java 21) and 26.x (Java 25)
+        // servers both run. Paper's 26.x API is compiled for Java 25, so checking against it takes a 25
+        // compiler: -PcompileJdk=25 -PpaperVersion=26.3.build.222-stable.
+        languageVersion = JavaLanguageVersion.of((project.findProperty('compileJdk') ?: '21') as int)
+    }
+}
+
+sourceSets {
+    // Iris publishes no API artifact. These are its classes' signatures, copied from Iris 3.9.2
+    // (the release for 1.21.x), so the hook can be compiled; they are never packaged - at runtime
+    // the classes are Iris's own.
+    irisApi
+    // MMOItems publishes its API only as snapshots, on its own repository, which come and go. The
+    // signatures the hook needs are copied from MMOItems 6.10 here instead, the same way.
+    mmoitemsApi
+    // ExecutableBlocks is a paid plugin with no published API; the part of SCore's API the hook uses
+    // is copied from SCore 5.25 here, the same way.
+    scoreApi
+    // DeluxeMenus publishes no API artifact; its item hook interface is copied from 1.14.1.
+    deluxemenusApi
+    // BetterHud's API is only in its plugin jar; the event the hook listens to is copied from 1.14.1.
+    betterhudApi
+}
+
+configurations {
+    // The server's API, wherever it comes from below: what the plugin, its tests and the Iris
+    // signatures are all compiled against.
+    paperApi
+    compileOnly.extendsFrom paperApi
+    testImplementation.extendsFrom paperApi
+    irisApiCompileOnly.extendsFrom paperApi
+    mmoitemsApiCompileOnly.extendsFrom paperApi
+    scoreApiCompileOnly.extendsFrom paperApi
+    deluxemenusApiCompileOnly.extendsFrom paperApi
+    betterhudApiCompileOnly.extendsFrom paperApi
+}
+
+// Paper's API comes from Paper's repository, or from libs/ - for a machine that cannot reach
+// repo.papermc.io. See libs/README.md for what goes in it.
+def localPaperApi = file('libs/paper-api.jar')
+// Only with -PlocalPaperApi: a copy there is one fixed version, and the plugin is compiled against
+// the oldest API it supports (paperVersion), with the newest checked through -PpaperVersion=...
+def useLocalPaperApi = localPaperApi.isFile() && project.hasProperty('localPaperApi')
+
+repositories {
+    mavenCentral {
+        content {
+            excludeGroup 'com.promcteam'
+            excludeGroup 'studio.magemonkey'
+            // Only ever on jitpack, below.
+            excludeGroupByRegex 'com\\.github\\..*'
+        }
+    }
+    // ProSkillAPI's and Fabled's POMs name a parent that was never published, so only their jars are
+    // read - compileOnly, and transitive = false below, so the POMs have nothing to add.
+    maven {
+        name = 'centralJarsOnly'
+        url = 'https://repo.maven.apache.org/maven2/'
+        metadataSources {
+            artifact()
+        }
+        content {
+            includeGroup 'com.promcteam'
+            includeGroup 'studio.magemonkey'
+        }
+    }
+    // MythicMobs, ModelEngine and MythicArmor's APIs, for the optional hooks.
+    maven {
+        name = 'lumine'
+        url = 'https://mvn.lumine.io/repository/maven-public/'
+    }
+    // PlaceholderAPI, for TAB, DeluxeMenus and anything else reading placeholders.
+    maven {
+        name = 'extendedclip'
+        url = 'https://repo.extendedclip.com/releases/'
+    }
+    // WorldGuard and the WorldEdit classes its API is written in.
+    maven {
+        name = 'enginehub'
+        url = 'https://maven.enginehub.org/repo/'
+        content {
+            includeGroup 'com.sk89q.worldguard'
+            includeGroup 'com.sk89q.worldedit'
+        }
+    }
+    // ShopGUI+'s, GriefPrevention's, Vault's, DecentHolograms' and EconomyShopGUI's APIs are built
+    // from their GitHub repositories.
+    maven {
+        name = 'jitpack'
+        url = 'https://jitpack.io'
+        content {
+            includeGroup 'com.github.brcdev-minecraft'
+            includeGroup 'com.github.GriefPrevention'
+            includeGroup 'com.github.MilkBowl'
+            includeGroup 'com.github.decentsoftware-eu.decentholograms'
+            includeGroup 'com.github.Gypopo'
+            includeGroup 'com.github.Zrips'
+            includeGroup 'com.github.jojodmo'
+            // 3.0: Lands publishes its API through jitpack.
+            includeGroup 'com.github.angeschossen'
+        }
+    }
+    // ExcellentJobs and nightcore, the library its API classes extend.
+    maven {
+        name = 'nightexpress'
+        url = 'https://repo.nightexpressdev.com/releases/'
+        content {
+            includeGroup 'su.nightexpress.excellentjobs'
+            includeGroup 'su.nightexpress.nightcore'
+        }
+    }
+    // 1.6: eco (Auxilor's plugins), AuthMe, BetonQuest and the shared item registries.
+    maven {
+        name = 'auxilor'
+        url = 'https://repo.auxilor.io/repository/maven-public/'
+        content {
+            includeGroup 'com.willfp'
+        }
+    }
+    maven {
+        name = 'codemc'
+        url = 'https://repo.codemc.io/repository/maven-public/'
+        content {
+            includeGroup 'fr.xephi'
+        }
+    }
+    // Its POM's parent chain names a POM the repository does not have; only the jar is read.
+    maven {
+        name = 'betonquest'
+        url = 'https://repo.betonquest.org/betonquest/'
+        metadataSources {
+            artifact()
+        }
+        content {
+            includeGroup 'org.betonquest'
+        }
+    }
+    // HibiscusCommons, the library through which HMCCosmetics takes items from other plugins.
+    maven {
+        name = 'hibiscusmc'
+        url = 'https://repo.hibiscusmc.com/releases/'
+        content {
+            includeGroup 'me.lojosho'
+        }
+    }
+    // zAuctionHouse's API.
+    maven {
+        name = 'groupez'
+        url = 'https://repo.groupez.dev/releases/'
+        content {
+            includeGroup 'fr.maxlego08.zauctionhouse'
+        }
+    }
+    // mcMMO.
+    maven {
+        name = 'neetgames'
+        url = 'https://nexus.neetgames.com/repository/maven-releases/'
+        content {
+            includeGroup 'com.gmail.nossr50.mcMMO'
+        }
+    }
+    // Citizens publishes snapshots only; its own documentation builds against them.
+    maven {
+        name = 'citizens'
+        url = 'https://maven.citizensnpcs.co/repo'
+        content {
+            includeGroup 'net.citizensnpcs'
+        }
+    }
+    // 3.0: Towny, whose artifact is the plugin itself.
+    maven {
+        name = 'glaremasters'
+        url = 'https://repo.glaremasters.me/repository/towny/'
+        content {
+            includeGroup 'com.palmergames.bukkit.towny'
+        }
+    }
+    // 3.0: GeyserMC's API, for Bedrock players.
+    maven {
+        name = 'opencollab'
+        url = 'https://repo.opencollab.dev/main/'
+        content {
+            includeGroup 'org.geysermc.geyser'
+            includeGroup 'org.geysermc.api'
+            includeGroup 'org.geysermc.event'
+            includeGroup 'org.geysermc.cumulus'
+            includeGroup 'org.cloudburstmc.math'
+        }
+    }
+    // 3.0: PacketEvents, for cosmetics drawn by packets.
+    maven {
+        name = 'codemcReleases'
+        url = 'https://repo.codemc.io/repository/maven-releases/'
+        content {
+            includeGroup 'com.github.retrooper'
+        }
+    }
+    if (!useLocalPaperApi) {
+        maven {
+            name = 'papermc'
+            url = 'https://repo.papermc.io/repository/maven-public/'
+        }
+    }
+}
+
+dependencies {
+    // Provided by the server at runtime; it also brings Adventure, MiniMessage, Brigadier, Gson,
+    // SnakeYAML and JOML, and the server ships the SQLite JDBC driver, so the plugin jar holds
+    // nothing but its own classes.
+    if (useLocalPaperApi) {
+        // A bare jar carries none of what paper-api's POM would pull in, so the same libraries
+        // are named here; all but Brigadier are on Maven Central.
+        def localApi = [files(localPaperApi, 'libs/brigadier.jar'),
+                        platform('net.kyori:adventure-bom:4.24.0'),
+                        'net.kyori:adventure-api',
+                        'net.kyori:adventure-text-minimessage',
+                        'net.kyori:adventure-text-serializer-gson',
+                        'net.kyori:adventure-text-serializer-legacy',
+                        'net.kyori:adventure-text-serializer-plain',
+                        'net.kyori:adventure-text-logger-slf4j',
+                        'com.google.guava:guava:33.3.1-jre',
+                        'com.google.code.gson:gson:2.11.0',
+                        'org.yaml:snakeyaml:2.2',
+                        'org.joml:joml:1.10.8',
+                        'it.unimi.dsi:fastutil:8.5.15',
+                        'org.jetbrains:annotations:26.0.2',
+                        'org.jspecify:jspecify:1.0.0',
+                        'org.slf4j:slf4j-api:2.0.16',
+                        'org.apache.logging.log4j:log4j-api:2.24.1',
+                        'net.md-5:bungeecord-chat:1.21-R0.2']
+        localApi.each {
+            paperApi it
+        }
+    } else {
+        paperApi "io.papermc.paper:paper-api:${paperVersion}"
+    }
+
+    // Only the hook packages touch these, and only when the plugin is installed on the server.
+    // Mythic-Dist is the whole MythicMobs jar, libraries shaded in; nothing of it is pulled further.
+    compileOnly('io.lumine:Mythic-Dist:5.13.0') { transitive = false }
+    compileOnly('com.ticxo.modelengine:ModelEngine:R4.2.0') { transitive = false }
+    compileOnly('net.mythic.armor:mythicarmor-api:5.13.4') { transitive = false }
+    compileOnly('me.clip:placeholderapi:2.11.6') { transitive = false }
+    compileOnly('com.github.brcdev-minecraft:shopgui-api:3.2.0') { transitive = false }
+    compileOnly sourceSets.irisApi.output
+    compileOnly sourceSets.mmoitemsApi.output
+    // 7.0.14 is the WorldGuard release for 1.21.8, on WorldEdit 7.3.
+    compileOnly('com.sk89q.worldguard:worldguard-core:7.0.14') { transitive = false }
+    compileOnly('com.sk89q.worldguard:worldguard-bukkit:7.0.14') { transitive = false }
+    compileOnly('com.sk89q.worldedit:worldedit-core:7.3.9') { transitive = false }
+    compileOnly('com.sk89q.worldedit:worldedit-bukkit:7.3.9') { transitive = false }
+    compileOnly('com.github.GriefPrevention:GriefPrevention:16.18.5') { transitive = false }
+    // v1.3: skills, economy, NPCs, holograms, shops and ExecutableBlocks. Each is only touched by
+    // its own hook package, and only once that plugin's classes have been found at runtime.
+    compileOnly('dev.aurelium:auraskills-api-bukkit:2.4.0') { transitive = false }
+    compileOnly('dev.aurelium:auraskills-api:2.4.0') { transitive = false }
+    compileOnly('com.gmail.nossr50.mcMMO:mcMMO:2.3.002') { transitive = false }
+    compileOnly('com.promcteam:proskillapi:1.3.1-R1') { transitive = false }
+    compileOnly('studio.magemonkey:fabled:1.0.4-R0.56') { transitive = false }
+    compileOnly('com.github.MilkBowl:VaultAPI:1.7.1') { transitive = false }
+    compileOnly('net.citizensnpcs:citizens-main:2.0.44-SNAPSHOT') { transitive = false }
+    // Since 2.10 DecentHolograms is built in modules; its API is in the one named after it.
+    compileOnly('com.github.decentsoftware-eu.decentholograms:decentholograms:2.10.1') { transitive = false }
+    compileOnly('com.github.Gypopo:EconomyShopGUI-API:1.11.0') { transitive = false }
+    // 1.5: jobs and auctions.
+    compileOnly('com.github.Zrips:Jobs:v5.2.6.3') { transitive = false }
+    compileOnly('su.nightexpress.excellentjobs:ExcellentJobs:2.0.2') { transitive = false }
+    compileOnly('su.nightexpress.nightcore:main:2.16.3') { transitive = false }
+    compileOnly('fr.maxlego08.zauctionhouse:zauctionhousev4-api:4.0.1.3') { transitive = false }
+    compileOnly('me.lojosho:HibiscusCommons:0.9.3') { transitive = false }
+    compileOnly sourceSets.scoreApi.output
+    // 1.6: the registries other plugins share items and blocks through, and logins.
+    compileOnly('com.willfp:eco:2026.40') { transitive = false }
+    compileOnly('su.nightexpress.nightcore:bridge:2.16.3') { transitive = false }
+    compileOnly('ru.endlesscode.mimic:mimic-bukkit-api:0.8.0') { transitive = false }
+    compileOnly('ru.endlesscode.mimic:mimic-api:0.8.0') { transitive = false }
+    compileOnly('com.github.jojodmo:ItemBridge:2acbb8ffe8') { transitive = false }
+    // The plain jar is empty; the classes are in the 'shaded' one, the plugin as released.
+    compileOnly('org.betonquest:betonquest:3.2.0:shaded') { transitive = false }
+    compileOnly('fr.xephi:authme:5.7.0') { transitive = false }
+    compileOnly sourceSets.deluxemenusApi.output
+    compileOnly sourceSets.betterhudApi.output
+    // 3.0: protection for liquids and guns in lands and towns, and LuckPerms prefixes with emojis.
+    compileOnly('com.github.angeschossen:LandsAPI:7.25.4') { transitive = false }
+    compileOnly('com.palmergames.bukkit.towny:towny:0.101.2.7') { transitive = false }
+    compileOnly('net.luckperms:api:5.4') { transitive = false }
+    // 3.0: Bedrock players through GeyserMC. 2.11.3's API carries both the custom item API by
+    // custom_model_data (Geyser 2.8, the one for 1.21.8) and the one by item_model (2.9 and later).
+    compileOnly('org.geysermc.geyser:api:2.11.3-20261010.020032-17') { transitive = false }
+    compileOnly('org.geysermc.api:base-api:1.0.3') { transitive = false }
+    compileOnly('org.geysermc.event:events:1.1-20230815.153219-4') { transitive = false }
+    compileOnly('org.geysermc.cumulus:cumulus:1.1.2') { transitive = false }
+    compileOnly('org.cloudburstmc.math:api:2.0') { transitive = false }
+    compileOnly('org.cloudburstmc.math:immutable:2.0') { transitive = false }
+    // 3.0: cosmetics as packets.
+    compileOnly('com.github.retrooper:packetevents-api:2.14.0') { transitive = false }
+    compileOnly('com.github.retrooper:packetevents-spigot:2.14.0') { transitive = false }
+
+    // The core package (loader, pack compiler, zip, hash, web server, storage) is tested without a
+    // server, but against the same Gson and SnakeYAML the server provides.
+    // The server ships this driver; the tests need their own copy to open a real SQLite file.
+    testImplementation 'org.xerial:sqlite-jdbc:3.47.0.0'
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+if (project.hasProperty('compileJdk')) {
+    // Gradle picks libraries for the JVM the classes are compiled for (21), and a 26.x API says it
+    // needs 25. A check build with -PcompileJdk=25 takes them anyway, still emitting Java 21: what it
+    // checks is that the plugin compiles, and its tests pass, against that API.
+    java {
+        disableAutoTargetJvm()
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+    options.compilerArgs += ['-Xlint:deprecation', '-Xlint:unchecked']
+}
+
+processResources {
+    def props = [version: project.version]
+    inputs.properties props
+    filteringCharset = 'UTF-8'
+    filesMatching(['paper-plugin.yml', 'extension.yml']) {
+        expand props
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jar {
+    manifest {
+        attributes('Implementation-Title': project.name, 'Implementation-Version': project.version)
+    }
+}
+
+tasks.named('runServer') {
+    minecraftVersion(runServerVersion)
+}
