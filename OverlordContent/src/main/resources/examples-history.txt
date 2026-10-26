@@ -1839,3 +1839,5 @@ contents/medieval_props/textures/furniture/jarra_cerveza.png ba8294627dfa140c184
 contents/medieval_props/textures/furniture/jarra_hidromiel.png 441fc28177fadfb6498620559fc532efb7f7991c
 contents/medieval_props/textures/furniture/saco_grano.png 10ea500ea1c607c6ce4ee8776cdff883dd1e081b
 contents/medieval_props/textures/furniture/tonel_vino.png 64349e3be7fbaf83bbe613a396ef323203dc9ef8
+# 5.4.0 replaces these 5.3.0 examples
+contents/demo/blocks.yml 157938d547bee784c97cc7899da5c3811def0a12

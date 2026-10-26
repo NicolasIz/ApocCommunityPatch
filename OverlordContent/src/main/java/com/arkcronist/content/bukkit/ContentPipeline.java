@@ -916,8 +916,7 @@ public final class ContentPipeline {
                 String base = bases.get(item.id());
                 Material material = base == null ? null : Material.matchMaterial(base);
                 if (material == null && block.shape() == BlockShape.TRANSPARENT) {
-                    item = item.withPlacement(new Placement.Block(block.dropSelf(), block.skillXp(), block.jobs(),
-                            block.generation(), BlockShape.CUBE), Material.NOTE_BLOCK);
+                    item = item.withPlacement(block.withShape(BlockShape.CUBE), Material.NOTE_BLOCK);
                 } else {
                     item = item.withMaterial(material == null ? Material.PAPER : material);
                 }
@@ -1539,8 +1538,12 @@ public final class ContentPipeline {
                         build.modelData().get(item.id()), name, handheld, uses(definition), worn(definition, material)));
             }
             NoteBlockState state = build.noteBlocks().get(item.id());
+            // 5.4: a block of its own hardness takes its own time on Bedrock too.
+            com.arkcronist.content.core.block.Mining mining = item.placement() instanceof Placement.Block placed
+                    ? placed.mining() : null;
             if (state != null && model != null) {
-                blocks.add(new BedrockConverter.BlockSpec(item.id(), state, model, name));
+                blocks.add(mining == null ? new BedrockConverter.BlockSpec(item.id(), state, model, name)
+                        : new BedrockConverter.BlockSpec(item.id(), state, model, name, mining.bedrockSeconds()));
             }
             Integer slot = build.liquids().get(item.id());
             if (slot != null && item.placement() instanceof Placement.Liquid liquid) {
@@ -1561,7 +1564,10 @@ public final class ContentPipeline {
                     shapeModels.put(part.suffix(), com.arkcronist.content.core.block.ShapedModels.blockModel(
                             definition.namespace(), definition.id(), part.suffix()));
                 }
-                shaped.add(new BedrockConverter.ShapedSpec(item.id(), shapedBlock.shape(), base, shapeModels, name));
+                shaped.add(mining == null
+                        ? new BedrockConverter.ShapedSpec(item.id(), shapedBlock.shape(), base, shapeModels, name)
+                        : new BedrockConverter.ShapedSpec(item.id(), shapedBlock.shape(), base, shapeModels, name,
+                        mining.bedrockSeconds()));
             }
             if (item.placement() instanceof Placement.Furniture piece && model != null && piece.modelEngineId() == null
                     && (piece.support() == Placement.Support.BARRIER || piece.support() == Placement.Support.LIGHT)) {

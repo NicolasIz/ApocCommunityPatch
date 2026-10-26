@@ -24,6 +24,15 @@ items:
     block:
       # Outside creative, breaking it drops this item rather than a note block.
       drop-self: true
+      # 5.4: mined like a block of iron: an iron pickaxe or better, and with
+      # anything less it drops nothing. Without these, a custom block mines as
+      # the note block it is - with an axe, quickly. tool: pickaxe, axe,
+      # shovel, hoe, shears or none; tier: wood, stone, iron, diamond,
+      # netherite; hardness as vanilla's (dirt 0.5, stone 1.5, planks 2,
+      # iron block 5, obsidian 50; 0 breaks at once, unbreakable never).
+      tool: pickaxe
+      tier: iron
+      hardness: 5
       # Experience for breaking it: Mining in AuraSkills and mcMMO, class
       # experience in SkillAPI / ProSkillAPI / Fabled - whichever is installed.
       skill-xp: 15
@@ -45,6 +54,9 @@ items:
     block:
       drop-self: true
       skill-xp: 6
+      tool: pickaxe                   # 5.4: as iron ore: a stone pickaxe or better
+      tier: stone
+      hardness: 3
       generation:
         # worlds:        [world]       # by name; default every world of...
         # environments:  [normal]      # normal, nether, the_end, custom (default normal)

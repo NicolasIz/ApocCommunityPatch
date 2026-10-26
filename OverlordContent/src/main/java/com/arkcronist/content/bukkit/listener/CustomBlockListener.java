@@ -1,5 +1,6 @@
 package com.arkcronist.content.bukkit.listener;
 
+import com.arkcronist.content.bukkit.block.BlockMining;
 import com.arkcronist.content.bukkit.block.CustomBlock;
 import com.arkcronist.content.bukkit.block.CustomBlockService;
 import com.arkcronist.content.bukkit.hooks.HookManager;
@@ -57,6 +58,13 @@ public final class CustomBlockListener implements Listener {
     private final ItemFactory items;
     private final Protection protection;
     private final HookManager hooks;
+    /** 5.4: the tools blocks want; null until set. */
+    private @Nullable BlockMining mining;
+
+    /** 5.4: who knows which tool is right for a block. */
+    public void useMining(BlockMining mining) {
+        this.mining = mining;
+    }
 
     public CustomBlockListener(CustomBlockService blocks, ItemFactory items, Protection protection, HookManager hooks) {
         this.blocks = blocks;
@@ -141,8 +149,12 @@ public final class CustomBlockListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
-        boolean survival = player.getGameMode() != GameMode.CREATIVE;
+        boolean creative = player.getGameMode() == GameMode.CREATIVE;
         blocks.identify(event.getBlock()).ifPresent(custom -> {
+            // 5.4: broken without the tool it needs, it drops nothing and gives nothing, as stone.
+            com.arkcronist.content.core.block.Mining rule = custom.placement().mining();
+            boolean survival = !creative && (rule == null || mining == null
+                    || rule.drops(mining.rightTool(player.getInventory().getItemInMainHand(), rule)));
             blocks.forget(event.getBlock(), custom, survival);
             if (survival) {
                 hooks.skillXp(player, SkillXpHook.Source.BLOCK, custom.id(), custom.placement().skillXp());

@@ -199,7 +199,12 @@ public final class BedrockConverter {
     }
 
     /** A custom block: its note block state and its model. */
-    public record BlockSpec(String id, NoteBlockState state, ResourceLocation model, String displayName) {
+    public record BlockSpec(String id, NoteBlockState state, ResourceLocation model, String displayName,
+                            float destroySeconds) {
+
+        public BlockSpec(String id, NoteBlockState state, ResourceLocation model, String displayName) {
+            this(id, state, model, displayName, NOTE_BLOCK_SECONDS);
+        }
     }
 
     /**
@@ -210,7 +215,12 @@ public final class BedrockConverter {
      * @param models the models its block state names, by suffix ({@link ShapedModels#parts})
      */
     public record ShapedSpec(String id, BlockShape shape, String base, Map<String, ResourceLocation> models,
-                             String displayName) {
+                             String displayName, float destroySeconds) {
+
+        public ShapedSpec(String id, BlockShape shape, String base, Map<String, ResourceLocation> models,
+                          String displayName) {
+            this(id, shape, base, models, displayName, COPPER_SECONDS);
+        }
     }
 
     /** A liquid: its two tripwire states, as block data strings, and their models. */
@@ -889,7 +899,7 @@ public final class BedrockConverter {
             geometry = geometry(name, cubes, materials, false);
         }
         return new BedrockBlock(name, block.state().asBlockData(), geometry, materials, true, true, 0,
-                NOTE_BLOCK_SECONDS, 0, block.displayName());
+                block.destroySeconds(), 0, block.displayName());
     }
 
     private void liquid(LiquidSpec liquid, List<BedrockBlock> blocks) {
@@ -959,7 +969,7 @@ public final class BedrockConverter {
             }
             List<String> states = way.getValue();
             int turn = Math.floorMod(-Integer.parseInt(parts[2]) + 180, 360) - 180;
-            blocks.add(new BedrockBlock(name, states.get(0), geometry, materials, true, true, 0, COPPER_SECONDS, turn,
+            blocks.add(new BedrockBlock(name, states.get(0), geometry, materials, true, true, 0, spec.destroySeconds(), turn,
                     spec.displayName(), states.subList(1, states.size()), boxes));
         }
     }

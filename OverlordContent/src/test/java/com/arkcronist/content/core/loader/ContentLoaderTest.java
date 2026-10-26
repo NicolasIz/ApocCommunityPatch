@@ -1424,6 +1424,61 @@ class ContentLoaderTest {
                 Placement.Connect.itemModel(new ResourceLocation("demo", "counter"), Placement.Connect.Variant.MIDDLE));
     }
 
+    /** 5.4: a block's tool, tier and hardness; what is left out, and what is turned down. */
+    @Test
+    void blocksReadTheirToolAndHardness() throws IOException {
+        write("demo/mined.yml", """
+                items:
+                  plain:
+                    type: custom_block
+                    resource: {texture: block/a}
+                  stone_like:
+                    type: custom_block
+                    resource: {texture: block/a}
+                    block: {tool: pickaxe}
+                  iron_like:
+                    type: custom_block
+                    resource: {texture: block/a}
+                    block: {tool: pickaxe, tier: diamond, hardness: 5, requires-tool: true}
+                  planks:
+                    type: custom_block
+                    resource: {texture: block/a}
+                    block: {tool: axe, hardness: 2}
+                  hard_glass:
+                    type: custom_block
+                    resource: {texture: block/a}
+                    block: {hardness: unbreakable}
+                  odd:
+                    type: custom_block
+                    resource: {texture: block/a}
+                    block: {tool: sword, tier: shiny, requires-tool: true}
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+        Map<String, Placement.Block> blocks = new java.util.HashMap<>();
+        report.items().forEach(item -> blocks.put(item.id(), (Placement.Block) item.placement()));
+
+        assertNull(blocks.get("plain").mining(), "mined as the note block it is");
+        com.arkcronist.content.core.block.Mining stone = blocks.get("stone_like").mining();
+        assertEquals(com.arkcronist.content.core.block.Mining.Tool.PICKAXE, stone.tool());
+        assertEquals(1.5, stone.hardness());
+        assertTrue(stone.requiresTool(), "a pickaxe's block needs it, as stone");
+        com.arkcronist.content.core.block.Mining iron = blocks.get("iron_like").mining();
+        assertEquals(com.arkcronist.content.core.block.Mining.Tier.DIAMOND, iron.tier());
+        assertEquals(5, iron.hardness());
+        com.arkcronist.content.core.block.Mining planks = blocks.get("planks").mining();
+        assertFalse(planks.requiresTool(), "wood drops by hand too");
+        assertEquals(2, planks.hardness());
+        assertTrue(blocks.get("hard_glass").mining().unbreakable());
+        com.arkcronist.content.core.block.Mining odd = blocks.get("odd").mining();
+        assertEquals(com.arkcronist.content.core.block.Mining.Tool.NONE, odd.tool());
+        assertFalse(odd.requiresTool());
+
+        assertProblem(report.problems(), "odd", "unknown tool 'sword'");
+        assertProblem(report.problems(), "odd", "unknown tier 'shiny'");
+        assertProblem(report.problems(), "odd", "requires-tool: true needs a tool");
+    }
+
     private static void assertProblem(List<String> problems, String id, String text) {
         assertTrue(problems.stream().anyMatch(p -> p.contains(id) && p.contains(text)),
                 id + ": expected '" + text + "' in " + problems);

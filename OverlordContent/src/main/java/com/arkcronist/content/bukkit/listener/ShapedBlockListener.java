@@ -92,6 +92,14 @@ public final class ShapedBlockListener implements Listener {
      * drawn through another copper block - or had none - is made of the right one and the place
      * refused, once: the next click places it.
      */
+    /** 5.4: halves of doors broken by the wrong tool, which drop nothing; none until set. */
+    private java.util.function.Predicate<Block> dropless = block -> false;
+
+    /** 5.4: who knows which doors were broken by the wrong tool. */
+    public void dropNothingFor(java.util.function.Predicate<Block> dropless) {
+        this.dropless = dropless;
+    }
+
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent event) {
         if (blocks.isEmpty()) {
@@ -250,6 +258,10 @@ public final class ShapedBlockListener implements Listener {
             return;
         }
         event.setWillDrop(false);
+        if (dropless.test(block)) {
+            // 5.4: the other half of a door broken by a tool that is wrong for it.
+            return;
+        }
         int count = dropped(block.getBlockData());
         if (count > 0 && ((Placement.Block) drawn.get().placement()).dropSelf()) {
             block.getWorld().dropItemNaturally(block.getLocation().add(0.5, 0.5, 0.5), items.create(drawn.get(), count));

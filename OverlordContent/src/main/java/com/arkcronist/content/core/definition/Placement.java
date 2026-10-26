@@ -32,15 +32,27 @@ public sealed interface Placement {
      * @param generation 5.0: where it is laid into new chunks as an ore; empty for nowhere
      * @param shape    5.3: a note block cube, or a slab, stairs, door, trapdoor or see-through block
      *                 drawn through a waxed copper block of that shape ({@link BlockShape})
+     * @param mining   5.4: its tool and hardness; null to be mined as the block underneath it is - a
+     *                 note block, with an axe, or copper, with a pickaxe
      */
     record Block(boolean dropSelf, double skillXp, Map<String, JobReward> jobs,
                  List<com.arkcronist.content.core.generation.OreGeneration> generation,
-                 BlockShape shape) implements Placement {
+                 BlockShape shape, @Nullable com.arkcronist.content.core.block.Mining mining) implements Placement {
 
         public Block {
             jobs = Map.copyOf(jobs);
             generation = List.copyOf(generation);
             java.util.Objects.requireNonNull(shape, "shape");
+        }
+
+        public Block(boolean dropSelf, double skillXp, Map<String, JobReward> jobs,
+                     List<com.arkcronist.content.core.generation.OreGeneration> generation, BlockShape shape) {
+            this(dropSelf, skillXp, jobs, generation, shape, null);
+        }
+
+        /** The same block drawn as another shape - a see-through block made a cube when no grate is left. */
+        public Block withShape(BlockShape other) {
+            return new Block(dropSelf, skillXp, jobs, generation, other, mining);
         }
 
         public Block(boolean dropSelf, double skillXp, Map<String, JobReward> jobs,

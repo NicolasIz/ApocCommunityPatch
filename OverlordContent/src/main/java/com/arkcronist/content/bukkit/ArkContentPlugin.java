@@ -118,6 +118,8 @@ public final class ArkContentPlugin extends JavaPlugin {
     private BlockRegistry blocks;
     private ShapedBlockRegistry shapedBlocks;
     private CopperRecipes copperRecipes;
+    /** 5.4: blocks mined with their own tool; null until enabled. */
+    private com.arkcronist.content.bukkit.block.BlockMining blockMining;
     private EmojiRegistry emojis;
     private DatabaseManager database;
     private PlacedContentStore placed;
@@ -306,8 +308,17 @@ public final class ArkContentPlugin extends JavaPlugin {
         plugins.registerEvents(new ItemUseListener(itemFactory), this);
         plugins.registerEvents(new ItemCombatListener(itemFactory), this);
         plugins.registerEvents(new WorldInterceptionListener(itemFactory), this);
-        plugins.registerEvents(new CustomBlockListener(blockService, itemFactory, protection, hooks), this);
-        plugins.registerEvents(new ShapedBlockListener(shapedBlocks, itemFactory, protection, hooks), this);
+        // 5.4: blocks mined with a tool and at a hardness of their own.
+        com.arkcronist.content.bukkit.block.BlockMining blockMining =
+                new com.arkcronist.content.bukkit.block.BlockMining(this, itemFactory, blockService, shapedBlocks);
+        this.blockMining = blockMining;
+        plugins.registerEvents(blockMining, this);
+        CustomBlockListener cubeListener = new CustomBlockListener(blockService, itemFactory, protection, hooks);
+        cubeListener.useMining(blockMining);
+        plugins.registerEvents(cubeListener, this);
+        ShapedBlockListener shapedListener = new ShapedBlockListener(shapedBlocks, itemFactory, protection, hooks);
+        shapedListener.dropNothingFor(blockMining::dropless);
+        plugins.registerEvents(shapedListener, this);
         try {
             plugins.registerEvents(new PickBlockListener(blockService, shapedBlocks, itemFactory), this);
         } catch (LinkageError missing) {
@@ -585,6 +596,9 @@ public final class ArkContentPlugin extends JavaPlugin {
         }
         if (copperRecipes != null) {
             shutdownStep(() -> copperRecipes.restore());
+        }
+        if (blockMining != null) {
+            shutdownStep(() -> blockMining.clearAll());
         }
         if (ambience != null) {
             shutdownStep(() -> ambience.shutdown());

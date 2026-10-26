@@ -1044,7 +1044,66 @@ public final class ContentLoader {
             generation = List.of();
         }
         return new Placement.Block(flag(section, "drop-self", true, prefix, problems),
-                skillXp(section, prefix, problems), jobs(section, prefix, problems), generation, shape);
+                skillXp(section, prefix, problems), jobs(section, prefix, problems), generation, shape,
+                mining(section, prefix, problems));
+    }
+
+    /**
+     * 5.4: {@code tool:}, {@code tier:}, {@code hardness:}, {@code requires-tool:} - null when none is
+     * given, the block mined as the vanilla block underneath it. A tool alone takes the hardness of
+     * vanilla's everyday block for it (stone for a pickaxe); a pickaxe is needed for the drops unless
+     * told otherwise, as stone's, the other tools are not, as wood's.
+     */
+    private static com.arkcronist.content.core.block.Mining mining(Map<?, ?> section, String prefix,
+                                                                   List<String> problems) {
+        if (!section.containsKey("tool") && !section.containsKey("hardness") && !section.containsKey("tier")
+                && !section.containsKey("requires-tool")) {
+            return null;
+        }
+        com.arkcronist.content.core.block.Mining.Tool tool = com.arkcronist.content.core.block.Mining.Tool.NONE;
+        String rawTool = text(section, "tool", prefix, problems);
+        if (rawTool != null) {
+            Optional<com.arkcronist.content.core.block.Mining.Tool> parsed =
+                    com.arkcronist.content.core.block.Mining.Tool.parse(rawTool);
+            if (parsed.isEmpty()) {
+                problems.add(prefix + "tool: unknown tool '" + rawTool.trim() + "' (pickaxe, axe, shovel, hoe, shears,"
+                        + " none) - any tool mines it");
+            } else {
+                tool = parsed.get();
+            }
+        }
+        com.arkcronist.content.core.block.Mining.Tier tier = com.arkcronist.content.core.block.Mining.Tier.ANY;
+        String rawTier = text(section, "tier", prefix, problems);
+        if (rawTier != null) {
+            Optional<com.arkcronist.content.core.block.Mining.Tier> parsed =
+                    com.arkcronist.content.core.block.Mining.Tier.parse(rawTier);
+            if (parsed.isEmpty()) {
+                problems.add(prefix + "tier: unknown tier '" + rawTier.trim() + "' (wood, stone, iron, diamond,"
+                        + " netherite) - any tier");
+            } else if (tool == com.arkcronist.content.core.block.Mining.Tool.NONE) {
+                problems.add(prefix + "tier: a tier needs a tool: - ignored");
+            } else {
+                tier = parsed.get();
+            }
+        }
+        double fallback = tool == com.arkcronist.content.core.block.Mining.Tool.NONE ? 0.8 : tool.defaultHardness();
+        double hardness = fallback;
+        Object rawHardness = section.get("hardness");
+        if (rawHardness != null) {
+            String text = String.valueOf(rawHardness).trim().toLowerCase(Locale.ROOT);
+            if (text.equals("unbreakable") || text.equals("-1")) {
+                hardness = com.arkcronist.content.core.block.Mining.UNBREAKABLE;
+            } else {
+                hardness = number(section, "hardness", fallback, 0, 1_000, prefix, problems);
+            }
+        }
+        boolean requires = flag(section, "requires-tool", tool == com.arkcronist.content.core.block.Mining.Tool.PICKAXE,
+                prefix, problems);
+        if (requires && tool == com.arkcronist.content.core.block.Mining.Tool.NONE) {
+            problems.add(prefix + "requires-tool: true needs a tool: - it drops with any");
+            requires = false;
+        }
+        return new com.arkcronist.content.core.block.Mining(tool, tier, hardness, requires);
     }
 
     /** {@code shape:} (5.3) - cube when left out. */
