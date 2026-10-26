@@ -75,6 +75,17 @@ class DemoContentTest {
         assertEquals(com.arkcronist.content.core.block.Mining.Tool.AXE,
                 ((Placement.Block) items.get("demo:ruby_log").placement()).mining().tool());
 
+        // 5.4: items with events and mechanics.
+        var hammer = items.get("demo:ruby_hammer").mechanics();
+        assertEquals(1, hammer.passive().bigMining());
+        assertTrue(hammer.passive().autoSmelt());
+        var staff = items.get("demo:storm_staff").mechanics();
+        assertEquals(2, staff.on(com.arkcronist.content.core.mechanics.ItemMechanics.Trigger.RIGHT_CLICK).size());
+        assertEquals(64, staff.passive().durability());
+        assertEquals(0.25, items.get("demo:blood_dagger").mechanics().passive().lifesteal());
+        assertTrue(items.get("demo:ruby_charm").mechanics().passive().soulbound());
+        assertNull(items.get("demo:ruby_sword").mechanics());
+
         // 5.0: four emotes on one squire rig.
         for (String emote : java.util.List.of("wave", "bow", "cheer", "sit")) {
             assertNotNull(items.get("demo:" + emote).emote(), emote);

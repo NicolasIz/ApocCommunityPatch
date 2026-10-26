@@ -34,6 +34,8 @@ import java.util.List;
  * @param backpack    3.4: what it holds - a backpack - or null for an item that holds nothing
  * @param vehicle     4.0: how it is driven - the item that puts a vehicle down - or null
  * @param emote       5.0: the emote it plays when used, or null
+ * @param mechanics   5.4: what it does on its triggers ({@code events:}) and all along
+ *                    ({@code mechanics:}), or null
  */
 public record ItemDefinition(String namespace, String id, String material, String displayName,
                              List<String> lore, ModelSource model, ItemBehaviour behaviour,
@@ -43,10 +45,24 @@ public record ItemDefinition(String namespace, String id, String material, Strin
                              @Nullable com.arkcronist.content.core.cosmetic.CosmeticDefinition cosmetic,
                              @Nullable DrinkDefinition drink, @Nullable BackpackDefinition backpack,
                              @Nullable com.arkcronist.content.core.vehicle.VehicleDefinition vehicle,
-                             @Nullable com.arkcronist.content.core.emotes.EmoteDefinition emote) {
+                             @Nullable com.arkcronist.content.core.emotes.EmoteDefinition emote,
+                             @Nullable com.arkcronist.content.core.mechanics.ItemMechanics mechanics) {
 
     public ItemDefinition {
         lore = List.copyOf(lore);
+    }
+
+    /** An item with no mechanics of its own. */
+    public ItemDefinition(String namespace, String id, String material, String displayName, List<String> lore,
+                          ModelSource model, ItemBehaviour behaviour, Placement placement, Path source, double price,
+                          @Nullable Equipment equipment, @Nullable GunDefinition gun,
+                          @Nullable com.arkcronist.content.core.minigame.MinigameDefinition minigame,
+                          @Nullable com.arkcronist.content.core.cosmetic.CosmeticDefinition cosmetic,
+                          @Nullable DrinkDefinition drink, @Nullable BackpackDefinition backpack,
+                          @Nullable com.arkcronist.content.core.vehicle.VehicleDefinition vehicle,
+                          @Nullable com.arkcronist.content.core.emotes.EmoteDefinition emote) {
+        this(namespace, id, material, displayName, lore, model, behaviour, placement, source, price, equipment, gun,
+                minigame, cosmetic, drink, backpack, vehicle, emote, null);
     }
 
     /** An item that plays no emote. */
@@ -112,67 +128,73 @@ public record ItemDefinition(String namespace, String id, String material, Strin
     /** The same item with a price: what one costs in the content shop, through Vault. 0 is not for sale. */
     public ItemDefinition withPrice(double price) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote);
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote, mechanics);
     }
 
     /** The same item, worn as {@code equipment}. */
     public ItemDefinition withEquipment(@Nullable Equipment equipment) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote);
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote, mechanics);
     }
 
     /** The same item, played as {@code minigame} (3.0): a rare ore's, or a fishing rod's. */
     public ItemDefinition withMinigame(@Nullable com.arkcronist.content.core.minigame.MinigameDefinition minigame) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote);
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote, mechanics);
     }
 
     /** The same item, worn as {@code cosmetic} (3.0). */
     public ItemDefinition withCosmetic(@Nullable com.arkcronist.content.core.cosmetic.CosmeticDefinition cosmetic) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote);
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote, mechanics);
     }
 
     /** The same item, shooting as {@code gun}. */
     public ItemDefinition withGun(@Nullable GunDefinition gun) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote);
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote, mechanics);
     }
 
     /** The same item, drunk from as {@code drink} (3.4). */
     public ItemDefinition withDrink(@Nullable DrinkDefinition drink) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote);
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote, mechanics);
     }
 
     /** The same item, holding others as {@code backpack} (3.4). */
     public ItemDefinition withBackpack(@Nullable BackpackDefinition backpack) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote);
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote, mechanics);
     }
 
     /** The same item, driven as {@code vehicle} (4.0). */
     public ItemDefinition withVehicle(@Nullable com.arkcronist.content.core.vehicle.VehicleDefinition vehicle) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote);
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote, mechanics);
     }
 
     /** The same item, playing {@code emote} (5.0) when used, or with /emote. */
     public ItemDefinition withEmote(@Nullable com.arkcronist.content.core.emotes.EmoteDefinition emote) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote);
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote, mechanics);
+    }
+
+    /** The same item, doing {@code mechanics} (5.4) on its triggers and all along. */
+    public ItemDefinition withMechanics(@Nullable com.arkcronist.content.core.mechanics.ItemMechanics mechanics) {
+        return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote, mechanics);
     }
 
     /** The same item, made of another material - 5.3: a shaped block, of the copper block it was given. */
     public ItemDefinition withMaterial(String material) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote);
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote, mechanics);
     }
 
     /** The same item, placing something else - 5.3: a see-through block left without copper, as a note block. */
     public ItemDefinition withPlacement(Placement placement) {
         return new ItemDefinition(namespace, id, material, displayName, lore, model, behaviour, placement, source, price,
-                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote);
+                equipment, gun, minigame, cosmetic, drink, backpack, vehicle, emote, mechanics);
     }
 
     /** {@code namespace:id}, the key the item is registered, given and recognised by. */

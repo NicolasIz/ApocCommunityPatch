@@ -1,0 +1,133 @@
+# ---------------------------------------------------------------------------
+#  5.4: items that do things - events and mechanics
+# ---------------------------------------------------------------------------
+#  'events:' - what happens when the player does something with the item:
+#
+#    right-click   left-click   hit-entity   kill   break-block   consume
+#    equip   unequip   shoot (bows)   damaged (while held or worn)
+#
+#  Each has 'actions:' done in order, and may have 'conditions:' and a
+#  'cooldown:' in seconds. Several reactions to one trigger, each with its own
+#  conditions, are a list.
+#
+#  Actions:
+#    message / actionbar / title     text, MiniMessage; %player%, %target%
+#    sound      entity.player.levelup, or {sound, volume, pitch, at: target}
+#    particle   flame, or {particle, count, spread, at: target}
+#    command    run by the player; console-command: run by the console
+#               %player% %uuid% %world% %x% %y% %z% %target% %tx% %ty% %tz% %item%
+#    effect     {effect: speed, level: 2, seconds: 5, target: self|target}
+#    damage     4, or {amount, target: self|target} - as the player's hit
+#    heal       4 (half hearts)     feed  4     experience  10
+#    projectile arrow, snowball, fireball, small_fireball, wither_skull,
+#               egg, ender_pearl, trident, wind_charge, ... or {type, speed}
+#    lightning  target or self; {at: target, harmless: true} only shows
+#    launch     {forward: 1.2, up: 0.4, target: self|target}
+#    give       "demo:ruby 2", or diamond
+#    take-held  1         damage-item  1         wait  20 (ticks; 20 a second)
+#
+#  Conditions: chance (0-1), sneaking (true/false), permission, worlds,
+#  targets (entity types: zombie, player), blocks (block types: stone).
+#
+#  'mechanics:' - what the item does all along:
+#    big-mining: 1 (3x3) or 2 (5x5), mining-depth: 0-3 - sneak to mine one
+#    auto-smelt: true   soulbound: true   lifesteal: 0.25 (share of damage)
+#    held-effects / worn-effects: [haste, "speed 2"]   durability: 250
+#
+#  What an action does to anyone else - damage, effects, pushes, lightning -
+#  is asked of protection plugins (WorldGuard, GriefPrevention, Lands, Towny)
+#  first, as an attack; every extra block big-mining breaks is a block break
+#  of its own, refused where the player could not break it.
+#
+#     /customgive <player> demo:ruby_hammer
+#     /customgive <player> demo:storm_staff
+#     /customgive <player> demo:blood_dagger
+#     /customgive <player> demo:ruby_charm
+# ---------------------------------------------------------------------------
+
+items:
+
+  # Mines 3x3 - sneak for one block - and smelts what it breaks: iron ore
+  # gives iron ingots. Now and then a ruby turns up in the rubble.
+  ruby_hammer:
+    material: IRON_PICKAXE
+    display-name: "<#d63048>Ruby Hammer"
+    lore:
+      - "<gray>Mines 3x3 and smelts what it breaks."
+      - "<dark_gray>Sneak to mine a single block."
+    resource:
+      texture: item/ruby_hammer
+    mechanics:
+      big-mining: 1
+      auto-smelt: true
+    events:
+      break-block:
+        conditions:
+          chance: 0.03
+          blocks: [stone, deepslate, andesite, diorite, granite, tuff]
+        actions:
+          - give: demo:ruby
+          - sound: {sound: block.amethyst_block.chime, pitch: 1.4}
+          - actionbar: "<#ff6a7f>A ruby, in the rubble!"
+
+  # Right click: lightning where you look, every 4 seconds. Sneak and right
+  # click: a dash forward.
+  storm_staff:
+    material: STICK
+    display-name: "<#7fc8ff>Storm Staff"
+    lore:
+      - "<gray>Right click: call down lightning."
+      - "<gray>Sneak + right click: dash."
+    resource:
+      texture: item/storm_staff
+    mechanics:
+      durability: 64
+    events:
+      right-click:
+        - conditions: {sneaking: false}
+          cooldown: 4
+          cooldown-message: "<gray>The staff hums... %seconds%s"
+          actions:
+            - lightning: target
+            - particle: {particle: electric_spark, count: 30, spread: 0.4, at: target}
+            - damage-item: 1
+        - conditions: {sneaking: true}
+          cooldown: 2
+          actions:
+            - launch: {forward: 1.4, up: 0.35}
+            - sound: entity.breeze.wind_burst
+            - particle: {particle: cloud, count: 15, spread: 0.3}
+
+  # Heals you by a quarter of the damage it does; a quarter of its hits wither.
+  blood_dagger:
+    material: IRON_SWORD
+    display-name: "<dark_red>Blood Dagger"
+    lore:
+      - "<gray>Drinks a quarter of the blood it spills."
+    resource:
+      texture: item/blood_dagger
+    mechanics:
+      lifesteal: 0.25
+    events:
+      hit-entity:
+        conditions: {chance: 0.25}
+        actions:
+          - effect: {effect: wither, seconds: 3, target: target}
+          - particle: {particle: damage_indicator, count: 6, at: target}
+      kill:
+        actions:
+          - heal: 4
+          - actionbar: "<dark_red>+2 ❤"
+
+  # Held: night vision and haste. Kept when you die.
+  ruby_charm:
+    material: PAPER
+    display-name: "<gold>Ruby Charm"
+    lore:
+      - "<gray>Held: see in the dark, dig faster."
+      - "<gray>It stays with you when you die."
+    resource:
+      texture: item/ruby_charm
+    mechanics:
+      soulbound: true
+      held-effects: [night_vision, haste]

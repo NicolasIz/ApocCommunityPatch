@@ -278,7 +278,13 @@ public final class ContentPipeline {
                     "contents/demo/textures/crop/ruby_sapling.png",
                     "contents/demo/textures/block/ruby_log.png",
                     "contents/demo/textures/block/ruby_log_top.png",
-                    "contents/demo/textures/block/ruby_planks.png")));
+                    "contents/demo/textures/block/ruby_planks.png",
+                    // 5.4: items with events and mechanics of their own.
+                    "contents/demo/mechanics.yml",
+                    "contents/demo/textures/item/ruby_hammer.png",
+                    "contents/demo/textures/item/storm_staff.png",
+                    "contents/demo/textures/item/blood_dagger.png",
+                    "contents/demo/textures/item/ruby_charm.png")));
 
     /** The example files a resource lists, one path a line; # starts a comment. */
     private static List<String> exampleList(String resource) {
@@ -1759,6 +1765,10 @@ public final class ContentPipeline {
         }
         if (plugin.treeGenerator() != null) {
             plugin.treeGenerator().publish(registry, blocks);
+        }
+        if (plugin.mechanics() != null) {
+            plugin.mechanics().publish(registry);
+            plugin.mechanicsListener().recipesChanged();
         }
         List<LiquidRegistry.Liquid> liquids = new ArrayList<>();
         for (Map.Entry<String, Integer> entry : build.liquids().entrySet()) {

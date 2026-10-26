@@ -55,7 +55,9 @@ public final class CommandTemplate {
 
     private static void check(String key, String value) {
         boolean ok = switch (key) {
-            case "player", "killer" -> safeName(value);
+            case "player", "killer", "target" -> safeName(value);
+            // 5.4: an item's id, namespace:id.
+            case "item" -> DIMENSION.matcher(value).matches() && value.length() <= 128;
             case "world" -> WORLD.matcher(value).matches();
             case "dimension" -> DIMENSION.matcher(value).matches() && value.length() <= 128;
             default -> value.matches("[A-Za-z0-9\\-.]{1,64}");

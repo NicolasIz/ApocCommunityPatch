@@ -96,6 +96,13 @@ public final class ItemFactory {
             // 3.4: a backpack is one thing with its own contents, never a stack of them.
             stack.setData(DataComponentTypes.MAX_STACK_SIZE, 1);
         }
+        var mechanics = item.definition().mechanics();
+        if (mechanics != null && mechanics.passive().durability() > 0) {
+            // 5.4: uses of its own, worn down as a tool is - and so one to a slot.
+            stack.setData(DataComponentTypes.MAX_STACK_SIZE, 1);
+            stack.setData(DataComponentTypes.MAX_DAMAGE, mechanics.passive().durability());
+            stack.setData(DataComponentTypes.DAMAGE, 0);
+        }
         return stack;
     }
 

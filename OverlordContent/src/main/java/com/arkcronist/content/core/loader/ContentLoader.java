@@ -410,6 +410,17 @@ public final class ContentLoader {
                 item = item.withEmote(emote(item.itemModel(), emote, sourceRoot, prefix + "emote: ", problems));
             }
         }
+        // 5.4: what it does on its triggers, and all along.
+        Object events = section.get("events");
+        Object mechanics = section.get("mechanics");
+        if (events != null || mechanics != null) {
+            if (type != ContentType.ITEM) {
+                problems.add(prefix + "'events' and 'mechanics' are only read on items (type: item) - the item in hand");
+            } else {
+                item = item.withMechanics(com.arkcronist.content.core.mechanics.MechanicsReader.read(events, mechanics,
+                        prefix, problems));
+            }
+        }
         return item;
     }
 

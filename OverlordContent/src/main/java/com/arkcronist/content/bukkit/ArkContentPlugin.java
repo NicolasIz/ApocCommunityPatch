@@ -148,6 +148,9 @@ public final class ArkContentPlugin extends JavaPlugin {
     private com.arkcronist.content.bukkit.generation.OreGenerator ores;
     /** 5.4: saplings' trees in new chunks. */
     private com.arkcronist.content.bukkit.tree.TreeGenerator treeGenerator;
+    /** 5.4: items' events and mechanics. */
+    private com.arkcronist.content.bukkit.mechanics.MechanicsService mechanics;
+    private com.arkcronist.content.bukkit.mechanics.MechanicsListener mechanicsListener;
     private com.arkcronist.content.bukkit.emote.EmoteService emotes;
     private CustomBlockService blockService;
     private ActionBars actionBars;
@@ -330,6 +333,15 @@ public final class ArkContentPlugin extends JavaPlugin {
         } catch (LinkageError missing) {
             // A 1.21.4 build from before Paper's pick event: the middle click picks the block underneath.
             getLogger().fine("No pick event on this server: " + missing);
+        }
+        // 5.4: what items do on their triggers, and all along.
+        this.mechanics = new com.arkcronist.content.bukkit.mechanics.MechanicsService(this, items, itemFactory, protection);
+        this.mechanicsListener = new com.arkcronist.content.bukkit.mechanics.MechanicsListener(this, mechanics, blockMining);
+        plugins.registerEvents(mechanicsListener, this);
+        try {
+            plugins.registerEvents(new com.arkcronist.content.bukkit.mechanics.ArmorTriggers(mechanics), this);
+        } catch (LinkageError missing) {
+            getLogger().warning("No armour event on this server: items' equip and unequip events are not set off (" + missing + ")");
         }
         plugins.registerEvents(ores, this);
         plugins.registerEvents(treeGenerator, this);
@@ -607,6 +619,9 @@ public final class ArkContentPlugin extends JavaPlugin {
         }
         if (blockMining != null) {
             shutdownStep(() -> blockMining.clearAll());
+            if (mechanics != null) {
+                shutdownStep(() -> mechanics.shutdown());
+            }
         }
         if (ambience != null) {
             shutdownStep(() -> ambience.shutdown());
@@ -812,6 +827,16 @@ public final class ArkContentPlugin extends JavaPlugin {
     }
 
     /** 5.0: the ores laid into new chunks. */
+    /** 5.4: items' events and mechanics; null before enable. */
+    public com.arkcronist.content.bukkit.mechanics.MechanicsService mechanics() {
+        return mechanics;
+    }
+
+    /** 5.4: the listener of items' triggers; null before enable. */
+    public com.arkcronist.content.bukkit.mechanics.MechanicsListener mechanicsListener() {
+        return mechanicsListener;
+    }
+
     /** 5.4: saplings' trees in new chunks; null before enable. */
     public com.arkcronist.content.bukkit.tree.TreeGenerator treeGenerator() {
         return treeGenerator;
