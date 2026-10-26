@@ -1,0 +1,187 @@
+# ---------------------------------------------------------------------------
+#  Emberwood (5.5) - Its crown flickers like a fire that never dies down.
+# ---------------------------------------------------------------------------
+#  A sapling planted on its soil grows, in two stages, into a tree drawn
+#  block by block below in its blueprints: one picked at random, turned and
+#  mirrored, coming up over a few seconds. Bone meal hurries it along.
+#  Its leaves are its own: they fall when the tree is cut down, dropping a
+#  sapling now and then; shears or silk touch take them whole.
+#
+#     /customgive <player> woodland:emberwood_sapling
+# ---------------------------------------------------------------------------
+
+namespace: woodland
+
+items:
+
+  emberwood_sapling:
+    type: custom_crop
+    display-name: "<#ff8a2a>Emberwood Sapling"
+    lore:
+      - "<gray>Its crown flickers like a fire that never dies down."
+      - "<dark_gray>Plant on red sand or dirt."
+    resource:
+      texture: crop/emberwood_sapling_1
+    crop:
+      stages:
+        - crop/emberwood_sapling_0
+        - crop/emberwood_sapling_1
+      stage-seconds: 300
+      min-light: 9
+      soil: [RED_SAND, COARSE_DIRT, GRASS_BLOCK, DIRT, TERRACOTTA]
+      bone-meal: true
+      tree:
+        log: emberwood_log
+        leaves: emberwood_leaves
+        growth-seconds: 3.0
+        generation:
+          biomes: [minecraft:badlands, minecraft:wooded_badlands, minecraft:eroded_badlands]
+          soil: [red_sand, coarse_dirt, grass_block, dirt, terracotta]
+          per-chunk: 1
+          chance: 0.15
+        blueprints:
+          - weight: 3
+            origin: [3, 3]
+            legend:
+              "#": log
+              "-": log-x
+              "|": log-z
+              "@": leaves
+              "%": {block: leaves, chance: 0.7}
+            layers:
+              # y = 0
+              - [".", ".", ".", "...#", ".", ".", "."]
+              # y = 1
+              - [".", ".", ".", "...#", ".", ".", "."]
+              # y = 2
+              - [".", ".", ".", "...#", ".", ".", "."]
+              # y = 3
+              - [".", ".", ".", "...--", ".", ".", "."]
+              # y = 4
+              - [".", "...%", "..%@%", ".-----", ".-@@@", "...@", "."]
+              # y = 5
+              - ["...%", ".%@@@@", "@@@@@@", "@@@#@@@", ".-@@@@", ".@@@@%", "..@@@"]
+              # y = 6
+              - [".", "..%@@@", ".%@@@@", ".@@@@@@", "@@@@@@", ".@@@@", "...%@"]
+              # y = 7
+              - [".", "..@.%", "..@@@", ".@@@@@", ".@@@@%", ".@.@@", "."]
+              # y = 8
+              - [".", "....%", "..@@", "..@@@", ".@@%.%", "....@", "."]
+              # y = 9
+              - [".", ".", "..@", "..@@%", "...@", ".", "."]
+              # y = 10
+              - [".", ".", ".", "..@@", "...%", ".", "."]
+              # y = 11
+              - [".", ".", ".", "...@", ".", ".", "."]
+          - weight: 2
+            origin: [3, 3]
+            legend:
+              "#": log
+              "-": log-x
+              "|": log-z
+              "@": leaves
+              "%": {block: leaves, chance: 0.7}
+            layers:
+              # y = 0
+              - [".", ".", ".", "...#", ".", ".", "."]
+              # y = 1
+              - [".", ".", ".", "...#", ".", ".", "."]
+              # y = 2
+              - [".", ".", ".", "...#", ".", ".", "."]
+              # y = 3
+              - [".", ".", ".", "...--", ".", ".", "."]
+              # y = 4
+              - [".", "..|", "..||", "...|--", ".....-", ".", "."]
+              # y = 5
+              - [".", "..|@", "..@@%", ".@@#@@", "..@@@@@", "...%.@", "."]
+              # y = 6
+              - ["..@", ".%@@@@", "@@@@@@%", "@@@#@@@", ".@@@@@@", ".@@@@%", "..%.%"]
+              # y = 7
+              - [".", "..@@@@", ".@@@@@", ".@@@@@", ".@@@@@%", ".%@@@%", "....@"]
+              # y = 8
+              - [".", "..@.@@", "..@@@@", "..@@@@", ".%@@@%", ".%..%", "."]
+              # y = 9
+              - [".", ".", "..%@@@", "..@@@", ".%@@@%", ".", "."]
+              # y = 10
+              - [".", ".", "...@", "...@@", "..@@@", ".", "."]
+              # y = 11
+              - [".", ".", ".", "...@", "...%", ".", "."]
+              # y = 12
+              - [".", ".", ".", "...%", ".", ".", "."]
+              # y = 13
+              - [".", ".", ".", "...%", ".", ".", "."]
+              # y = 14
+              - [".", ".", ".", "...@", ".", ".", "."]
+          - weight: 2
+            origin: [3, 3]
+            legend:
+              "#": log
+              "-": log-x
+              "|": log-z
+              "@": leaves
+              "%": {block: leaves, chance: 0.7}
+            layers:
+              # y = 0
+              - [".", ".", ".", "...#", ".", ".", "."]
+              # y = 1
+              - [".", ".", ".", "...#", ".", ".", "."]
+              # y = 2
+              - [".", ".", ".....-", "...---", ".", ".", "."]
+              # y = 3
+              - [".", "...%", "..@@@-", ".@@#@@", "..%@@", "...@", "."]
+              # y = 4
+              - ["..@@%", ".@@@@@", "@@@@@@@", "@@@#@@", ".@@@@@@", ".@@@@@", "..%@"]
+              # y = 5
+              - ["..@", "..@@@@", ".@@@@@", "@@@@@@", ".@@@@@@", "..@@@@", "..%%"]
+              # y = 6
+              - [".", "..@@@%", ".@@@@@", ".%@@@@", "..@@@%", "....%", "."]
+              # y = 7
+              - [".", "..@", "..@@@%", ".@@@@", "...@@%", "....@", "."]
+              # y = 8
+              - [".", ".", "...@", "..@@%", "...@", ".", "."]
+              # y = 9
+              - [".", ".", "...%", "..%@@", ".", ".", "."]
+              # y = 10
+              - [".", ".", ".", "...@", ".", ".", "."]
+              # y = 11
+              - [".", ".", ".", "...@", ".", ".", "."]
+
+  emberwood_log:
+    type: custom_block
+    display-name: "<#ff8a2a>Emberwood Log"
+    resource:
+      model: block/emberwood_log          # glows faintly: its cracks show in the dark
+    block:
+      axis: true                 # lies along the face it is placed against, as logs do
+      tool: axe
+      hardness: 2
+      skill-xp: 2
+
+  emberwood_planks:
+    type: custom_block
+    display-name: "<#ff8a2a>Emberwood Planks"
+    resource:
+      texture: block/emberwood_planks
+    block:
+      tool: axe
+      hardness: 2
+
+  emberwood_leaves:
+    type: custom_block
+    display-name: "<#ff8a2a>Emberwood Leaves"
+    resource:
+      model: block/emberwood_leaves          # sparks drawn bright in the dark
+    block:
+      shape: leaves             # see-through, mined fast with shears or a hoe
+      drops:                    # without shears or silk touch
+        - {item: woodland:emberwood_sapling, chance: 0.05}
+        - {item: STICK, amount: 1-2, chance: 0.02}
+
+recipes:
+
+  emberwood_planks:
+    type: shapeless
+    ingredients: [woodland:emberwood_log]
+    result: woodland:emberwood_planks 4
+    group: woodland_planks
+    category: building

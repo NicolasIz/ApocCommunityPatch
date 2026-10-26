@@ -292,7 +292,10 @@ public final class ContentPipeline {
                     "contents/demo/furniture_states.yml",
                     "contents/demo/models/furniture/ruby_lantern.json",
                     "contents/demo/models/furniture/ruby_lantern_on.json",
-                    "contents/demo/textures/furniture/ruby_lantern.png")));
+                    "contents/demo/textures/furniture/ruby_lantern.png")),
+            // 5.5: the woodland pack - thirteen trees of their own wood, leaves and shape - listed in a file
+            // of its own.
+            Map.entry("5.5.0", exampleList("examples-5.5.0.txt")));
 
     /** The example files a resource lists, one path a line; # starts a comment. */
     private static List<String> exampleList(String resource) {

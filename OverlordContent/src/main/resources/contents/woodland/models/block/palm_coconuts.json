@@ -1,0 +1,284 @@
+{
+  "parent": "minecraft:block/block",
+  "ambientocclusion": false,
+  "textures": {
+    "particle": "woodland:block/palm_coconuts",
+    "nut": "woodland:block/palm_coconuts",
+    "stalk": "woodland:block/palm_log"
+  },
+  "elements": [
+    {
+      "from": [
+        3,
+        7,
+        3
+      ],
+      "to": [
+        8,
+        12,
+        8
+      ],
+      "faces": {
+        "down": {
+          "texture": "#nut",
+          "uv": [
+            0,
+            0,
+            5,
+            5
+          ]
+        },
+        "up": {
+          "texture": "#nut",
+          "uv": [
+            0,
+            0,
+            5,
+            5
+          ]
+        },
+        "north": {
+          "texture": "#nut",
+          "uv": [
+            0,
+            0,
+            5,
+            5
+          ]
+        },
+        "south": {
+          "texture": "#nut",
+          "uv": [
+            0,
+            0,
+            5,
+            5
+          ]
+        },
+        "west": {
+          "texture": "#nut",
+          "uv": [
+            0,
+            0,
+            5,
+            5
+          ]
+        },
+        "east": {
+          "texture": "#nut",
+          "uv": [
+            0,
+            0,
+            5,
+            5
+          ]
+        }
+      }
+    },
+    {
+      "from": [
+        8,
+        8,
+        4
+      ],
+      "to": [
+        13,
+        13,
+        9
+      ],
+      "faces": {
+        "down": {
+          "texture": "#nut",
+          "uv": [
+            0,
+            0,
+            5,
+            5
+          ]
+        },
+        "up": {
+          "texture": "#nut",
+          "uv": [
+            0,
+            0,
+            5,
+            5
+          ]
+        },
+        "north": {
+          "texture": "#nut",
+          "uv": [
+            0,
+            0,
+            5,
+            5
+          ]
+        },
+        "south": {
+          "texture": "#nut",
+          "uv": [
+            0,
+            0,
+            5,
+            5
+          ]
+        },
+        "west": {
+          "texture": "#nut",
+          "uv": [
+            0,
+            0,
+            5,
+            5
+          ]
+        },
+        "east": {
+          "texture": "#nut",
+          "uv": [
+            0,
+            0,
+            5,
+            5
+          ]
+        }
+      }
+    },
+    {
+      "from": [
+        5,
+        3,
+        8
+      ],
+      "to": [
+        10,
+        8,
+        13
+      ],
+      "faces": {
+        "down": {
+          "texture": "#nut",
+          "uv": [
+            0,
+            0,
+            5,
+            5
+          ]
+        },
+        "up": {
+          "texture": "#nut",
+          "uv": [
+            0,
+            0,
+            5,
+            5
+          ]
+        },
+        "north": {
+          "texture": "#nut",
+          "uv": [
+            0,
+            0,
+            5,
+            5
+          ]
+        },
+        "south": {
+          "texture": "#nut",
+          "uv": [
+            0,
+            0,
+            5,
+            5
+          ]
+        },
+        "west": {
+          "texture": "#nut",
+          "uv": [
+            0,
+            0,
+            5,
+            5
+          ]
+        },
+        "east": {
+          "texture": "#nut",
+          "uv": [
+            0,
+            0,
+            5,
+            5
+          ]
+        }
+      }
+    },
+    {
+      "from": [
+        7.5,
+        10,
+        7.5
+      ],
+      "to": [
+        8.5,
+        16,
+        8.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#stalk",
+          "uv": [
+            7,
+            0,
+            8,
+            6
+          ]
+        },
+        "south": {
+          "texture": "#stalk",
+          "uv": [
+            7,
+            0,
+            8,
+            6
+          ]
+        },
+        "west": {
+          "texture": "#stalk",
+          "uv": [
+            7,
+            0,
+            8,
+            6
+          ]
+        },
+        "east": {
+          "texture": "#stalk",
+          "uv": [
+            7,
+            0,
+            8,
+            6
+          ]
+        }
+      }
+    }
+  ],
+  "display": {
+    "gui": {
+      "rotation": [
+        30,
+        225,
+        0
+      ],
+      "translation": [
+        0,
+        -1,
+        0
+      ],
+      "scale": [
+        0.85,
+        0.85,
+        0.85
+      ]
+    }
+  }
+}

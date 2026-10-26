@@ -1,0 +1,188 @@
+# ---------------------------------------------------------------------------
+#  Wisteria (5.5) - Lilac blossom hanging in long trails.
+# ---------------------------------------------------------------------------
+#  A sapling planted on its soil grows, in two stages, into a tree drawn
+#  block by block below in its blueprints: one picked at random, turned and
+#  mirrored, coming up over a few seconds. Bone meal hurries it along.
+#  Its leaves are its own: they fall when the tree is cut down, dropping a
+#  sapling now and then; shears or silk touch take them whole.
+#
+#     /customgive <player> woodland:wisteria_sapling
+# ---------------------------------------------------------------------------
+
+namespace: woodland
+
+items:
+
+  wisteria_sapling:
+    type: custom_crop
+    display-name: "<#b38be6>Wisteria Sapling"
+    lore:
+      - "<gray>Lilac blossom hanging in long trails."
+      - "<dark_gray>Plant on grass or dirt."
+    resource:
+      texture: crop/wisteria_sapling_1
+    crop:
+      stages:
+        - crop/wisteria_sapling_0
+        - crop/wisteria_sapling_1
+      stage-seconds: 300
+      min-light: 9
+      bone-meal: true
+      tree:
+        log: wisteria_log
+        leaves: wisteria_leaves
+        growth-seconds: 3.5
+        generation:
+          biomes: [minecraft:flower_forest, minecraft:cherry_grove]
+          per-chunk: 1
+          chance: 0.3
+        blueprints:
+          - weight: 3
+            origin: [8, 3]
+            legend:
+              "#": log
+              "-": log-x
+              "|": log-z
+              "@": leaves
+              "%": {block: leaves, chance: 0.7}
+              "b": wisteria_blossom
+            layers:
+              # y = 0
+              - [".", ".", ".", "........#", ".", ".", ".", ".", ".", "."]
+              # y = 1
+              - [".", ".", "............b", ".......##b", ".", ".", ".", ".", ".", "."]
+              # y = 2
+              - [".", "........b.b", "............b", ".b.....#.b..b", "..........b", "...b", ".......b", ".", ".", "."]
+              # y = 3
+              - ["...........b", "........b.bb", "..b......b..b", ".b....##.bb.b", "....b.....b", ".b.b...b", ".......b", ".", ".......b", "."]
+              # y = 4
+              - [".........b.b", ".......bb.bb", "..b.b..#.b..b", "bb...###.bb.b", "....b.#...b", ".b.bb..b", "....b..bb", ".", ".......b", ".......b"]
+              # y = 5
+              - [".........b.b", ".......bb@@@", ".bb.b..##@-@@", "bb..##.b.@@@b", "....b.#...b", "bb.bb.#b", ".bbbb..bb", "........b", ".......b", ".......b"]
+              # y = 6
+              - [".........@@@", ".......b@@@@@", ".bb.b..@---@@", "b@--#b.b@@@@@", ".@-@@....@@@", "b@@@b.#b", ".bbbb@|@b", ".....@|@b", ".....@@@", ".......b"]
+              # y = 7
+              - [".", ".......@@@@@", ".@@@b..@@@@@", "@@@--b.@@@@@", "@@@@@.@", "@@@@@@|@", ".@@@@@|@@", "....@@@@@", "....@@@@@", ".....%@@"]
+              # y = 8
+              - [".", ".", "...%@@.@@", ".@@@@@", ".@@@@@@%", ".@@@.@@@", ".....@@@", ".....@@@", ".....@@@", "."]
+              # y = 9
+              - [".", ".", ".", "....@", ".", "......%", "......@", ".", ".", "."]
+          - weight: 2
+            origin: [5, 5]
+            legend:
+              "#": log
+              "-": log-x
+              "|": log-z
+              "@": leaves
+              "%": {block: leaves, chance: 0.7}
+              "b": wisteria_blossom
+            layers:
+              # y = 0
+              - [".", ".", ".", ".", ".", ".....#", ".", ".", ".", ".", "."]
+              # y = 1
+              - [".", ".", ".", ".", ".", ".....#", ".", ".", ".", ".", "."]
+              # y = 2
+              - [".", ".", "........b", ".", ".", ".....#", ".", ".", ".", ".", "."]
+              # y = 3
+              - [".", ".", "........b.b", "...........b", "........b.bb", ".....#", ".", ".......bb", ".......b.b", ".", "."]
+              # y = 4
+              - [".b", "...bb...b.b", ".......bb.bb", ".b.........b", "........b.bb", ".....##...b", ".", ".......bb", ".......b.b", ".", ".........b"]
+              # y = 5
+              - [".b.b", ".bbbb...b.b", "b......bb.bb", ".b.........b", "....#.#.b.bb", "....###.bbb", "........bb", "......bbb", ".......b.bb", ".......bb", ".........b"]
+              # y = 6
+              - [".bbb", ".bbbb...b.b", "b......b@@@b", ".b.#b.b.--@b", "...##.##@@@b", ".....##bbbb", ".....b#.bb", "......bbb.b", ".......b.bb", "......bbb", ".........b"]
+              # y = 7
+              - [".bbb", ".@@@b...@@@", "b@|@...@@@@@", ".@@#b.b@-@@@", "......b--@@@", ".......b@@@", ".....b#.bb", ".....bb@@@b", "......@@|@b", "......b@@@", ".........b"]
+              # y = 8
+              - [".@@@", "%@@@@", "@@|@@...@@@", "%@||@.@@@@@@", ".%@@..@@@@@", "......@@@", ".....b||@@", ".....b@||@@", "......@@|@@", "......@@@@@", ".......%@@"]
+              # y = 9
+              - [".", ".%@%", ".@@@%", ".@@@@", "..%@%..%", ".....@@@", ".....@@@", ".....@@@@@", ".......@@@", ".......@@@", "........%"]
+              # y = 10
+              - [".", ".", ".", "...@", ".", ".", ".....%%", ".", ".", ".", "."]
+          - weight: 2
+            origin: [8, 4]
+            legend:
+              "#": log
+              "-": log-x
+              "|": log-z
+              "@": leaves
+              "%": {block: leaves, chance: 0.7}
+              "b": wisteria_blossom
+            layers:
+              # y = 0
+              - [".", ".", ".", ".", "........#", ".", ".", ".", ".", "."]
+              # y = 1
+              - [".", ".", ".", ".", ".......##", ".", ".", ".", ".", "."]
+              # y = 2
+              - [".", "....b", "b..b", "b.bb", ".......#", ".", "..........b", ".", ".", "."]
+              # y = 3
+              - [".", "b...b", "b..b", "b.bb", "...b.###", ".........b", "..........b", "...........b", ".........b", "..........b"]
+              # y = 4
+              - ["..b", "b...b", "b..b", "b.bb.#", "...b.##", "......b..b", ".......b..bb", "..........bb", ".......b.bb", "..........b"]
+              # y = 5
+              - ["..b", "b@@@b", "@@-@@", "b@@@##", "...b..##", "......b#.b", ".......b..bb", "..........bb", ".......b.bbb", "........b.b"]
+              # y = 6
+              - [".@@@", "@@@@@", "@@--@", "@@@--b", ".%@@", "......b#.b", ".......b||@b", "........@|@b", ".......b@@@b", "........b.b"]
+              # y = 7
+              - [".", ".@@@", ".@@@@@", ".@@@@@", "...%@@", "......b||@%", ".......@|@@@", ".......@@@@@", ".......@@@@@", "........@@@"]
+              # y = 8
+              - [".", ".", ".", "....@", "....%.%@@", "......@@@", "......@@@@%", ".......@@@@@", "........%@@", "."]
+              # y = 9
+              - [".", ".", ".", ".", ".......@", ".......@", ".", ".", ".", "."]
+
+  wisteria_log:
+    type: custom_block
+    display-name: "<#b38be6>Wisteria Log"
+    resource:
+      parent: block/cube_column
+      textures:
+        side: block/wisteria_log
+        end: block/wisteria_log_top
+    block:
+      axis: true                 # lies along the face it is placed against, as logs do
+      tool: axe
+      hardness: 2
+      skill-xp: 2
+
+  wisteria_planks:
+    type: custom_block
+    display-name: "<#b38be6>Wisteria Planks"
+    resource:
+      texture: block/wisteria_planks
+    block:
+      tool: axe
+      hardness: 2
+
+  wisteria_leaves:
+    type: custom_block
+    display-name: "<#b38be6>Wisteria Leaves"
+    resource:
+      texture: block/wisteria_leaves
+    block:
+      shape: leaves             # see-through, mined fast with shears or a hoe
+      drops:                    # without shears or silk touch
+        - {item: woodland:wisteria_sapling, chance: 0.05}
+        - {item: STICK, amount: 1-2, chance: 0.02}
+
+  wisteria_blossom:
+    type: custom_block
+    display-name: "<#b38be6>Wisteria Blossom"
+    lore: ["<gray>Lilac flowers that hang in long trails."]
+    resource:
+      parent: block/cross
+      textures:
+        cross: block/wisteria_blossom
+    block:
+      shape: leaves
+      drops:
+        - {item: woodland:wisteria_sapling, chance: 0.02}
+
+recipes:
+
+  wisteria_planks:
+    type: shapeless
+    ingredients: [woodland:wisteria_log]
+    result: woodland:wisteria_planks 4
+    group: woodland_planks
+    category: building

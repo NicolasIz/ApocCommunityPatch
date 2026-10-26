@@ -1,0 +1,178 @@
+# ---------------------------------------------------------------------------
+#  Sunshade (5.5) - Opens golden parasols over the plains.
+# ---------------------------------------------------------------------------
+#  A sapling planted on its soil grows, in two stages, into a tree drawn
+#  block by block below in its blueprints: one picked at random, turned and
+#  mirrored, coming up over a few seconds. Bone meal hurries it along.
+#  Its leaves are its own: they fall when the tree is cut down, dropping a
+#  sapling now and then; shears or silk touch take them whole.
+#
+#     /customgive <player> woodland:sunshade_sapling
+# ---------------------------------------------------------------------------
+
+namespace: woodland
+
+items:
+
+  sunshade_sapling:
+    type: custom_crop
+    display-name: "<#f2c13a>Sunshade Sapling"
+    lore:
+      - "<gray>Opens golden parasols over the plains."
+      - "<dark_gray>Plant on grass or dirt."
+    resource:
+      texture: crop/sunshade_sapling_1
+    crop:
+      stages:
+        - crop/sunshade_sapling_0
+        - crop/sunshade_sapling_1
+      stage-seconds: 300
+      min-light: 9
+      bone-meal: true
+      tree:
+        log: sunshade_log
+        leaves: sunshade_leaves
+        growth-seconds: 3.0
+        generation:
+          biomes: [minecraft:plains, minecraft:sunflower_plains, minecraft:windswept_savanna]
+          per-chunk: 1
+          chance: 0.08
+        blueprints:
+          - weight: 3
+            origin: [6, 4]
+            legend:
+              "#": log
+              "-": log-x
+              "|": log-z
+              "@": leaves
+              "%": {block: leaves, chance: 0.7}
+            layers:
+              # y = 0
+              - [".", ".", ".", ".", "......#", ".", ".", ".", "."]
+              # y = 1
+              - [".", ".", ".", ".", "......#", ".", ".", ".", "."]
+              # y = 2
+              - [".", ".", ".", ".", "......#", ".", ".", ".", "."]
+              # y = 3
+              - [".", ".", ".", ".", "......#", ".", ".", ".", "."]
+              # y = 4
+              - [".", ".", ".", ".", ".....###", ".", ".", ".", "."]
+              # y = 5
+              - [".", ".", ".", ".", "....##.##", "....#", ".", ".", "."]
+              # y = 6
+              - [".", ".", ".", "........#", "........#", "...##", ".", ".", "."]
+              # y = 7
+              - [".", ".", ".", "........##", ".", "...#", ".", ".", "."]
+              # y = 8
+              - [".", ".", "..%@@", ".@@@@@...#", "@@@@@@@", "@@@@@@@", "@@@@@@@", ".%@@@@", "..@@@"]
+              # y = 9
+              - ["........@@@", "......@@@@@@", "......@@@@@@@", "......@@@@@@@", "..%@%.@@@@@@@", "..@@@.@@@@@@", "..@@@..@@@@@", ".", "."]
+              # y = 10
+              - [".", ".........@%", "........@@@@", ".......@@@@%", ".......@@@@", ".........@", ".", ".", "."]
+          - weight: 2
+            origin: [6, 5]
+            legend:
+              "#": log
+              "-": log-x
+              "|": log-z
+              "@": leaves
+              "%": {block: leaves, chance: 0.7}
+            layers:
+              # y = 0
+              - [".", ".", ".", ".", ".", "......#", ".", ".", ".", ".", "."]
+              # y = 1
+              - [".", ".", ".", ".", ".", "......#", ".", ".", ".", ".", "."]
+              # y = 2
+              - [".", ".", ".", ".", ".", "......#", ".", ".", ".", ".", "."]
+              # y = 3
+              - [".", ".", ".", ".", ".", "......#", ".", ".", ".", ".", "."]
+              # y = 4
+              - [".", ".", ".", ".", ".", "......#", ".", ".", ".", ".", "."]
+              # y = 5
+              - [".", ".", ".", ".", ".", ".....###", "......##", ".", ".", ".", "."]
+              # y = 6
+              - [".", ".", ".", ".", "....#", "....##", "......###", ".", ".", ".", "."]
+              # y = 7
+              - [".", ".", ".", "....#", "....#", ".", "......#.##", "......#..#", ".", ".", "."]
+              # y = 8
+              - [".", ".", ".", "...##", ".", ".", ".", "......#..#", ".", ".", "."]
+              # y = 9
+              - [".", ".", ".", "...#", "........%@%", ".......@@@@%", "......@@@@@@@", "......#@@@@@@", "......#@@@@@%", ".......%@@@@", "........@@@"]
+              # y = 10
+              - ["..%@@@", "%@@@@@@", "@@@@@@@", "@@@@@@@", "@@@@@@@", "%@@@@@%", ".%@@@...%@%", ".......%@@@", "......#.@@@", ".", "."]
+              # y = 11
+              - [".", "..@@%", "..@@@", ".%@@@%", "..@@@", "..@@@", "....@@@@%", "....@@@@@", "...@@@@@@", "....@@@@@", ".....%@@%"]
+              # y = 12
+              - [".", ".", ".", ".", ".", ".", ".", "......%%", ".....%@@", ".....%%", "."]
+          - weight: 2
+            origin: [5, 5]
+            legend:
+              "#": log
+              "-": log-x
+              "|": log-z
+              "@": leaves
+              "%": {block: leaves, chance: 0.7}
+            layers:
+              # y = 0
+              - [".", ".", ".", ".", ".", ".....#", ".", ".", ".", "."]
+              # y = 1
+              - [".", ".", ".", ".", ".", ".....#", ".", ".", ".", "."]
+              # y = 2
+              - [".", ".", ".", ".", ".", ".....#", ".", ".", ".", "."]
+              # y = 3
+              - [".", ".", ".", ".", "....#", "....###", ".", ".", ".", "."]
+              # y = 4
+              - [".", ".", ".", ".", "....#", "......##", ".", ".", ".", "."]
+              # y = 5
+              - [".", ".", ".", "...#", "...##", ".......#", ".......#", ".", ".", "."]
+              # y = 6
+              - [".", ".", ".", "...#", ".", ".", ".......##", ".", ".", "."]
+              # y = 7
+              - ["..@@@", ".@@@@@", "%@@@@@@", "@@@@@@@", "@@@@@@@", ".@@@@%", "..@@@...#", ".", ".", "."]
+              # y = 8
+              - [".", ".", "..%@@", "..@@@%.@@%", "..@@@.@@@@@", ".....@@@@@@%", ".....@@@@@@@", ".....%@@@@@@", "......%@@@@", ".......@@@"]
+              # y = 9
+              - [".", ".", ".", ".", ".......%%", "......%@@%", "......@@@@@", ".......@@%", ".......%%", "."]
+
+  sunshade_log:
+    type: custom_block
+    display-name: "<#f2c13a>Sunshade Log"
+    resource:
+      parent: block/cube_column
+      textures:
+        side: block/sunshade_log
+        end: block/sunshade_log_top
+    block:
+      axis: true                 # lies along the face it is placed against, as logs do
+      tool: axe
+      hardness: 2
+      skill-xp: 2
+
+  sunshade_planks:
+    type: custom_block
+    display-name: "<#f2c13a>Sunshade Planks"
+    resource:
+      texture: block/sunshade_planks
+    block:
+      tool: axe
+      hardness: 2
+
+  sunshade_leaves:
+    type: custom_block
+    display-name: "<#f2c13a>Sunshade Leaves"
+    resource:
+      texture: block/sunshade_leaves
+    block:
+      shape: leaves             # see-through, mined fast with shears or a hoe
+      drops:                    # without shears or silk touch
+        - {item: woodland:sunshade_sapling, chance: 0.05}
+        - {item: STICK, amount: 1-2, chance: 0.02}
+
+recipes:
+
+  sunshade_planks:
+    type: shapeless
+    ingredients: [woodland:sunshade_log]
+    result: woodland:sunshade_planks 4
+    group: woodland_planks
+    category: building

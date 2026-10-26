@@ -145,9 +145,11 @@ public final class CustomBlockListener implements Listener {
     }
 
     /**
-     * Neighbour and shape updates are what re-derive the instrument and the powered flag, so for
-     * note blocks they are refused outright. When the change came from directly above or below -
-     * the case a client predicts on its own - the real state is sent back to undo the prediction.
+     * Neighbour updates are what re-derive the powered flag, and a note block's own change would
+     * tell its neighbours, so for note blocks they are refused outright. The instrument is worked out
+     * again by shape updates, which fire no event: {@link StateGuardListener} sets it back. When the
+     * change came from directly above or below - the case a client predicts on its own - the real
+     * state is sent back to undo the prediction.
      */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPhysics(BlockPhysicsEvent event) {

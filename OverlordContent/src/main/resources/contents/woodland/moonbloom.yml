@@ -1,0 +1,205 @@
+# ---------------------------------------------------------------------------
+#  Moonbloom (5.5) - A lantern of silver leaves that glows in the night.
+# ---------------------------------------------------------------------------
+#  A sapling planted on its soil grows, in two stages, into a tree drawn
+#  block by block below in its blueprints: one picked at random, turned and
+#  mirrored, coming up over a few seconds. Bone meal hurries it along.
+#  Its leaves are its own: they fall when the tree is cut down, dropping a
+#  sapling now and then; shears or silk touch take them whole.
+#
+#     /customgive <player> woodland:moonbloom_sapling
+# ---------------------------------------------------------------------------
+
+namespace: woodland
+
+items:
+
+  moonbloom_sapling:
+    type: custom_crop
+    display-name: "<#bfe0ff>Moonbloom Sapling"
+    lore:
+      - "<gray>A lantern of silver leaves that glows in the night."
+      - "<dark_gray>Plant on grass or dirt."
+    resource:
+      texture: crop/moonbloom_sapling_1
+    crop:
+      stages:
+        - crop/moonbloom_sapling_0
+        - crop/moonbloom_sapling_1
+      stage-seconds: 300
+      min-light: 9
+      bone-meal: true
+      tree:
+        log: moonbloom_log
+        leaves: moonbloom_leaves
+        growth-seconds: 3.5
+        generation:
+          biomes: [minecraft:birch_forest, minecraft:old_growth_birch_forest, minecraft:pale_garden]
+          per-chunk: 1
+          chance: 0.15
+        blueprints:
+          - weight: 3
+            origin: [3, 3]
+            legend:
+              "#": log
+              "-": log-x
+              "|": log-z
+              "@": leaves
+            layers:
+              # y = 0
+              - [".", ".", ".", "...#", ".", ".", "."]
+              # y = 1
+              - [".", ".", ".", "...#", ".", ".", "."]
+              # y = 2
+              - [".", ".", ".", "...#", ".", ".", "."]
+              # y = 3
+              - [".", ".", ".", "...--", ".", ".", "."]
+              # y = 4
+              - [".", ".", ".", ".-----", ".-", ".", "."]
+              # y = 5
+              - [".", ".", ".....@", "...#@@@", ".-...@", ".", "."]
+              # y = 6
+              - [".", ".....@", ".", ".@.#.@", "@@@", ".@...@", "."]
+              # y = 7
+              - [".", ".....@", "...@", "..@#@.@", ".@.@", ".....@", "."]
+              # y = 8
+              - ["...@", ".@...@", "..@@@", "@.@#@.@", "..@@@", ".@...@", "...@"]
+              # y = 9
+              - ["...@", ".@.@.@", ".@@@@", "@@@@@@@", ".@@@@@", ".@.@.@", "...@"]
+              # y = 10
+              - [".", "..@@@", ".@@@@@", ".@@@@@", ".@@@@@", "..@@@", "."]
+              # y = 11
+              - [".", "...@", "..@@@", ".@@@@@", "..@@@", "...@@", "."]
+              # y = 12
+              - [".", ".", "..@@@", "..@@@", "..@@@", ".", "."]
+              # y = 13
+              - [".", ".", "...@", "..@@@", "...@", ".", "."]
+              # y = 14
+              - [".", ".", "...@", "..@@@", "...@", ".", "."]
+              # y = 15
+              - [".", ".", ".", "...@", ".", ".", "."]
+          - weight: 2
+            origin: [3, 3]
+            legend:
+              "#": log
+              "-": log-x
+              "|": log-z
+              "@": leaves
+            layers:
+              # y = 0
+              - [".", ".", ".", "...#", ".", ".", "."]
+              # y = 1
+              - [".", ".", ".", "...#", ".", ".", "."]
+              # y = 2
+              - [".", ".", ".", "...#", ".", ".", "."]
+              # y = 3
+              - [".", ".", ".", "...#", ".", ".", "."]
+              # y = 4
+              - [".", ".", ".....-", "...---", ".", ".", "."]
+              # y = 5
+              - [".", ".", ".....-", "..--", ".", ".", "."]
+              # y = 6
+              - [".", ".....@", "....@@@", ".--|.@", "...|", "...|", "."]
+              # y = 7
+              - [".", ".", ".@...@", "@@@##", ".@", "...|", "."]
+              # y = 8
+              - [".....@", ".", ".@.....@", ".@..#", "...@", "..@@@", "...@"]
+              # y = 9
+              - ["...@.@", ".", ".@..@..@", "...@#@", "....@", "...@", "."]
+              # y = 10
+              - ["...@.@", ".", ".@.@@@.@", "...@#@", ".@.@@@.@", ".", "...@.@"]
+              # y = 11
+              - ["...@.@", "...@@", ".@.@@@.@", "..@@@@@", ".@.@@@.@", "...@@@", "...@.@"]
+              # y = 12
+              - [".", "...@@@", "..@@@@@", "..@@@@@", "..@@@@@", "...@@@", "."]
+              # y = 13
+              - [".", "...@@", "..@@@@", "..@@@@@", "..@@@@", "...@@", "."]
+              # y = 14
+              - [".", ".", "...@@@", "...@@@", "...@@@", ".", "."]
+              # y = 15
+              - [".", ".", "....@", "...@@@", "....@", ".", "."]
+              # y = 16
+              - [".", ".", "....@", "...@@@", "....@", ".", "."]
+              # y = 17
+              - [".", ".", ".", "....@", ".", ".", "."]
+          - weight: 2
+            origin: [3, 4]
+            legend:
+              "#": log
+              "-": log-x
+              "|": log-z
+              "@": leaves
+            layers:
+              # y = 0
+              - [".", ".", ".", ".", "...#", ".", "."]
+              # y = 1
+              - [".", ".", ".", ".", "...#", ".", "."]
+              # y = 2
+              - [".", ".", ".", ".", "...#", ".", "."]
+              # y = 3
+              - [".", ".", ".", ".", "..--", ".", "."]
+              # y = 4
+              - [".", ".", ".", ".", ".--#", ".", "."]
+              # y = 5
+              - [".", ".", ".", ".@.#..@", "@@@#", ".@...@", "."]
+              # y = 6
+              - ["...@", ".@", "...@", "..@#@.@", ".@.@", ".@...@", "."]
+              # y = 7
+              - ["...@", ".@...@", "..@@@", "@.@#@.@", "..@@@", ".@...@", "...@"]
+              # y = 8
+              - ["...@", ".@.@.@", "..@@@", "@@@@@@@", "..@@@", ".@.@@@", "...@"]
+              # y = 9
+              - [".", "..@@@", ".@@@@@", ".@@@@@", ".@@@@@", "..@@@", "."]
+              # y = 10
+              - [".", "..@@", ".@@@@", ".@@@@@", "..@@@", "...@@", "."]
+              # y = 11
+              - [".", ".", "..@@@", "..@@@", "..@@@", ".", "."]
+              # y = 12
+              - [".", ".", "...@", "..@@@", "...@", ".", "."]
+              # y = 13
+              - [".", ".", "...@", "..@@@", "...@", ".", "."]
+              # y = 14
+              - [".", ".", ".", "...@", ".", ".", "."]
+
+  moonbloom_log:
+    type: custom_block
+    display-name: "<#bfe0ff>Moonbloom Log"
+    resource:
+      parent: block/cube_column
+      textures:
+        side: block/moonbloom_log
+        end: block/moonbloom_log_top
+    block:
+      axis: true                 # lies along the face it is placed against, as logs do
+      tool: axe
+      hardness: 2
+      skill-xp: 2
+
+  moonbloom_planks:
+    type: custom_block
+    display-name: "<#bfe0ff>Moonbloom Planks"
+    resource:
+      texture: block/moonbloom_planks
+    block:
+      tool: axe
+      hardness: 2
+
+  moonbloom_leaves:
+    type: custom_block
+    display-name: "<#bfe0ff>Moonbloom Leaves"
+    resource:
+      model: block/moonbloom_leaves          # sparks drawn bright in the dark
+    block:
+      shape: leaves             # see-through, mined fast with shears or a hoe
+      drops:                    # without shears or silk touch
+        - {item: woodland:moonbloom_sapling, chance: 0.05}
+        - {item: STICK, amount: 1-2, chance: 0.02}
+
+recipes:
+
+  moonbloom_planks:
+    type: shapeless
+    ingredients: [woodland:moonbloom_log]
+    result: woodland:moonbloom_planks 4
+    group: woodland_planks
+    category: building

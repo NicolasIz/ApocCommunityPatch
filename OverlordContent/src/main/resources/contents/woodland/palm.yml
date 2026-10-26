@@ -1,0 +1,185 @@
+# ---------------------------------------------------------------------------
+#  Palm (5.5) - Leans to the sea and keeps its coconuts high.
+# ---------------------------------------------------------------------------
+#  A sapling planted on its soil grows, in two stages, into a tree drawn
+#  block by block below in its blueprints: one picked at random, turned and
+#  mirrored, coming up over a few seconds. Bone meal hurries it along.
+#  Its leaves are its own: they fall when the tree is cut down, dropping a
+#  sapling now and then; shears or silk touch take them whole.
+#
+#     /customgive <player> woodland:palm_sapling
+# ---------------------------------------------------------------------------
+
+namespace: woodland
+
+items:
+
+  palm_sapling:
+    type: custom_crop
+    display-name: "<#e0c27d>Palm Sapling"
+    lore:
+      - "<gray>Leans to the sea and keeps its coconuts high."
+      - "<dark_gray>Plant on sand."
+    resource:
+      texture: crop/palm_sapling_1
+    crop:
+      stages:
+        - crop/palm_sapling_0
+        - crop/palm_sapling_1
+      stage-seconds: 300
+      min-light: 9
+      soil: [SAND]
+      bone-meal: true
+      tree:
+        log: palm_log
+        leaves: palm_leaves
+        growth-seconds: 2.5
+        generation:
+          biomes: [minecraft:beach]
+          soil: [sand]
+          per-chunk: 1
+          chance: 0.3
+        blueprints:
+          - weight: 3
+            origin: [2, 5]
+            legend:
+              "#": log
+              "-": log-x
+              "|": log-z
+              "@": leaves
+              "o": palm_coconuts
+            layers:
+              # y = 0
+              - [".", ".", ".", ".", ".", "..#", ".", ".", ".", ".", "."]
+              # y = 1
+              - [".", ".", ".", ".", ".", "..#", ".", ".", ".", ".", "."]
+              # y = 2
+              - [".", ".", ".", ".", ".", "..##", ".", ".", ".", ".", "."]
+              # y = 3
+              - [".", ".", ".", ".", ".", "...#", ".", ".", ".", ".", "."]
+              # y = 4
+              - [".", ".", ".", ".", ".", "...#", ".", ".", ".", ".", "."]
+              # y = 5
+              - [".", ".", ".", ".", ".", "...##", ".", ".", ".", ".", "."]
+              # y = 6
+              - [".....@", ".", "..@.....@", ".", ".", "@...##....@", ".", ".", "..@.....@", ".", ".....@"]
+              # y = 7
+              - [".....@", ".....@", "..@.....@", "...@...@", ".", "@@..o#o..@@", ".....o", "...@...@", "..@.....@", ".....@", ".....@"]
+              # y = 8
+              - [".", ".", ".....@", ".....@", "....@.@", "..@@.#.@@", "....@.@", ".....@", ".....@", ".", "."]
+              # y = 9
+              - [".", ".", ".", ".", "....@@@", "....@@@", "....@@@", ".", ".", ".", "."]
+          - weight: 2
+            origin: [6, 3]
+            legend:
+              "#": log
+              "-": log-x
+              "|": log-z
+              "@": leaves
+              "o": palm_coconuts
+            layers:
+              # y = 0
+              - [".", ".", ".", "......#", ".", ".", ".", ".", ".", ".", ".", ".", "."]
+              # y = 1
+              - [".", ".", ".", "......#", ".", ".", ".", ".", ".", ".", ".", ".", "."]
+              # y = 2
+              - [".", ".", ".", "......#", ".", ".", ".", ".", ".", ".", ".", ".", "."]
+              # y = 3
+              - [".", ".", ".", "......#", "......#", ".", ".", ".", ".", ".", ".", ".", "."]
+              # y = 4
+              - [".", ".", ".", ".", "......#", ".", ".", ".", ".", ".", ".", ".", "."]
+              # y = 5
+              - [".", ".", ".", ".", "......#", ".", ".", ".", ".", ".", ".", ".", "."]
+              # y = 6
+              - [".", ".", ".", ".", "......#", "......#", ".", ".", ".", ".", ".", ".", "."]
+              # y = 7
+              - [".", ".", ".", ".", ".", "......#", ".", ".", ".", ".", ".", ".", "."]
+              # y = 8
+              - [".......@", ".", "...@", "..........@", ".", "@.....#", "......#", "............@", ".", "..@", ".........@", ".", ".....@"]
+              # y = 9
+              - [".......@", ".......@", "...@", "....@.....@", ".........@", "@@....o", ".....o#o", "......o....@@", "...@", "..@.....@", ".........@", ".....@", ".....@"]
+              # y = 10
+              - [".", ".", ".......@", "....@..@", ".....@@..@", "..@@....@", "....@.#.@", "....@....@@", "...@..@@", ".....@..@", ".....@", ".", "."]
+              # y = 11
+              - [".", ".", ".", ".", ".", ".....@@@", ".....@@@", ".....@@@", ".", ".", ".", ".", "."]
+          - weight: 2
+            origin: [7, 4]
+            legend:
+              "#": log
+              "-": log-x
+              "|": log-z
+              "@": leaves
+              "o": palm_coconuts
+            layers:
+              # y = 0
+              - [".", ".", ".", ".", ".......#", ".", ".", ".", "."]
+              # y = 1
+              - [".", ".", ".", ".", ".......#", ".", ".", ".", "."]
+              # y = 2
+              - [".", ".", ".", ".", "......##", ".", ".", ".", "."]
+              # y = 3
+              - [".", ".", ".", ".", "......#", ".", ".", ".", "."]
+              # y = 4
+              - [".", ".", ".", ".", ".....##", ".", ".", ".", "."]
+              # y = 5
+              - ["....@", ".", "..@...@", ".", "@...##..@", ".", "..@...@", ".", "....@"]
+              # y = 6
+              - ["....@", "....@", "..@...@", "...@.@", "@@.o#o.@@", "...@.@", "..@...@", "....@", "....@"]
+              # y = 7
+              - [".", ".", "....@", ".", "..@.#.@", ".", "....@", ".", "."]
+              # y = 8
+              - [".", ".", ".", "...@@@", "...@@@", "...@@@", ".", ".", "."]
+
+  palm_log:
+    type: custom_block
+    display-name: "<#e0c27d>Palm Log"
+    resource:
+      parent: block/cube_column
+      textures:
+        side: block/palm_log
+        end: block/palm_log_top
+    block:
+      axis: true                 # lies along the face it is placed against, as logs do
+      tool: axe
+      hardness: 2
+      skill-xp: 2
+
+  palm_planks:
+    type: custom_block
+    display-name: "<#e0c27d>Palm Planks"
+    resource:
+      texture: block/palm_planks
+    block:
+      tool: axe
+      hardness: 2
+
+  palm_leaves:
+    type: custom_block
+    display-name: "<#e0c27d>Palm Leaves"
+    resource:
+      texture: block/palm_leaves
+    block:
+      shape: leaves             # see-through, mined fast with shears or a hoe
+      drops:                    # without shears or silk touch
+        - {item: woodland:palm_sapling, chance: 0.05}
+        - {item: STICK, amount: 1-2, chance: 0.02}
+
+  palm_coconuts:
+    type: custom_block
+    display-name: "<#e0c27d>Coconut Cluster"
+    lore: ["<gray>Knock it down: a palm sapling may be inside."]
+    resource:
+      model: block/palm_coconuts
+    block:
+      shape: leaves
+      drops:
+        - {item: woodland:palm_sapling, chance: 0.3}
+
+recipes:
+
+  palm_planks:
+    type: shapeless
+    ingredients: [woodland:palm_log]
+    result: woodland:palm_planks 4
+    group: woodland_planks
+    category: building

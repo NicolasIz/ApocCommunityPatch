@@ -1,0 +1,188 @@
+# ---------------------------------------------------------------------------
+#  Weeping Willow (5.5) - Its curtains sweep the ground by still water.
+# ---------------------------------------------------------------------------
+#  A sapling planted on its soil grows, in two stages, into a tree drawn
+#  block by block below in its blueprints: one picked at random, turned and
+#  mirrored, coming up over a few seconds. Bone meal hurries it along.
+#  Its leaves are its own: they fall when the tree is cut down, dropping a
+#  sapling now and then; shears or silk touch take them whole.
+#
+#     /customgive <player> woodland:weeping_willow_sapling
+# ---------------------------------------------------------------------------
+
+namespace: woodland
+
+items:
+
+  weeping_willow_sapling:
+    type: custom_crop
+    display-name: "<#9cc34f>Weeping Willow Sapling"
+    lore:
+      - "<gray>Its curtains sweep the ground by still water."
+      - "<dark_gray>Plant on grass or dirt."
+    resource:
+      texture: crop/weeping_willow_sapling_1
+    crop:
+      stages:
+        - crop/weeping_willow_sapling_0
+        - crop/weeping_willow_sapling_1
+      stage-seconds: 300
+      min-light: 9
+      soil: [GRASS_BLOCK, DIRT, MUD]
+      bone-meal: true
+      tree:
+        log: weeping_willow_log
+        leaves: weeping_willow_leaves
+        growth-seconds: 3.5
+        generation:
+          biomes: [minecraft:swamp, minecraft:mangrove_swamp]
+          soil: [grass_block, dirt, mud]
+          per-chunk: 1
+          chance: 0.35
+        blueprints:
+          - weight: 3
+            origin: [4, 4]
+            legend:
+              "#": log
+              "-": log-x
+              "|": log-z
+              "@": leaves
+              "%": {block: leaves, chance: 0.7}
+              "f": weeping_willow_fronds
+            layers:
+              # y = 0
+              - [".", ".", ".", ".", "....#", ".", ".", ".", "."]
+              # y = 1
+              - [".", "....f", ".", "f.......f", "....#", ".", "f......f", "......f", "."]
+              # y = 2
+              - [".", ".f..@.f", ".", "@.......@", "....#", "........f", "@......@", "......@", "...f"]
+              # y = 3
+              - [".", ".@..%.@f", ".", "@.......%", "....#...f", "........@", "@......@", "......@", "...@f"]
+              # y = 4
+              - ["...f..f", ".@..%.%@", ".", "@.......@", "....#...@", "f......f@", "%......%", ".ff...%f", "...@@"]
+              # y = 5
+              - ["...@..@", ".@..@.@@", ".", "@.......%", "....#...%", "@......@@", "@......%", ".@@...%@", "...%@"]
+              # y = 6
+              - ["...@@@%", ".@@@@@@@", "@-...|.%", "@--..|.-%", "@@--||--@", "@--.|..@@", "@-..||.@", ".%@@@|%@", "...@@@"]
+              # y = 7
+              - ["...%@@%", ".@@@@@|%", "--@@@||@", "@@@@@@@--", "@@@@@@@@@", "@@@@@@@@%", "--@@@@@@", ".@@@@|@@", "...@@|"]
+              # y = 8
+              - ["...%@@%", ".%@@@@@%", "@@@@@@@@", "@@@@@@@@@", "@@@@@@@@@", "@@@@@@@@@", "@@@@@@@@", ".@@@@@@%", "...@@@"]
+              # y = 9
+              - [".", "...@@%", "..%@@@@", ".@@@@@@%", ".@@@@@@@", ".@@@@@@%", "..@@@@%", "...@@@", "."]
+          - weight: 2
+            origin: [3, 5]
+            legend:
+              "#": log
+              "-": log-x
+              "|": log-z
+              "@": leaves
+              "%": {block: leaves, chance: 0.7}
+              "f": weeping_willow_fronds
+            layers:
+              # y = 0
+              - [".", ".", ".", ".", ".", "...##", "...#", ".", ".", ".", "."]
+              # y = 1
+              - [".", ".", "..f", ".", "........f", "...#", ".", ".", "........f", "....f..f", "."]
+              # y = 2
+              - ["....f", ".", "..@", ".......ff", "........@", "f..#", ".", ".", "........@", "....@..@", "."]
+              # y = 3
+              - ["....@", "......f", ".f%", "f......@@", "........@f", "@..#", ".", ".......f", "......f.@", "....%f.%", "."]
+              # y = 4
+              - ["....%", "..f...@", ".@@", "@......@%", "........@@", "%..#", ".", ".......@", "f.....@.@", ".ff.@@.%", "."]
+              # y = 5
+              - ["....%", "..@.ff@", ".@@...f", "%......@@", "........@@", "@..##", "........f", ".......@", "@f....@.%", ".@@f@@.%", "."]
+              # y = 6
+              - ["....@", "..%.@@%", ".@@...@", "%......%@", "........@%", "@...#", "........@", ".......@", "@@....%.@", ".@@@@@.%", "."]
+              # y = 7
+              - ["....@@", "..@%@@%", "@@@...@%", "@@...|.@@", "@..|.|..@@", "@.-|||-.@", "%.-|||..%", "@%.|.|.@@", "@@%...@@%", ".%@@@%@%", "....%"]
+              # y = 8
+              - ["....%@", "..@@@@|", "%@@@@||%", "@@|@@|@@%", "@@||@@@@@%", "@@@@@@--@", "@--@@@@--", "@@@|@|@@@", "@@@|@|@@%", ".%@@@@@@", "....%"]
+              # y = 9
+              - ["....@", "..@@@@@", "@@@@@@@%", "@@@@@@@@@", "@@@@@@@@@", "@@@@@@@@@", "@@@@@@@@@", "@@@@@@@@@", "%@@@@@@@@", ".@@@@@@%", "....%"]
+              # y = 10
+              - [".", "....%", "..@@@@%", ".%@@@@@%", ".@@@@@@@", "@@@@@@@@@", ".@@@@@@@", ".@@@@@@%", "..@@@@%", "....@", "."]
+          - weight: 2
+            origin: [4, 3]
+            legend:
+              "#": log
+              "-": log-x
+              "|": log-z
+              "@": leaves
+              "%": {block: leaves, chance: 0.7}
+              "f": weeping_willow_fronds
+            layers:
+              # y = 0
+              - [".", ".", ".", "....#", ".", ".", ".", ".", "."]
+              # y = 1
+              - ["...f", ".", ".", "....#...f", ".", ".......f", ".ff....f", "..ff", "."]
+              # y = 2
+              - ["...@", "..f", ".", "....#...@", ".......f", ".f.....@f", ".@@....@", "..@@", "...f"]
+              # y = 3
+              - ["...@", "..@f.f", "..f...ff", "....#..f@", ".f.....@", "f@.....@@", ".%%....@", "..%@.f", "...@"]
+              # y = 4
+              - ["...@", "..%@.@", "..@...@@", "....#..@@", ".@..#..@", "@@.....@@", ".@@....@", "..@@.@", "...@"]
+              # y = 5
+              - ["...@", "..@@@@%", ".@@..|@%", ".@.|.|.@%", ".@.|||-@@", "%@--||.@@", ".%@..|@@", "..@@%@@", "...@"]
+              # y = 6
+              - ["...@", "..@@@@|", ".@|@@||@", ".@||@@@@@", ".@@@@@--@", "@--@@@@@@", ".-@@@||%", "..%@@@|", "...@..|"]
+              # y = 7
+              - [".", "..@@@@@", ".@@@@@@@", ".@@@@@@@", ".@@@@@@@@", ".@@@@@@@", ".@@@@@@@", "..%@@@@", "."]
+              # y = 8
+              - [".", "...@@%", "..%@@@%", ".@@@@@@@", ".@@@@@@@", ".@@@@@@@", "..@@@@@", "...%@@", "."]
+
+  weeping_willow_log:
+    type: custom_block
+    display-name: "<#9cc34f>Weeping Willow Log"
+    resource:
+      parent: block/cube_column
+      textures:
+        side: block/weeping_willow_log
+        end: block/weeping_willow_log_top
+    block:
+      axis: true                 # lies along the face it is placed against, as logs do
+      tool: axe
+      hardness: 2
+      skill-xp: 2
+
+  weeping_willow_planks:
+    type: custom_block
+    display-name: "<#9cc34f>Weeping Willow Planks"
+    resource:
+      texture: block/weeping_willow_planks
+    block:
+      tool: axe
+      hardness: 2
+
+  weeping_willow_leaves:
+    type: custom_block
+    display-name: "<#9cc34f>Weeping Willow Leaves"
+    resource:
+      texture: block/weeping_willow_leaves
+    block:
+      shape: leaves             # see-through, mined fast with shears or a hoe
+      drops:                    # without shears or silk touch
+        - {item: woodland:weeping_willow_sapling, chance: 0.05}
+        - {item: STICK, amount: 1-2, chance: 0.02}
+
+  weeping_willow_fronds:
+    type: custom_block
+    display-name: "<#9cc34f>Weeping Willow Fronds"
+    lore: ["<gray>The trailing tips of a willow's curtains."]
+    resource:
+      parent: block/cross
+      textures:
+        cross: block/weeping_willow_fronds
+    block:
+      shape: leaves
+      drops:
+        - {item: woodland:weeping_willow_sapling, chance: 0.02}
+
+recipes:
+
+  weeping_willow_planks:
+    type: shapeless
+    ingredients: [woodland:weeping_willow_log]
+    result: woodland:weeping_willow_planks 4
+    group: woodland_planks
+    category: building

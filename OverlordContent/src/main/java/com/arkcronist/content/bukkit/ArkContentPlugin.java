@@ -121,6 +121,7 @@ public final class ArkContentPlugin extends JavaPlugin {
     private com.arkcronist.content.bukkit.block.LeavesRegistry leavesRegistry;
     private com.arkcronist.content.bukkit.tree.LeavesDecay leavesDecay;
     private com.arkcronist.content.bukkit.block.LeavesNormalizer leavesNormalizer;
+    private com.arkcronist.content.bukkit.listener.StateGuardListener stateGuard;
     private CopperRecipes copperRecipes;
     /** 5.4: blocks mined with their own tool; null until enabled. */
     private com.arkcronist.content.bukkit.block.BlockMining blockMining;
@@ -348,6 +349,9 @@ public final class ArkContentPlugin extends JavaPlugin {
         plugins.registerEvents(leavesDecay, this);
         this.leavesNormalizer = new com.arkcronist.content.bukkit.block.LeavesNormalizer(this, leavesRegistry);
         plugins.registerEvents(leavesNormalizer, this);
+        // 5.5: what a change beside a custom note block or custom leaves made vanilla work out again, set back.
+        this.stateGuard = new com.arkcronist.content.bukkit.listener.StateGuardListener(this, blockService, leavesRegistry);
+        plugins.registerEvents(stateGuard, this);
         try {
             PickBlockListener picks = new PickBlockListener(blockService, shapedBlocks, itemFactory);
             picks.pickLeavesFrom(leavesRegistry);
@@ -699,6 +703,9 @@ public final class ArkContentPlugin extends JavaPlugin {
             }
             if (leavesNormalizer != null) {
                 shutdownStep(leavesNormalizer::stop);
+            }
+            if (stateGuard != null) {
+                shutdownStep(stateGuard::stop);
             }
         }
         if (emotes != null) {

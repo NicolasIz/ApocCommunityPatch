@@ -1,0 +1,53 @@
+# ---------------------------------------------------------------------------
+#  Woodland recipes (5.5): what any of the thirteen kinds of planks make.
+#  Each kind of log makes its own planks - see its file.
+# ---------------------------------------------------------------------------
+
+namespace: woodland
+
+recipes:
+
+  woodland_sticks:
+    type: shaped
+    pattern:
+      - "P"
+      - "P"
+    ingredients:
+      P: [woodland:weeping_willow_planks, woodland:baobab_planks, woodland:palm_planks, woodland:red_maple_planks, woodland:frostpine_planks, woodland:wisteria_planks, woodland:emberwood_planks, woodland:cloudpuff_planks, woodland:spiralwood_planks, woodland:sunshade_planks, woodland:toadstool_planks, woodland:gnarlwood_planks, woodland:moonbloom_planks]
+    result: STICK 4
+    group: woodland_sticks
+    category: misc
+
+  woodland_crafting_table:
+    type: shaped
+    pattern:
+      - "PP"
+      - "PP"
+    ingredients:
+      P: [woodland:weeping_willow_planks, woodland:baobab_planks, woodland:palm_planks, woodland:red_maple_planks, woodland:frostpine_planks, woodland:wisteria_planks, woodland:emberwood_planks, woodland:cloudpuff_planks, woodland:spiralwood_planks, woodland:sunshade_planks, woodland:toadstool_planks, woodland:gnarlwood_planks, woodland:moonbloom_planks]
+    result: CRAFTING_TABLE
+    group: woodland_crafting_table
+    category: misc
+
+  woodland_chest:
+    type: shaped
+    pattern:
+      - "PPP"
+      - "P P"
+      - "PPP"
+    ingredients:
+      P: [woodland:weeping_willow_planks, woodland:baobab_planks, woodland:palm_planks, woodland:red_maple_planks, woodland:frostpine_planks, woodland:wisteria_planks, woodland:emberwood_planks, woodland:cloudpuff_planks, woodland:spiralwood_planks, woodland:sunshade_planks, woodland:toadstool_planks, woodland:gnarlwood_planks, woodland:moonbloom_planks]
+    result: CHEST
+    group: woodland_chest
+    category: misc
+
+  woodland_bowl:
+    type: shaped
+    pattern:
+      - "P P"
+      - " P "
+    ingredients:
+      P: [woodland:weeping_willow_planks, woodland:baobab_planks, woodland:palm_planks, woodland:red_maple_planks, woodland:frostpine_planks, woodland:wisteria_planks, woodland:emberwood_planks, woodland:cloudpuff_planks, woodland:spiralwood_planks, woodland:sunshade_planks, woodland:toadstool_planks, woodland:gnarlwood_planks, woodland:moonbloom_planks]
+    result: BOWL 4
+    group: woodland_bowl
+    category: misc

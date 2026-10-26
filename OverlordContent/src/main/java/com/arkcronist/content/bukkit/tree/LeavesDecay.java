@@ -133,7 +133,8 @@ public final class LeavesDecay implements Listener {
         }
         changed.add(new Spot(block.getWorld().getUID(), block.getX(), block.getY(), block.getZ()));
         if (task == null) {
-            task = plugin.getServer().getScheduler().runTaskLater(plugin, this::look, 2L);
+            // After StateGuardListener has set back what vanilla worked out again round the change.
+            task = plugin.getServer().getScheduler().runTaskLater(plugin, this::look, 4L);
         }
     }
 

@@ -1,0 +1,191 @@
+# ---------------------------------------------------------------------------
+#  Spiralwood (5.5) - Its leaves wind round it as it climbs.
+# ---------------------------------------------------------------------------
+#  A sapling planted on its soil grows, in two stages, into a tree drawn
+#  block by block below in its blueprints: one picked at random, turned and
+#  mirrored, coming up over a few seconds. Bone meal hurries it along.
+#  Its leaves are its own: they fall when the tree is cut down, dropping a
+#  sapling now and then; shears or silk touch take them whole.
+#
+#     /customgive <player> woodland:spiralwood_sapling
+# ---------------------------------------------------------------------------
+
+namespace: woodland
+
+items:
+
+  spiralwood_sapling:
+    type: custom_crop
+    display-name: "<#3fd0bc>Spiralwood Sapling"
+    lore:
+      - "<gray>Its leaves wind round it as it climbs."
+      - "<dark_gray>Plant on grass or dirt."
+    resource:
+      texture: crop/spiralwood_sapling_1
+    crop:
+      stages:
+        - crop/spiralwood_sapling_0
+        - crop/spiralwood_sapling_1
+      stage-seconds: 300
+      min-light: 9
+      bone-meal: true
+      tree:
+        log: spiralwood_log
+        leaves: spiralwood_leaves
+        growth-seconds: 3.5
+        generation:
+          biomes: [minecraft:jungle, minecraft:sparse_jungle, minecraft:bamboo_jungle]
+          per-chunk: 1
+          chance: 0.2
+        blueprints:
+          - weight: 3
+            origin: [3, 3]
+            legend:
+              "#": log
+              "-": log-x
+              "|": log-z
+              "@": leaves
+            layers:
+              # y = 0
+              - [".", ".", ".", "...#", ".", ".", "."]
+              # y = 1
+              - [".", ".", ".", "...#", "....#", ".", "."]
+              # y = 2
+              - [".", ".", ".", "...#", "...|", ".", "."]
+              # y = 3
+              - [".", ".", ".", ".@@#", ".@#", "..@", "."]
+              # y = 4
+              - [".", ".", "@@@", "@@-#", ".", ".", "."]
+              # y = 5
+              - ["..@", ".@@", ".@#", "...#", ".", ".", "."]
+              # y = 6
+              - ["..@@.@", "...@@", "...|", "...#", ".", ".", "."]
+              # y = 7
+              - [".....@", "....@@@", "....#@@", "...#", ".", ".", "."]
+              # y = 8
+              - [".", ".", ".....@@", "...#-.@@", ".....@@", ".", "."]
+              # y = 9
+              - [".", ".", ".", "...#", "....#@", "....@@@", "....@@"]
+              # y = 10
+              - [".", ".", ".", "...#", ".", "..@@@", "..@@@"]
+              # y = 11
+              - [".", ".", "...@", "..@#@", "@@@@", ".@@", "..@"]
+              # y = 12
+              - [".", ".", "@.@@@", "@@@@@", ".@@@@", ".", "."]
+              # y = 13
+              - [".", ".", "...@", "..@@@", "...@", ".", "."]
+          - weight: 2
+            origin: [3, 3]
+            legend:
+              "#": log
+              "-": log-x
+              "|": log-z
+              "@": leaves
+            layers:
+              # y = 0
+              - [".", ".", ".", "...#", ".", ".", "."]
+              # y = 1
+              - [".", ".", "....#", "...#", ".", ".", "."]
+              # y = 2
+              - [".", ".", "...|", "...#", ".", ".", "."]
+              # y = 3
+              - [".", "..@@", "..#@", "...#", ".", ".", "."]
+              # y = 4
+              - [".", ".@", ".@@", "@@-#", ".", ".", "."]
+              # y = 5
+              - [".", ".", ".", "@@.#", "@@#", ".@", "."]
+              # y = 6
+              - [".", ".", ".", "...#", ".@.|", "@.@@", ".@@"]
+              # y = 7
+              - [".", ".", ".", "...#", "....#", "...@@", "..@.@@"]
+              # y = 8
+              - [".", ".", ".", "...#-", ".....@@", "....@@@", ".....@"]
+              # y = 9
+              - [".", "......@", "....#@", "...#..@@", "......@@", ".", "."]
+              # y = 10
+              - ["....@@", "....@@@", "...|.@", "...#", ".", ".", "."]
+              # y = 11
+              - ["..@@@", "..@@@", "..#", "...#", ".", ".", "."]
+              # y = 12
+              - ["..@", ".@@", "@@", "...#", ".", ".", "."]
+              # y = 13
+              - [".", ".", "@@.@", "@@@#@", "@@.@", ".", "."]
+              # y = 14
+              - [".", ".", "..@@@", "..@@@", ".@@@@", ".@@", "."]
+              # y = 15
+              - [".", ".", "...@", "..@@@", "...@", ".", "."]
+          - weight: 2
+            origin: [3, 3]
+            legend:
+              "#": log
+              "-": log-x
+              "|": log-z
+              "@": leaves
+            layers:
+              # y = 0
+              - [".", ".", ".", "...#", ".", ".", "."]
+              # y = 1
+              - [".", ".", ".", "...#", "....#", ".", "."]
+              # y = 2
+              - [".", ".", ".", "...#", "...|", ".", "."]
+              # y = 3
+              - [".", ".", ".", ".@@#", ".@#", "..@", "."]
+              # y = 4
+              - [".", ".", "@@@", "@@-#", ".", ".", "."]
+              # y = 5
+              - [".@@", "@.@", ".@#", "...#", ".", ".", "."]
+              # y = 6
+              - ["..@@.@", "..@@@", "...|", "...#", ".", ".", "."]
+              # y = 7
+              - [".....@", "....@@@", "....#@@", "...#", ".", ".", "."]
+              # y = 8
+              - [".", ".", ".....@@", "...#.@@", ".....@@", ".", "."]
+              # y = 9
+              - [".", ".", "...@", "..@#@", "...@.@@", "....@@", "....@"]
+              # y = 10
+              - [".", ".", "..@@@", "..@@@", "..@@@", "..@@@", "..@@@"]
+              # y = 11
+              - [".", ".", "...@", "..@@@", "...@", ".", "."]
+
+  spiralwood_log:
+    type: custom_block
+    display-name: "<#3fd0bc>Spiralwood Log"
+    resource:
+      parent: block/cube_column
+      textures:
+        side: block/spiralwood_log
+        end: block/spiralwood_log_top
+    block:
+      axis: true                 # lies along the face it is placed against, as logs do
+      tool: axe
+      hardness: 2
+      skill-xp: 2
+
+  spiralwood_planks:
+    type: custom_block
+    display-name: "<#3fd0bc>Spiralwood Planks"
+    resource:
+      texture: block/spiralwood_planks
+    block:
+      tool: axe
+      hardness: 2
+
+  spiralwood_leaves:
+    type: custom_block
+    display-name: "<#3fd0bc>Spiralwood Leaves"
+    resource:
+      texture: block/spiralwood_leaves
+    block:
+      shape: leaves             # see-through, mined fast with shears or a hoe
+      drops:                    # without shears or silk touch
+        - {item: woodland:spiralwood_sapling, chance: 0.05}
+        - {item: STICK, amount: 1-2, chance: 0.02}
+
+recipes:
+
+  spiralwood_planks:
+    type: shapeless
+    ingredients: [woodland:spiralwood_log]
+    result: woodland:spiralwood_planks 4
+    group: woodland_planks
+    category: building

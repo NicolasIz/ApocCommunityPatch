@@ -38,10 +38,11 @@ import java.util.function.Consumer;
  * 5.5: keeps custom leaves what they are.
  *
  * <p>Custom leaves are persistent states of vanilla leaves blocks at distances 1 to 6 (see
- * {@link LeavesState}). Vanilla works a leaf's distance out again whenever a block next to it
- * changes, so for the leaves blocks that draw custom ones, every persistent leaf's update is
- * refused - custom ones and vanilla's own placed ones, which are held at distance 7 from the moment
- * they are placed. Leaves a tree grew, of vanilla's kind, are not persistent and left to vanilla.</p>
+ * {@link LeavesState}). Vanilla works a leaf's distance out again a tick after a block next to it
+ * changes; {@link StateGuardListener} sets it back. Here, a persistent leaf of a block in use that
+ * changes all the same tells nothing round it - custom ones and vanilla's own placed ones, which are
+ * held at distance 7 from the moment they are placed. Leaves a tree grew, of vanilla's kind, are not
+ * persistent and left to vanilla.</p>
  *
  * <p>Breaking custom leaves drops what theirs do - themselves to shears or silk touch, else their
  * {@code drops:} - and explosions, ravagers and anything else that destroys them the same, each
@@ -70,7 +71,7 @@ public final class CustomLeavesListener implements Listener {
         this.gone = gone;
     }
 
-    /** No persistent leaf of a block in use works its distance out again: that would make it other leaves. */
+    /** A persistent leaf of a block in use that changed tells nothing round it: no change spreads from it. */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPhysics(BlockPhysicsEvent event) {
         Block block = event.getBlock();
