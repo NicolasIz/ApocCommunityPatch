@@ -23,7 +23,10 @@ aparte, y llega a **Paper 26.1, 26.2 y 26.3**. La 5.0 inclina los vehículos seg
 y los hace chocar entre sí, devuelve a su sitio los bloques y líquidos que un rollback deja en aire,
 genera **menas propias** en los mundos nuevos y añade **emotes** corporales animados con Blockbench. La 5.3
 añade **bloques con forma** (losas, escaleras, bloques transparentes, puertas y trampillas propias) y
-**muebles que se unen en fila**, y se clican donde está su modelo. El mismo
+**muebles que se unen en fila**, y se clican donde está su modelo. La 5.4 hace que cada bloque se pique
+con **su herramienta y su dureza**, añade **retoños que crecen en árboles** propios (también en los chunks
+nuevos), **ítems con eventos y mecánicas** (rayos, golpes que curan, picar 3x3, autofundir…), una
+**API para otros plugins** y **muebles con estados** (un farol que se enciende con un clic). El mismo
 concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer.
 
 ```
@@ -81,6 +84,60 @@ el cliente real de Minecraft en 1.21.4, 1.21.11 y 26.3; ver «3.6.0» y «4.0.0�
 no.
 
 ---
+
+## 5.4.0 — Herramientas y dureza, árboles, ítems con mecánicas, API y muebles con estados
+
+- **Cada bloque con su herramienta y su dureza** (`block: tool:`, `tier:`, `hardness:`): un bloque de
+  rubí que pide pico de hierro y tarda lo que un bloque de hierro, unos tablones que se pican con
+  hacha. Con la herramienta equivocada tarda más y no suelta nada, como la piedra. Funciona también
+  en los bloques con forma de la 5.3. Sección 4, «Minado por herramienta y dureza».
+- **Retoños y árboles** (`crop: tree:`): un retoño se planta en hierba, crece solo o con harina de
+  hueso y se convierte en un árbol de tronco y copa propios (bloques del pack o de vanilla), con cinco
+  formas: redonda, cono, alta, arbusto y plana. Con `generation:` los mismos árboles aparecen en los
+  **chunks nuevos** de los mundos que digas, por bioma. Ejemplo: `demo:ruby_sapling` en
+  `contents/demo/trees.yml`. Sección 4, «Retoños y árboles».
+- **Ítems con eventos y mecánicas** (`events:`, `mechanics:`): al hacer clic, golpear, matar, romper un
+  bloque, comer, ponerse o quitarse, disparar o recibir daño, un ítem hace cosas —mensajes, sonidos,
+  partículas, comandos, efectos, daño, curar, proyectiles, rayos, impulsos, dar ítems, esperas—, con
+  condiciones y enfriamiento. Y mecánicas fijas: picar 3x3 o 5x5, autofundir, ligado al alma, robo de
+  vida, efectos al sostenerlo o llevarlo puesto, durabilidad propia. Ejemplos en
+  `contents/demo/mechanics.yml`. Sección 4, «Eventos y mecánicas de ítems».
+- **API para desarrolladores**: otros plugins crean y reconocen ítems, colocan y quitan bloques y
+  muebles, y oyen y cancelan lo que los jugadores hacen con ellos. `docs/api.md`.
+- **Muebles con estados** (`furniture: states:`): un farol que se enciende y se apaga con un clic, con su
+  modelo, su luz y su sonido en cada estado; **animación en reposo** (`animations: idle:`) para los
+  muebles de Blockbench, y un **asiento que también guarda cosas** (`interactable: [seat, storage]`).
+  Ejemplos en `contents/demo/furniture_states.yml`. Sección 4, «Muebles con estados».
+- **Con Geyser**: si un servidor ya no tiene estados de note block libres porque Bedrock los usa para
+  dibujar muebles, un bloque nuevo de Java se queda con uno de ellos (antes se quedaba sin dibujar). Los
+  muebles de Bedrock se vuelven a repartir lo que queda y el registro avisa.
+
+**Al actualizar:** los ejemplos nuevos (14 ficheros) llegan solos al arrancar y `blocks.yml` se pone al
+día si no lo habías tocado. Nada de lo que ya tenías cambia: un bloque sin `tool:` ni `hardness:` se
+pica como antes.
+
+### Lo comprobado para la 5.4.0
+
+- 647 pruebas automáticas.
+- **Con bots en Paper 1.21.8 y en 1.21.4** (un servidor que venía de la 5.3.0, que recibió los
+  ejemplos nuevos al arrancar):
+  - minado: 11 de 11 en cada uno, con los tiempos de vanilla (bloque de rubí con pico de hierro
+    1,25 s; con pico de piedra 6 s y sin soltar nada);
+  - retoños y árboles: 15 de 15 —crece con harina de hueso, no crece bajo un techo, las hojas de vanilla
+    saben su distancia, y en los chunks nuevos aparecen decenas de árboles propios—;
+  - ítems: 15 de 15 con los cuatro de ejemplo (3x3 sin tocar un cofre, autofundido, rayo con enfriamiento,
+    impulso, robo de vida, efectos al sostener, ligado al alma) y 9 de 9 con los demás disparadores
+    (ponerse, quitarse, recibir daño, comer, disparar, proyectil, comandos, esperas);
+  - muebles con estados: 11 de 11, y el farol sigue encendido después de reiniciar (4 de 4);
+  - API: 16 de 16 con un plugin de prueba aparte, compilado solo contra la API;
+  - la batería general de siempre: 12 de 12.
+- **Paper 26.3** con el **cliente real 26.3**: el plugin arranca y recibe los ejemplos; se ven los
+  iconos nuevos, los troncos y tablones de rubí, el farol encendido con un clic (ilumina el suelo de
+  noche), el baúl-asiento, el mímico, un retoño plantado y abonado convertido en árbol, y los árboles
+  generados en chunks nuevos. Los bots no pueden jugar en 26.3 (no hablan ese protocolo).
+- **No comprobado**: nada de esto en una pantalla de Bedrock. Se sabe que los jugadores de Bedrock ven
+  siempre el primer estado de un mueble con estados, y que el tiempo de picado en Bedrock es el de la
+  dureza escrita, sin la herramienta.
 
 ## 5.3.0 — Bloques con forma, muebles que se unen, cajas a medida y piezas redondas nuevas
 
@@ -776,7 +833,27 @@ Lo que hace el plugin para que sigan siendo tuyos:
 Comprobado que Geyser 2.8.4 acepta los 66 estados de los 5 bloques de ejemplo y que un cliente de
 Bedrock (un bot) recibe esos bloques; **no** se ha visto cómo se dibujan en una pantalla de Bedrock.
 
-### Muebles (ItemDisplay)
+### Minado por herramienta y dureza (`tool:`, `tier:`, `hardness:`) — 5.4
+
+Un bloque propio se pica, por defecto, como el bloque de vanilla con el que se dibuja: un note block
+(hacha, dureza 0,8) o, si tiene forma, un bloque de cobre (pico, dureza 3). Con estas claves se pica
+como uno de verdad:
+
+```yaml
+block:
+  tool: pickaxe        # pickaxe, axe, shovel, hoe, shears o none
+  tier: iron           # wood, stone, iron, diamond, netherite: lo mínimo que hace falta
+  hardness: 5          # la de vanilla: tierra 0.5, piedra 1.5, tablones 2, hierro 5, obsidiana 50;
+                       # 0 se rompe al instante, "unbreakable" nunca
+  requires-tool: true  # sin la herramienta no suelta nada (por defecto sí para el pico)
+```
+
+El cliente calcula el picado él solo, así que mientras alguien golpea uno de estos bloques el plugin
+le pone un modificador temporal en su atributo `block_break_speed` (nunca se guarda): el cliente dibuja
+las grietas a la velocidad buena y el servidor, que calcula igual, acepta la rotura. Herramientas de
+otros plugins con su propio componente de herramienta se juzgan como las de vanilla. En Bedrock el
+bloque tarda lo que dice su dureza.
+
 
 Un mueble es un **bloque de soporte invisible** (`BARRIER`, sólido, o `LIGHT`, atravesable y con luz
 opcional) y una entidad **`ItemDisplay`** en el centro de ese bloque que dibuja el modelo 3D. El
@@ -1162,7 +1239,34 @@ items:
   una transacción por mundo, al descargarse el mundo o apagar el servidor. Una base de datos de la
   1.0 gana la tabla sola al abrirla (esquema 1 → 2).
 
-### Emojis de chat
+### Retoños y árboles (`crop: tree:`) — 5.4
+
+Un retoño es un cultivo con `tree:`. Se planta en hierba, tierra, podsol, musgo o barro; tras sus
+etapas —una basta— crece solo, o antes con harina de hueso, en su árbol, si hay sitio para el tronco.
+
+```yaml
+crop:
+  stages: [crop/ruby_sapling]
+  tree:
+    log: ruby_log            # un bloque de este pack, de otro (namespace:id) o de vanilla (oak_log)
+    leaves: cherry_leaves
+    shape: round             # round (roble), cone (abeto), tall (abedul), bush, flat (acacia)
+    height: [4, 6]           # el tronco: un número o [mínimo, máximo]
+    radius: 2                # cuánto se abre la copa, 0-6
+    generation:              # opcional: árboles propios en los chunks nuevos
+      biomes: [minecraft:cherry_grove]
+      per-chunk: 1
+      chance: 0.25
+```
+
+- Antes de cambiar nada se lanza un `StructureGrowEvent` con todos los bloques del árbol, como con los
+  árboles de vanilla: WorldGuard, GriefPrevention, Lands o Towny deciden.
+- Las hojas de vanilla reciben su distancia al tronco; sobre un tronco propio no se caen (vanilla no lo
+  reconoce como madera), sobre uno de vanilla se caen como siempre.
+- Un tronco que no cabe (un techo encima) no crece, y la harina de hueso no se gasta.
+- `generation:` usa los hilos de generación de Paper, como las menas de la 5.0: un árbol entra entero o
+  no entra, y los chunks ya generados no cambian.
+
 
 ```yaml
 emojis:                         # en cualquier archivo de contenido
@@ -1563,7 +1667,31 @@ Con un bot (`mineflayer`) y leyendo lo que dice el propio servidor (`/data get e
 
 No se ha comprobado con un cliente de Bedrock de verdad.
 
-### Tablón de misiones (`medieval_bulletin_board`)
+### Muebles con estados, animación en reposo y asiento con baúl — 5.4
+
+**Estados** (`states:`): cada clic derecho pasa el mueble al siguiente; tras el último, vuelve al
+primero. Cada estado tiene su modelo y, si quieres, su luz (0-15, en soporte LIGHT o BARRIER) y su
+sonido. El primero es como se coloca. El estado se guarda en el propio mueble y sobrevive a los
+reinicios.
+
+```yaml
+furniture:
+  support: LIGHT
+  states:
+    - {name: "off", light: 0, sound: block.copper_bulb.turn_off}
+    - {name: "on", model: furniture/ruby_lantern_on, light: 14, sound: block.copper_bulb.turn_on}
+```
+
+Solo en muebles que no hacen otra cosa al clicarlos (sin `interactable`, sin modelo animado ni de
+ModelEngine, sin `connect`). Los jugadores de Bedrock ven siempre el primer estado.
+
+**Animación en reposo** (`animations: idle:`): una animación de Blockbench que se repite mientras el
+mueble está cargado, y vuelve cuando termina otra (no tras una que se queda en su última pose, como una
+tapa abierta, salvo la de cerrar). Ejemplo: `demo:ruby_mimic`, un cofre que tiembla hasta que lo abres.
+
+**Asiento que guarda cosas** (`interactable: [seat, storage]`): clic derecho para sentarse, agachado y
+clic derecho para abrirlo. Ejemplo: `demo:ruby_trunk_seat`.
+
 
 ```yaml
   medieval_bulletin_board:
@@ -1892,6 +2020,50 @@ Sobre el mismo servidor, con los archivos de la 1.9.5 sin tocar en `contents/med
 | `showcase medieval_props` | 60 muebles, 97 filas; el tick más lento 6,4 ms (25,3 ms la primera vez tras reiniciar, con todo en frío) |
 | La misma batería de bots | asientos, bebida (Speed 600 ticks, «Not yet: 9s»), `white_ash` a 0,44 bloques, caldero 16 paquetes en 3 s, carteles con su mensaje y su línea en consola, campana, buzón, guillotina (primer paquete de huesos 101-102 ms, impacto a 346 ms a 1,40 bloques, muerte y aviso; PvP denegado por WorldGuard), romperla (6 → 0 filas), barril guardado |
 | TPS | 20.0 / 19.99 / 20.0 con los 60 muebles; 67 paquetes de partículas por segundo |
+
+### Eventos y mecánicas de ítems (`events:`, `mechanics:`) — 5.4
+
+`events:` dice qué hace un ítem cuando el jugador hace algo con él; `mechanics:`, lo que hace siempre.
+La lista completa de disparadores, acciones y condiciones está en la cabecera de
+`contents/demo/mechanics.yml`.
+
+```yaml
+storm_staff:
+  material: STICK
+  events:
+    right-click:
+      - conditions: {sneaking: false}
+        cooldown: 4
+        cooldown-message: "<gray>Recargando... %seconds%s"
+        actions:
+          - lightning: target
+          - damage-item: 1
+      - conditions: {sneaking: true}
+        actions:
+          - launch: {forward: 1.4, up: 0.35}
+  mechanics:
+    durability: 64
+```
+
+- **Disparadores**: `right-click`, `left-click`, `hit-entity`, `kill`, `break-block`, `consume`,
+  `equip`, `unequip`, `shoot`, `damaged`.
+- **Acciones**: `message`, `actionbar`, `title`, `sound`, `particle`, `command`, `console-command`,
+  `effect`, `damage`, `heal`, `feed`, `projectile`, `lightning`, `launch`, `give`, `take-held`,
+  `damage-item`, `experience`, `wait`.
+- **Condiciones**: `chance`, `sneaking`, `permission`, `worlds`, `targets`, `blocks`; y `cooldown`.
+- **Mecánicas**: `big-mining` (3x3 o 5x5, `mining-depth`), `auto-smelt`, `soulbound`, `lifesteal`,
+  `held-effects`, `worn-effects`, `durability`.
+- **Protecciones**: lo que una acción hace a otro (daño, efectos, empujones, rayos) se pregunta antes a
+  los plugins de protección como un ataque del jugador; el daño cuenta como suyo. Cada bloque de más
+  que rompe `big-mining` es una rotura propia que se puede negar, y nunca rompe un bloque que guarde
+  cosas (cofres, hornos).
+
+### API para desarrolladores — 5.4
+
+`com.arkcronist.content.api.OverlordContentApi`, por los servicios de Bukkit: crear y reconocer ítems,
+colocar, quitar y encontrar bloques y muebles, cultivos, recargar. Y eventos cancelables al colocar,
+romper y usar bloques y muebles, y cuando un ítem va a reaccionar a un disparador. Todo en
+`docs/api.md`, con un ejemplo.
 
 ### Tienda (`price`)
 
