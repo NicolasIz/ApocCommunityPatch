@@ -1,6 +1,7 @@
 package com.arkcronist.content.bukkit.tree;
 
 import com.arkcronist.content.bukkit.block.BlockRegistry;
+import com.arkcronist.content.bukkit.block.LeavesRegistry;
 import com.arkcronist.content.bukkit.item.CustomItem;
 import com.arkcronist.content.bukkit.item.ItemRegistry;
 import com.arkcronist.content.core.definition.Placement;
@@ -79,7 +80,7 @@ public final class TreeGenerator extends BlockPopulator implements Listener {
     }
 
     /** The trees of this build: every sapling with a generation entry whose blocks exist. Main thread. */
-    public void publish(ItemRegistry items, BlockRegistry cubes) {
+    public void publish(ItemRegistry items, BlockRegistry cubes, LeavesRegistry leaves) {
         List<Grove> next = new ArrayList<>();
         for (CustomItem item : items.all()) {
             if (!(item.placement() instanceof Placement.Crop crop) || !crop.sapling()
@@ -87,7 +88,7 @@ public final class TreeGenerator extends BlockPopulator implements Listener {
                 continue;
             }
             List<String> problems = new ArrayList<>();
-            Optional<TreeBlocks> blocks = TreeBlocks.resolve(crop.tree(), items, cubes, problems);
+            Optional<TreeBlocks> blocks = TreeBlocks.resolve(crop.tree(), items, cubes, leaves, problems);
             if (blocks.isEmpty()) {
                 if (warned.add(item.id() + problems)) {
                     logger.warning(item.id() + ": its trees are not generated - " + String.join("; ", problems));
@@ -196,10 +197,8 @@ public final class TreeGenerator extends BlockPopulator implements Listener {
             int px = x + part.dx();
             int py = foot + part.dy();
             int pz = z + part.dz();
-            if (part.log()) {
-                region.setBlockData(px, py, pz, grove.blocks().log());
-            } else if (free(region.getType(px, py, pz))) {
-                region.setBlockData(px, py, pz, grove.blocks().leafAt(TreeBlocks.distance(part, parts)));
+            if (part.log() || free(region.getType(px, py, pz))) {
+                region.setBlockData(px, py, pz, grove.blocks().data(part, parts));
             }
         }
         return true;

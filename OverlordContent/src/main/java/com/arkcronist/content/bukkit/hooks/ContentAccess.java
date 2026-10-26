@@ -3,6 +3,8 @@ package com.arkcronist.content.bukkit.hooks;
 import com.arkcronist.content.bukkit.block.BlockRegistry;
 import com.arkcronist.content.bukkit.block.CustomBlock;
 import com.arkcronist.content.bukkit.block.CustomBlockService;
+import com.arkcronist.content.bukkit.block.CustomLeaves;
+import com.arkcronist.content.bukkit.block.LeavesRegistry;
 import com.arkcronist.content.bukkit.block.ShapedBlockRegistry;
 import com.arkcronist.content.bukkit.item.CustomItem;
 import com.arkcronist.content.bukkit.item.ItemFactory;
@@ -127,11 +129,24 @@ public final class ContentAccess {
         }
     }
 
+    /** 5.5: custom leaves, known by their state too; none until set. */
+    private @Nullable LeavesRegistry leaves;
+
+    public void useLeaves(LeavesRegistry leaves) {
+        this.leaves = leaves;
+    }
+
     /** The custom block standing at {@code block}, by id. */
     public Optional<String> blockAt(Block block) {
         Optional<String> drawn = shaped.byBase(block.getType()).map(CustomItem::id);
         if (drawn.isPresent()) {
             return drawn;
+        }
+        if (leaves != null) {
+            Optional<String> leaf = leaves.identify(block).map(hit -> hit.leaves().id());
+            if (leaf.isPresent()) {
+                return leaf;
+            }
         }
         CustomBlockService service = blockService.get();
         return service == null ? Optional.empty() : service.identify(block).map(CustomBlock::id);
@@ -143,6 +158,17 @@ public final class ContentAccess {
      * @return false, and nothing changed, when no custom block has that id
      */
     public boolean setBlock(Block block, String id) {
+        // 5.5: leaves, placed as a player places them - they stay.
+        Optional<CustomLeaves> leaf = leaves == null ? Optional.empty()
+                : items.find(id).flatMap(item -> leaves.get(item.id()));
+        if (leaf.isPresent()) {
+            CustomBlockService service = blockService.get();
+            if (service != null) {
+                service.identify(block).ifPresent(old -> service.forget(block, old, false));
+            }
+            block.setBlockData(leaves.state(leaf.get(), false, false), false);
+            return true;
+        }
         CustomBlockService service = blockService.get();
         Optional<CustomBlock> custom = items.find(id).flatMap(item -> blocks.get(item.id()));
         Optional<CustomItem> shape = items.find(id).flatMap(item -> shaped.get(item.id()));
@@ -171,6 +197,10 @@ public final class ContentAccess {
      * @return false, and nothing changed, when it is not one of this plugin's blocks
      */
     public boolean removeBlock(Block block) {
+        if (leaves != null && leaves.identify(block).isPresent()) {
+            block.setType(Material.AIR, false);
+            return true;
+        }
         if (shaped.claimed(block.getType())) {
             if (block.getBlockData() instanceof Door door) {
                 Block other = block.getRelative(door.getHalf() == Bisected.Half.TOP ? BlockFace.DOWN : BlockFace.UP);

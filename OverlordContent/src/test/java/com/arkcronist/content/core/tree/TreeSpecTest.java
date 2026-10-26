@@ -31,6 +31,10 @@ class TreeSpecTest {
     @Test
     void everyShapeHasItsTrunkFirstAndNoLeafInItsPlace() {
         for (TreeSpec.Shape shape : TreeSpec.Shape.values()) {
+            if (shape == TreeSpec.Shape.BLUEPRINT) {
+                // Drawn, not grown to a shape: BlueprintTest.
+                continue;
+            }
             TreeSpec spec = tree(shape, 3, 9, 3);
             for (long seed = 0; seed < 50; seed++) {
                 List<TreeSpec.Part> parts = spec.plan(seed);

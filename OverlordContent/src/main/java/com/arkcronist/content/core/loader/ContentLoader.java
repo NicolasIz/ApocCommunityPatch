@@ -930,10 +930,15 @@ public final class ContentLoader {
                     default -> furniture.support().name();
                 }
                 // A shaped block's copper block is decided by the build; until then, the first of its shape.
-                : shape.copper() ? shape.bases().get(0).toUpperCase(Locale.ROOT) : "NOTE_BLOCK";
+                : shape.copper() ? shape.bases().get(0).toUpperCase(Locale.ROOT)
+                // 5.5: leaves are the vanilla leaves block their state is of, decided by the build too.
+                : shape == BlockShape.LEAVES ? com.arkcronist.content.core.block.LeavesState.POOL.get(0)
+                        .toUpperCase(Locale.ROOT)
+                : "NOTE_BLOCK";
         if (section.containsKey("material")) {
             problems.add(prefix + "'material' is ignored - a " + type.yamlName() + " is always "
-                    + (shape.copper() ? "a waxed copper " + shape.yamlName() : material) + " underneath");
+                    + (shape.copper() ? "a waxed copper " + shape.yamlName()
+                    : shape == BlockShape.LEAVES ? "a vanilla leaves block" : material) + " underneath");
         }
         if (behaviour.cancelVanillaUse()) {
             problems.add(prefix + "'cancel-vanilla-use' is ignored - it would stop the "
@@ -1049,14 +1054,26 @@ public final class ContentLoader {
         }
         BlockShape shape = shape(section, prefix, problems);
         List<OreGeneration> generation = generation(section.get("generation"), prefix + "generation: ", problems);
-        if (shape.copper() && !generation.isEmpty()) {
+        if (shape != BlockShape.CUBE && !generation.isEmpty()) {
             problems.add(prefix + "generation: only a cube is laid into chunks as an ore, not a "
                     + shape.yamlName() + " - left out");
             generation = List.of();
         }
+        boolean axis = flag(section, "axis", false, prefix, problems);
+        if (axis && shape != BlockShape.CUBE) {
+            problems.add(prefix + "axis: only a cube lies on its side as a log, not a " + shape.yamlName() + " - it stands");
+            axis = false;
+        }
+        Placement.Leaves leaves = null;
+        if (shape == BlockShape.LEAVES) {
+            leaves = new Placement.Leaves(drops(section.get("drops"), prefix, problems),
+                    flag(section, "decay", true, prefix, problems));
+        } else if (section.containsKey("drops") || section.containsKey("decay")) {
+            problems.add(prefix + "'drops' and 'decay' are for shape: leaves - ignored");
+        }
         return new Placement.Block(flag(section, "drop-self", true, prefix, problems),
                 skillXp(section, prefix, problems), jobs(section, prefix, problems), generation, shape,
-                mining(section, prefix, problems));
+                mining(section, prefix, problems), axis, leaves);
     }
 
     /**
@@ -1126,7 +1143,7 @@ public final class ContentLoader {
         Optional<BlockShape> shape = BlockShape.parse(raw);
         if (shape.isEmpty()) {
             problems.add(prefix + "unknown block shape '" + raw.trim() + "' (cube, slab, stairs, transparent, door,"
-                    + " trapdoor) - made a cube");
+                    + " trapdoor, leaves) - made a cube");
             return BlockShape.CUBE;
         }
         return shape.get();
@@ -1858,6 +1875,8 @@ public final class ContentLoader {
      *   shape: round             # round, cone, tall, bush, flat
      *   height: [5, 7]           # or one number
      *   radius: 2
+     *   blueprints: [...]        # 5.5, instead of shape/height/radius: see BlueprintReader
+     *   growth-seconds: 2        # 5.5, blueprints: how long it takes to come up
      *   generation:              # optional: trees of their own in new chunks
      *     per-chunk: 2
      *     chance: 0.3
@@ -1880,19 +1899,39 @@ public final class ContentLoader {
                     + " the sapling is a crop");
             return null;
         }
+        List<com.arkcronist.content.core.tree.TreeSpec.Generation> generation =
+                treeGeneration(section.get("generation"), prefix + "generation: ", problems);
+        // 5.5: drawn block by block, the shape and size its blueprints'.
+        if (section.containsKey("blueprints")) {
+            List<com.arkcronist.content.core.tree.TreeBlueprint> blueprints =
+                    com.arkcronist.content.core.tree.BlueprintReader.read(section.get("blueprints"), namespace,
+                            prefix + "blueprints: ", problems);
+            if (!blueprints.isEmpty()) {
+                for (String ignored : List.of("shape", "height", "radius")) {
+                    if (section.containsKey(ignored)) {
+                        problems.add(prefix + "'" + ignored + "' is ignored - the blueprints draw the tree");
+                    }
+                }
+                double growth = number(section, "growth-seconds", 2, 0,
+                        com.arkcronist.content.core.tree.TreeSpec.MAX_GROWTH_SECONDS, prefix, problems);
+                return com.arkcronist.content.core.tree.TreeSpec.drawn(log, leaves, blueprints, generation, growth);
+            }
+            problems.add(prefix + "blueprints: none could be read - the tree grows to its shape instead");
+        }
         com.arkcronist.content.core.tree.TreeSpec.Shape shape = com.arkcronist.content.core.tree.TreeSpec.Shape.ROUND;
         String rawShape = text(section, "shape", prefix, problems);
         if (rawShape != null) {
             Optional<com.arkcronist.content.core.tree.TreeSpec.Shape> parsed =
                     com.arkcronist.content.core.tree.TreeSpec.Shape.parse(rawShape);
-            if (parsed.isEmpty()) {
-                problems.add(prefix + "unknown shape '" + rawShape.trim() + "' (round, cone, tall, bush, flat) - round");
+            if (parsed.isEmpty() || parsed.get() == com.arkcronist.content.core.tree.TreeSpec.Shape.BLUEPRINT) {
+                problems.add(prefix + "unknown shape '" + rawShape.trim() + "' (round, cone, tall, bush, flat; or"
+                        + " blueprints:) - round");
             } else {
                 shape = parsed.get();
             }
         }
         int[] fallback = switch (shape) {
-            case ROUND -> new int[]{4, 6};
+            case ROUND, BLUEPRINT -> new int[]{4, 6};
             case CONE -> new int[]{6, 9};
             case TALL -> new int[]{7, 11};
             case BUSH -> new int[]{1, 2};
@@ -1918,8 +1957,11 @@ public final class ContentLoader {
         }
         int radius = (int) number(section, "radius", shape == com.arkcronist.content.core.tree.TreeSpec.Shape.FLAT ? 3 : 2,
                 0, com.arkcronist.content.core.tree.TreeSpec.MAX_RADIUS, prefix, problems);
+        if (section.containsKey("growth-seconds")) {
+            problems.add(prefix + "'growth-seconds' is for blueprints - a shape's tree is there at once");
+        }
         return new com.arkcronist.content.core.tree.TreeSpec(log, leaves, shape, minHeight, maxHeight, radius,
-                treeGeneration(section.get("generation"), prefix + "generation: ", problems));
+                generation);
     }
 
     /**
@@ -2161,13 +2203,13 @@ public final class ContentLoader {
             return List.of();
         }
         if (!(node instanceof List<?> list)) {
-            problems.add(prefix + "'crop.drops' should be a list");
+            problems.add(prefix + "'drops' should be a list");
             return List.of();
         }
         List<Placement.Drop> drops = new ArrayList<>();
         for (Object entry : list) {
             if (!(entry instanceof Map<?, ?> drop) || drop.get("item") == null) {
-                problems.add(prefix + "each of 'crop.drops' needs at least 'item'");
+                problems.add(prefix + "each of 'drops' needs at least 'item'");
                 continue;
             }
             String item = String.valueOf(drop.get("item")).trim();

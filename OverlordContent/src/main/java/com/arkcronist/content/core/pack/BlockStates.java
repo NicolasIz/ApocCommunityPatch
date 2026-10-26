@@ -1,6 +1,7 @@
 package com.arkcronist.content.core.pack;
 
 import com.arkcronist.content.core.block.BlockShape;
+import com.arkcronist.content.core.block.LeavesState;
 import com.arkcronist.content.core.block.NoteBlockState;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -108,6 +109,25 @@ public final class BlockStates {
             }
         }
         return states;
+    }
+
+    /**
+     * 5.5: the vanilla leaves blocks of {@link LeavesState#POOL} another pack draws with a block state
+     * file of its own: none is handed to custom leaves of ours.
+     */
+    public static Set<String> leavesDrawn(PackSource source) throws IOException {
+        Set<String> drawn = new TreeSet<>();
+        for (String material : LeavesState.POOL) {
+            String file = "assets/minecraft/blockstates/" + material + ".json";
+            boolean has = source.has(file);
+            for (String overlay : source.overlays().keySet()) {
+                has |= source.has(overlay + "/" + file);
+            }
+            if (has) {
+                drawn.add(material);
+            }
+        }
+        return drawn;
     }
 
     /**

@@ -37,12 +37,20 @@ public sealed interface Placement {
      */
     record Block(boolean dropSelf, double skillXp, Map<String, JobReward> jobs,
                  List<com.arkcronist.content.core.generation.OreGeneration> generation,
-                 BlockShape shape, @Nullable com.arkcronist.content.core.block.Mining mining) implements Placement {
+                 BlockShape shape, @Nullable com.arkcronist.content.core.block.Mining mining, boolean axis,
+                 @Nullable Leaves leaves) implements Placement {
 
         public Block {
             jobs = Map.copyOf(jobs);
             generation = List.copyOf(generation);
             java.util.Objects.requireNonNull(shape, "shape");
+        }
+
+        /** One that does not turn, and is not leaves (5.4). */
+        public Block(boolean dropSelf, double skillXp, Map<String, JobReward> jobs,
+                     List<com.arkcronist.content.core.generation.OreGeneration> generation,
+                     BlockShape shape, @Nullable com.arkcronist.content.core.block.Mining mining) {
+            this(dropSelf, skillXp, jobs, generation, shape, mining, false, null);
         }
 
         public Block(boolean dropSelf, double skillXp, Map<String, JobReward> jobs,
@@ -52,7 +60,7 @@ public sealed interface Placement {
 
         /** The same block drawn as another shape - a see-through block made a cube when no grate is left. */
         public Block withShape(BlockShape other) {
-            return new Block(dropSelf, skillXp, jobs, generation, other, mining);
+            return new Block(dropSelf, skillXp, jobs, generation, other, mining, axis, leaves);
         }
 
         public Block(boolean dropSelf, double skillXp, Map<String, JobReward> jobs,
@@ -77,9 +85,29 @@ public sealed interface Placement {
             return shape == BlockShape.CUBE;
         }
 
+        /** 5.5: the ways it lies, each a note block state: upright only, or all three as a log. */
+        public List<com.arkcronist.content.core.block.BlockAxis> axes() {
+            return axis ? List.of(com.arkcronist.content.core.block.BlockAxis.values())
+                    : List.of(com.arkcronist.content.core.block.BlockAxis.Y);
+        }
+
         @Override
         public ContentType type() {
             return ContentType.CUSTOM_BLOCK;
+        }
+    }
+
+    /**
+     * 5.5: what custom leaves - {@code block: shape: leaves} - do of their own.
+     *
+     * @param drops  what they drop when broken by anything but shears or silk touch, each tried on its
+     *               own; their own item with those
+     * @param decays whether leaves a tree grew fall, dropping that, once no log holds them
+     */
+    record Leaves(List<Drop> drops, boolean decays) {
+
+        public Leaves {
+            drops = List.copyOf(drops);
         }
     }
 

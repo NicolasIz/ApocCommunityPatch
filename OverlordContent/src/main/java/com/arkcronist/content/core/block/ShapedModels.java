@@ -48,7 +48,7 @@ public final class ShapedModels {
     /** The models each shape's block state names, the main one first. */
     public static List<Part> parts(BlockShape shape) {
         return switch (shape) {
-            case CUBE, TRANSPARENT -> List.of();
+            case CUBE, TRANSPARENT, LEAVES -> List.of();
             case SLAB -> List.of(part("", "block/slab"), part("_top", "block/slab_top"),
                     part("_double", "block/cube_bottom_top"));
             case STAIRS -> List.of(part("", "block/stairs"), part("_inner", "block/inner_stairs"),

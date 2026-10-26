@@ -2,6 +2,7 @@ package com.arkcronist.content.bukkit.block;
 
 import com.arkcronist.content.bukkit.item.CustomItem;
 import com.arkcronist.content.bukkit.item.ItemFactory;
+import com.arkcronist.content.core.block.BlockAxis;
 import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.storage.PlacedContent;
@@ -66,6 +67,17 @@ public final class CustomBlockService {
     /** The custom block an item places, if it is a custom block's item and that block got a state. */
     public Optional<CustomBlock> forItem(CustomItem item) {
         return item.placement() instanceof Placement.Block ? blocks.get(item.id()) : Optional.empty();
+    }
+
+    /**
+     * 5.5: the custom block an item places lying {@code axis} - upright for a block that does not
+     * turn as a log does.
+     */
+    public Optional<CustomBlock> forItem(CustomItem item, BlockAxis axis) {
+        if (!(item.placement() instanceof Placement.Block block)) {
+            return Optional.empty();
+        }
+        return block.axis() ? blocks.get(item.id(), axis) : blocks.get(item.id());
     }
 
     /** Turns a note block just placed into the custom block, and records it. */

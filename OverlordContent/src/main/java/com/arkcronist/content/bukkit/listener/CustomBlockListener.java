@@ -8,11 +8,13 @@ import com.arkcronist.content.bukkit.hooks.SkillXpHook;
 import com.arkcronist.content.bukkit.item.CustomItem;
 import com.arkcronist.content.bukkit.item.ItemFactory;
 import com.arkcronist.content.bukkit.protection.Protection;
+import com.arkcronist.content.core.block.BlockAxis;
 import com.arkcronist.content.core.definition.Placement;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
@@ -92,12 +94,33 @@ public final class CustomBlockListener implements Listener {
         if (block.getType() != Material.NOTE_BLOCK || !blocks.active()) {
             return;
         }
-        Optional<CustomBlock> custom = items.identify(event.getItemInHand()).flatMap(blocks::forItem);
+        BlockAxis axis = axis(event);
+        Optional<CustomBlock> custom = items.identify(event.getItemInHand()).flatMap(item -> blocks.forItem(item, axis));
         if (custom.isPresent()) {
             blocks.place(block, custom.get());
         } else {
             blocks.pinVanilla(block);
         }
+    }
+
+    /**
+     * 5.5: the way a log placed lies, as vanilla's do: along the line of the face clicked. Placed in
+     * the block clicked - into grass - by where the player looks: up or down, upright; else along it.
+     */
+    private static BlockAxis axis(BlockPlaceEvent event) {
+        BlockFace face = event.getBlockAgainst().getFace(event.getBlockPlaced());
+        if (face == null || face == BlockFace.SELF) {
+            Location eye = event.getPlayer().getEyeLocation();
+            if (Math.abs(eye.getPitch()) > 45) {
+                return BlockAxis.Y;
+            }
+            face = event.getPlayer().getFacing();
+        }
+        return switch (face) {
+            case EAST, WEST -> BlockAxis.X;
+            case NORTH, SOUTH -> BlockAxis.Z;
+            default -> BlockAxis.Y;
+        };
     }
 
     /** No tuning: a right click would move the block to the next note - another custom block. */

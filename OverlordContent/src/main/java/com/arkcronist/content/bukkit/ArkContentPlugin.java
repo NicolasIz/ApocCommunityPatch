@@ -117,6 +117,10 @@ public final class ArkContentPlugin extends JavaPlugin {
     private StackRepairListener stackRepair;
     private BlockRegistry blocks;
     private ShapedBlockRegistry shapedBlocks;
+    /** 5.5: custom leaves, by the vanilla leaves state each is. */
+    private com.arkcronist.content.bukkit.block.LeavesRegistry leavesRegistry;
+    private com.arkcronist.content.bukkit.tree.LeavesDecay leavesDecay;
+    private com.arkcronist.content.bukkit.block.LeavesNormalizer leavesNormalizer;
     private CopperRecipes copperRecipes;
     /** 5.4: blocks mined with their own tool; null until enabled. */
     private com.arkcronist.content.bukkit.block.BlockMining blockMining;
@@ -221,6 +225,7 @@ public final class ArkContentPlugin extends JavaPlugin {
         this.stackRepair = new StackRepairListener(this, itemFactory);
         this.blocks = new BlockRegistry();
         this.shapedBlocks = new ShapedBlockRegistry();
+        this.leavesRegistry = new com.arkcronist.content.bukkit.block.LeavesRegistry();
         this.copperRecipes = new CopperRecipes(getServer(), getLogger());
         this.emojis = new EmojiRegistry();
         this.database = new DatabaseManager(getDataFolder().toPath().resolve("data").resolve("world_content.db"),
@@ -311,7 +316,8 @@ public final class ArkContentPlugin extends JavaPlugin {
         // 5.4: saplings grow into trees; their trees in new chunks, as the ores.
         this.treeGenerator = new com.arkcronist.content.bukkit.tree.TreeGenerator(getLogger(),
                 settings.generation().enabled());
-        crops.growTreesWith(new com.arkcronist.content.bukkit.tree.TreeGrower(items, blocks, blockService, getLogger()));
+        crops.growTreesWith(new com.arkcronist.content.bukkit.tree.TreeGrower(this, items, blocks, leavesRegistry,
+                blockService, getLogger()));
 
         PluginManager plugins = getServer().getPluginManager();
         plugins.registerEvents(new PackDeliveryListener(delivery, settings, getLogger()), this);
@@ -330,8 +336,22 @@ public final class ArkContentPlugin extends JavaPlugin {
         ShapedBlockListener shapedListener = new ShapedBlockListener(shapedBlocks, itemFactory, protection, hooks);
         shapedListener.dropNothingFor(blockMining::dropless);
         plugins.registerEvents(shapedListener, this);
+        // 5.5: custom leaves held as they are, dropping their own; grown ones falling once no log holds them.
+        com.arkcronist.content.bukkit.block.LeafDrops leafDrops =
+                new com.arkcronist.content.bukkit.block.LeafDrops(items, itemFactory);
+        this.leavesDecay = new com.arkcronist.content.bukkit.tree.LeavesDecay(this, leavesRegistry, blocks, leafDrops);
+        com.arkcronist.content.bukkit.listener.CustomLeavesListener leavesListener =
+                new com.arkcronist.content.bukkit.listener.CustomLeavesListener(leavesRegistry, itemFactory, leafDrops,
+                        protection, hooks);
+        leavesListener.whenGone(leavesDecay::changed);
+        plugins.registerEvents(leavesListener, this);
+        plugins.registerEvents(leavesDecay, this);
+        this.leavesNormalizer = new com.arkcronist.content.bukkit.block.LeavesNormalizer(this, leavesRegistry);
+        plugins.registerEvents(leavesNormalizer, this);
         try {
-            plugins.registerEvents(new PickBlockListener(blockService, shapedBlocks, itemFactory), this);
+            PickBlockListener picks = new PickBlockListener(blockService, shapedBlocks, itemFactory);
+            picks.pickLeavesFrom(leavesRegistry);
+            plugins.registerEvents(picks, this);
         } catch (LinkageError missing) {
             // A 1.21.4 build from before Paper's pick event: the middle click picks the block underneath.
             getLogger().fine("No pick event on this server: " + missing);
@@ -346,9 +366,11 @@ public final class ArkContentPlugin extends JavaPlugin {
             getLogger().warning("No armour event on this server: items' equip and unequip events are not set off (" + missing + ")");
         }
         // 5.4: the developer API - a service other plugins load - and its events.
-        this.api = new com.arkcronist.content.bukkit.api.ApiService(this,
+        com.arkcronist.content.bukkit.hooks.ContentAccess apiAccess =
                 new com.arkcronist.content.bukkit.hooks.ContentAccess(items, itemFactory, blocks, shapedBlocks,
-                        this::customBlocks));
+                        this::customBlocks);
+        apiAccess.useLeaves(leavesRegistry);
+        this.api = new com.arkcronist.content.bukkit.api.ApiService(this, apiAccess);
         getServer().getServicesManager().register(com.arkcronist.content.api.OverlordContentApi.class, api, this,
                 org.bukkit.plugin.ServicePriority.Normal);
         plugins.registerEvents(new com.arkcronist.content.bukkit.api.ApiEventBridge(this), this);
@@ -672,6 +694,12 @@ public final class ArkContentPlugin extends JavaPlugin {
         if (ores != null) {
             shutdownStep(() -> ores.detach(getServer().getWorlds()));
             shutdownStep(() -> treeGenerator.detach(getServer().getWorlds()));
+            if (leavesDecay != null) {
+                shutdownStep(leavesDecay::stop);
+            }
+            if (leavesNormalizer != null) {
+                shutdownStep(leavesNormalizer::stop);
+            }
         }
         if (emotes != null) {
             shutdownStep(() -> emotes.shutdown());
@@ -739,6 +767,19 @@ public final class ArkContentPlugin extends JavaPlugin {
     }
 
     /** 5.3: every loaded slab, stairs, transparent block, door and trapdoor, by the copper block it is. */
+    /** 5.5: custom leaves. */
+    public com.arkcronist.content.bukkit.block.LeavesRegistry leavesRegistry() {
+        return leavesRegistry;
+    }
+
+    public com.arkcronist.content.bukkit.tree.LeavesDecay leavesDecay() {
+        return leavesDecay;
+    }
+
+    public com.arkcronist.content.bukkit.block.LeavesNormalizer leavesNormalizer() {
+        return leavesNormalizer;
+    }
+
     public ShapedBlockRegistry shapedBlocks() {
         return shapedBlocks;
     }

@@ -1,7 +1,9 @@
 package com.arkcronist.content.core.pack;
 
 import com.arkcronist.content.core.animation.AnimatedModel;
+import com.arkcronist.content.core.block.BlockAxis;
 import com.arkcronist.content.core.block.BlockShape;
+import com.arkcronist.content.core.block.LeavesState;
 import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.block.ShapedModels;
 import com.arkcronist.content.core.definition.AdvancementDefinition;
@@ -242,12 +244,24 @@ public final class PackCompiler {
      *                        {@code sounds/} go into {@code assets/<its folder name>/} as they are;
      *                        null takes no sounds
      * @param icons           flat 16 x 16 item models of the plugin's own, for its menus' buttons
+     * @param leavesStates    5.5: the slot each custom leaves block is drawn through, by full id; empty
+     *                        leaves vanilla's leaves untouched
      */
     public record Input(Collection<ItemDefinition> items, Map<String, NoteBlockState> noteBlockStates,
                         Map<EmojiDefinition, Integer> glyphs, Collection<AdvancementDefinition> advancements,
                         Map<String, Integer> modelData, Map<String, Integer> liquidSlots, List<HudGlyph> hudGlyphs,
                         boolean spaces, List<ExternalPack> externalPacks, @Nullable Path contentsDir,
-                        List<Icon> icons) {
+                        List<Icon> icons, Map<String, LeavesState> leavesStates) {
+
+        /** No custom leaves. */
+        public Input(Collection<ItemDefinition> items, Map<String, NoteBlockState> noteBlockStates,
+                     Map<EmojiDefinition, Integer> glyphs, Collection<AdvancementDefinition> advancements,
+                     Map<String, Integer> modelData, Map<String, Integer> liquidSlots, List<HudGlyph> hudGlyphs,
+                     boolean spaces, List<ExternalPack> externalPacks, @Nullable Path contentsDir,
+                     List<Icon> icons) {
+            this(items, noteBlockStates, glyphs, advancements, modelData, liquidSlots, hudGlyphs, spaces, externalPacks,
+                    contentsDir, icons, Map.of());
+        }
 
         /** No icons of the plugin's own. */
         public Input(Collection<ItemDefinition> items, Map<String, NoteBlockState> noteBlockStates,
@@ -314,6 +328,7 @@ public final class PackCompiler {
             run.item(item);
         }
         run.noteBlockStates(ordered, noteBlockStates);
+        run.leaves(ordered, input.leavesStates());
         run.modelData(ordered, modelData);
         run.liquids(ordered, input.liquidSlots());
         run.font(glyphs, input.hudGlyphs(), input.spaces());
@@ -928,14 +943,28 @@ public final class PackCompiler {
                     models.put(item.fullId(), item.model().location());
                 }
             }
-            Map<String, String> byVariant = new HashMap<>();
+            Map<String, JsonObject> byVariant = new HashMap<>();
             for (Map.Entry<String, NoteBlockState> entry : new TreeMap<>(states).entrySet()) {
-                ResourceLocation model = models.get(entry.getKey());
+                // 5.5: a log lying on its side is its upright model turned, as vanilla turns its logs.
+                BlockAxis axis = BlockAxis.of(entry.getKey());
+                ResourceLocation model = models.get(BlockAxis.base(entry.getKey()));
                 if (model == null) {
-                    problems.add(entry.getKey() + ": has a note block state but no model - it will look like a note block");
+                    if (axis == BlockAxis.Y) {
+                        problems.add(entry.getKey() + ": has a note block state but no model - it will look like a"
+                                + " note block");
+                    }
                     continue;
                 }
-                byVariant.put(entry.getValue().variantKey(), model.toString());
+                JsonObject variant = new JsonObject();
+                variant.addProperty("model", model.toString());
+                int[] turn = axis.rotation();
+                if (turn[0] != 0) {
+                    variant.addProperty("x", turn[0]);
+                }
+                if (turn[1] != 0) {
+                    variant.addProperty("y", turn[1]);
+                }
+                byVariant.put(entry.getValue().variantKey(), variant);
                 customBlockStates++;
             }
 
@@ -944,8 +973,11 @@ public final class PackCompiler {
                 for (int note = 0; note < NoteBlockState.NOTES; note++) {
                     for (boolean powered : new boolean[] {false, true}) {
                         String key = new NoteBlockState(instrument, note, powered).variantKey();
-                        JsonObject variant = new JsonObject();
-                        variant.addProperty("model", byVariant.getOrDefault(key, VANILLA_NOTE_BLOCK));
+                        JsonObject variant = byVariant.get(key);
+                        if (variant == null) {
+                            variant = new JsonObject();
+                            variant.addProperty("model", VANILLA_NOTE_BLOCK);
+                        }
                         variants.add(key, variant);
                     }
                 }
@@ -954,6 +986,57 @@ public final class PackCompiler {
             root.add("variants", variants);
             Files.createDirectories(packDir.resolve("assets/minecraft/blockstates"));
             place("assets/minecraft/blockstates/note_block.json", json(root), "note blocks");
+        }
+
+        /**
+         * 5.5: {@code assets/minecraft/blockstates/<leaves>.json} for every vanilla leaves block that
+         * draws custom leaves: all 28 of its states, the persistent ones at distance 1 to 6 that a
+         * custom leaves block holds drawn as it - waterlogged or not, grown or placed - and every
+         * other as vanilla draws it, with vanilla's own model of that block.
+         */
+        void leaves(List<ItemDefinition> ordered, Map<String, LeavesState> states) throws IOException {
+            if (states.isEmpty()) {
+                return;
+            }
+            Map<String, ResourceLocation> models = new HashMap<>();
+            for (ItemDefinition item : ordered) {
+                if (item.model() != null) {
+                    models.put(item.fullId(), item.model().location());
+                }
+            }
+            Map<String, Map<Integer, String>> drawn = new TreeMap<>();
+            for (Map.Entry<String, LeavesState> entry : new TreeMap<>(states).entrySet()) {
+                ResourceLocation model = models.get(entry.getKey());
+                if (model == null) {
+                    problems.add(entry.getKey() + ": has a leaves state but no model - it will look like "
+                            + entry.getValue().material());
+                    continue;
+                }
+                drawn.computeIfAbsent(entry.getValue().material(), material -> new HashMap<>())
+                        .put(entry.getValue().slot(), model.toString());
+            }
+            Files.createDirectories(packDir.resolve("assets/minecraft/blockstates"));
+            for (Map.Entry<String, Map<Integer, String>> material : drawn.entrySet()) {
+                String vanilla = "minecraft:block/" + material.getKey();
+                JsonObject variants = new JsonObject();
+                for (int distance = 1; distance <= LeavesState.VANILLA_DISTANCE; distance++) {
+                    for (boolean persistent : new boolean[] {false, true}) {
+                        for (boolean waterlogged : new boolean[] {false, true}) {
+                            String model = vanilla;
+                            if (persistent && distance < LeavesState.VANILLA_DISTANCE) {
+                                model = material.getValue().getOrDefault((distance - 1) / 2, vanilla);
+                            }
+                            JsonObject variant = new JsonObject();
+                            variant.addProperty("model", model);
+                            variants.add(LeavesState.variantKey(distance, persistent, waterlogged), variant);
+                        }
+                    }
+                }
+                customBlockStates += material.getValue().size() * 4;
+                JsonObject root = new JsonObject();
+                root.add("variants", variants);
+                place("assets/minecraft/blockstates/" + material.getKey() + ".json", json(root), "custom leaves");
+            }
         }
 
         /**

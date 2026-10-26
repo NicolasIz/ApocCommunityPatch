@@ -1,5 +1,6 @@
 package com.arkcronist.content.bukkit.block;
 
+import com.arkcronist.content.core.block.BlockAxis;
 import com.arkcronist.content.core.block.NoteBlockState;
 import org.bukkit.Material;
 import org.bukkit.block.data.BlockData;
@@ -19,24 +20,39 @@ import java.util.Optional;
  */
 public final class BlockRegistry {
 
-    private record Snapshot(Map<String, CustomBlock> byId, Map<Integer, CustomBlock> byState) {
+    private record Snapshot(Map<String, CustomBlock> byId, Map<Integer, CustomBlock> byState,
+                            Map<String, CustomBlock> byKey) {
     }
 
-    private volatile Snapshot snapshot = new Snapshot(Map.of(), Map.of());
+    private volatile Snapshot snapshot = new Snapshot(Map.of(), Map.of(), Map.of());
 
     /** Replaces everything. Main thread, once per rebuild. */
     public void replace(Collection<CustomBlock> blocks) {
         Map<String, CustomBlock> byId = new HashMap<>();
         Map<Integer, CustomBlock> byState = new HashMap<>();
+        Map<String, CustomBlock> byKey = new HashMap<>();
         for (CustomBlock block : blocks) {
-            byId.put(block.id(), block);
+            if (block.axis() == BlockAxis.Y) {
+                byId.put(block.id(), block);
+            }
+            byKey.put(block.axis().key(block.id()), block);
             byState.put(block.state().index(), block);
         }
-        this.snapshot = new Snapshot(Map.copyOf(byId), Map.copyOf(byState));
+        this.snapshot = new Snapshot(Map.copyOf(byId), Map.copyOf(byState), Map.copyOf(byKey));
     }
 
+    /** The block upright: what its item places unless it is a log placed on its side. */
     public Optional<CustomBlock> get(String id) {
         return Optional.ofNullable(snapshot.byId().get(id));
+    }
+
+    /**
+     * 5.5: the block lying {@code axis} - itself upright, and upright too when it does not turn, or
+     * its turned state could not be given.
+     */
+    public Optional<CustomBlock> get(String id, BlockAxis axis) {
+        CustomBlock turned = snapshot.byKey().get(axis.key(id));
+        return turned != null ? Optional.of(turned) : get(id);
     }
 
     /** The custom block this block data draws, if it is one. */
@@ -58,6 +74,7 @@ public final class BlockRegistry {
         return snapshot.byId().isEmpty();
     }
 
+    /** Blocks, each counted once however many ways it lies. */
     public int size() {
         return snapshot.byId().size();
     }

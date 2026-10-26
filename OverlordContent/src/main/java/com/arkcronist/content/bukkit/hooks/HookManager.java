@@ -331,6 +331,9 @@ public final class HookManager {
         // same place, so an id means the same thing in all of them.
         ContentAccess content = new ContentAccess(plugin.items(), plugin.itemFactory(), plugin.blocks(),
                 plugin.shapedBlocks(), plugin::customBlocks);
+        if (plugin.leavesRegistry() != null) {
+            content.useLeaves(plugin.leavesRegistry());
+        }
         // 2.0: a hook that changes blocks (WorldEdit) tells the integrity check, made after the hooks.
         content.onSupportTouched((world, x, z) -> {
             var sanity = plugin.sanity();

@@ -1,5 +1,6 @@
 package com.arkcronist.content.core.geyser;
 
+import com.arkcronist.content.core.block.BlockAxis;
 import com.arkcronist.content.core.block.BlockShape;
 import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.block.ShapedModels;
@@ -200,10 +201,20 @@ public final class BedrockConverter {
 
     /** A custom block: its note block state and its model. */
     public record BlockSpec(String id, NoteBlockState state, ResourceLocation model, String displayName,
-                            float destroySeconds) {
+                            float destroySeconds, BlockAxis axis) {
+
+        public BlockSpec(String id, NoteBlockState state, ResourceLocation model, String displayName,
+                         float destroySeconds) {
+            this(id, state, model, displayName, destroySeconds, BlockAxis.Y);
+        }
 
         public BlockSpec(String id, NoteBlockState state, ResourceLocation model, String displayName) {
             this(id, state, model, displayName, NOTE_BLOCK_SECONDS);
+        }
+
+        /** 5.5: a log lying {@code axis}, broken in the time a note block takes. */
+        public BlockSpec(String id, NoteBlockState state, ResourceLocation model, String displayName, BlockAxis axis) {
+            this(id, state, model, displayName, NOTE_BLOCK_SECONDS, axis);
         }
     }
 
@@ -875,7 +886,8 @@ public final class BedrockConverter {
 
     private @Nullable BedrockBlock block(BlockSpec block) {
         JavaModel model = model(block.model());
-        String name = name(block.id());
+        // 5.5: a log on its side is a block of its own on Bedrock, named for the way it lies.
+        String name = name(block.id()) + (block.axis() == BlockAxis.Y ? "" : "_" + block.axis().vanilla());
         if (model == null || model.elements().isEmpty()) {
             problems.add(block.id() + ": its model could not be read for Bedrock - it shows as a note block there");
             return null;
@@ -889,6 +901,9 @@ public final class BedrockConverter {
                 materials.put(face.getKey().key(), material(face.getValue().texture(), false));
             }
             materials.put("*", materials.getOrDefault("north", materials.values().iterator().next()));
+            if (block.axis() != BlockAxis.Y) {
+                materials = onItsSide(materials, block.axis());
+            }
         } else {
             List<BedrockCube> cubes = blockCubes(model);
             if (!BedrockGeometry.fits(cubes)) {
@@ -900,6 +915,25 @@ public final class BedrockConverter {
         }
         return new BedrockBlock(name, block.state().asBlockData(), geometry, materials, true, true, 0,
                 block.destroySeconds(), 0, block.displayName());
+    }
+
+    /**
+     * 5.5: a full cube's faces as a log lying {@code axis} shows them: its top and bottom at the ends,
+     * its side all round. Bedrock draws each face's texture upright, so the bark's grain runs across
+     * the log instead of along it - as near as a full block's faces come without a geometry turned.
+     */
+    static Map<String, Material> onItsSide(Map<String, Material> upright, BlockAxis axis) {
+        Material side = upright.getOrDefault("north", upright.get("*"));
+        Material top = upright.getOrDefault("up", side);
+        Material bottom = upright.getOrDefault("down", top);
+        Map<String, Material> turned = new LinkedHashMap<>();
+        for (String face : List.of("up", "down", "north", "south", "east", "west")) {
+            turned.put(face, side);
+        }
+        turned.put(axis == BlockAxis.X ? "east" : "north", top);
+        turned.put(axis == BlockAxis.X ? "west" : "south", bottom);
+        turned.put("*", side);
+        return turned;
     }
 
     private void liquid(LiquidSpec liquid, List<BedrockBlock> blocks) {

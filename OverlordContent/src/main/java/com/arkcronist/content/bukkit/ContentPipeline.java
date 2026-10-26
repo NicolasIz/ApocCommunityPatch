@@ -11,6 +11,9 @@ import com.arkcronist.content.core.advancement.AdvancementCompiler;
 import com.arkcronist.content.core.allocation.StableAllocator;
 import com.arkcronist.content.core.block.BlockShape;
 import com.arkcronist.content.core.block.CopperBaseAllocator;
+import com.arkcronist.content.core.block.BlockAxis;
+import com.arkcronist.content.core.block.LeavesAllocator;
+import com.arkcronist.content.core.block.LeavesState;
 import com.arkcronist.content.core.block.NoteBlockAllocator;
 import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.definition.EmojiDefinition;
@@ -448,31 +451,48 @@ public final class ContentPipeline {
      */
     record Extras(@Nullable MinigameRenderer.Glyphs minigame, @Nullable BedrockConverter.Build bedrock,
                   @Nullable Path bedrockPack, List<String> brokenShaders, List<RecipeDefinition> recipes,
-                  Map<String, List<Placement.Hitbox.Box>> hitboxes) {
+                  Map<String, List<Placement.Hitbox.Box>> hitboxes, LeavesBuild leaves) {
 
-        static final Extras NONE = new Extras(null, null, null, List.of(), List.of(), Map.of());
+        static final Extras NONE = new Extras(null, null, null, List.of(), List.of(), Map.of(), LeavesBuild.NONE);
 
         /** 5.3: the boxes each piece of furniture is clicked by, by id; none for one left out. */
         Extras withHitboxes(Map<String, List<Placement.Hitbox.Box>> hitboxes) {
-            return new Extras(minigame, bedrock, bedrockPack, brokenShaders, recipes, Map.copyOf(hitboxes));
+            return new Extras(minigame, bedrock, bedrockPack, brokenShaders, recipes, Map.copyOf(hitboxes), leaves);
         }
 
         Extras withMinigame(@Nullable MinigameRenderer.Glyphs minigame) {
-            return new Extras(minigame, bedrock, bedrockPack, brokenShaders, recipes, hitboxes);
+            return new Extras(minigame, bedrock, bedrockPack, brokenShaders, recipes, hitboxes, leaves);
         }
 
         Extras withBedrock(BedrockConverter.Build bedrock, Path bedrockPack) {
-            return new Extras(minigame, bedrock, bedrockPack, brokenShaders, recipes, hitboxes);
+            return new Extras(minigame, bedrock, bedrockPack, brokenShaders, recipes, hitboxes, leaves);
         }
 
         Extras withBrokenShaders(List<String> brokenShaders) {
-            return new Extras(minigame, bedrock, bedrockPack, List.copyOf(brokenShaders), recipes, hitboxes);
+            return new Extras(minigame, bedrock, bedrockPack, List.copyOf(brokenShaders), recipes, hitboxes, leaves);
         }
 
         /** 4.0: the recipes to register, each naming only items this build has. */
         Extras withRecipes(List<RecipeDefinition> recipes) {
-            return new Extras(minigame, bedrock, bedrockPack, brokenShaders, List.copyOf(recipes), hitboxes);
+            return new Extras(minigame, bedrock, bedrockPack, brokenShaders, List.copyOf(recipes), hitboxes, leaves);
         }
+
+        /** 5.5: the custom leaves' states. */
+        Extras withLeaves(LeavesBuild leaves) {
+            return new Extras(minigame, bedrock, bedrockPack, brokenShaders, recipes, hitboxes, leaves);
+        }
+    }
+
+    /**
+     * 5.5: the leaves states of one rebuild.
+     *
+     * @param active    the slot each custom leaves block defined now got, by id
+     * @param materials the vanilla leaves blocks drawing custom ones, retired ones included: their
+     *                  persistent leaves are held as they are, whatever is placed next to them
+     */
+    record LeavesBuild(Map<String, LeavesState> active, Set<String> materials) {
+
+        static final LeavesBuild NONE = new LeavesBuild(Map.of(), Set.of());
     }
 
     private final ArkContentPlugin plugin;
@@ -493,6 +513,8 @@ public final class ContentPipeline {
     private final Path noteBlockStateFile;
     /** 5.3: the waxed copper block each shaped custom block is drawn through. */
     private final Path copperBaseFile;
+    /** 5.5: the leaves state slot each custom leaves block is drawn through. */
+    private final Path leavesStateFile;
     /** 3.0: the note block states Bedrock players are shown furniture through. */
     private final Path carrierFile;
     /** 5.4: whether a build has been published since the server started. */
@@ -564,6 +586,7 @@ public final class ContentPipeline {
         this.packDir = data.resolve("pack");
         this.zipFile = data.resolve("output").resolve("resource_pack.zip");
         this.noteBlockStateFile = data.resolve("data").resolve("note_block_states.json");
+        this.leavesStateFile = data.resolve("data").resolve("leaves_states.json");
         this.copperBaseFile = data.resolve("data").resolve("copper_block_bases.json");
         this.carrierFile = data.resolve("data").resolve("bedrock_carriers.json");
         this.bedrockDir = data.resolve("output").resolve("bedrock");
@@ -710,6 +733,7 @@ public final class ContentPipeline {
         return CompletableFuture.supplyAsync(this::loadItems, worker)
                 .thenApplyAsync(this::assignCopperBases, worker)
                 .thenApplyAsync(this::assignNoteBlockStates, worker)
+                .thenApplyAsync(this::assignLeavesStates, worker)
                 .thenApplyAsync(this::assignEmojiCharacters, worker)
                 .thenApplyAsync(this::assignModelData, worker)
                 .thenApplyAsync(this::assignLiquidStates, worker)
@@ -811,6 +835,18 @@ public final class ContentPipeline {
      * planted on.
      */
     private static void checkCrops(Map<String, CustomItem> items, List<String> problems) {
+        for (CustomItem item : items.values()) {
+            // 5.5: what custom leaves drop, the same way.
+            if (item.placement() instanceof Placement.Block block && block.leaves() != null) {
+                for (Placement.Drop drop : block.leaves().drops()) {
+                    boolean custom = items.containsKey(drop.item());
+                    Material material = custom ? null : Material.matchMaterial(drop.item());
+                    if (!custom && (material == null || !material.isItem() || material.isAir())) {
+                        problems.add(item.id() + ": drop '" + drop.item() + "' is neither a custom item nor a material");
+                    }
+                }
+            }
+        }
         for (CustomItem item : items.values()) {
             if (!(item.placement() instanceof Placement.Crop crop)) {
                 continue;
@@ -953,9 +989,11 @@ public final class ContentPipeline {
      */
     private Build assignNoteBlockStates(Build build) {
         try {
+            // 5.5: a log has a state for each way it lies, under its id with the way's suffix.
             List<String> blockIds = build.items().values().stream()
                     .filter(item -> item.placement() instanceof Placement.Block block && block.noteBlock())
-                    .map(CustomItem::id)
+                    .flatMap(item -> ((Placement.Block) item.placement()).axes().stream()
+                            .map(axis -> axis.key(item.id())))
                     .toList();
             Map<String, Integer> previous = NoteBlockAllocator.read(noteBlockStateFile);
             if (blockIds.isEmpty() && previous.isEmpty()) {
@@ -990,6 +1028,49 @@ public final class ContentPipeline {
             }
             build.problems().addAll(allocation.problems());
             return build.withNoteBlocks(allocation.active());
+        } catch (IOException exception) {
+            throw new UncheckedIOException(exception);
+        }
+    }
+
+    /**
+     * 5.5: a leaves state slot for every custom leaves block - the one it had before, or the lowest
+     * free one - kept in data/leaves_states.json, as note block states are. The leaves' item is made
+     * of the vanilla leaves block its slot is of, so placing it places that block; one left without a
+     * slot is made of paper, which places nothing.
+     */
+    private Build assignLeavesStates(Build build) {
+        try {
+            List<String> leaves = build.items().values().stream()
+                    .filter(item -> item.placement() instanceof Placement.Block block && block.leaves() != null)
+                    .map(CustomItem::id)
+                    .toList();
+            Map<String, Integer> previous = LeavesAllocator.read(leavesStateFile);
+            if (leaves.isEmpty() && previous.isEmpty()) {
+                return build;
+            }
+            Set<String> reserved = new java.util.HashSet<>();
+            for (ExternalPack pack : mergedPacks()) {
+                try (PackSource source = PackSource.open(pack)) {
+                    reserved.addAll(com.arkcronist.content.core.pack.BlockStates.leavesDrawn(source));
+                }
+            }
+            LeavesAllocator.Allocation allocation = LeavesAllocator.allocate(previous, leaves, reserved);
+            if (allocation.changed()) {
+                LeavesAllocator.write(leavesStateFile, allocation.assignments());
+            }
+            build.problems().addAll(allocation.problems());
+            Map<String, CustomItem> made = new LinkedHashMap<>();
+            for (CustomItem item : build.items().values()) {
+                if (item.placement() instanceof Placement.Block block && block.leaves() != null) {
+                    LeavesState state = allocation.active().get(item.id());
+                    Material material = state == null ? null : Material.matchMaterial(state.material());
+                    item = item.withMaterial(material == null ? Material.PAPER : material);
+                }
+                made.put(item.id(), item);
+            }
+            return build.withItems(made).withExtras(build.extras().withLeaves(
+                    new LeavesBuild(Map.copyOf(allocation.active()), Set.copyOf(allocation.materials()))));
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
@@ -1194,7 +1275,7 @@ public final class ContentPipeline {
                     // Numbers given only for Bedrock change nothing in the Java pack.
                     settings.pack().modelData().enabled() ? build.modelData() : Map.of(), build.liquids(),
                     build.hudGlyphs(), settings.pack().negativeSpaces(),
-                    mergedPacks(), contentsDir, builtinIcons()));
+                    mergedPacks(), contentsDir, builtinIcons(), build.extras().leaves().active()));
             build.problems().addAll(result.problems());
             result.notes().forEach(note -> logger.info("[pack] " + note));
             return build.withExtras(build.extras().withBrokenShaders(result.brokenShaders()));
@@ -1571,13 +1652,17 @@ public final class ContentPipeline {
                 items.add(new BedrockConverter.ItemSpec(item.id(), material, definition.itemModel(), model,
                         build.modelData().get(item.id()), name, handheld, uses(definition), worn(definition, material)));
             }
-            NoteBlockState state = build.noteBlocks().get(item.id());
             // 5.4: a block of its own hardness takes its own time on Bedrock too.
             com.arkcronist.content.core.block.Mining mining = item.placement() instanceof Placement.Block placed
                     ? placed.mining() : null;
-            if (state != null && model != null) {
-                blocks.add(mining == null ? new BedrockConverter.BlockSpec(item.id(), state, model, name)
-                        : new BedrockConverter.BlockSpec(item.id(), state, model, name, mining.bedrockSeconds()));
+            List<BlockAxis> axes = item.placement() instanceof Placement.Block placed ? placed.axes() : List.of(BlockAxis.Y);
+            for (BlockAxis axis : axes) {
+                NoteBlockState state = build.noteBlocks().get(axis.key(item.id()));
+                if (state != null && model != null) {
+                    // 5.5: each way a log lies, its own block for Bedrock players, turned as it is.
+                    blocks.add(mining == null ? new BedrockConverter.BlockSpec(item.id(), state, model, name, axis)
+                            : new BedrockConverter.BlockSpec(item.id(), state, model, name, mining.bedrockSeconds(), axis));
+                }
             }
             Integer slot = build.liquids().get(item.id());
             if (slot != null && item.placement() instanceof Placement.Liquid liquid) {
@@ -1756,12 +1841,24 @@ public final class ContentPipeline {
         // Stacks made before - a piece worn as its material until this build matched it with an asset.
         plugin.stackRepair().repairOnline();
         List<CustomBlock> customBlocks = new ArrayList<>();
+        List<CustomBlock> turned = new ArrayList<>();
         for (Map.Entry<String, NoteBlockState> entry : build.noteBlocks().entrySet()) {
-            CustomItem item = build.items().get(entry.getKey());
-            customBlocks.add(new CustomBlock(item, entry.getValue(),
-                    plugin.getServer().createBlockData(entry.getValue().asBlockData())));
+            // 5.5: a log on its side is its own block lying another way.
+            BlockAxis axis = BlockAxis.of(entry.getKey());
+            CustomItem item = build.items().get(BlockAxis.base(entry.getKey()));
+            if (item == null) {
+                continue;
+            }
+            CustomBlock block = new CustomBlock(item, entry.getValue(),
+                    plugin.getServer().createBlockData(entry.getValue().asBlockData()), axis);
+            (axis == BlockAxis.Y ? customBlocks : turned).add(block);
         }
-        blocks.replace(customBlocks);
+        List<CustomBlock> allBlocks = new ArrayList<>(customBlocks);
+        allBlocks.addAll(turned);
+        blocks.replace(allBlocks);
+        // 5.5: the custom leaves, by the vanilla leaves state each is.
+        plugin.leavesRegistry().replace(build.items().values(), build.extras().leaves().active(),
+                build.extras().leaves().materials(), plugin.getServer());
         // 5.3: the shaped blocks, by the copper block each is; vanilla's recipes for those taken out.
         plugin.shapedBlocks().replace(build.items().values());
         plugin.copperRecipes().update(plugin.shapedBlocks().claimed());
@@ -1771,7 +1868,13 @@ public final class ContentPipeline {
             plugin.ores().publish(customBlocks);
         }
         if (plugin.treeGenerator() != null) {
-            plugin.treeGenerator().publish(registry, blocks);
+            plugin.treeGenerator().publish(registry, blocks, plugin.leavesRegistry());
+        }
+        if (plugin.leavesDecay() != null) {
+            plugin.leavesDecay().publish(registry);
+        }
+        if (plugin.leavesNormalizer() != null) {
+            plugin.leavesNormalizer().contentReloaded();
         }
         if (plugin.mechanics() != null) {
             plugin.mechanics().publish(registry);

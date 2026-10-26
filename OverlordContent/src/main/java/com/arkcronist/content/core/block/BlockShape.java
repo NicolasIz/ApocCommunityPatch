@@ -48,7 +48,13 @@ public enum BlockShape {
             "waxed_copper_door", "waxed_oxidized_copper_door"), 2),
     /** Opens with a click, against the top or bottom of the block it is placed on. */
     TRAPDOOR("trapdoor", List.of("waxed_copper_trapdoor", "waxed_exposed_copper_trapdoor",
-            "waxed_weathered_copper_trapdoor", "waxed_oxidized_copper_trapdoor"), 3);
+            "waxed_weathered_copper_trapdoor", "waxed_oxidized_copper_trapdoor"), 3),
+    /**
+     * 5.5: leaves of a custom tree - see-through, mined fast with shears or a hoe, burnt by fire -
+     * drawn through persistent states of vanilla leaves that vanilla's own leaves are kept out of
+     * ({@link LeavesState}). Not a copper block: several share one vanilla leaves block.
+     */
+    LEAVES("leaves", List.of(), 0);
 
     private final String yamlName;
     private final List<String> bases;

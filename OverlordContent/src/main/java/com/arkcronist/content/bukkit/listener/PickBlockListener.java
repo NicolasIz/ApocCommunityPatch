@@ -1,6 +1,7 @@
 package com.arkcronist.content.bukkit.listener;
 
 import com.arkcronist.content.bukkit.block.CustomBlock;
+import com.arkcronist.content.bukkit.block.LeavesRegistry;
 import com.arkcronist.content.bukkit.block.CustomBlockService;
 import com.arkcronist.content.bukkit.block.ShapedBlockRegistry;
 import com.arkcronist.content.bukkit.item.CustomItem;
@@ -14,6 +15,8 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 
@@ -42,6 +45,13 @@ public final class PickBlockListener implements Listener {
         this.cubes = cubes;
         this.shaped = shaped;
         this.items = items;
+    }
+
+    /** 5.5: custom leaves are picked as their own item too; none until set. */
+    private @Nullable LeavesRegistry leaves;
+
+    public void pickLeavesFrom(LeavesRegistry leaves) {
+        this.leaves = leaves;
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -77,6 +87,9 @@ public final class PickBlockListener implements Listener {
 
     private Optional<CustomItem> itemAt(Block block) {
         Optional<CustomItem> drawn = shaped.byBase(block.getType());
+        if (drawn.isEmpty() && leaves != null) {
+            drawn = leaves.identify(block).map(hit -> hit.leaves().item());
+        }
         return drawn.isPresent() ? drawn : cubes.identify(block).map(CustomBlock::item);
     }
 }
