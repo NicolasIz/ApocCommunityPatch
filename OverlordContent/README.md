@@ -21,7 +21,9 @@ y cañas de pescar. La 4.0 añade **recetas propias** (en el libro de recetas de
 **vehículos** que se conducen con las teclas de movimiento, con su física calculada en un hilo
 aparte, y llega a **Paper 26.1, 26.2 y 26.3**. La 5.0 inclina los vehículos según el suelo
 y los hace chocar entre sí, devuelve a su sitio los bloques y líquidos que un rollback deja en aire,
-genera **menas propias** en los mundos nuevos y añade **emotes** corporales animados con Blockbench. El mismo
+genera **menas propias** en los mundos nuevos y añade **emotes** corporales animados con Blockbench. La 5.3
+añade **bloques con forma** (losas, escaleras, bloques transparentes, puertas y trampillas propias) y
+**muebles que se unen en fila**, y se clican donde está su modelo. El mismo
 concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer.
 
 ```
@@ -79,6 +81,43 @@ el cliente real de Minecraft en 1.21.4, 1.21.11 y 26.3; ver «3.6.0» y «4.0.0�
 no.
 
 ---
+
+## 5.3.0 — Bloques con forma, muebles que se unen, cajas a medida y piezas redondas nuevas
+
+- **Bloques con forma** (`block: shape:`): losas, escaleras, bloques transparentes (cristal, celosías,
+  hojas), puertas y trampillas propias, colocadas con las reglas de vanilla. Se rompen con pico y
+  sueltan su ítem. Hay pocos de cada forma (3 losas, 2 escaleras, 2 transparentes, 2 puertas,
+  3 trampillas; más con `blocks.trial-chamber-copper`). Ejemplos en `contents/demo/shapes.yml`.
+  Detalles en la sección 4, «Bloques con forma».
+- **Muebles que se unen en fila** (`furniture: connect:`): un mostrador, un banco o un sofá colocados
+  uno al lado de otro se dibujan como una sola pieza, con sus extremos y su centro. Ejemplo:
+  `demo:ruby_counter` en `contents/demo/counter.yml`.
+- **Cajas de clic a medida** (`furniture: hitbox:`): los muebles que se atraviesan (sobre bloque de luz)
+  se clican y golpean donde está el modelo, no en todo su bloque. Por defecto en todos ellos
+  (`furniture.fitted-hitboxes`); ejemplo: `demo:ruby_goblet`.
+- **Piezas redondas como las profesionales:** los 58 barriles, toneles, cubos, cestas, sacos, la
+  botella y las jarras de los packs medievales, rehechos con un cuerpo cuadrado y aros enteros; la
+  mitad de cubos. Detalles en `docs/geometria-profesional.md`, apartado 6.
+
+**Al actualizar:** los ficheros de ejemplo que no hayas tocado se ponen al día solos al arrancar (las
+piezas redondas y los ejemplos nuevos). Nada cambia de cómo se usan las piezas: ni ids, ni tamaños, ni
+asientos, ni inventarios.
+
+### Lo comprobado para la 5.3.0
+
+- 627 pruebas automáticas.
+- **Bloques con forma**, con un bot en Paper 1.21.8 y en 1.21.4: 20 de 20 en cada uno (colocar, doblar
+  losas, girar escaleras, abrir puertas y trampillas, rascar, encerar, dispensador, pistón, explosión,
+  romper, elegir bloque).
+  Con el **cliente real 26.3**: el cristal se ve a través, la ventana de la puerta es transparente, las
+  esquinas de las escaleras y las losas se dibujan bien.
+- **Filas y cajas**, con un bot en Paper 1.21.8 leyendo lo que dice el servidor: 18 de 18, reinicio
+  incluido; en 1.21.4, 14 de 14 (ver la sección 4). La batería general de siempre: 12 de 12.
+- **Al actualizar**: un servidor con ejemplos de versiones anteriores recibe los 13 ficheros nuevos de la
+  5.3 (`shapes.yml`, `counter.yml` y lo que usan) sin tocar nada suyo.
+- **Piezas redondas**: un servidor 26.3 con los ficheros de la 5.2 recibe las 116 piezas nuevas al
+  arrancar, y el cliente real 26.3 las dibuja sin texturas rotas.
+- **No comprobado**: cómo se ven los bloques con forma y las piezas nuevas en una pantalla de Bedrock.
 
 ## 5.2.0 — La forma de la decoración medieval, como la de los packs profesionales
 
@@ -688,6 +727,54 @@ Consecuencia honesta: **mientras exista al menos un bloque personalizado, los no
 dejan de ser instrumentos** — se quedan en el estado reservado, suenan al golpearlos y nada más (sin
 afinado ni redstone), porque cualquier cambio de estado los convertiría en un bloque personalizado.
 Sin bloques definidos, el plugin no toca los note blocks en absoluto.
+
+### Bloques con forma (`shape:`) — 5.3
+
+```yaml
+# contents/demo/shapes.yml
+  ruby_slab:
+    type: custom_block
+    resource:
+      texture: block/ruby_block          # o textures: {side, top, bottom}
+    block:
+      shape: slab                        # slab, stairs, transparent, door, trapdoor (cube: el de siempre)
+```
+
+Un note block no tiene más forma que la de un cubo. Para las demás formas, cada bloque se dibuja a
+través de un **bloque de cobre encerado** que ya la tiene: una losa, unas escaleras, una rejilla, una
+puerta o una trampilla. El encerado congela la oxidación, así que sus cuatro variantes (normal,
+expuesta, erosionada, oxidada) son cuatro bloques que no cambian solos, y el pack puede dibujar cada
+uno como otra cosa. Vanilla los coloca con sus propias reglas, de modo que:
+
+- **losas** (`slab`): arriba, abajo y dobles al poner una sobre otra; se pueden anegar;
+- **escaleras** (`stairs`): giran las esquinas solas, del derecho y del revés;
+- **transparentes** (`transparent`): los píxeles transparentes de la textura se ven a través —cristal,
+  celosías, jaulas, hojas— y la luz pasa; los semitransparentes se dibujan opacos;
+- **puertas** (`door`): dos bloques de alto, se abren con un clic, con ventana si la textura tiene
+  huecos (`textures: {top, bottom, item}`);
+- **trampillas** (`trapdoor`): se abren con un clic, arriba o abajo del bloque.
+
+**Hay pocos de cada forma** (`data/copper_block_bases.json` guarda cuál toca a cada bloque, como los
+note blocks): 3 losas, 2 escaleras, 2 transparentes, 2 puertas y 3 trampillas. Con
+`blocks.trial-chamber-copper: true` en config.yml se suman 2 más de cada uno (1 trampilla más): son los
+cobres con los que vanilla construye las cámaras de prueba, así que las cámaras que se generen desde
+entonces mostrarán tus bloques en sus paredes. Si se acaban, el bloque se avisa en la consola; uno
+transparente sin hueco se hace note block (entero, pero no se ve a través).
+
+Lo que hace el plugin para que sigan siendo tuyos:
+
+- se rompen **como el cobre, con pico**, y sueltan **su ítem**, también al perder el apoyo (una puerta
+  sin suelo), con la otra mitad de la puerta, con `/setblock … destroy`, con un wither o en una
+  explosión;
+- no se pueden rascar con un hacha ni encerar con un panal, ni a mano ni con un dispensador; los
+  pistones no empujan las puertas;
+- los ítems vanilla de esos cobres no se pueden colocar y sus recetas se quitan mientras se usan
+  (vuelven al desactivar el plugin);
+- el clic central (elegir bloque) da el ítem propio, no el cobre.
+
+**Bedrock:** cada forma se registra en Geyser como bloque propio, con su giro y su caja de colisión.
+Comprobado que Geyser 2.8.4 acepta los 66 estados de los 5 bloques de ejemplo y que un cliente de
+Bedrock (un bot) recibe esos bloques; **no** se ha visto cómo se dibujan en una pantalla de Bedrock.
 
 ### Muebles (ItemDisplay)
 
