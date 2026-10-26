@@ -1,4 +1,4 @@
-# API para desarrolladores (5.4)
+# API para desarrolladores (5.5)
 
 Otros plugins usan el contenido de OverlordContent —sus ítems, bloques, muebles y cultivos— a
 través de una interfaz estable, `com.arkcronist.content.api.OverlordContentApi`, y se enteran de lo
@@ -14,7 +14,7 @@ El JAR del plugin es la dependencia: se añade como `compileOnly` (no se empaque
 // build.gradle.kts
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
-    compileOnly(files("libs/OverlordContent-5.4.0.jar"))
+    compileOnly(files("libs/OverlordContent-5.5.0.jar"))
 }
 ```
 
@@ -41,6 +41,7 @@ content.itemIds();                                           // todos los ids
 content.blockAt(block);                    // Optional<String>: el bloque propio que hay ahí
 content.placeBlock(block, "demo:ruby_block");   // colocado y registrado como si lo pusiera un jugador
 content.removeBlock(block);                // quitado, sin soltar nada
+// 5.5: también las hojas propias (puestas como las de un jugador: no se caen) y los troncos (de pie)
 
 // Muebles
 content.furnitureAt(block);                // el mueble que ocupa ese bloque (cualquiera de los suyos)
@@ -56,7 +57,7 @@ content.cropStage(block);                  // su etapa, desde 0
 // Todo
 content.ready();                           // true cuando bloques y muebles ya están cargados
 content.reload();                          // como /arkcontent reload, en segundo plano
-content.version();                         // "5.4.0"
+content.version();                         // "5.5.0"
 ```
 
 Todo es para el hilo principal, salvo `itemId`, que vale desde cualquier hilo. Los ítems se conocen

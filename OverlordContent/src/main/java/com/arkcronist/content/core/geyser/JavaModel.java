@@ -21,8 +21,8 @@ import java.util.function.Function;
  *
  * <p>The vanilla parents a pack does not carry are the few every custom block is made from -
  * {@code block/cube}, {@code cube_all}, {@code cube_column}, {@code cube_bottom_top},
- * {@code cube_top}, {@code orientable}, and (5.3) the slab, stairs, door and trapdoor templates -
- * and are built in here, cube for cube as vanilla has them.
+ * {@code cube_top}, {@code orientable}, (5.3) the slab, stairs, door and trapdoor templates and (5.5)
+ * {@code cross} - and are built in here, cube for cube as vanilla has them.
  * A flat item ({@code item/generated} and its kin) has no cubes: its first layer is its picture.</p>
  *
  * @param elements  the cubes, in model pixels
@@ -263,6 +263,15 @@ public record JavaModel(List<Element> elements, List<ResourceLocation> layers, M
                     + "\"down\":\"#side\",\"up\":\"#top\",\"north\":\"#side\",\"east\":\"#side\",\"south\":\"#side\",\"west\":\"#side\"}}";
             case "minecraft:block/orientable" -> "{\"parent\":\"minecraft:block/cube\",\"textures\":{\"particle\":\"#front\","
                     + "\"bottom\":\"#top\",\"down\":\"#bottom\",\"up\":\"#top\",\"north\":\"#front\",\"east\":\"#side\",\"south\":\"#side\",\"west\":\"#side\"}}";
+            // 5.5: two planes crossed - a sapling, a flower, hanging fronds. Vanilla's are turned with
+            // rescale, which stretches each across the block's diagonal: here they are that wide already.
+            case "minecraft:block/cross", "minecraft:block/tinted_cross" -> "{\"textures\":{\"particle\":\"#cross\"},"
+                    + "\"elements\":[{\"from\":[-2.18,0,8],\"to\":[18.18,16,8],"
+                    + "\"rotation\":{\"origin\":[8,8,8],\"axis\":\"y\",\"angle\":45},\"faces\":{"
+                    + "\"north\":{\"uv\":[0,0,16,16],\"texture\":\"#cross\"},\"south\":{\"uv\":[0,0,16,16],\"texture\":\"#cross\"}}},"
+                    + "{\"from\":[8,0,-2.18],\"to\":[8,16,18.18],"
+                    + "\"rotation\":{\"origin\":[8,8,8],\"axis\":\"y\",\"angle\":45},\"faces\":{"
+                    + "\"west\":{\"uv\":[0,0,16,16],\"texture\":\"#cross\"},\"east\":{\"uv\":[0,0,16,16],\"texture\":\"#cross\"}}}]}";
             case "minecraft:block/block", "minecraft:item/handheld_bow" -> "{}";
             default -> null;
         };

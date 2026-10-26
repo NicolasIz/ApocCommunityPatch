@@ -1643,6 +1643,7 @@ public final class ContentPipeline {
         List<BedrockConverter.LiquidSpec> liquids = new ArrayList<>();
         List<BedrockConverter.FurnitureSpec> furniture = new ArrayList<>();
         List<BedrockConverter.ShapedSpec> shaped = new ArrayList<>();
+        List<BedrockConverter.LeavesSpec> leaves = new ArrayList<>();
         for (CustomItem item : build.items().values()) {
             ItemDefinition definition = item.definition();
             String name = item.displayName() == null ? item.id() : plain.serialize(item.displayName());
@@ -1666,6 +1667,11 @@ public final class ContentPipeline {
                     blocks.add(mining == null ? new BedrockConverter.BlockSpec(item.id(), state, model, name, axis)
                             : new BedrockConverter.BlockSpec(item.id(), state, model, name, mining.bedrockSeconds(), axis));
                 }
+            }
+            LeavesState leavesState = build.extras().leaves().active().get(item.id());
+            if (leavesState != null && model != null) {
+                // 5.5: custom leaves, drawn for Bedrock players over the vanilla leaves states they are.
+                leaves.add(new BedrockConverter.LeavesSpec(item.id(), leavesState, model, name));
             }
             Integer slot = build.liquids().get(item.id());
             if (slot != null && item.placement() instanceof Placement.Liquid liquid) {
@@ -1707,7 +1713,7 @@ public final class ContentPipeline {
             skip.add(id.trim().toLowerCase(Locale.ROOT));
         }
         return new BedrockConverter.Input(this::builtFile, items, blocks, liquids, furniture, emojis,
-                StableAllocator.read(carrierFile), blockStates, skip, shaped);
+                StableAllocator.read(carrierFile), blockStates, skip, shaped, leaves);
     }
 
     private CompletableFuture<Build> zipPack(Build build) {

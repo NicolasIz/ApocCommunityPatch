@@ -100,6 +100,7 @@ class WoodlandTest {
         assertTrue(slots.materials().size() <= 6, "six vanilla leaves blocks at most: " + slots.materials());
         assertTrue(!slots.materials().contains("oak_leaves") && !slots.materials().contains("spruce_leaves"),
                 "the leaves builds use most are left alone");
+        assertTrue(!slots.materials().contains("cherry_leaves"), "no pink petals falling from the thirteen trees");
         NoteBlockAllocator.Allocation states = NoteBlockAllocator.allocate(Map.of(), blocks);
         assertEquals(List.of(), states.problems());
         Map<String, NoteBlockState> noteBlocks = states.active();

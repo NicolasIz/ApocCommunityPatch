@@ -34,7 +34,9 @@ import java.util.UUID;
  * persistent leaves beside it are noted as they are. Vanilla's change to a noted block fires an
  * event of its own, and the block is set back right there, without physics; two ticks after it was
  * noted - after the leaves' own tick - one changed some other way is set back all the same. One that was broken or
- * replaced meanwhile, by a player or anything else, is left as it is now.</p>
+ * replaced meanwhile, by a player or anything else, is left as it is now. Held persistent leaves
+ * set by a command are noted themselves: {@code /setblock} has a new leaf work out its distance a
+ * tick later, from the leaves beside it.</p>
  */
 public final class StateGuardListener implements Listener {
 
@@ -122,9 +124,37 @@ public final class StateGuardListener implements Listener {
         }
     }
 
+    /**
+     * Held persistent leaves set by a command or another plugin - {@code /setblock} and {@code /fill}
+     * have the new leaf work its distance out again a tick later, from whatever leaves are beside it
+     * - are noted as they were set, so that tick is set back as well. Refused or not: refusing it
+     * keeps the blocks around it as they were, not the leaf itself.
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onLeavesSet(BlockPhysicsEvent event) {
+        if (leaves.held().isEmpty() || !leaves.holds(event.getChangedType())) {
+            return;
+        }
+        Block block = event.getBlock();
+        if (!block.equals(event.getSourceBlock())) {
+            return;
+        }
+        BlockData data = block.getBlockData();
+        if (data instanceof Leaves leaf && leaf.isPersistent()) {
+            // As it is now: the latest it was set to, not what a neighbour's change found there before.
+            noted.put(new Spot(block.getWorld().getUID(), block.getBlockKey()),
+                    new Guarded(block, data, plugin.getServer().getCurrentTick() + 2));
+            startRestoring();
+        }
+    }
+
     private void note(Block block, BlockData data) {
         noted.putIfAbsent(new Spot(block.getWorld().getUID(), block.getBlockKey()),
                 new Guarded(block, data, plugin.getServer().getCurrentTick() + 2));
+        startRestoring();
+    }
+
+    private void startRestoring() {
         if (task == null) {
             task = plugin.getServer().getScheduler().runTaskTimer(plugin, this::restore, 1L, 1L);
         }

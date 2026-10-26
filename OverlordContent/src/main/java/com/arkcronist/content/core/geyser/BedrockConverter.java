@@ -2,6 +2,7 @@ package com.arkcronist.content.core.geyser;
 
 import com.arkcronist.content.core.block.BlockAxis;
 import com.arkcronist.content.core.block.BlockShape;
+import com.arkcronist.content.core.block.LeavesState;
 import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.block.ShapedModels;
 import com.arkcronist.content.core.block.ShapedStates;
@@ -65,6 +66,8 @@ public final class BedrockConverter {
     private static final float NOTE_BLOCK_SECONDS = 1.2f;
     /** 5.3: the same for copper's hardness, 3: what shaped blocks are drawn through. */
     private static final float COPPER_SECONDS = 4.5f;
+    /** 5.5: the same for leaves' hardness, 0.2. */
+    private static final float LEAVES_SECONDS = 0.3f;
     private static final String FULL_BLOCK = "minecraft:geometry.full_block";
     /** Paths in a Bedrock pack stay under this many characters: some platforms open no longer one. */
     private static final int MAX_PATH = 80;
@@ -234,6 +237,13 @@ public final class BedrockConverter {
         }
     }
 
+    /**
+     * 5.5: custom leaves, drawn through four states of a vanilla leaves block - grown or placed,
+     * waterlogged or not ({@link LeavesState}) - all four one Bedrock block.
+     */
+    public record LeavesSpec(String id, LeavesState state, ResourceLocation model, String displayName) {
+    }
+
     /** A liquid: its two tripwire states, as block data strings, and their models. */
     public record LiquidSpec(String id, String sourceState, ResourceLocation sourceModel, String flowingState,
                              ResourceLocation flowingModel, String displayName, int glow) {
@@ -260,7 +270,15 @@ public final class BedrockConverter {
      */
     public record Input(PackFiles pack, List<ItemSpec> items, List<BlockSpec> blocks, List<LiquidSpec> liquids,
                         List<FurnitureSpec> furniture, List<EmojiSpec> emojis, Map<String, Integer> previousCarriers,
-                        Set<Integer> blockStates, Set<String> skipFurniture, List<ShapedSpec> shaped) {
+                        Set<Integer> blockStates, Set<String> skipFurniture, List<ShapedSpec> shaped,
+                        List<LeavesSpec> leaves) {
+
+        public Input(PackFiles pack, List<ItemSpec> items, List<BlockSpec> blocks, List<LiquidSpec> liquids,
+                     List<FurnitureSpec> furniture, List<EmojiSpec> emojis, Map<String, Integer> previousCarriers,
+                     Set<Integer> blockStates, Set<String> skipFurniture, List<ShapedSpec> shaped) {
+            this(pack, items, blocks, liquids, furniture, emojis, previousCarriers, blockStates, skipFurniture, shaped,
+                    List.of());
+        }
 
         public Input(PackFiles pack, List<ItemSpec> items, List<BlockSpec> blocks, List<LiquidSpec> liquids,
                      List<FurnitureSpec> furniture, List<EmojiSpec> emojis, Map<String, Integer> previousCarriers,
@@ -431,6 +449,12 @@ public final class BedrockConverter {
         }
         for (ShapedSpec shaped : input.shaped()) {
             shaped(shaped, blocks);
+        }
+        for (LeavesSpec leaves : input.leaves()) {
+            BedrockBlock converted = leaves(leaves);
+            if (converted != null) {
+                blocks.add(converted);
+            }
         }
         unpictured.forEach((reason, ids) -> problems.add(unpicturedLine(reason, ids)));
         unworn.forEach((reason, ids) -> problems.add("Bedrock: " + ids.size() + " armour piece(s) not drawn on Bedrock"
@@ -915,6 +939,42 @@ public final class BedrockConverter {
         }
         return new BedrockBlock(name, block.state().asBlockData(), geometry, materials, true, true, 0,
                 block.destroySeconds(), 0, block.displayName());
+    }
+
+    /**
+     * 5.5: custom leaves, one Bedrock block standing in for the four states of vanilla leaves they
+     * are drawn through - grown or placed, waterlogged or not - walked into and picked out as leaves
+     * are. Bedrock players see them as Java players do; without this, as the vanilla leaves they are.
+     */
+    private @Nullable BedrockBlock leaves(LeavesSpec leaves) {
+        JavaModel model = model(leaves.model());
+        LeavesState state = leaves.state();
+        if (model == null || model.elements().isEmpty()) {
+            problems.add(leaves.id() + ": its model could not be read for Bedrock - it shows as "
+                    + state.material() + " there");
+            return null;
+        }
+        String name = name(leaves.id());
+        Map<String, Material> materials = new LinkedHashMap<>();
+        String geometry;
+        if (fullCube(model)) {
+            geometry = FULL_BLOCK;
+            for (Map.Entry<JavaModel.Face, JavaModel.FaceTexture> face : model.elements().get(0).faces().entrySet()) {
+                materials.put(face.getKey().key(), material(face.getValue().texture(), false));
+            }
+            materials.put("*", materials.getOrDefault("north", materials.values().iterator().next()));
+        } else {
+            List<BedrockCube> cubes = blockCubes(model);
+            if (!BedrockGeometry.fits(cubes)) {
+                problems.add(leaves.id() + ": its model reaches more than 7 pixels outside its block, which Bedrock"
+                        + " does not draw - it shows as " + state.material() + " there");
+                return null;
+            }
+            geometry = geometry(name, cubes, materials, false);
+        }
+        return new BedrockBlock(name, state.asBlockData(true, false), geometry, materials, true, true, 0, LEAVES_SECONDS,
+                0, leaves.displayName(), List.of(state.asBlockData(true, true), state.asBlockData(false, false),
+                state.asBlockData(false, true)), List.of());
     }
 
     /**

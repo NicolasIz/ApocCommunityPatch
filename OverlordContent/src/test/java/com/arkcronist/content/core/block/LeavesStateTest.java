@@ -29,6 +29,8 @@ class LeavesStateTest {
         assertEquals(30, LeavesState.CAPACITY);
         assertFalse(LeavesState.POOL.contains("mangrove_leaves"), "bone meal grows a propagule under mangrove leaves");
         assertEquals("flowering_azalea_leaves", LeavesState.POOL.get(0));
+        assertEquals("cherry_leaves", LeavesState.POOL.get(LeavesState.POOL.size() - 1),
+                "last: its pink petals fall from custom leaves too, ten times as often as others'");
     }
 
     @Test

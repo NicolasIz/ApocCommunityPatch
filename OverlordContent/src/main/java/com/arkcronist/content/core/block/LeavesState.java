@@ -14,8 +14,10 @@ import java.util.Optional;
  * takes two of them, a <em>slot</em>: the odd distance for leaves a tree grew, which fall when no
  * log holds them, and the even one for leaves a player placed, which stay - waterlogged or not, as
  * vanilla's. Three slots per vanilla leaves block, {@link #POOL} in the order they are handed out:
- * first the leaves fewest builds are made of. Mangrove leaves are left out - bone meal grows a
- * propagule under them.</p>
+ * first the leaves whose falling particles go with any tree - the client lets them fall from custom
+ * leaves as from the vanilla ones they are, and no pack changes that - and few builds are made of;
+ * pale oak's paler ones later, the leaves of most builds after, and cherry's last: its pink petals
+ * fall ten times as often. Mangrove leaves are left out - bone meal grows a propagule under them.</p>
  *
  * @param material the vanilla leaves block, without namespace: {@code flowering_azalea_leaves}
  * @param slot     0 to {@link #SLOTS} - 1
@@ -23,9 +25,9 @@ import java.util.Optional;
 public record LeavesState(String material, int slot) {
 
     /** The vanilla leaves blocks custom ones are drawn through, in the order they are handed out. */
-    public static final List<String> POOL = List.of("flowering_azalea_leaves", "azalea_leaves", "pale_oak_leaves",
-            "cherry_leaves", "jungle_leaves", "acacia_leaves", "dark_oak_leaves", "birch_leaves", "spruce_leaves",
-            "oak_leaves");
+    public static final List<String> POOL = List.of("flowering_azalea_leaves", "azalea_leaves", "jungle_leaves",
+            "acacia_leaves", "pale_oak_leaves", "dark_oak_leaves", "birch_leaves", "spruce_leaves", "oak_leaves",
+            "cherry_leaves");
     public static final int SLOTS = 3;
     public static final int CAPACITY = POOL.size() * SLOTS;
     /** The distance vanilla's own persistent leaves of a block in use are held at. */

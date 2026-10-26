@@ -369,6 +369,74 @@ class BedrockConversionTest {
         assertArrayEquals(south.boxes().get(1), back.boxes().get(1));
     }
 
+    /**
+     * 5.5: custom leaves, one Bedrock block for the four vanilla leaves states they are drawn
+     * through - grown or placed, waterlogged or not - seen through where their picture is clear.
+     */
+    @Test
+    void customLeavesStandInForTheirFourLeavesStates() throws IOException {
+        Map<String, byte[]> pack = pack();
+        pack.put("assets/demo/models/block/palm_leaves.json",
+                "{\"parent\":\"minecraft:block/cube_all\",\"textures\":{\"all\":\"demo:block/palm_leaves\"}}"
+                        .getBytes(StandardCharsets.UTF_8));
+        BufferedImage holes = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < 16; y++) {
+            for (int x = 0; x < 16; x++) {
+                holes.setRGB(x, y, (x + y) % 3 == 0 ? 0 : 0xff3a7a2a);
+            }
+        }
+        ByteArrayOutputStream png = new ByteArrayOutputStream();
+        ImageIO.write(holes, "png", png);
+        pack.put("assets/demo/textures/block/palm_leaves.png", png.toByteArray());
+        BedrockConverter.Input base = input(pack, Map.of());
+        com.arkcronist.content.core.block.LeavesState state =
+                new com.arkcronist.content.core.block.LeavesState("cherry_leaves", 1);
+        BedrockConverter.Build build = BedrockConverter.convert(new BedrockConverter.Input(base.pack(), base.items(),
+                base.blocks(), base.liquids(), base.furniture(), base.emojis(), Map.of(), base.blockStates(), Set.of(),
+                List.of(), List.of(new BedrockConverter.LeavesSpec("demo:palm_leaves", state,
+                new ResourceLocation("demo", "block/palm_leaves"), "Palm Leaves"))));
+        assertEquals(List.of(), build.problems());
+
+        BedrockConverter.BedrockBlock leaves = build.blocks().stream()
+                .filter(block -> block.name().equals("ark_demo_palm_leaves")).findFirst().orElseThrow();
+        assertEquals(List.of("minecraft:cherry_leaves[distance=3,persistent=true,waterlogged=false]",
+                "minecraft:cherry_leaves[distance=3,persistent=true,waterlogged=true]",
+                "minecraft:cherry_leaves[distance=4,persistent=true,waterlogged=false]",
+                "minecraft:cherry_leaves[distance=4,persistent=true,waterlogged=true]"), leaves.javaStates());
+        assertEquals("minecraft:geometry.full_block", leaves.geometry());
+        assertEquals("alpha_test", leaves.materials().get("*").renderMethod(), "seen through its holes");
+        assertTrue(leaves.collision() && leaves.selection());
+        assertTrue(leaves.destroySeconds() < 1, "broken as quickly as leaves");
+
+        GeyserExport.Content read = GeyserExport.read(GeyserExport.write(build.items(), build.blocks(), 0));
+        assertEquals(leaves.javaStates(), read.blocks().stream()
+                .filter(block -> block.name().equals(leaves.name())).findFirst().orElseThrow().javaStates());
+    }
+
+    /** 5.5: a block of two crossed planes - hanging fronds - is drawn on Bedrock as its planes, with its picture. */
+    @Test
+    void crossedPlanesAreDrawnOnBedrock() throws IOException {
+        Map<String, byte[]> pack = pack();
+        pack.put("assets/demo/models/block/fronds.json",
+                "{\"parent\":\"minecraft:block/cross\",\"textures\":{\"cross\":\"demo:block/stone\"}}"
+                        .getBytes(StandardCharsets.UTF_8));
+        BedrockConverter.Input base = input(pack, Map.of());
+        List<BedrockConverter.ItemSpec> items = new java.util.ArrayList<>(base.items());
+        items.add(new BedrockConverter.ItemSpec("demo:fronds", "AZALEA_LEAVES", new ResourceLocation("demo", "fronds"),
+                new ResourceLocation("demo", "block/fronds"), 1003, "Fronds", false));
+        BedrockConverter.Build build = BedrockConverter.convert(new BedrockConverter.Input(base.pack(), items,
+                base.blocks(), base.liquids(), base.furniture(), base.emojis(), Map.of(), base.blockStates(), Set.of(),
+                List.of(), List.of(new BedrockConverter.LeavesSpec("demo:fronds",
+                new com.arkcronist.content.core.block.LeavesState("azalea_leaves", 0),
+                new ResourceLocation("demo", "block/fronds"), "Fronds"))));
+        assertEquals(List.of(), build.problems());
+        assertEquals(List.of(), build.unpictured(), "a picture of its own");
+        BedrockConverter.BedrockBlock fronds = build.blocks().stream()
+                .filter(block -> block.name().equals("ark_demo_fronds")).findFirst().orElseThrow();
+        assertFalse(fronds.geometry().equals("minecraft:geometry.full_block"), "two planes, not a cube");
+        assertEquals(4, fronds.javaStates().size());
+    }
+
     private static BedrockConverter.ShapedSpec shaped(String id, com.arkcronist.content.core.block.BlockShape shape,
                                                       String base, String model) {
         Map<String, ResourceLocation> models = new HashMap<>();
