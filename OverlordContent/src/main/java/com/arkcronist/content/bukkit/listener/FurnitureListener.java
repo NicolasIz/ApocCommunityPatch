@@ -252,6 +252,11 @@ public final class FurnitureListener implements Listener {
         Placement.Furniture definition = item.map(CustomItem::placement).filter(Placement.Furniture.class::isInstance)
                 .map(Placement.Furniture.class::cast).orElse(null);
         boolean interactive = definition != null && definition.interactive();
+        // 5.4: other plugins hear of the click first, and may take it.
+        if (item.isPresent() && hand == EquipmentSlot.HAND && !player.isSneaking()
+                && !new com.arkcronist.content.api.event.FurnitureInteractEvent(support, player, item.get().id()).callEvent()) {
+            return true;
+        }
         // 3.4: a canteen held out to a trough or a well is filled there, and the piece does nothing else.
         if (item.isPresent() && canteens != null && hand == EquipmentSlot.HAND
                 && canteens.test(player, item.get().id())) {

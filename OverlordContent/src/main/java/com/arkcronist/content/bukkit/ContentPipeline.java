@@ -490,6 +490,8 @@ public final class ContentPipeline {
     private final Path copperBaseFile;
     /** 3.0: the note block states Bedrock players are shown furniture through. */
     private final Path carrierFile;
+    /** 5.4: whether a build has been published since the server started. */
+    private boolean publishedOnce;
     private final Path bedrockDir;
     /** The first build's Bedrock content, for Geyser, which asks for it as it starts. */
     private final CompletableFuture<BedrockContent> bedrockReady = new CompletableFuture<>();
@@ -1826,6 +1828,18 @@ public final class ContentPipeline {
                 changed, url, hosted.note(), List.copyOf(problems),
                 TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started));
         log(report);
+        // 5.4: other plugins are told the content is live - the first time, and after each reload.
+        if (plugin.api() != null) {
+            plugin.api().markReady();
+            boolean first = !publishedOnce;
+            publishedOnce = true;
+            try {
+                plugin.getServer().getPluginManager().callEvent(new com.arkcronist.content.api.event.OverlordContentLoadedEvent(
+                        first, report.items(), report.blocks(), changed));
+            } catch (RuntimeException listener) {
+                logger.log(Level.WARNING, "A plugin listening for the content being loaded failed", listener);
+            }
+        }
         return report;
     }
 

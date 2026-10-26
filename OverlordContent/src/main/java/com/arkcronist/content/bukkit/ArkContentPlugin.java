@@ -150,6 +150,8 @@ public final class ArkContentPlugin extends JavaPlugin {
     private com.arkcronist.content.bukkit.tree.TreeGenerator treeGenerator;
     /** 5.4: items' events and mechanics. */
     private com.arkcronist.content.bukkit.mechanics.MechanicsService mechanics;
+    /** 5.4: what other plugins use the content through. */
+    private com.arkcronist.content.bukkit.api.ApiService api;
     private com.arkcronist.content.bukkit.mechanics.MechanicsListener mechanicsListener;
     private com.arkcronist.content.bukkit.emote.EmoteService emotes;
     private CustomBlockService blockService;
@@ -343,6 +345,13 @@ public final class ArkContentPlugin extends JavaPlugin {
         } catch (LinkageError missing) {
             getLogger().warning("No armour event on this server: items' equip and unequip events are not set off (" + missing + ")");
         }
+        // 5.4: the developer API - a service other plugins load - and its events.
+        this.api = new com.arkcronist.content.bukkit.api.ApiService(this,
+                new com.arkcronist.content.bukkit.hooks.ContentAccess(items, itemFactory, blocks, shapedBlocks,
+                        this::customBlocks));
+        getServer().getServicesManager().register(com.arkcronist.content.api.OverlordContentApi.class, api, this,
+                org.bukkit.plugin.ServicePriority.Normal);
+        plugins.registerEvents(new com.arkcronist.content.bukkit.api.ApiEventBridge(this), this);
         plugins.registerEvents(ores, this);
         plugins.registerEvents(treeGenerator, this);
         plugins.registerEvents(emotes, this);
@@ -827,6 +836,11 @@ public final class ArkContentPlugin extends JavaPlugin {
     }
 
     /** 5.0: the ores laid into new chunks. */
+    /** 5.4: the developer API; null before enable. */
+    public com.arkcronist.content.bukkit.api.ApiService api() {
+        return api;
+    }
+
     /** 5.4: items' events and mechanics; null before enable. */
     public com.arkcronist.content.bukkit.mechanics.MechanicsService mechanics() {
         return mechanics;

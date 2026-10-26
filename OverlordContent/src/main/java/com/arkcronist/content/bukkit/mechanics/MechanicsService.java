@@ -206,6 +206,14 @@ public final class MechanicsService {
      */
     public boolean fire(Player player, String itemId, ItemMechanics mechanics, Trigger trigger, Context context) {
         List<Reaction> reactions = mechanics.on(trigger);
+        if (reactions.isEmpty()) {
+            return false;
+        }
+        // 5.4: other plugins may call it off.
+        if (!new com.arkcronist.content.api.event.CustomItemTriggerEvent(player, itemId, trigger.yamlName(),
+                context.entity(), context.block()).callEvent()) {
+            return false;
+        }
         boolean any = false;
         for (int i = 0; i < reactions.size(); i++) {
             Reaction reaction = reactions.get(i);
