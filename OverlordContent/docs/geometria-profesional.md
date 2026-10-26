@@ -265,7 +265,7 @@ Se aplicaron las reglas a las 367 piezas medievales:
   Su forma se hace con discos y aros que encajan al cuarto de píxel, y al redondearlos al píxel se
   rompían: aparecían huecos y aros enterrados. Por eso los barriles siguen con aros de 0,3 px y la cifra
   de cubos finos solo baja del 25 % al 18 %. Rehacerlos como las referencias (un bloque de cuerpo más
-  aros pintados o en planos) es un cambio de diseño mayor, que queda pendiente.
+  aros pintados o en planos) es un cambio de diseño mayor, que se hizo en la 5.3 (abajo).
 - **Los acentos pequeños** (llamas, clavos, ojos, menos de 2 px) y **los cubos ya girados** se dejan
   como se dibujaron.
 - **No se tocó nada que cambie cómo se usa una pieza:**
@@ -282,3 +282,30 @@ Cada pieza se comparó antes y después en vistas renderizadas, las 367, y se co
 - la boca de la regadera enterrada;
 - el agua de los barriles fuera de sitio;
 - la etiqueta de la botella.
+
+## 6. 5.3: las piezas redondas, como las de las referencias
+
+Las 58 piezas redondas (barriles, toneles, cubos, pilas, lecheras, cestas, sacos, la botella y las
+jarras) se rehicieron con la receta de las referencias en vez de con discos octogonales:
+
+- **El cuerpo es un solo bloque cuadrado**, tan ancho como llegaba el octógono: lo que se apoyaba en su
+  costado (la placa del barril de pólvora, el asa de la jarra, la etiqueta de la botella) sigue tocándolo
+  donde lo tocaba.
+- **Cada aro es una banda entera** que rodea el cuerpo a medio píxel de él, como la carcasa del barril de
+  la mazmorra o los planos del cubo de madera; antes eran cuatro tiras con las esquinas abiertas.
+- **El tonel tumbado** es el mismo cuerpo girado, con sus bandas enteras.
+- **Las cestas** son un bloque sobre un pie más estrecho, con un borde de cuatro listones que se abren
+  hacia fuera 22,5° (como la cesta de maíz), el contenido por encima del borde y un asa de tres barras.
+- Un recipiente abierto (un barril sin tapa, un cubo) no deja ningún escalón sin tapa entre el cuerpo y
+  el borde: por ahí se veía el agua desde el costado.
+
+| Las 58 piezas | 5.2 | 5.3 |
+|---|---|---|
+| Cubos en total | 2.066 | **1.105** |
+| Cubos por pieza (mediana) | 33 | **15** |
+| Píxeles de textura | 174.592 | **127.744** |
+
+Nada más cambia: ni ids, ni tamaños en bloques, ni asientos, ni interacciones, ni el YAML; el resto de las
+367 piezas sale idéntico, byte a byte. Un servidor que tenga los ficheros de la 5.2 sin tocar los recibe
+nuevos al arrancar (comprobado: 116 ficheros, en un Paper 26.3 con un cliente 26.3 real mirándolos).
+
