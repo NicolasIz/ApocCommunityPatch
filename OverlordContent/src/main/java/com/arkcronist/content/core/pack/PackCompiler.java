@@ -454,6 +454,20 @@ public final class PackCompiler {
                     }
                 }
             }
+            if (item.placement() instanceof Placement.Furniture furniture && furniture.states() != null) {
+                // 5.4: each state with a look of its own, drawn by {@code <namespace>:<id>/state_<name>}.
+                for (Placement.States.State state : furniture.states().states()) {
+                    if (state.model() == null) {
+                        continue;
+                    }
+                    ResourceLocation key = Placement.States.itemModel(item.itemModel(), state.name());
+                    String stateOrigin = origin + " state " + state.name();
+                    look(item.namespace(), state.model(), stateOrigin);
+                    if (place(key.assetPath("items", ".json"), itemDefinition(state.model().location()), stateOrigin)) {
+                        itemDefinitions++;
+                    }
+                }
+            }
             if (item.placement() instanceof Placement.Furniture furniture && furniture.doubleChest() != null) {
                 Placement.DoubleChest pair = furniture.doubleChest();
                 ResourceLocation key = Placement.DoubleChest.itemModel(item.itemModel());

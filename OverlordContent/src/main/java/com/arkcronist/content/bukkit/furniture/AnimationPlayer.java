@@ -8,6 +8,7 @@ import org.bukkit.entity.ItemDisplay;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Transformation;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -38,7 +39,8 @@ public final class AnimationPlayer {
     private final Map<Object, Playing> playing = new HashMap<>();
     private BukkitTask task;
 
-    private record Playing(List<ItemDisplay> bones, Placement.Display settings, Playback playback) {
+    private record Playing(List<ItemDisplay> bones, Placement.Display settings, Playback playback,
+                           @Nullable Runnable after) {
     }
 
     public AnimationPlayer(Plugin plugin) {
@@ -53,7 +55,17 @@ public final class AnimationPlayer {
      */
     public void play(Object key, List<ItemDisplay> bones, AnimatedModel model, AnimatedModel.Clip clip,
                      Placement.Display settings) {
-        Playing animation = new Playing(bones, settings, new Playback(model, clip));
+        play(key, bones, model, clip, settings, null);
+    }
+
+    /**
+     * As {@link #play(Object, List, AnimatedModel, AnimatedModel.Clip, Placement.Display)}; 5.4:
+     * {@code after} is run once it ends by itself - not when another replaces it, nor when its
+     * displays are gone.
+     */
+    public void play(Object key, List<ItemDisplay> bones, AnimatedModel model, AnimatedModel.Clip clip,
+                     Placement.Display settings, @Nullable Runnable after) {
+        Playing animation = new Playing(bones, settings, new Playback(model, clip), after);
         // The frames at tick 0 go out now, in the same tick as whatever started the animation.
         if (!advance(animation)) {
             playing.remove(key);
@@ -83,12 +95,19 @@ public final class AnimationPlayer {
     }
 
     private void tick() {
+        List<Runnable> afterwards = new java.util.ArrayList<>();
         for (Iterator<Playing> it = playing.values().iterator(); it.hasNext(); ) {
             Playing animation = it.next();
             if (!advance(animation)) {
                 it.remove();
+                if (animation.after != null && animation.playback.finished()
+                        && animation.bones.stream().anyMatch(bone -> bone != null && bone.isValid())) {
+                    afterwards.add(animation.after);
+                }
             }
         }
+        // Outside the loop: what comes after may start another animation on the same key.
+        afterwards.forEach(Runnable::run);
         if (playing.isEmpty() && task != null) {
             task.cancel();
             task = null;

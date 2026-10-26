@@ -284,7 +284,12 @@ public final class ContentPipeline {
                     "contents/demo/textures/item/ruby_hammer.png",
                     "contents/demo/textures/item/storm_staff.png",
                     "contents/demo/textures/item/blood_dagger.png",
-                    "contents/demo/textures/item/ruby_charm.png")));
+                    "contents/demo/textures/item/ruby_charm.png",
+                    // 5.4: a lantern with states, a seat that keeps things, a chest shaking at rest.
+                    "contents/demo/furniture_states.yml",
+                    "contents/demo/models/furniture/ruby_lantern.json",
+                    "contents/demo/models/furniture/ruby_lantern_on.json",
+                    "contents/demo/textures/furniture/ruby_lantern.png")));
 
     /** The example files a resource lists, one path a line; # starts a comment. */
     private static List<String> exampleList(String resource) {

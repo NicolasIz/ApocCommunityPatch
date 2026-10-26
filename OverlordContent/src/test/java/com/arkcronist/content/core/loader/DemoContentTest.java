@@ -16,6 +16,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -85,6 +86,15 @@ class DemoContentTest {
         assertEquals(0.25, items.get("demo:blood_dagger").mechanics().passive().lifesteal());
         assertTrue(items.get("demo:ruby_charm").mechanics().passive().soulbound());
         assertNull(items.get("demo:ruby_sword").mechanics());
+
+        // 5.4: a lantern with states, a seat that keeps things, a chest shaking at rest.
+        Placement.Furniture lamp = (Placement.Furniture) items.get("demo:ruby_lantern").placement();
+        assertEquals(List.of("off", "on"), lamp.states().states().stream().map(Placement.States.State::name).toList());
+        Placement.Furniture trunk = (Placement.Furniture) items.get("demo:ruby_trunk_seat").placement();
+        assertNotNull(trunk.seat());
+        assertNotNull(trunk.storage());
+        assertEquals("shake", ((Placement.Furniture) items.get("demo:ruby_mimic").placement()).animated().idle());
+        assertNull(chest.animated().idle());
 
         // 5.0: four emotes on one squire rig.
         for (String emote : java.util.List.of("wave", "bow", "cheer", "sit")) {

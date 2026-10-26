@@ -252,8 +252,10 @@ public final class FurnitureListener implements Listener {
         Placement.Furniture definition = item.map(CustomItem::placement).filter(Placement.Furniture.class::isInstance)
                 .map(Placement.Furniture.class::cast).orElse(null);
         boolean interactive = definition != null && definition.interactive();
+        // 5.4: a seat that keeps things too: sitting on a click, opening it on a sneaking one.
+        boolean seatAndStorage = definition != null && definition.seat() != null && definition.storage() != null;
         // 5.4: other plugins hear of the click first, and may take it.
-        if (item.isPresent() && hand == EquipmentSlot.HAND && !player.isSneaking()
+        if (item.isPresent() && hand == EquipmentSlot.HAND && (!player.isSneaking() || seatAndStorage)
                 && !new com.arkcronist.content.api.event.FurnitureInteractEvent(support, player, item.get().id()).callEvent()) {
             return true;
         }
@@ -263,7 +265,7 @@ public final class FurnitureListener implements Listener {
             return true;
         }
         boolean chest = support.getType() == Material.CHEST;
-        boolean sneakingThrough = player.isSneaking()
+        boolean sneakingThrough = player.isSneaking() && !seatAndStorage
                 && !(chest && player.getInventory().getItemInMainHand().isEmpty()
                 && player.getInventory().getItemInOffHand().isEmpty());
         if (interactive && !sneakingThrough) {
@@ -273,7 +275,8 @@ public final class FurnitureListener implements Listener {
             }
             if (definition.guillotine() != null) {
                 useGuillotine(player, support, item.get(), definition);
-            } else if (definition.seat() != null && protection.check(player, support, Interaction.SIT)) {
+            } else if (definition.seat() != null && !(seatAndStorage && player.isSneaking())
+                    && protection.check(player, support, Interaction.SIT)) {
                 float yaw = furniture.facing(support).orElse(player.getLocation().getYaw());
                 // A tall piece - a throne - is sat on from its bottom row, whichever block was clicked;
                 // a wide one - a bench - seats one on each of its blocks.
@@ -311,6 +314,11 @@ public final class FurnitureListener implements Listener {
                             ? shown.storageBlock(support) : support;
                     storage.open(player, at, item.get().id(), definition.storage(),
                             title(item.get(), definition.storage()));
+                }
+            } else if (definition.states() != null) {
+                // 5.4: clicked into its next look - as a lever is used.
+                if (protection.check(player, support, Interaction.USE)) {
+                    furniture.nextState(support);
                 }
             } else if (definition.board() != null && boards != null) {
                 boards.open(player, support, item.get(), definition.board());

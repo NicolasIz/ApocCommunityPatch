@@ -1287,28 +1287,34 @@ public final class ContentLoader {
         }
 
         String interactable = interactable(section, support, prefix, problems);
+        boolean seats = interactable.equals("seat") || interactable.equals(SEAT_AND_STORAGE);
+        boolean keeps = interactable.equals("storage") || interactable.equals(SEAT_AND_STORAGE);
         // A chest is for keeping things; a bed is for sleeping, which vanilla does.
         if (support == Placement.Support.CHEST && !interactable.equals("storage")) {
             problems.add(prefix + "a CHEST support is always storage, not a " + interactable);
             interactable = "storage";
+            seats = false;
+            keeps = true;
         }
         if (support == Placement.Support.BED && !interactable.isEmpty()) {
             problems.add(prefix + "a BED support sleeps, as a vanilla bed does; 'interactable: " + interactable
                     + "' is ignored");
             interactable = "";
+            seats = false;
+            keeps = false;
         }
         if ((support == Placement.Support.CHEST || support == Placement.Support.BED) && section.containsKey("face-player")) {
             problems.add(prefix + "'face-player' is ignored: a " + support + " faces the way vanilla placed it");
         }
 
         Placement.Animated animated = animated(namespace, new ResourceLocation(namespace, id), section, sourceRoot,
-                "open", "close", interactable.equals("storage"), prefix, problems);
+                "open", "close", keeps, prefix, problems);
         String modelEngineId = modelEngineId(section, prefix, problems);
         if (animated != null && modelEngineId != null) {
             problems.add(prefix + "both 'animated-model' and 'modelengine-id' are set; the animated model is used");
             modelEngineId = null;
         }
-        Placement.Storage storage = interactable.equals("storage") ? storage(section, prefix, problems) : null;
+        Placement.Storage storage = keeps ? storage(section, prefix, problems) : null;
         Placement.DoubleChest doubleChest = null;
         if (section.containsKey("double")) {
             if (support != Placement.Support.CHEST) {
@@ -1336,7 +1342,7 @@ public final class ContentLoader {
                 flag(section, "face-player", true, prefix, problems),
                 display(section(section, "display", prefix, problems), prefix, problems),
                 modelEngineId,
-                interactable.equals("seat") ? seat(section, prefix, problems) : null,
+                seats ? seat(section, prefix, problems) : null,
                 storage,
                 animated,
                 support == Placement.Support.BED ? bed(section, prefix, problems) : null,
@@ -1346,7 +1352,65 @@ public final class ContentLoader {
                 ambience, commands, guillotine,
                 connect(namespace, id, section.get("connect"), support, footprint, animated, modelEngineId, sourceRoot,
                         prefix + "connect: ", problems),
-                hitbox(section.get("hitbox"), support, prefix + "hitbox: ", problems));
+                hitbox(section.get("hitbox"), support, prefix + "hitbox: ", problems),
+                states(namespace, section.get("states"), interactable, support, animated, modelEngineId, sourceRoot,
+                        section.containsKey("connect"), prefix + "states: ", problems));
+    }
+
+    /**
+     * {@code states:} (5.4) - the looks a piece is clicked through in turn: a list of
+     * {@code {name, model, light, sound}}, the first how it is placed (its model, if left out, the
+     * furniture's own). Only for a piece that does nothing else on a click, drawn by an item model.
+     */
+    private static Placement.States states(String namespace, Object value, String interactable,
+                                           Placement.Support support, Placement.Animated animated,
+                                           String modelEngineId, Path sourceRoot, boolean connects, String prefix,
+                                           List<String> problems) {
+        if (value == null) {
+            return null;
+        }
+        if (!(value instanceof List<?> list) || list.size() < 2) {
+            problems.add(prefix + "should list two or more states, each {name, model, light, sound}; ignored");
+            return null;
+        }
+        if (!interactable.isEmpty() || animated != null || modelEngineId != null || connects
+                || support == Placement.Support.CHEST || support == Placement.Support.BED) {
+            problems.add(prefix + "only a piece that does nothing else on a click - no interactable, no animated"
+                    + " or ModelEngine model, no connect, not a chest or a bed - is clicked through states; ignored");
+            return null;
+        }
+        List<Placement.States.State> states = new ArrayList<>();
+        Set<String> names = new java.util.HashSet<>();
+        for (int i = 0; i < list.size(); i++) {
+            String at = prefix + "#" + (i + 1) + ": ";
+            Map<?, ?> entry = list.get(i) instanceof Map<?, ?> map ? map : null;
+            if (entry == null) {
+                problems.add(at + "should be a section {name, model, light, sound}; ignored");
+                return null;
+            }
+            // YAML reads a bare on and off as true and false: a state is far likelier called on than true.
+            String name = entry.get("name") instanceof Boolean flag ? (flag ? "on" : "off")
+                    : text(entry, "name", at, problems);
+            name = name == null ? "state" + (i + 1) : name.trim().toLowerCase(Locale.ROOT);
+            if (!name.matches("[a-z0-9_]{1,32}") || !names.add(name)) {
+                problems.add(at + "'name' should be a-z 0-9 _ and each state's its own; ignored");
+                return null;
+            }
+            ResourceLocation model = location(entry, "model", namespace, at, problems);
+            if (model == null && i > 0) {
+                problems.add(at + "needs 'model', its look (only the first can be the furniture's own); ignored");
+                return null;
+            }
+            int light = entry.containsKey("light") ? (int) number(entry, "light", 0, 0, 15, at, problems) : -1;
+            if (light >= 0 && support != Placement.Support.LIGHT && support != Placement.Support.BARRIER) {
+                problems.add(at + "'light' only applies to a LIGHT or BARRIER support");
+                light = -1;
+            }
+            String sound = text(entry, "sound", at, problems);
+            states.add(new Placement.States.State(name, model == null ? null : new ModelSource.Provided(sourceRoot, model),
+                    light, sound == null || sound.isBlank() ? null : sound.trim().toLowerCase(Locale.ROOT)));
+        }
+        return new Placement.States(states);
     }
 
     /**
@@ -1562,14 +1626,24 @@ public final class ContentLoader {
                 : Objects.requireNonNullElse(text(names, "open", prefix, problems), defaultOpen);
         String close = names == null ? defaultClose
                 : Objects.requireNonNullElse(text(names, "close", prefix, problems), defaultClose);
+        // 5.4: played over and over while the piece is loaded, and again after any other.
+        String idle = names == null ? null : text(names, "idle", prefix, problems);
+        if (idle != null && !model.clips().containsKey(idle.trim())) {
+            problems.add(prefix + path + ".bbmodel has no animation '" + idle.trim() + "' to play at rest (it has: "
+                    + (model.clips().isEmpty() ? "none" : String.join(", ", model.clips().keySet())) + ")");
+            idle = null;
+        }
         for (String animation : List.of(open, close)) {
             if (!model.clips().containsKey(animation) && (names != null || (storage && !model.clips().isEmpty()))) {
                 problems.add(prefix + path + ".bbmodel has no animation '" + animation + "' (it has: "
                         + (model.clips().isEmpty() ? "none" : String.join(", ", model.clips().keySet())) + ")");
             }
         }
-        return new Placement.Animated(model, open, close, file);
+        return new Placement.Animated(model, open, close, file, idle == null ? null : idle.trim());
     }
+
+    /** 5.4: {@code interactable: [seat, storage]}: sat on with a click, opened with a sneaking click. */
+    private static final String SEAT_AND_STORAGE = "seat+storage";
 
     /**
      * What a right click does: {@code seat}, {@code storage}, or {@code ""} for nothing. The settings
@@ -1577,7 +1651,22 @@ public final class ContentLoader {
      */
     private static String interactable(Map<?, ?> section, Placement.Support support, String prefix,
                                        List<String> problems) {
-        String raw = text(section, "interactable", prefix, problems);
+        // 5.4: a seat that keeps things too - interactable: [seat, storage].
+        Object listed = section.get("interactable");
+        if (listed instanceof List<?> || listed instanceof String text && (text.contains(",") || text.contains("+"))) {
+            Set<String> kinds = new LinkedHashSet<>();
+            for (Object entry : listed instanceof List<?> list ? list : List.of(((String) listed).split("[,+]"))) {
+                kinds.add(String.valueOf(entry).trim().toLowerCase(Locale.ROOT));
+            }
+            kinds.remove("");
+            if (kinds.equals(Set.of("seat", "storage"))) {
+                return SEAT_AND_STORAGE;
+            }
+            problems.add(prefix + "'interactable' takes two together only as [seat, storage], not " + kinds
+                    + "; using the first");
+            listed = kinds.isEmpty() ? null : kinds.iterator().next();
+        }
+        String raw = listed == null ? null : text(Map.of("interactable", listed), "interactable", prefix, problems);
         String kind = raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
         if (kind.isEmpty() && support == Placement.Support.CHEST) {
             kind = "storage";

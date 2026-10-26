@@ -1,0 +1,72 @@
+# ---------------------------------------------------------------------------
+#  5.4: furniture that changes - states, an animation at rest, and a seat
+#  that keeps things
+# ---------------------------------------------------------------------------
+#  'states:' - looks a piece is clicked through in turn: a lantern off and on, a
+#  door shut and open, a banner of each colour. The first is how it is placed;
+#  each right click moves it on, and after the last back to the first. Each
+#  state has its own model, and may have its own light (0-15, on a LIGHT or
+#  BARRIER support) and a sound. The state it is in is kept on the piece.
+#
+#  'animations: idle:' - an animation of a Blockbench model played over and
+#  over while the piece is loaded, and again after any other ends.
+#
+#  'interactable: [seat, storage]' - a right click sits on it, a sneaking
+#  right click opens it.
+#
+#     /customgive <player> demo:ruby_lantern
+#     /customgive <player> demo:ruby_trunk_seat
+#     /customgive <player> demo:ruby_mimic
+# ---------------------------------------------------------------------------
+
+items:
+
+  ruby_lantern:
+    type: custom_furniture
+    display-name: "<#ff6a7f>Ruby Lantern"
+    lore:
+      - "<gray>Right click: on and off."
+    resource:
+      model: furniture/ruby_lantern
+    furniture:
+      support: LIGHT            # walk-through, and gives the light of its state
+      states:
+        - name: off             # as placed: the furniture's own model
+          light: 0
+          sound: block.copper_bulb.turn_off
+        - name: on
+          model: furniture/ruby_lantern_on
+          light: 14
+          sound: block.copper_bulb.turn_on
+
+  # The crate: sit on it, or sneak and open it.
+  ruby_trunk_seat:
+    type: custom_furniture
+    display-name: "<gold>Ruby Trunk Seat"
+    lore:
+      - "<gray>Right click: sit."
+      - "<gray>Sneak + right click: open."
+    resource:
+      model: furniture/ruby_crate
+    furniture:
+      support: BARRIER
+      interactable: [seat, storage]
+      seat-height: 0.9
+      slots: 18
+      storage-title: "<dark_red>Ruby Trunk"
+
+  # The ruby chest's model, shaking at rest - until it is opened.
+  ruby_mimic:
+    type: custom_furniture
+    display-name: "<dark_red>Ruby Mimic"
+    lore:
+      - "<gray>It is not breathing. Probably."
+    furniture:
+      support: CHEST
+      animated-model: furniture/ruby_chest
+      animations:
+        open: open
+        close: close
+        idle: shake             # over and over while it is shut
+      slots: 9
+      storage-title: "<dark_red>Ruby Mimic"

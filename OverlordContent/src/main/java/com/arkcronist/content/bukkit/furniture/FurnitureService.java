@@ -153,6 +153,8 @@ public final class FurnitureService {
     private final NamespacedKey hitboxesTag;
     /** 5.3: on the root of a piece of a run: how it is drawn, left, middle or right; none alone. */
     private final NamespacedKey connectTag;
+    /** 5.4: on a root, the state it was clicked into - its index; none for the first. */
+    private final NamespacedKey stateTag;
     /** 5.3: the boxes the pieces of each furniture are clicked by, by id; one not here is clicked by its blocks. */
     private Map<String, List<Placement.Hitbox.Box>> hitboxes = Map.of();
     /** 5.3: players who click pieces by their blocks whatever boxes they have: Bedrock's, who see blocks. */
@@ -198,6 +200,7 @@ public final class FurnitureService {
         this.hitboxTag = com.arkcronist.content.bukkit.Keys.of("furniture_hitbox");
         this.hitboxesTag = com.arkcronist.content.bukkit.Keys.of("furniture_hitboxes");
         this.connectTag = com.arkcronist.content.bukkit.Keys.of("furniture_connect");
+        this.stateTag = com.arkcronist.content.bukkit.Keys.of("furniture_state");
     }
 
     /**
@@ -354,7 +357,129 @@ public final class FurnitureService {
         if (furniture.connect() != null) {
             reconnect(anchor);
         }
+        if (furniture.states() != null && furniture.states().states().get(0).light() >= 0) {
+            stateLight(anchor, furniture, furniture.states().states().get(0).light());
+        }
+        playIdle(root, furniture);
         return true;
+    }
+
+    // ---------------------------------------------------------------- states (5.4)
+
+    /** The look of a piece in state {@code index}: its state's model, or the furniture's own. */
+    private ItemStack stateLook(CustomItem item, Placement.Furniture furniture, int index) {
+        Placement.States states = furniture.states();
+        if (states == null || index <= 0 || index >= states.states().size()) {
+            Placement.States.State first = states == null ? null : states.states().get(0);
+            return first == null || first.model() == null ? items.create(item, 1) : stateItem(item, first);
+        }
+        Placement.States.State state = states.states().get(index);
+        return state.model() == null ? items.create(item, 1) : stateItem(item, state);
+    }
+
+    /** A state's look: an item drawn by {@code <namespace>:<id>/state_<name>}. */
+    private static ItemStack stateItem(CustomItem item, Placement.States.State state) {
+        ResourceLocation key = Placement.States.itemModel(item.definition().itemModel(), state.name());
+        ItemStack stack = ItemStack.of(Material.PAPER);
+        stack.editMeta(meta -> meta.setItemModel(new NamespacedKey(key.namespace(), key.path())));
+        return stack;
+    }
+
+    /**
+     * Clicks the piece standing on {@code support} into its next state - after the last, the first:
+     * its look, its light and its sound. Kept on the piece.
+     *
+     * @return the state's name; empty when the piece has no states, or is not loaded
+     */
+    public Optional<String> nextState(Block support) {
+        Optional<CustomItem> item = item(support);
+        Entity found = root(support);
+        if (item.isEmpty() || !(item.get().placement() instanceof Placement.Furniture furniture)
+                || furniture.states() == null || !(found instanceof ItemDisplay root)) {
+            return Optional.empty();
+        }
+        List<Placement.States.State> states = furniture.states().states();
+        PersistentDataContainer data = root.getPersistentDataContainer();
+        int now = Math.floorMod(data.getOrDefault(stateTag, PersistentDataType.INTEGER, 0), states.size());
+        int next = (now + 1) % states.size();
+        Placement.States.State state = states.get(next);
+        if (next == 0) {
+            data.remove(stateTag);
+        } else {
+            data.set(stateTag, PersistentDataType.INTEGER, next);
+        }
+        root.setItemStack(stateLook(item.get(), furniture, next));
+        if (states.stream().anyMatch(any -> any.light() >= 0)) {
+            stateLight(anchor(root), furniture, state.light() >= 0 ? state.light() : furniture.light());
+        }
+        if (state.sound() != null) {
+            root.getWorld().playSound(root.getLocation(), state.sound(), org.bukkit.SoundCategory.BLOCKS, 1f, 1f);
+        }
+        return Optional.of(state.name());
+    }
+
+    /** The state the piece on {@code support} is in, by name; empty when it has none. */
+    public Optional<String> state(Block support) {
+        Optional<Placement.Furniture> furniture = definition(support);
+        Entity root = root(support);
+        if (furniture.isEmpty() || furniture.get().states() == null || root == null) {
+            return Optional.empty();
+        }
+        List<Placement.States.State> states = furniture.get().states().states();
+        int now = Math.floorMod(root.getPersistentDataContainer().getOrDefault(stateTag, PersistentDataType.INTEGER, 0),
+                states.size());
+        return Optional.of(states.get(now).name());
+    }
+
+    /**
+     * A state's light: a light support's own level on all its blocks, or the light block over a
+     * barrier piece - placed only where it is free, and taken away only if no furniture stands in it.
+     */
+    private void stateLight(Block anchor, Placement.Furniture furniture, int level) {
+        if (furniture.support() == Placement.Support.LIGHT) {
+            for (Block part : partsOf(anchor)) {
+                if (part.getBlockData() instanceof Light light) {
+                    light.setLevel(Math.max(0, level));
+                    part.setBlockData(light, false);
+                }
+            }
+            return;
+        }
+        if (furniture.support() != Placement.Support.BARRIER) {
+            return;
+        }
+        Block cell = anchor.getRelative(0, furniture.footprint().height(), 0);
+        if (claims(cell)) {
+            return;
+        }
+        if (level <= 0) {
+            if (cell.getType() == Material.LIGHT) {
+                cell.setType(Material.AIR, false);
+            }
+        } else if (cell.getType().isAir() || cell.getType() == Material.LIGHT) {
+            cell.setType(Material.LIGHT, false);
+            if (cell.getBlockData() instanceof Light light) {
+                light.setLevel(level);
+                cell.setBlockData(light, false);
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- idle animation (5.4)
+
+    /** Starts the piece's animation at rest, over and over, if it has one. */
+    private void playIdle(ItemDisplay root, Placement.Furniture furniture) {
+        Placement.Animated animated = animatedOf(root, furniture);
+        if (animated == null || animated.idle() == null || !root.isValid()) {
+            return;
+        }
+        AnimatedModel.Clip clip = animated.model().clips().get(animated.idle());
+        List<ItemDisplay> bones = clip == null ? null : bones(root, animated.model());
+        if (bones == null) {
+            return;
+        }
+        animations.play(root.getUniqueId(), bones, animated.model(), clip, drawn(furniture),
+                () -> playIdle(root, furniture));
     }
 
     /**
@@ -516,7 +641,7 @@ public final class FurnitureService {
                 display.getPersistentDataContainer().set(doubleTag, PersistentDataType.BYTE, (byte) 1);
             }
             if (animated == null) {
-                display.setItemStack(doubled ? doubleItem(item) : items.create(item, 1));
+                display.setItemStack(doubled ? doubleItem(item) : stateLook(item, furniture, 0));
                 display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.valueOf(settings.transform()));
                 display.setTransformation(new Transformation(vector(settings.translation()),
                         rotation(settings.rotation()), vector(settings.scale()), new Quaternionf()));
@@ -973,6 +1098,18 @@ public final class FurnitureService {
             data.remove(connectTag);
             root.setItemStack(items.create(item.get(), 1));
         }
+        if (furniture.states() != null) {
+            // 5.4: drawn as the state it is in - the first, if its states changed under it.
+            int state = data.getOrDefault(stateTag, PersistentDataType.INTEGER, 0);
+            if (state >= furniture.states().states().size()) {
+                data.remove(stateTag);
+                state = 0;
+            }
+            root.setItemStack(stateLook(item.get(), furniture, state));
+        } else if (data.has(stateTag)) {
+            data.remove(stateTag);
+            root.setItemStack(items.create(item.get(), 1));
+        }
         Placement.Animated animated = animatedOf(root, furniture);
         boolean wasAnimated = data.has(bonesTag);
         if (wasAnimated != (animated != null)) {
@@ -986,6 +1123,7 @@ public final class FurnitureService {
                 bones = spawnBones(root, item.get(), furniture);
             }
             AnimationPlayer.pose(bones, Animator.rest(animated.model()), drawn(furniture));
+            playIdle(root, furniture);
             return;
         }
         ModelEngineBridge modelEngine = hooks.modelEngine();
@@ -1815,7 +1953,13 @@ public final class FurnitureService {
         if (bones == null) {
             return false;
         }
-        animations.play(root.getUniqueId(), bones, model, clip, drawn(furniture.get()));
+        // 5.4: the animation at rest comes back after one that ends - not after one holding its last
+        // pose (an open lid), unless that one is the closing.
+        boolean resumes = animated.idle() != null && !clipName.equals(animated.idle())
+                && (clip.loop() == AnimatedModel.Loop.ONCE || clipName.equals(animated.close()));
+        Placement.Furniture spec = furniture.get();
+        animations.play(root.getUniqueId(), bones, model, clip, drawn(spec),
+                resumes ? () -> playIdle(display, spec) : null);
         return true;
     }
 

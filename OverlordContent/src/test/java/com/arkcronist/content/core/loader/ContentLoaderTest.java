@@ -24,6 +24,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -1547,6 +1548,88 @@ class ContentLoaderTest {
         assertProblem(report.problems(), "bush", "from 1 to 32 blocks");
         assertProblem(report.problems(), "bush", "radius");
         assertProblem(report.problems(), "broken", "needs 'log' and 'leaves'");
+    }
+
+    @Test
+    void furnitureReadsStatesSeatAndStorageTogetherAndAnIdleAnimation() throws IOException {
+        write("demo/living.yml", """
+                items:
+                  lamp:
+                    type: custom_furniture
+                    resource: {model: furniture/lamp}
+                    furniture:
+                      support: LIGHT
+                      states:
+                        - {name: "off", light: 0, sound: block.lever.click}
+                        - {name: "on", model: furniture/lamp_on, light: 14}
+                  bench:
+                    type: custom_furniture
+                    resource: {model: furniture/bench}
+                    furniture:
+                      support: BARRIER
+                      interactable: [seat, storage]
+                      seat-height: 0.8
+                      slots: 18
+                  seat_storage_text:
+                    type: custom_furniture
+                    resource: {model: furniture/bench}
+                    furniture: {support: BARRIER, interactable: "seat + storage"}
+                  bad_states:
+                    type: custom_furniture
+                    resource: {model: furniture/lamp}
+                    furniture:
+                      support: BARRIER
+                      interactable: seat
+                      states: [{name: a}, {name: b, model: furniture/x}]
+                  lonely_state:
+                    type: custom_furniture
+                    resource: {model: furniture/lamp}
+                    furniture: {support: BARRIER, states: [{name: a}]}
+                  modelless:
+                    type: custom_furniture
+                    resource: {model: furniture/lamp}
+                    furniture: {support: BARRIER, states: [{name: a}, {name: b}]}
+                  odd_pair:
+                    type: custom_furniture
+                    resource: {model: furniture/bench}
+                    furniture: {support: BARRIER, interactable: [seat, command]}
+                """);
+        Files.createDirectories(contents.resolve("demo/models/furniture"));
+        for (String model : List.of("lamp", "lamp_on", "bench", "x")) {
+            Files.writeString(contents.resolve("demo/models/furniture/" + model + ".json"), "{\"elements\": []}");
+        }
+
+        LoadReport report = new ContentLoader().load(contents);
+        Map<String, Placement.Furniture> furniture = new java.util.HashMap<>();
+        report.items().forEach(item -> furniture.put(item.id(), (Placement.Furniture) item.placement()));
+
+        Placement.States states = furniture.get("lamp").states();
+        assertEquals(2, states.states().size());
+        assertEquals(new Placement.States.State("off", null, 0, "block.lever.click"), states.states().get(0));
+        assertEquals("on", states.states().get(1).name());
+        assertEquals(14, states.states().get(1).light());
+        assertNotNull(states.states().get(1).model());
+        assertTrue(furniture.get("lamp").interactive(), "clicked through its states");
+        assertEquals(new com.arkcronist.content.core.definition.ResourceLocation("demo", "lamp/state_on"),
+                Placement.States.itemModel(new com.arkcronist.content.core.definition.ResourceLocation("demo", "lamp"), "on"));
+
+        Placement.Furniture bench = furniture.get("bench");
+        assertNotNull(bench.seat(), "a seat");
+        assertEquals(0.8, bench.seat().height(), 1e-6);
+        assertNotNull(bench.storage(), "and storage");
+        assertEquals(18, bench.storage().slots());
+        assertNotNull(furniture.get("seat_storage_text").seat());
+        assertNotNull(furniture.get("seat_storage_text").storage());
+
+        assertNull(furniture.get("bad_states").states());
+        assertNull(furniture.get("lonely_state").states());
+        assertNull(furniture.get("modelless").states());
+        assertNotNull(furniture.get("odd_pair").seat(), "the first of an odd pair");
+        assertNull(furniture.get("odd_pair").commands());
+        assertProblem(report.problems(), "bad_states", "only a piece that does nothing else on a click");
+        assertProblem(report.problems(), "lonely_state", "two or more states");
+        assertProblem(report.problems(), "modelless", "needs 'model'");
+        assertProblem(report.problems(), "odd_pair", "only as [seat, storage]");
     }
 
     private static void assertProblem(List<String> problems, String id, String text) {

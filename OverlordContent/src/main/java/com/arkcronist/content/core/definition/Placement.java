@@ -113,10 +113,19 @@ public sealed interface Placement {
     record Furniture(Support support, int light, boolean facePlayer, Display display, String modelEngineId,
                      Seat seat, Storage storage, Animated animated, Bed bed, DoubleChest doubleChest,
                      Footprint footprint, QuestBoard board, Ambience ambience, Commands commands,
-                     Guillotine guillotine, Connect connect, Hitbox hitbox) implements Placement {
+                     Guillotine guillotine, Connect connect, Hitbox hitbox, States states) implements Placement {
 
         public Furniture {
             footprint = footprint == null ? Footprint.SINGLE : footprint;
+        }
+
+        /** A piece without states (5.3). */
+        public Furniture(Support support, int light, boolean facePlayer, Display display, String modelEngineId,
+                         Seat seat, Storage storage, Animated animated, Bed bed, DoubleChest doubleChest,
+                         Footprint footprint, QuestBoard board, Ambience ambience, Commands commands,
+                         Guillotine guillotine, Connect connect, Hitbox hitbox) {
+            this(support, light, facePlayer, display, modelEngineId, seat, storage, animated, bed, doubleChest, footprint,
+                    board, ambience, commands, guillotine, connect, hitbox, null);
         }
 
         public Furniture(Support support, int light, boolean facePlayer, Display display, String modelEngineId,
@@ -137,7 +146,7 @@ public sealed interface Placement {
         /** Whether a right click on it does something of its own, rather than what its support block would. */
         public boolean interactive() {
             return seat != null || storage != null || board != null || commands != null || guillotine != null
-                    || (ambience != null && ambience.clickable());
+                    || (ambience != null && ambience.clickable()) || states != null;
         }
 
         public Furniture(Support support, int light, boolean facePlayer, Display display, String modelEngineId,
@@ -263,7 +272,42 @@ public sealed interface Placement {
      *
      * @param source the {@code .bbmodel} file, for messages
      */
-    record Animated(AnimatedModel model, String open, String close, Path source) {
+    record Animated(AnimatedModel model, String open, String close, Path source, @Nullable String idle) {
+
+        /** One without an animation of its own at rest. */
+        public Animated(AnimatedModel model, String open, String close, Path source) {
+            this(model, open, close, source, null);
+        }
+    }
+
+    /**
+     * 5.4: the looks a piece is clicked through in turn - a lamp off and on, a door shut and open, a
+     * banner of each colour. The first is how it is placed; each click moves it on to the next, and
+     * after the last back to the first. The one it is in is kept on the piece.
+     *
+     * @param states two or more
+     */
+    record States(List<State> states) {
+
+        public States {
+            states = List.copyOf(states);
+        }
+
+        /**
+         * One look.
+         *
+         * @param name  how it is known, a-z 0-9 _; in the item model drawing it
+         * @param model its model; null for the furniture's own
+         * @param light the light it gives, 0-15; -1 for the furniture's own
+         * @param sound played when the piece is clicked into it; null for none
+         */
+        public record State(String name, @Nullable ModelSource model, int light, @Nullable String sound) {
+        }
+
+        /** The item definition drawing a state: {@code <namespace>:<id>/state_<name>}. */
+        public static ResourceLocation itemModel(ResourceLocation single, String name) {
+            return new ResourceLocation(single.namespace(), single.path() + "/state_" + name);
+        }
     }
 
     /**
