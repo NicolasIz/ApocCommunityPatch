@@ -1479,6 +1479,76 @@ class ContentLoaderTest {
         assertProblem(report.problems(), "odd", "requires-tool: true needs a tool");
     }
 
+    @Test
+    void saplingsReadTheTreeTheyGrowInto() throws IOException {
+        write("demo/trees.yml", """
+                items:
+                  sapling:
+                    type: custom_crop
+                    resource: {texture: crop/s}
+                    crop:
+                      stages: [crop/s]
+                      drops: [{item: demo:x}]
+                      tree:
+                        log: ruby_log
+                        leaves: minecraft:oak_leaves
+                        shape: spruce
+                        height: [9, 6]
+                        generation:
+                          biomes: [forest]
+                          per-chunk: 3
+                          chance: 0.5
+                  bush:
+                    type: custom_crop
+                    resource: {texture: crop/s}
+                    crop:
+                      stages: [crop/s]
+                      tree: {log: oak_log, leaves: oak_leaves, shape: weeping, height: 40, radius: 9}
+                  seeds:
+                    type: custom_crop
+                    resource: {texture: crop/s}
+                    crop:
+                      stages: [crop/s]
+                  broken:
+                    type: custom_crop
+                    resource: {texture: crop/s}
+                    crop:
+                      stages: [crop/s]
+                      tree: {leaves: oak_leaves}
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+        Map<String, Placement.Crop> crops = new java.util.HashMap<>();
+        report.items().forEach(item -> crops.put(item.id(), (Placement.Crop) item.placement()));
+
+        Placement.Crop sapling = crops.get("sapling");
+        assertTrue(sapling.sapling());
+        assertEquals(1, sapling.lastStage(), "after its one stage comes the tree");
+        assertEquals(List.of(), sapling.drops(), "a sapling is never harvested");
+        com.arkcronist.content.core.tree.TreeSpec tree = sapling.tree();
+        assertEquals("demo:ruby_log", tree.log(), "a bare name is this pack's block, or the vanilla one");
+        assertEquals("minecraft:oak_leaves", tree.leaves());
+        assertEquals(com.arkcronist.content.core.tree.TreeSpec.Shape.CONE, tree.shape());
+        assertEquals(6, tree.minHeight());
+        assertEquals(9, tree.maxHeight());
+        assertEquals(1, tree.generation().size());
+        assertEquals(java.util.Set.of("minecraft:forest"), tree.generation().get(0).biomes());
+        assertEquals(3, tree.generation().get(0).perChunk());
+        assertTrue(sapling.soils().contains("GRASS_BLOCK"), "a sapling grows on grass, not farmland");
+
+        com.arkcronist.content.core.tree.TreeSpec bush = crops.get("bush").tree();
+        assertEquals(com.arkcronist.content.core.tree.TreeSpec.Shape.ROUND, bush.shape());
+        assertEquals(com.arkcronist.content.core.tree.TreeSpec.MAX_HEIGHT, bush.maxHeight());
+        assertTrue(bush.generation().isEmpty());
+
+        assertFalse(crops.containsKey("seeds"), "a crop still needs two stages");
+        assertProblem(report.problems(), "sapling", "its drops are ignored");
+        assertProblem(report.problems(), "bush", "unknown shape 'weeping'");
+        assertProblem(report.problems(), "bush", "from 1 to 32 blocks");
+        assertProblem(report.problems(), "bush", "radius");
+        assertProblem(report.problems(), "broken", "needs 'log' and 'leaves'");
+    }
+
     private static void assertProblem(List<String> problems, String id, String text) {
         assertTrue(problems.stream().anyMatch(p -> p.contains(id) && p.contains(text)),
                 id + ": expected '" + text + "' in " + problems);

@@ -146,6 +146,8 @@ public final class ArkContentPlugin extends JavaPlugin {
     private java.util.concurrent.ScheduledExecutorService physics;
     private com.arkcronist.content.bukkit.vehicle.VehicleService vehicles;
     private com.arkcronist.content.bukkit.generation.OreGenerator ores;
+    /** 5.4: saplings' trees in new chunks. */
+    private com.arkcronist.content.bukkit.tree.TreeGenerator treeGenerator;
     private com.arkcronist.content.bukkit.emote.EmoteService emotes;
     private CustomBlockService blockService;
     private ActionBars actionBars;
@@ -301,6 +303,10 @@ public final class ArkContentPlugin extends JavaPlugin {
                 hooks.packetEmotes(), pipeline.mainThread());
         // 5.0: ores laid by Paper's generation threads into each new chunk, once the content is built.
         this.ores = new com.arkcronist.content.bukkit.generation.OreGenerator(getLogger(), settings.generation().enabled());
+        // 5.4: saplings grow into trees; their trees in new chunks, as the ores.
+        this.treeGenerator = new com.arkcronist.content.bukkit.tree.TreeGenerator(getLogger(),
+                settings.generation().enabled());
+        crops.growTreesWith(new com.arkcronist.content.bukkit.tree.TreeGrower(items, blocks, blockService, getLogger()));
 
         PluginManager plugins = getServer().getPluginManager();
         plugins.registerEvents(new PackDeliveryListener(delivery, settings, getLogger()), this);
@@ -326,8 +332,10 @@ public final class ArkContentPlugin extends JavaPlugin {
             getLogger().fine("No pick event on this server: " + missing);
         }
         plugins.registerEvents(ores, this);
+        plugins.registerEvents(treeGenerator, this);
         plugins.registerEvents(emotes, this);
         ores.attach(getServer().getWorlds());
+        treeGenerator.attach(getServer().getWorlds());
         plugins.registerEvents(new com.arkcronist.content.bukkit.sanity.IntegrityListener(sanity, furniture), this);
         this.questStore = new QuestBoardStore(database);
         this.questBoards = new QuestBoardService(this, questStore, items, itemFactory, hooks, settings.questBoards(),
@@ -639,6 +647,7 @@ public final class ArkContentPlugin extends JavaPlugin {
         }
         if (ores != null) {
             shutdownStep(() -> ores.detach(getServer().getWorlds()));
+            shutdownStep(() -> treeGenerator.detach(getServer().getWorlds()));
         }
         if (emotes != null) {
             shutdownStep(() -> emotes.shutdown());
@@ -803,6 +812,11 @@ public final class ArkContentPlugin extends JavaPlugin {
     }
 
     /** 5.0: the ores laid into new chunks. */
+    /** 5.4: saplings' trees in new chunks; null before enable. */
+    public com.arkcronist.content.bukkit.tree.TreeGenerator treeGenerator() {
+        return treeGenerator;
+    }
+
     public com.arkcronist.content.bukkit.generation.OreGenerator ores() {
         return ores;
     }

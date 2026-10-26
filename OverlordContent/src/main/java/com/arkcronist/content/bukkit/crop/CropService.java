@@ -69,6 +69,8 @@ public final class CropService {
     private final Map<UUID, Set<Long>> loadedChunks = new ConcurrentHashMap<>();
     /** Furniture lives in light blocks too: a ray looking for a crop stops at it, instead of reaching past it. */
     private Predicate<Block> obstacle = block -> false;
+    /** 5.4: who grows saplings into their trees; null until set. */
+    private @Nullable com.arkcronist.content.bukkit.tree.TreeGrower trees;
 
     public CropService(Plugin plugin, ItemRegistry registry, ItemFactory items, CropStore store) {
         this.plugin = plugin;
@@ -81,6 +83,11 @@ public final class CropService {
 
     public void stopAt(Predicate<Block> obstacle) {
         this.obstacle = obstacle;
+    }
+
+    /** 5.4: who grows saplings into their trees. */
+    public void growTreesWith(com.arkcronist.content.bukkit.tree.TreeGrower trees) {
+        this.trees = trees;
     }
 
     public CropStore store() {
@@ -199,7 +206,7 @@ public final class CropService {
                     || block.getLightLevel() < crop.get().minLight()) {
                 continue;
             }
-            grow(block, current, crop.get());
+            grow(block, current, crop.get(), null);
         }
     }
 
@@ -209,10 +216,15 @@ public final class CropService {
      * @return whether it grew - and the bone meal should be used up
      */
     public boolean boneMeal(Block block, PlantedCrop crop, Placement.Crop definition) {
+        return boneMeal(block, crop, definition, null);
+    }
+
+    /** As {@link #boneMeal(Block, PlantedCrop, Placement.Crop)}, by {@code player}: a sapling's tree is theirs to grow. */
+    public boolean boneMeal(Block block, PlantedCrop crop, Placement.Crop definition, @Nullable Player player) {
         if (!definition.boneMeal() || crop.stage() >= definition.lastStage()) {
             return false;
         }
-        if (!grow(block, crop, definition)) {
+        if (!grow(block, crop, definition, player)) {
             return false;
         }
         block.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, centre(block), 10, 0.3, 0.3, 0.3);
@@ -221,8 +233,23 @@ public final class CropService {
     }
 
     /** One stage on: record, save, redraw, and celebrate if that was the last. */
-    private boolean grow(Block block, PlantedCrop crop, Placement.Crop definition) {
+    private boolean grow(Block block, PlantedCrop crop, Placement.Crop definition, @Nullable Player player) {
         PlantedCrop grown = CropGrowth.advance(crop, definition.lastStage());
+        if (definition.sapling() && grown.stage() == definition.lastStage()) {
+            // 5.4: a sapling's last step is its tree, which takes its block as the foot of its trunk.
+            if (trees == null || !trees.grow(block, definition.tree(), player, player != null)) {
+                // No room, or not allowed: it tries again after another stage's time.
+                store.update(crop, crop.withGrowth(crop.stage(), 0), true);
+                return false;
+            }
+            Entity display = display(block);
+            if (display != null) {
+                display.remove();
+            }
+            unlink(block);
+            store.remove(crop.world(), crop.x(), crop.y(), crop.z());
+            return true;
+        }
         if (!store.update(crop, grown, true)) {
             return false;
         }

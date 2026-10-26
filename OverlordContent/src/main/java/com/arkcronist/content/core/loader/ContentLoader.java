@@ -1689,8 +1689,11 @@ public final class ContentLoader {
             return null;
         }
         Object stagesNode = crop.get("stages");
-        if (!(stagesNode instanceof List<?> stageList) || stageList.size() < 2) {
-            problems.add(prefix + "'crop.stages' should list at least two stages, first to fully grown");
+        // 5.4: a sapling grows into its tree after its last stage, so one stage is enough for it.
+        int fewest = crop.get("tree") != null ? 1 : 2;
+        if (!(stagesNode instanceof List<?> stageList) || stageList.size() < fewest) {
+            problems.add(prefix + (fewest == 1 ? "'crop.stages' should list at least one stage, the sapling"
+                    : "'crop.stages' should list at least two stages, first to fully grown"));
             return null;
         }
         List<ModelSource> stages = new ArrayList<>();
@@ -1728,13 +1731,146 @@ public final class ContentLoader {
             problems.add(prefix + "'material' is ignored - a custom_crop's item is always PAPER underneath");
         }
         ModelSource look = model != null ? model : stages.get(stages.size() - 1);
+        com.arkcronist.content.core.tree.TreeSpec tree = tree(crop.get("tree"), namespace, prefix + "tree: ", problems);
+        if (tree != null && !drops.isEmpty()) {
+            problems.add(prefix + "drops: a sapling grows into its tree and is never harvested - its drops are ignored");
+            drops = List.of();
+        }
+        List<String> defaultSoils = tree != null
+                ? List.of("GRASS_BLOCK", "DIRT", "PODZOL", "COARSE_DIRT", "ROOTED_DIRT", "MOSS_BLOCK", "MUD")
+                : List.of("FARMLAND");
         Placement.Crop placement = new Placement.Crop(stages, stageSeconds, minLight,
-                soils.isEmpty() ? List.of("FARMLAND") : soils, flag(crop, "bone-meal", true, prefix, problems), drops,
-                skillXp(crop, prefix, problems), jobs(crop, prefix, problems));
+                soils.isEmpty() ? defaultSoils : soils, flag(crop, "bone-meal", true, prefix, problems), drops,
+                skillXp(crop, prefix, problems), jobs(crop, prefix, problems), tree);
         // Placeable, like blocks and furniture: planting places the crop's block, through a real
         // BlockPlaceEvent that the guard against placing custom items must let through.
         return new ItemDefinition(namespace, id, "PAPER", displayName, lore, look, new ItemBehaviour(false, true),
                 placement, file);
+    }
+
+    /**
+     * 5.4: {@code crop: tree:} - what a sapling grows into.
+     *
+     * <pre>
+     * tree:
+     *   log: ruby_log            # a block of this pack, another's (namespace:id), or a vanilla one
+     *   leaves: oak_leaves
+     *   shape: round             # round, cone, tall, bush, flat
+     *   height: [5, 7]           # or one number
+     *   radius: 2
+     *   generation:              # optional: trees of their own in new chunks
+     *     per-chunk: 2
+     *     chance: 0.3
+     *     biomes: [minecraft:forest]
+     * </pre>
+     */
+    private static com.arkcronist.content.core.tree.TreeSpec tree(Object value, String namespace, String prefix,
+                                                                  List<String> problems) {
+        if (value == null) {
+            return null;
+        }
+        if (!(value instanceof Map<?, ?> section)) {
+            problems.add(prefix + "should be a section with log, leaves, shape and height; the sapling is a crop");
+            return null;
+        }
+        String log = blockId(text(section, "log", prefix, problems), namespace);
+        String leaves = blockId(text(section, "leaves", prefix, problems), namespace);
+        if (log == null || leaves == null) {
+            problems.add(prefix + "needs 'log' and 'leaves' - a custom block (namespace:id) or a vanilla block each;"
+                    + " the sapling is a crop");
+            return null;
+        }
+        com.arkcronist.content.core.tree.TreeSpec.Shape shape = com.arkcronist.content.core.tree.TreeSpec.Shape.ROUND;
+        String rawShape = text(section, "shape", prefix, problems);
+        if (rawShape != null) {
+            Optional<com.arkcronist.content.core.tree.TreeSpec.Shape> parsed =
+                    com.arkcronist.content.core.tree.TreeSpec.Shape.parse(rawShape);
+            if (parsed.isEmpty()) {
+                problems.add(prefix + "unknown shape '" + rawShape.trim() + "' (round, cone, tall, bush, flat) - round");
+            } else {
+                shape = parsed.get();
+            }
+        }
+        int[] fallback = switch (shape) {
+            case ROUND -> new int[]{4, 6};
+            case CONE -> new int[]{6, 9};
+            case TALL -> new int[]{7, 11};
+            case BUSH -> new int[]{1, 2};
+            case FLAT -> new int[]{5, 7};
+        };
+        int minHeight = fallback[0];
+        int maxHeight = fallback[1];
+        Object height = section.get("height");
+        if (height instanceof Number number) {
+            minHeight = maxHeight = number.intValue();
+        } else if (height instanceof List<?> range && range.size() == 2 && range.get(0) instanceof Number low
+                && range.get(1) instanceof Number high) {
+            minHeight = Math.min(low.intValue(), high.intValue());
+            maxHeight = Math.max(low.intValue(), high.intValue());
+        } else if (height != null) {
+            problems.add(prefix + "height: should be a number or [lowest, highest]; using " + minHeight + "-" + maxHeight);
+        }
+        int cap = com.arkcronist.content.core.tree.TreeSpec.MAX_HEIGHT;
+        if (minHeight < 1 || maxHeight > cap) {
+            problems.add(prefix + "height: from 1 to " + cap + " blocks; kept within that");
+            minHeight = Math.max(1, Math.min(cap, minHeight));
+            maxHeight = Math.max(minHeight, Math.min(cap, maxHeight));
+        }
+        int radius = (int) number(section, "radius", shape == com.arkcronist.content.core.tree.TreeSpec.Shape.FLAT ? 3 : 2,
+                0, com.arkcronist.content.core.tree.TreeSpec.MAX_RADIUS, prefix, problems);
+        return new com.arkcronist.content.core.tree.TreeSpec(log, leaves, shape, minHeight, maxHeight, radius,
+                treeGeneration(section.get("generation"), prefix + "generation: ", problems));
+    }
+
+    /**
+     * A block named in a tree: {@code namespace:id} as given; a bare name this pack's - and, when this
+     * pack has no block of that name, the vanilla block's ({@code oak_leaves}).
+     */
+    private static String blockId(String raw, String namespace) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String value = raw.trim().toLowerCase(Locale.ROOT);
+        return value.contains(":") ? value : namespace + ":" + value;
+    }
+
+    private static List<com.arkcronist.content.core.tree.TreeSpec.Generation> treeGeneration(Object value, String where,
+                                                                                             List<String> problems) {
+        if (value == null) {
+            return List.of();
+        }
+        List<?> entries = value instanceof List<?> list ? list : List.of(value);
+        List<com.arkcronist.content.core.tree.TreeSpec.Generation> generation = new ArrayList<>();
+        for (int i = 0; i < entries.size(); i++) {
+            String at = entries.size() > 1 ? where + "#" + (i + 1) + ": " : where;
+            if (!(entries.get(i) instanceof Map<?, ?> section)) {
+                problems.add(at + "should be a section (per-chunk, chance, biomes, ...); left out");
+                continue;
+            }
+            Set<String> environments = new LinkedHashSet<>();
+            for (String environment : lines(section, "environments", at, problems)) {
+                String name = environment.trim().toLowerCase(Locale.ROOT);
+                if (OreGeneration.ENVIRONMENTS.contains(name)) {
+                    environments.add(name);
+                } else {
+                    problems.add(at + "unknown environment '" + environment + "' (normal, nether, the_end, custom)");
+                }
+            }
+            Set<String> worlds = new LinkedHashSet<>();
+            lines(section, "worlds", at, problems).forEach(world -> worlds.add(world.trim().toLowerCase(Locale.ROOT)));
+            Set<String> biomes = new LinkedHashSet<>();
+            lines(section, "biomes", at, problems).forEach(biome -> biomes.add(OreGeneration.key(biome)));
+            Set<String> soils = new LinkedHashSet<>();
+            lines(section, "soil", at, problems).forEach(soil -> soils.add(OreGeneration.key(soil)));
+            if (soils.isEmpty()) {
+                soils.addAll(List.of("minecraft:grass_block", "minecraft:dirt", "minecraft:podzol",
+                        "minecraft:coarse_dirt", "minecraft:snow_block"));
+            }
+            generation.add(new com.arkcronist.content.core.tree.TreeSpec.Generation(worlds, environments, biomes,
+                    (int) number(section, "per-chunk", 1, 0, 16, at, problems),
+                    number(section, "chance", 0.2, 0, 1, at, problems), soils));
+        }
+        return generation;
     }
 
     /**

@@ -67,6 +67,14 @@ class DemoContentTest {
         assertTrue(starOre.get(0).inBiome("minecraft:deep_dark"));
         assertTrue(((Placement.Block) items.get("demo:ruby_block").placement()).generation().isEmpty());
 
+        // 5.4: a sapling that grows into a tree of its own wood, and its trees in new chunks.
+        Placement.Crop sapling = (Placement.Crop) items.get("demo:ruby_sapling").placement();
+        assertEquals("demo:ruby_log", sapling.tree().log());
+        assertEquals("demo:cherry_leaves", sapling.tree().leaves(), "the vanilla block, as no demo block is called so");
+        assertTrue(sapling.tree().generation().get(0).inBiome("minecraft:cherry_grove"));
+        assertEquals(com.arkcronist.content.core.block.Mining.Tool.AXE,
+                ((Placement.Block) items.get("demo:ruby_log").placement()).mining().tool());
+
         // 5.0: four emotes on one squire rig.
         for (String emote : java.util.List.of("wave", "bow", "cheer", "sit")) {
             assertNotNull(items.get("demo:" + emote).emote(), emote);

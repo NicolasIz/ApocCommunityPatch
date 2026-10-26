@@ -503,15 +503,28 @@ public sealed interface Placement {
      * @param skillXp      skill experience for harvesting it grown, given through AuraSkills
      *                     (Farming), mcMMO (Herbalism) or SkillAPI; 0 for none
      * @param jobs         what each job pays for harvesting it grown, by job id; empty for nothing
+     * @param tree         5.4: a sapling - after its last stage it grows into this tree instead of
+     *                     ripening; null for a crop
      */
     record Crop(List<ModelSource> stages, int stageSeconds, int minLight, List<String> soils, boolean boneMeal,
-                List<Drop> drops, double skillXp, Map<String, JobReward> jobs) implements Placement {
+                List<Drop> drops, double skillXp, Map<String, JobReward> jobs,
+                @Nullable com.arkcronist.content.core.tree.TreeSpec tree) implements Placement {
 
         public Crop {
             stages = List.copyOf(stages);
             soils = List.copyOf(soils);
             drops = List.copyOf(drops);
             jobs = Map.copyOf(jobs);
+        }
+
+        public Crop(List<ModelSource> stages, int stageSeconds, int minLight, List<String> soils, boolean boneMeal,
+                    List<Drop> drops, double skillXp, Map<String, JobReward> jobs) {
+            this(stages, stageSeconds, minLight, soils, boneMeal, drops, skillXp, jobs, null);
+        }
+
+        /** 5.4: whether it is a sapling, which grows into a tree rather than ripening. */
+        public boolean sapling() {
+            return tree != null;
         }
 
         public Crop(List<ModelSource> stages, int stageSeconds, int minLight, List<String> soils, boolean boneMeal,
@@ -529,8 +542,12 @@ public sealed interface Placement {
             return ContentType.CUSTOM_CROP;
         }
 
+        /**
+         * The stage it ripens at: its last model. A sapling's is one past its last model - the stage
+         * it never shows, because reaching it is growing into its tree.
+         */
         public int lastStage() {
-            return stages.size() - 1;
+            return tree == null ? stages.size() - 1 : stages.size();
         }
 
         /**

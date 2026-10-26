@@ -271,7 +271,14 @@ public final class ContentPipeline {
                     "contents/demo/textures/block/ruby_door_top.png",
                     "contents/demo/textures/block/ruby_door_bottom.png",
                     "contents/demo/textures/block/ruby_trapdoor.png",
-                    "contents/demo/textures/item/ruby_door.png")));
+                    "contents/demo/textures/item/ruby_door.png")),
+            // 5.4: a sapling that grows into a tree of its own wood, and its trees in new chunks.
+            Map.entry("5.4.0", List.of(
+                    "contents/demo/trees.yml",
+                    "contents/demo/textures/crop/ruby_sapling.png",
+                    "contents/demo/textures/block/ruby_log.png",
+                    "contents/demo/textures/block/ruby_log_top.png",
+                    "contents/demo/textures/block/ruby_planks.png")));
 
     /** The example files a resource lists, one path a line; # starts a comment. */
     private static List<String> exampleList(String resource) {
@@ -948,9 +955,23 @@ public final class ContentPipeline {
                     reserved.addAll(com.arkcronist.content.core.pack.BlockStates.customNoteBlockStates(source));
                 }
             }
-            // 3.0: states shown to Bedrock players as furniture are never a block's.
-            reserved.addAll(StableAllocator.read(carrierFile).values());
-            NoteBlockAllocator.Allocation allocation = NoteBlockAllocator.allocate(previous, blockIds, reserved);
+            // 3.0: states shown to Bedrock players as furniture are not a block's - while there are others.
+            Set<Integer> carriers = new java.util.HashSet<>(StableAllocator.read(carrierFile).values());
+            carriers.removeAll(reserved);
+            Set<Integer> withCarriers = new java.util.HashSet<>(reserved);
+            withCarriers.addAll(carriers);
+            NoteBlockAllocator.Allocation allocation = NoteBlockAllocator.allocate(previous, blockIds, withCarriers);
+            if (allocation.active().size() < blockIds.size() && !carriers.isEmpty()) {
+                // 5.4: none left but carriers: a block of the Java world comes before a piece of furniture
+                // drawn for Bedrock players, which the Bedrock pack then draws with what is left - or
+                // smaller, or not at all, and says so.
+                NoteBlockAllocator.Allocation taking = NoteBlockAllocator.allocate(previous, blockIds, reserved);
+                long taken = taking.active().values().stream().map(NoteBlockState::index).filter(carriers::contains).count();
+                logger.info(taken + " note block state(s) Bedrock players were shown furniture with go to new custom"
+                        + " blocks: there were no others left. On a rebuild while the server runs, Bedrock players"
+                        + " see those blocks as that furniture until it restarts.");
+                allocation = taking;
+            }
             if (allocation.changed()) {
                 NoteBlockAllocator.write(noteBlockStateFile, allocation.assignments());
             }
@@ -1735,6 +1756,9 @@ public final class ContentPipeline {
         plugin.furniture().useHitboxes(build.extras().hitboxes());
         if (plugin.ores() != null) {
             plugin.ores().publish(customBlocks);
+        }
+        if (plugin.treeGenerator() != null) {
+            plugin.treeGenerator().publish(registry, blocks);
         }
         List<LiquidRegistry.Liquid> liquids = new ArrayList<>();
         for (Map.Entry<String, Integer> entry : build.liquids().entrySet()) {

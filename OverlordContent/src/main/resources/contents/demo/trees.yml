@@ -1,0 +1,94 @@
+# ---------------------------------------------------------------------------
+#  5.4: a sapling that grows into a tree of its own wood
+# ---------------------------------------------------------------------------
+#  A sapling is a crop with a 'tree:' section: planted on grass or dirt, it
+#  grows through its stages and then - by itself, or sooner with bone meal -
+#  into its tree, if there is room for its trunk. Protection plugins
+#  (WorldGuard, GriefPrevention, Lands, Towny...) decide as for vanilla trees.
+#
+#  'generation:' grows the same trees into new chunks as they are generated -
+#  no world generator plugin needed. Chunks generated before are left alone.
+#
+#     /customgive <player> demo:ruby_sapling
+#     /customgive <player> demo:ruby_log
+#     /customgive <player> demo:ruby_planks
+# ---------------------------------------------------------------------------
+
+items:
+
+  ruby_sapling:
+    type: custom_crop
+    display-name: "<#ff6a7f>Ruby Sapling"
+    lore:
+      - "<gray>Plant on grass or dirt."
+    resource:
+      texture: crop/ruby_sapling
+    crop:
+      # One stage is enough: the sapling. After the last one comes the tree.
+      stages:
+        - crop/ruby_sapling
+      stage-seconds: 240             # until the tree, give or take a fifth
+      min-light: 9
+      # soil: [GRASS_BLOCK, DIRT]    # default: grass, dirt, podzol, coarse and
+      #                              # rooted dirt, moss and mud
+      bone-meal: true
+      tree:
+        # A block of this pack (its id), of another (namespace:id) or a vanilla
+        # block (oak_log, cherry_leaves). Custom leaves see-through like
+        # vanilla's are a block with 'shape: transparent' (see shapes.yml).
+        log: ruby_log
+        leaves: cherry_leaves
+        shape: round                 # round (oak), cone (spruce), tall (birch),
+                                     # bush, flat (acacia)
+        height: [4, 6]               # trunk height: one number, or [least, most]
+        radius: 2                    # how far the crown reaches out, 0-6
+        # Vanilla leaves on a custom trunk do not fall away: vanilla does not
+        # know it for wood. On a vanilla log they fall as vanilla's do.
+        generation:
+          # worlds:       [world]      # by name; default every world of...
+          # environments: [normal]     # normal, nether, the_end, custom
+          biomes: [minecraft:cherry_grove, minecraft:meadow, minecraft:flower_forest]
+          per-chunk: 1                 # tries at a tree in each chunk
+          chance: 0.25                 # the chance each try makes a tree, 0-1
+          # soil: [grass_block, dirt]  # what it stands on (default: grass,
+          #                            # dirt, podzol, coarse dirt, snow)
+
+  # The trunk: a block like any other - here mined like wood, with an axe.
+  ruby_log:
+    type: custom_block
+    display-name: "<#c0485a>Ruby Log"
+    resource:
+      parent: block/cube_column
+      textures:
+        side: block/ruby_log
+        end: block/ruby_log_top
+    block:
+      drop-self: true
+      tool: axe
+      hardness: 2
+      skill-xp: 3
+
+  ruby_planks:
+    type: custom_block
+    display-name: "<#c0485a>Ruby Planks"
+    resource:
+      texture: block/ruby_planks
+    block:
+      drop-self: true
+      tool: axe
+      hardness: 2
+
+recipes:
+
+  ruby_planks:
+    type: shapeless
+    ingredients: [demo:ruby_log]
+    result: demo:ruby_planks 4
+    category: building
+
+  # Any sapling and a ruby.
+  ruby_sapling:
+    type: shapeless
+    ingredients: ["#minecraft:saplings", demo:ruby]
+    result: demo:ruby_sapling
+    category: misc

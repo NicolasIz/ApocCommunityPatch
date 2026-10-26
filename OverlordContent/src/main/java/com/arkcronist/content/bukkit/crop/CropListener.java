@@ -134,7 +134,7 @@ public final class CropListener implements Listener {
         Optional<PlantedCrop> crop = crops.at(block);
         Optional<Placement.Crop> definition = crop.flatMap(crops::definition);
         if (definition.isPresent() && protection.check(player, block, Interaction.BUILD)
-                && crops.boneMeal(block, crop.get(), definition.get())
+                && crops.boneMeal(block, crop.get(), definition.get(), player)
                 && player.getGameMode() != GameMode.CREATIVE) {
             held.setAmount(held.getAmount() - 1);
             player.getInventory().setItem(event.getHand(), held.getAmount() > 0 ? held : null);
