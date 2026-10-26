@@ -1347,6 +1347,83 @@ class ContentLoaderTest {
         assertTrue(problems.contains("'jobs.Broken' should be a section like {money: 2.5, xp: 4}"), problems);
     }
 
+    /** 5.3: a run's three looks and a piece's hitboxes, and what they turn down. */
+    @Test
+    void runsAndHitboxesAreReadAndChecked() throws IOException {
+        write("demo/runs.yml", """
+                items:
+                  counter:
+                    type: custom_furniture
+                    resource: {model: furniture/counter}
+                    furniture:
+                      support: barrier
+                      connect: {left: furniture/counter_l, middle: furniture/counter_m, right: furniture/counter_r}
+                      hitbox: model
+                  bench:
+                    type: custom_furniture
+                    resource: {model: furniture/bench}
+                    furniture:
+                      support: light
+                      connect: {group: Seats, left: furniture/b_l, middle: furniture/b_m, right: furniture/b_r}
+                      hitbox:
+                        - {width: 1.5, height: 0.5, offset: [0, 0, 0.25]}
+                        - {width: 9, height: 1}
+                  rug:
+                    type: custom_furniture
+                    resource: {model: furniture/rug}
+                    furniture:
+                      support: light
+                      hitbox: false
+                  half_counter:
+                    type: custom_furniture
+                    resource: {model: furniture/half}
+                    furniture:
+                      support: barrier
+                      connect: {left: furniture/h_l, right: furniture/h_r}
+                  chest_run:
+                    type: custom_furniture
+                    resource: {model: furniture/c}
+                    furniture:
+                      support: chest
+                      connect: {left: furniture/c_l, middle: furniture/c_m, right: furniture/c_r}
+                      hitbox: model
+                """);
+
+        LoadReport report = new ContentLoader().load(contents);
+        Map<String, Placement.Furniture> pieces = new java.util.HashMap<>();
+        report.items().forEach(item -> pieces.put(item.id(), (Placement.Furniture) item.placement()));
+
+        Placement.Connect counter = pieces.get("counter").connect();
+        assertEquals("demo:counter", counter.group(), "its own kind, without a group");
+        assertEquals(new ResourceLocation("demo", "furniture/counter_l"), counter.left().location());
+        assertEquals(new ResourceLocation("demo", "furniture/counter_r"), counter.model(Placement.Connect.Variant.RIGHT)
+                .location());
+        assertNull(counter.model(Placement.Connect.Variant.SINGLE), "alone, its own model");
+        assertTrue(pieces.get("counter").hitbox().model());
+        assertEquals("demo:seats", pieces.get("bench").connect().group());
+        assertEquals(1, pieces.get("bench").hitbox().boxes().size(), "the box 9 wide is left out");
+        Placement.Hitbox.Box box = pieces.get("bench").hitbox().boxes().get(0);
+        assertEquals(1.5, box.width());
+        assertEquals(0.25f, box.offset().z());
+        assertFalse(pieces.get("rug").hitbox().model());
+        assertTrue(pieces.get("rug").hitbox().boxes().isEmpty());
+        assertNull(pieces.get("half_counter").connect());
+        assertNull(pieces.get("chest_run").connect());
+        assertNull(pieces.get("chest_run").hitbox());
+
+        assertProblem(report.problems(), "bench", "at most 8 blocks");
+        assertProblem(report.problems(), "half_counter", "needs 'middle'");
+        assertProblem(report.problems(), "chest_run", "joins its neighbours");
+        assertProblem(report.problems(), "chest_run", "clicked as the vanilla block it is");
+
+        assertEquals(Placement.Connect.Variant.SINGLE, Placement.Connect.Variant.of(false, false));
+        assertEquals(Placement.Connect.Variant.LEFT, Placement.Connect.Variant.of(false, true));
+        assertEquals(Placement.Connect.Variant.MIDDLE, Placement.Connect.Variant.of(true, true));
+        assertEquals(Placement.Connect.Variant.RIGHT, Placement.Connect.Variant.of(true, false));
+        assertEquals(new ResourceLocation("demo", "counter/connect_middle"),
+                Placement.Connect.itemModel(new ResourceLocation("demo", "counter"), Placement.Connect.Variant.MIDDLE));
+    }
+
     private static void assertProblem(List<String> problems, String id, String text) {
         assertTrue(problems.stream().anyMatch(p -> p.contains(id) && p.contains(text)),
                 id + ": expected '" + text + "' in " + problems);

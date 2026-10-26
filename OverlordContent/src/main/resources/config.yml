@@ -265,6 +265,12 @@ furniture:
   # apart, so with 63 the lid moves 63 to 113 ms after the click; 0 moves it
   # at once.
   double-chest-animation-delay-ms: 63
+  # 5.3: furniture on a light block - walked through, never targeted by a
+  # click - is clicked and punched by invisible boxes fitted to its model
+  # instead of by its whole block, so a cup is hit where the cup is. A piece
+  # with its own 'hitbox:' keeps it; 'hitbox: false' turns this off for one.
+  # The boxes are never saved, and come back as the piece loads.
+  fitted-hitboxes: true
 
 # ---------------------------------------------------------------------------
 #  Quest boards: furniture with interactable: medieval_bulletin_board

@@ -608,7 +608,8 @@ public final class SanityChecker {
      * has its rows is the piece check's.
      */
     private @Nullable LeftOver leftOver(Entity entity) {
-        if (!(entity instanceof ItemDisplay) || !entity.isValid()) {
+        // 5.3: a piece's hitboxes too, which outlive it only until their chunk unloads.
+        if (!(entity instanceof ItemDisplay || furniture.isHitbox(entity)) || !entity.isValid()) {
             return null;
         }
         String id = furniture.furnitureId(entity);

@@ -101,10 +101,18 @@ public sealed interface Placement {
     record Furniture(Support support, int light, boolean facePlayer, Display display, String modelEngineId,
                      Seat seat, Storage storage, Animated animated, Bed bed, DoubleChest doubleChest,
                      Footprint footprint, QuestBoard board, Ambience ambience, Commands commands,
-                     Guillotine guillotine) implements Placement {
+                     Guillotine guillotine, Connect connect, Hitbox hitbox) implements Placement {
 
         public Furniture {
             footprint = footprint == null ? Footprint.SINGLE : footprint;
+        }
+
+        public Furniture(Support support, int light, boolean facePlayer, Display display, String modelEngineId,
+                         Seat seat, Storage storage, Animated animated, Bed bed, DoubleChest doubleChest,
+                         Footprint footprint, QuestBoard board, Ambience ambience, Commands commands,
+                         Guillotine guillotine) {
+            this(support, light, facePlayer, display, modelEngineId, seat, storage, animated, bed, doubleChest, footprint,
+                    board, ambience, commands, guillotine, null, null);
         }
 
         public Furniture(Support support, int light, boolean facePlayer, Display display, String modelEngineId,
@@ -134,6 +142,73 @@ public sealed interface Placement {
         @Override
         public ContentType type() {
             return ContentType.CUSTOM_FURNITURE;
+        }
+    }
+
+    /**
+     * 5.3: furniture that joins its neighbours into one run - a counter, a bench, a sofa. Placed side
+     * by side, facing the same way, each piece of a group is drawn as the run's left end, its middle
+     * or its right end, as seen from the front; a piece alone keeps its own model.
+     *
+     * @param group the pieces that join one another: furniture naming the same group joins, so an oak
+     *              and a spruce counter can make one run; the furniture's own id when not given
+     * @param left  the left end - a neighbour on its right only
+     * @param right the right end - a neighbour on its left only
+     */
+    record Connect(String group, ModelSource left, ModelSource middle, ModelSource right) {
+
+        /** How a piece of a run is drawn, by which of its sides has a neighbour. */
+        public enum Variant {
+            SINGLE, LEFT, MIDDLE, RIGHT;
+
+            /** {@code onLeft}, {@code onRight}: whether a neighbour of the group stands there, facing the same way. */
+            public static Variant of(boolean onLeft, boolean onRight) {
+                return onLeft ? (onRight ? MIDDLE : RIGHT) : (onRight ? LEFT : SINGLE);
+            }
+
+            public String key() {
+                return name().toLowerCase(Locale.ROOT);
+            }
+        }
+
+        /** The model of a variant; null for {@link Variant#SINGLE}, which is the furniture's own. */
+        public @Nullable ModelSource model(Variant variant) {
+            return switch (variant) {
+                case LEFT -> left;
+                case MIDDLE -> middle;
+                case RIGHT -> right;
+                case SINGLE -> null;
+            };
+        }
+
+        /** The item definition drawing a variant: {@code <namespace>:<id>/connect_<variant>}. */
+        public static ResourceLocation itemModel(ResourceLocation single, Variant variant) {
+            return new ResourceLocation(single.namespace(), single.path() + "/connect_" + variant.key());
+        }
+    }
+
+    /**
+     * 5.3: what of a piece is clicked and punched - boxes that follow its shape, held by interaction
+     * entities, instead of whole blocks. They change nothing of what is walked into: that is still
+     * the support's, a barrier's whole block or a light block's nothing.
+     *
+     * @param model fitted to the model's own cubes when the pack is built
+     * @param boxes set by hand, facing south; used when {@code model} is false
+     */
+    record Hitbox(boolean model, List<Box> boxes) {
+
+        public Hitbox {
+            boxes = List.copyOf(boxes);
+        }
+
+        /**
+         * A box as an interaction entity holds it: square across, {@code width} wide and deep,
+         * {@code height} tall.
+         *
+         * @param offset where the middle of its bottom is, in blocks, from the middle of the floor of
+         *               the block the piece is placed on - for the piece facing south
+         */
+        public record Box(double width, double height, Vec3 offset) {
         }
     }
 

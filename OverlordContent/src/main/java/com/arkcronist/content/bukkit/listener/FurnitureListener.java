@@ -45,9 +45,11 @@ import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.world.EntitiesLoadEvent;
+import org.bukkit.event.world.EntitiesUnloadEvent;
 import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
@@ -217,38 +219,64 @@ public final class FurnitureListener implements Listener {
         if (support.isPresent() && Tag.BEDS.isTagged(support.get().getType())) {
             return;
         }
-        Optional<CustomItem> item = support.flatMap(furniture::item);
-        Placement.Furniture definition = item.map(CustomItem::placement).filter(Placement.Furniture.class::isInstance)
-                .map(Placement.Furniture.class::cast).orElse(null);
-        boolean interactive = definition != null && definition.interactive();
-        Player player = event.getPlayer();
-        // 3.4: a canteen held out to a trough or a well is filled there, and the piece does nothing else.
-        if (item.isPresent() && canteens != null && event.getHand() == EquipmentSlot.HAND
-                && canteens.test(player, item.get().id())) {
+        if (support.isPresent() && use(event.getPlayer(), support.get(), event.getHand())) {
             event.setCancelled(true);
             return;
         }
-        boolean chest = support.isPresent() && support.get().getType() == Material.CHEST;
+        if (action == Action.RIGHT_CLICK_BLOCK && clickedFurniture) {
+            event.setUseInteractedBlock(Event.Result.DENY);
+        }
+    }
+
+    /**
+     * 5.3: a right click on one of a piece's hitboxes is a right click on the piece - on the block of
+     * it nearest where the box was clicked.
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onUseHitbox(PlayerInteractEntityEvent event) {
+        if (!furniture.isHitbox(event.getRightClicked())) {
+            return;
+        }
+        event.setCancelled(true);
+        furniture.hitboxPart(event.getRightClicked(), event.getPlayer())
+                .ifPresent(support -> use(event.getPlayer(), support, event.getHand()));
+    }
+
+    /**
+     * What a right click with {@code hand} on the piece standing on {@code support} does.
+     *
+     * @return whether the piece took the click, which nothing else then gets
+     */
+    private boolean use(Player player, Block support, @Nullable EquipmentSlot hand) {
+        Optional<CustomItem> item = furniture.item(support);
+        Placement.Furniture definition = item.map(CustomItem::placement).filter(Placement.Furniture.class::isInstance)
+                .map(Placement.Furniture.class::cast).orElse(null);
+        boolean interactive = definition != null && definition.interactive();
+        // 3.4: a canteen held out to a trough or a well is filled there, and the piece does nothing else.
+        if (item.isPresent() && canteens != null && hand == EquipmentSlot.HAND
+                && canteens.test(player, item.get().id())) {
+            return true;
+        }
+        boolean chest = support.getType() == Material.CHEST;
         boolean sneakingThrough = player.isSneaking()
                 && !(chest && player.getInventory().getItemInMainHand().isEmpty()
                 && player.getInventory().getItemInOffHand().isEmpty());
         if (interactive && !sneakingThrough) {
             // Both hands' clicks are taken, so the off hand does not place a block against the furniture.
-            event.setCancelled(true);
-            if (event.getHand() != EquipmentSlot.HAND) {
-                return;
+            if (hand != EquipmentSlot.HAND) {
+                return true;
             }
             if (definition.guillotine() != null) {
-                useGuillotine(player, support.get(), item.get(), definition);
-            } else if (definition.seat() != null && protection.check(player, support.get(), Interaction.SIT)) {
-                float yaw = furniture.facing(support.get()).orElse(player.getLocation().getYaw());
+                useGuillotine(player, support, item.get(), definition);
+            } else if (definition.seat() != null && protection.check(player, support, Interaction.SIT)) {
+                float yaw = furniture.facing(support).orElse(player.getLocation().getYaw());
                 // A tall piece - a throne - is sat on from its bottom row, whichever block was clicked;
                 // a wide one - a bench - seats one on each of its blocks.
-                Block seat = furniture.piece(support.get())
-                        .map(piece -> support.get().getRelative(0, -piece.up(), 0)).orElse(support.get());
+                Block seat = furniture.piece(support)
+                        .map(piece -> support.getRelative(0, -piece.up(), 0)).orElse(support);
                 // 3.2: the sitter's camera passes through the piece's own supports.
-                Optional<FurnitureService.Piece> whole = furniture.piece(support.get());
-                List<Block> piece = whole.map(found -> furniture.pieceParts(found.root())).orElse(List.of(support.get()));
+                Optional<FurnitureService.Piece> whole = furniture.piece(support);
+                List<Block> piece = whole.map(found -> furniture.pieceParts(found.root())).orElse(List.of(support));
                 Placement.Seat spec = definition.seat();
                 if (spec.centred() && whole.isPresent()) {
                     // 3.2: one seat for the whole piece - a throne - in its middle, keyed on its anchor.
@@ -262,39 +290,37 @@ public final class FurnitureListener implements Listener {
                 } else {
                     seats.sit(player, seat, spec, yaw, piece);
                 }
-            } else if (definition.storage() != null && protection.check(player, support.get(), Interaction.CONTAINER)) {
-                Optional<ChestPair> pair = furniture.pairAt(support.get());
+            } else if (definition.storage() != null && protection.check(player, support, Interaction.CONTAINER)) {
+                Optional<ChestPair> pair = furniture.pairAt(support);
                 if (pair.isPresent() && definition.doubleChest() != null) {
-                    World world = support.get().getWorld();
+                    World world = support.getWorld();
                     Block first = world.getBlockAt(pair.get().x(), pair.get().y(), pair.get().z());
                     Block second = world.getBlockAt(pair.get().px(), pair.get().py(), pair.get().pz());
-                    Block other = first.equals(support.get()) ? second : first;
+                    Block other = first.equals(support) ? second : first;
                     if (protection.check(player, other, Interaction.CONTAINER)) {
                         storage.openPair(player, first, second, item.get().id(), doubleTitle(item.get(), definition));
                     }
                 } else {
                     // 3.4: a piece that shows what it holds keeps it at its anchor, whichever block is clicked.
                     Block at = shown != null && definition.storage().show() != null
-                            ? shown.storageBlock(support.get()) : support.get();
+                            ? shown.storageBlock(support) : support;
                     storage.open(player, at, item.get().id(), definition.storage(),
                             title(item.get(), definition.storage()));
                 }
             } else if (definition.board() != null && boards != null) {
-                boards.open(player, support.get(), item.get(), definition.board());
+                boards.open(player, support, item.get(), definition.board());
             } else if (definition.commands() != null && signs != null
-                    && protection.check(player, support.get(), Interaction.USE)) {
-                furniture.piece(support.get()).ifPresent(piece ->
+                    && protection.check(player, support, Interaction.USE)) {
+                furniture.piece(support).ifPresent(piece ->
                         signs.use(player, piece, item.get(), definition.commands()));
             } else if (definition.ambience() != null && ambience != null
-                    && protection.check(player, support.get(), Interaction.USE)) {
-                furniture.piece(support.get()).ifPresent(piece ->
+                    && protection.check(player, support, Interaction.USE)) {
+                furniture.piece(support).ifPresent(piece ->
                         ambience.click(player, piece, item.get(), definition.ambience()));
             }
-            return;
+            return true;
         }
-        if (action == Action.RIGHT_CLICK_BLOCK && clickedFurniture) {
-            event.setUseInteractedBlock(Event.Result.DENY);
-        }
+        return false;
     }
 
     /** 3.4: pieces that show what they hold keep it at their anchor. */
@@ -473,6 +499,36 @@ public final class FurnitureListener implements Listener {
         }
     }
 
+    /**
+     * 5.3: a punch at one of a piece's hitboxes breaks the piece, as a punch at its block does - the
+     * block of it nearest the punch, through a {@link BlockBreakEvent} protection plugins decide.
+     */
+    // Not ignoreCancelled: a protection plugin guarding entities may cancel the hit; the break decides.
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onPunchHitbox(org.bukkit.event.entity.EntityDamageByEntityEvent event) {
+        if (!furniture.isHitbox(event.getEntity())) {
+            return;
+        }
+        event.setCancelled(true);
+        if (!(event.getDamager() instanceof Player player)) {
+            return;
+        }
+        GameMode mode = player.getGameMode();
+        if (mode != GameMode.SURVIVAL && mode != GameMode.CREATIVE) {
+            return;
+        }
+        Optional<Block> target = furniture.hitboxPart(event.getEntity(), player);
+        if (target.isEmpty() || furniture.identify(target.get()).isEmpty()
+                || !protection.check(player, target.get(), Interaction.BREAK)) {
+            return;
+        }
+        BlockBreakEvent breakEvent = new BlockBreakEvent(target.get(), player);
+        breakEvent.setDropItems(false);
+        if (breakEvent.callEvent()) {
+            target.get().setType(Material.AIR);
+        }
+    }
+
     /** A chest or bed support drops the furniture's item, not its own. */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void noVanillaDrop(BlockBreakEvent event) {
@@ -630,5 +686,13 @@ public final class FurnitureListener implements Listener {
         plugin.getServer().getScheduler().runTask(plugin, () -> displays.stream()
                 .filter(Entity::isValid)
                 .forEach(furniture::restore));
+    }
+
+    /** 5.3: hitboxes are never saved: a piece unloading takes its own with it. */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onEntitiesUnload(EntitiesUnloadEvent event) {
+        for (Entity entity : event.getEntities()) {
+            furniture.unloading(entity);
+        }
     }
 }

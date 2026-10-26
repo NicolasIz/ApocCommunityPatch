@@ -1392,6 +1392,90 @@ protecciones dejen construir en cada uno; si no, no se coloca (sin sitio, se avi
 acción).
 Solo para soportes `BARRIER` y `LIGHT`: un cofre o una cama son bloques vanilla con su propia forma.
 
+### Muebles que se unen en fila (`connect:`) — 5.3
+
+```yaml
+# contents/demo/counter.yml
+  ruby_counter:
+    type: custom_furniture
+    resource:
+      model: furniture/ruby_counter           # solo: los dos extremos cerrados
+    furniture:
+      support: BARRIER                        # o LIGHT
+      face-player: true
+      connect:
+        left: furniture/ruby_counter_left     # el extremo izquierdo de la fila
+        middle: furniture/ruby_counter_middle
+        right: furniture/ruby_counter_right   # el extremo derecho
+        # group: counters                     # opcional: muebles distintos que se unen entre sí
+```
+
+Colocados uno al lado de otro **mirando hacia el mismo lado**, los muebles de un mismo grupo se
+dibujan como una sola pieza: el de un extremo con el modelo `left` o `right`, los de dentro con
+`middle`, y uno solo con su modelo de siempre. Izquierda y derecha son las de quien **mira el
+frente** del mueble. Se vuelve a calcular al colocar o romper uno, y al cargarse el chunk; si el
+vecino está en un chunk que aún no se ha cargado, el mueble se queda como estaba hasta que se carga.
+Sin `group`, un mostrador solo se une con mostradores de su mismo tipo; con `group: counters`, un
+mostrador de roble y uno de rubí que lo digan forman una fila. Cada variante es un modelo Java más del
+pack (`<id>/connect_left`, `connect_middle`, `connect_right`); lo que se guarda en el mundo es solo
+cuál toca, en el display del mueble.
+
+Solo para muebles de **un bloque**, dibujados con un modelo de ítem (no de Blockbench ni de
+ModelEngine) y sobre `BARRIER` o `LIGHT`. **En Bedrock** cada pieza se ve con su modelo de siempre:
+los extremos y el centro no se pasan a Bedrock.
+
+### Cajas de clic a medida (`hitbox:`) — 5.3
+
+Un mueble sobre un bloque de luz se atraviesa andando y no se puede apuntar, así que hasta la 5.2 se
+le clicaba y golpeaba en **todo su bloque**: una copa pequeña se rompía golpeando el aire de al lado.
+Desde la 5.3 se le pone, alrededor del modelo, una o varias **cajas invisibles** (entidades
+*interaction* de vanilla) del tamaño de lo que se ve, y se le clica y golpea solo ahí:
+
+```yaml
+    furniture:
+      support: LIGHT
+      # nada: cajas ajustadas al modelo (furniture.fitted-hitboxes: true en config.yml)
+      # hitbox: model          # lo mismo, pedido a mano - también sobre BARRIER
+      # hitbox: false          # ninguna: se clica en todo su bloque, como antes
+      # hitbox:                # a mano, en bloques, con el mueble mirando al sur
+      #   - {width: 1.0, height: 0.5, offset: [0, 0, 0.25]}
+```
+
+- **Ajustadas al modelo:** al construir el pack se mide el modelo tal como lo dibuja Java (con su
+  escala y su `translation`) y se cubre con cajas cuadradas: una si es más o menos igual de ancho que
+  de fondo, o una fila a lo largo (hasta 8) si es alargado, como un banco. Una caja nunca es más fina
+  de 0,2 bloques, para que se pueda acertar. Giran con el mueble.
+- **Por defecto** solo los muebles sobre `LIGHT` (los que se atraviesan) las llevan; los de
+  `BARRIER` ya son un bloque sólido que se puede apuntar. Los cofres y las camas son el bloque vanilla
+  y se clican como tal.
+- **Nunca se guardan:** aparecen con el mueble y cada vez que se carga su chunk, y se van con él. Un
+  reinicio o un `/arkcontent reload` las vuelve a poner, una sola vez.
+- Clic derecho en una caja es usar el mueble (sentarse, abrirlo...); golpearla es romperlo, con el
+  mismo `BlockBreakEvent` que las protecciones (WorldGuard, GriefPrevention...) ya deciden. En un
+  mueble de varios bloques cuenta el bloque más cercano a donde se golpeó.
+- **Bedrock:** Geyser traduce las cajas, y los jugadores de Bedrock pueden además seguir clicando los
+  bloques con que ven el mueble.
+- Un modelo dibujado con un `display.transform` distinto de `NONE` no se ajusta (sus medidas dependen
+  del propio modelo): se clica en su bloque, o se le dan las cajas a mano.
+
+#### Qué se ha verificado en un servidor Paper 1.21.8 real (5.3, filas y cajas)
+
+Con un bot (`mineflayer`) y leyendo lo que dice el propio servidor (`/data get entity`), 18 de 18:
+
+- tres mostradores en fila se dibujan extremo derecho, centro y extremo izquierdo vistos desde el
+  frente; uno colocado mirando al otro lado no se une y la fila conserva su extremo;
+- rompiendo el del medio, los otros dos vuelven a su modelo de siempre; colocándolo otra vez, la fila
+  se rehace;
+- la copa sobre un bloque de luz recibe una caja de 0,25 bloques; un golpe al aire de su bloque, fuera
+  de la copa, no la rompe; un golpe en la caja la rompe y suelta la copa;
+- clic derecho en la caja de un taburete hace sentarse;
+- al alejarse, la caja se va con su chunk, y al volver aparece una sola, no dos;
+- tras reiniciar el servidor la fila sigue igual y la copa tiene su caja; un `/arkcontent reload` no
+  la duplica;
+- y la batería general de siempre (muebles, armadura, bloques, menú): 12 de 12, sin errores.
+
+No se ha comprobado con un cliente de Bedrock de verdad.
+
 ### Tablón de misiones (`medieval_bulletin_board`)
 
 ```yaml

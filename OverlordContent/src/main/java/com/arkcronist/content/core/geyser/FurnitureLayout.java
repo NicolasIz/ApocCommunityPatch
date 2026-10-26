@@ -73,12 +73,8 @@ public final class FurnitureLayout {
             notes.add("its display transform " + display.transform() + " is drawn as NONE");
         }
         float flip = undo ? 1 : -1;
-        Placement.Vec3 scale = display.scale();
-        float[] gain = {flip * Math.abs(scale.x()), Math.abs(scale.y()), flip * Math.abs(scale.z())};
-        double[] shift = footprint.centreShift(0);
-        float[] offset = {(float) (16 * shift[0] + 16 * display.translation().x()),
-                (animated ? 0 : 8) + 16 * display.translation().y(),
-                (float) (16 * shift[1] + 16 * display.translation().z())};
+        float[] gain = gain(display, flip);
+        float[] offset = offset(footprint, display, animated);
 
         Map<Cell, List<BedrockCube>> cells = new LinkedHashMap<>();
         for (JavaModel.Element element : model.elements()) {
@@ -116,6 +112,64 @@ public final class FurnitureLayout {
             }
         }
         return new Layout(cells, notes);
+    }
+
+    /**
+     * 5.3: the box a piece's model fills as Java draws it, facing south, in blocks from the middle of
+     * the floor of the block it was placed on: {min, max}, each {x, y, z}; null for a model with no
+     * cubes. A cube turned about an axis counts with its corners turned.
+     */
+    public static double[][] bounds(JavaModel model, Footprint footprint, Placement.Display display, boolean animated) {
+        Placement.Vec3 turn = display.rotation();
+        float flip = Math.abs(turn.y() % 360) == 180 && turn.x() == 0 && turn.z() == 0 ? 1 : -1;
+        float[] gain = gain(display, flip);
+        float[] offset = offset(footprint, display, animated);
+        double[] min = {Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE};
+        double[] max = {-Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE};
+        for (JavaModel.Element element : model.elements()) {
+            for (int corner = 0; corner < 8; corner++) {
+                double[] point = new double[3];
+                for (int axis = 0; axis < 3; axis++) {
+                    point[axis] = ((corner >> axis) & 1) == 0 ? element.from()[axis] : element.to()[axis];
+                }
+                if (element.rotated()) {
+                    turnAbout(point, element.origin(), element.axis(), element.angle());
+                }
+                for (int axis = 0; axis < 3; axis++) {
+                    double placed = (offset[axis] + gain[axis] * (point[axis] - 8)) / 16.0;
+                    min[axis] = Math.min(min[axis], placed);
+                    max[axis] = Math.max(max[axis], placed);
+                }
+            }
+        }
+        return min[0] > max[0] ? null : new double[][]{min, max};
+    }
+
+    /** Turns a model point about {@code pivot} by {@code degrees} about one axis, as Java turns an element. */
+    private static void turnAbout(double[] point, float[] pivot, char axis, float degrees) {
+        double angle = Math.toRadians(degrees);
+        double cos = Math.cos(angle);
+        double sin = Math.sin(angle);
+        int a = axis == 'x' ? 1 : axis == 'y' ? 2 : 0;
+        int b = axis == 'x' ? 2 : axis == 'y' ? 0 : 1;
+        double u = point[a] - pivot[a];
+        double v = point[b] - pivot[b];
+        point[a] = pivot[a] + u * cos - v * sin;
+        point[b] = pivot[b] + u * sin + v * cos;
+    }
+
+    /** How a model coordinate is stretched into the piece's frame, per axis; x and z flipped by the display's half turn. */
+    private static float[] gain(Placement.Display display, float flip) {
+        Placement.Vec3 scale = display.scale();
+        return new float[]{flip * Math.abs(scale.x()), Math.abs(scale.y()), flip * Math.abs(scale.z())};
+    }
+
+    /** Where the middle of the model lands in the piece's frame, in pixels. */
+    private static float[] offset(Footprint footprint, Placement.Display display, boolean animated) {
+        double[] shift = footprint.centreShift(0);
+        return new float[]{(float) (16 * shift[0] + 16 * display.translation().x()),
+                (animated ? 0 : 8) + 16 * display.translation().y(),
+                (float) (16 * shift[1] + 16 * display.translation().z())};
     }
 
     /**

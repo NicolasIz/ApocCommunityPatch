@@ -1273,7 +1273,91 @@ public final class ContentLoader {
                 doubleChest,
                 footprint,
                 interactable.equals("board") ? board(section, prefix, problems) : null,
-                ambience, commands, guillotine);
+                ambience, commands, guillotine,
+                connect(namespace, id, section.get("connect"), support, footprint, animated, modelEngineId, sourceRoot,
+                        prefix + "connect: ", problems),
+                hitbox(section.get("hitbox"), support, prefix + "hitbox: ", problems));
+    }
+
+    /**
+     * {@code connect:} (5.3) - the models a piece is drawn with in a run of its group: the left end,
+     * the middle and the right end, as seen from the front. Only a piece one block across, drawn by
+     * an item model, on a barrier or a light block.
+     */
+    private static Placement.Connect connect(String namespace, String id, Object value, Placement.Support support,
+                                             Footprint footprint, Placement.Animated animated, String modelEngineId,
+                                             Path sourceRoot, String prefix, List<String> problems) {
+        if (value == null) {
+            return null;
+        }
+        if (!(value instanceof Map<?, ?> section)) {
+            problems.add(prefix + "should be a section with left, middle and right models; ignored");
+            return null;
+        }
+        if (!footprint.single() || animated != null || modelEngineId != null
+                || (support != Placement.Support.BARRIER && support != Placement.Support.LIGHT)) {
+            problems.add(prefix + "only a piece one block across, drawn by an item model on a BARRIER or LIGHT"
+                    + " support, joins its neighbours; ignored");
+            return null;
+        }
+        ModelSource[] models = new ModelSource[3];
+        String[] names = {"left", "middle", "right"};
+        for (int i = 0; i < names.length; i++) {
+            ResourceLocation model = location(section, names[i], namespace, prefix, problems);
+            if (model == null) {
+                problems.add(prefix + "needs '" + names[i] + "', the model of the run's " + names[i]
+                        + (i == 1 ? "" : " end") + "; ignored");
+                return null;
+            }
+            models[i] = new ModelSource.Provided(sourceRoot, model);
+        }
+        String group = text(section, "group", prefix, problems);
+        String full = group == null || group.isBlank() ? namespace + ":" + id
+                : group.contains(":") ? group.trim() : namespace + ":" + group.trim();
+        return new Placement.Connect(full.toLowerCase(Locale.ROOT), models[0], models[1], models[2]);
+    }
+
+    /**
+     * {@code hitbox:} (5.3) - {@code model}, boxes fitted to the model when the pack is built; or a
+     * list of boxes, each {@code {width, height, offset: [x, y, z]}} in blocks, facing south; or
+     * {@code false}, none. Left out: fitted for a piece on a light block, none for anything else.
+     */
+    private static Placement.Hitbox hitbox(Object value, Placement.Support support, String prefix,
+                                           List<String> problems) {
+        if (value == null) {
+            return null;
+        }
+        if (support == Placement.Support.CHEST || support == Placement.Support.BED) {
+            problems.add(prefix + "a " + support + " is clicked as the vanilla block it is; ignored");
+            return null;
+        }
+        if (value instanceof Boolean on) {
+            return new Placement.Hitbox(on, List.of());
+        }
+        if ("model".equalsIgnoreCase(String.valueOf(value).trim())) {
+            return new Placement.Hitbox(true, List.of());
+        }
+        if (!(value instanceof List<?> list)) {
+            problems.add(prefix + "should be 'model', false, or a list of boxes {width, height, offset}; ignored");
+            return null;
+        }
+        List<Placement.Hitbox.Box> boxes = new ArrayList<>();
+        for (int i = 0; i < list.size(); i++) {
+            String at = prefix + "#" + (i + 1) + ": ";
+            if (!(list.get(i) instanceof Map<?, ?> box)) {
+                problems.add(at + "should be {width, height, offset}; left out");
+                continue;
+            }
+            double width = box.get("width") instanceof Number number ? number.doubleValue() : 1;
+            double height = box.get("height") instanceof Number number ? number.doubleValue() : 1;
+            if (width <= 0 || height <= 0 || width > 8 || height > 8) {
+                problems.add(at + "width and height must be above 0 and at most 8 blocks; left out");
+                continue;
+            }
+            boxes.add(new Placement.Hitbox.Box(width, height, vector(box, "offset", new Placement.Vec3(0, 0, 0), at,
+                    problems)));
+        }
+        return boxes.isEmpty() ? null : new Placement.Hitbox(false, boxes);
     }
 
     /**

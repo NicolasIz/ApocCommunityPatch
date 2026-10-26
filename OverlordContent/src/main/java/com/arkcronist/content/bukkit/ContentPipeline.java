@@ -16,11 +16,15 @@ import com.arkcronist.content.core.block.NoteBlockState;
 import com.arkcronist.content.core.definition.EmojiDefinition;
 import com.arkcronist.content.core.definition.FontImageDefinition;
 import com.arkcronist.content.core.definition.ItemDefinition;
+import com.arkcronist.content.core.definition.ModelSource;
 import com.arkcronist.content.core.definition.Placement;
 import com.arkcronist.content.core.definition.ResourceLocation;
 import com.arkcronist.content.core.furniture.DisplayFile;
 import com.arkcronist.content.core.furniture.DisplayTransform;
+import com.arkcronist.content.core.furniture.Hitboxes;
 import com.arkcronist.content.core.geyser.BedrockConverter;
+import com.arkcronist.content.core.geyser.FurnitureLayout;
+import com.arkcronist.content.core.geyser.JavaModel;
 import com.arkcronist.content.core.hud.GlyphMetrics;
 import com.arkcronist.content.core.hud.HudDefinition;
 import com.arkcronist.content.core.hud.HudGlyph;
@@ -48,6 +52,8 @@ import com.arkcronist.content.core.quest.QuestDefinition;
 import com.arkcronist.content.core.upload.PackUploader;
 import com.arkcronist.content.core.upload.UploadSettings;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import org.bukkit.Material;
@@ -250,9 +256,17 @@ public final class ContentPipeline {
                     "contents/demo/emotes.yml",
                     "contents/demo/models/emotes/squire.bbmodel",
                     "contents/demo/textures/item/emote_scroll.png")),
-            // 5.3: blocks with a shape - a slab, stairs, lattice glass, a door and a trapdoor.
+            // 5.3: blocks with a shape - a slab, stairs, lattice glass, a door and a trapdoor - and a
+            // counter that joins its neighbours, and a goblet clicked where it is.
             Map.entry("5.3.0", List.of(
                     "contents/demo/shapes.yml",
+                    "contents/demo/counter.yml",
+                    "contents/demo/models/furniture/ruby_counter.json",
+                    "contents/demo/models/furniture/ruby_counter_left.json",
+                    "contents/demo/models/furniture/ruby_counter_middle.json",
+                    "contents/demo/models/furniture/ruby_counter_right.json",
+                    "contents/demo/models/furniture/ruby_goblet.json",
+                    "contents/demo/textures/furniture/ruby_counter.png",
                     "contents/demo/textures/block/ruby_glass.png",
                     "contents/demo/textures/block/ruby_door_top.png",
                     "contents/demo/textures/block/ruby_door_bottom.png",
@@ -415,25 +429,31 @@ public final class ContentPipeline {
      *                      player's client fails to apply it
      */
     record Extras(@Nullable MinigameRenderer.Glyphs minigame, @Nullable BedrockConverter.Build bedrock,
-                  @Nullable Path bedrockPack, List<String> brokenShaders, List<RecipeDefinition> recipes) {
+                  @Nullable Path bedrockPack, List<String> brokenShaders, List<RecipeDefinition> recipes,
+                  Map<String, List<Placement.Hitbox.Box>> hitboxes) {
 
-        static final Extras NONE = new Extras(null, null, null, List.of(), List.of());
+        static final Extras NONE = new Extras(null, null, null, List.of(), List.of(), Map.of());
+
+        /** 5.3: the boxes each piece of furniture is clicked by, by id; none for one left out. */
+        Extras withHitboxes(Map<String, List<Placement.Hitbox.Box>> hitboxes) {
+            return new Extras(minigame, bedrock, bedrockPack, brokenShaders, recipes, Map.copyOf(hitboxes));
+        }
 
         Extras withMinigame(@Nullable MinigameRenderer.Glyphs minigame) {
-            return new Extras(minigame, bedrock, bedrockPack, brokenShaders, recipes);
+            return new Extras(minigame, bedrock, bedrockPack, brokenShaders, recipes, hitboxes);
         }
 
         Extras withBedrock(BedrockConverter.Build bedrock, Path bedrockPack) {
-            return new Extras(minigame, bedrock, bedrockPack, brokenShaders, recipes);
+            return new Extras(minigame, bedrock, bedrockPack, brokenShaders, recipes, hitboxes);
         }
 
         Extras withBrokenShaders(List<String> brokenShaders) {
-            return new Extras(minigame, bedrock, bedrockPack, List.copyOf(brokenShaders), recipes);
+            return new Extras(minigame, bedrock, bedrockPack, List.copyOf(brokenShaders), recipes, hitboxes);
         }
 
         /** 4.0: the recipes to register, each naming only items this build has. */
         Extras withRecipes(List<RecipeDefinition> recipes) {
-            return new Extras(minigame, bedrock, bedrockPack, brokenShaders, List.copyOf(recipes));
+            return new Extras(minigame, bedrock, bedrockPack, brokenShaders, List.copyOf(recipes), hitboxes);
         }
     }
 
@@ -675,6 +695,7 @@ public final class ContentPipeline {
                 .thenApplyAsync(this::assignLiquidStates, worker)
                 .thenApplyAsync(this::assignHudCharacters, worker)
                 .thenApplyAsync(this::compilePack, worker)
+                .thenApplyAsync(this::fitHitboxes, worker)
                 .thenApplyAsync(this::linkWornAssets, worker)
                 .thenApplyAsync(this::bedrock, worker)
                 .thenComposeAsync(this::zipPack, worker)
@@ -1147,6 +1168,67 @@ public final class ContentPipeline {
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
+    }
+
+    /**
+     * 5.3: the boxes each piece of furniture is clicked and punched by - its {@code hitbox:} boxes,
+     * or boxes fitted to its model as the built pack draws it: what {@code hitbox: model} asks for,
+     * and what a piece on a light block gets unless it says otherwise ({@code furniture.fitted-hitboxes}
+     * in config.yml). A piece ModelEngine draws, or whose model cannot be read, is clicked by its blocks.
+     */
+    private Build fitHitboxes(Build build) {
+        boolean onLight = plugin.getConfig().getBoolean("furniture.fitted-hitboxes", true);
+        Map<String, List<Placement.Hitbox.Box>> fitted = new HashMap<>();
+        Map<ResourceLocation, JsonObject> read = new HashMap<>();
+        Function<ResourceLocation, JsonObject> models = location -> read.computeIfAbsent(location,
+                key -> {
+                    byte[] bytes = builtFile("assets/" + key.namespace() + "/models/" + key.path() + ".json");
+                    try {
+                        return bytes == null ? null : JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8))
+                                .getAsJsonObject();
+                    } catch (RuntimeException broken) {
+                        return null;
+                    }
+                });
+        for (CustomItem item : build.items().values()) {
+            if (!(item.placement() instanceof Placement.Furniture piece)) {
+                continue;
+            }
+            Placement.Hitbox hitbox = piece.hitbox();
+            boolean wanted = hitbox != null ? hitbox.model() || !hitbox.boxes().isEmpty()
+                    : onLight && piece.support() == Placement.Support.LIGHT;
+            if (!wanted) {
+                continue;
+            }
+            if (hitbox != null && !hitbox.model()) {
+                fitted.put(item.id(), hitbox.boxes());
+                continue;
+            }
+            ModelSource source = item.definition().model();
+            if (piece.modelEngineId() != null || source == null || source instanceof ModelSource.Definition) {
+                continue;
+            }
+            if (!"NONE".equals(piece.display().transform())) {
+                // Drawn through the model's own display settings, which the fitting does not follow.
+                if (hitbox != null) {
+                    build.problems().add(item.id() + ": hitbox: model fits a model drawn with transform: NONE only;"
+                            + " give its boxes by hand - it is clicked by its blocks");
+                }
+                continue;
+            }
+            JavaModel model = JavaModel.resolve(source.location(), models);
+            double[][] bounds = model == null ? null : FurnitureLayout.bounds(model,
+                    piece.footprint(), piece.display(), piece.animated() != null);
+            if (bounds == null) {
+                if (hitbox != null) {
+                    build.problems().add(item.id() + ": hitbox: model - its model " + source.location()
+                            + " could not be read; it is clicked by its blocks");
+                }
+                continue;
+            }
+            fitted.put(item.id(), Hitboxes.cover(bounds[0], bounds[1]));
+        }
+        return build.withExtras(build.extras().withHitboxes(fitted));
     }
 
     /**
@@ -1643,6 +1725,8 @@ public final class ContentPipeline {
         // 5.3: the shaped blocks, by the copper block each is; vanilla's recipes for those taken out.
         plugin.shapedBlocks().replace(build.items().values());
         plugin.copperRecipes().update(plugin.shapedBlocks().claimed());
+        // 5.3: the boxes furniture is clicked by; every loaded piece fitted with its own again.
+        plugin.furniture().useHitboxes(build.extras().hitboxes());
         if (plugin.ores() != null) {
             plugin.ores().publish(customBlocks);
         }

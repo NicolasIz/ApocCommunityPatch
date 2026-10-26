@@ -401,6 +401,8 @@ public final class ArkContentPlugin extends JavaPlugin {
             huds.bedrockPlayers(bedrockPlayer);
             delivery.skip(bedrock::isBedrock);
             seats.drawnAsBlocksFor(bedrock::isBedrock);
+            // 5.3: Bedrock players see furniture as blocks, and still click those.
+            furniture.clicksBlocks(bedrock::isBedrock);
             actionBars.plainFor(bedrock::isBedrock);
             minigames.plainTextFor(bedrock::isBedrock);
             // 3.3.3: glyphs too wide for one Bedrock glyph - ranks - written as their pieces for them.

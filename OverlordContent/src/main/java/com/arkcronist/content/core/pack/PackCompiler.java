@@ -439,6 +439,21 @@ public final class PackCompiler {
                 // 5.0: the emote's rig, bone by bone, as animated furniture's.
                 bones(item.itemModel(), item.emote().rig(), origin + " emote");
             }
+            if (item.placement() instanceof Placement.Furniture furniture && furniture.connect() != null) {
+                // 5.3: a run's ends and middle, each drawn by {@code <namespace>:<id>/connect_<variant>}.
+                for (Placement.Connect.Variant variant : Placement.Connect.Variant.values()) {
+                    ModelSource model = furniture.connect().model(variant);
+                    if (model == null) {
+                        continue;
+                    }
+                    ResourceLocation key = Placement.Connect.itemModel(item.itemModel(), variant);
+                    String variantOrigin = origin + " " + variant.key();
+                    look(item.namespace(), model, variantOrigin);
+                    if (place(key.assetPath("items", ".json"), itemDefinition(model.location()), variantOrigin)) {
+                        itemDefinitions++;
+                    }
+                }
+            }
             if (item.placement() instanceof Placement.Furniture furniture && furniture.doubleChest() != null) {
                 Placement.DoubleChest pair = furniture.doubleChest();
                 ResourceLocation key = Placement.DoubleChest.itemModel(item.itemModel());

@@ -1,0 +1,52 @@
+# ---------------------------------------------------------------------------
+#  5.3: furniture that joins its neighbours, and furniture clicked where it is
+# ---------------------------------------------------------------------------
+#     /customgive <player> demo:ruby_counter
+#     /customgive <player> demo:ruby_goblet
+#
+#  Place counters side by side, facing the same way: the run draws its ends
+#  and its middle with their own models, and redraws itself as pieces are
+#  added or broken. A counter alone keeps its own model.
+#
+#  A piece on a light block - walked through - is clicked and punched by
+#  invisible boxes fitted to its model ('furniture.fitted-hitboxes' in
+#  config.yml): the goblet is hit where the goblet is, not anywhere in its
+#  block, so the floor next to it can still be built on.
+# ---------------------------------------------------------------------------
+
+items:
+
+  ruby_counter:
+    type: custom_furniture
+    display-name: "<red>Ruby Counter"
+    lore:
+      - "<gray>Set them side by side."
+    resource:
+      model: furniture/ruby_counter       # alone: both ends closed
+    furniture:
+      support: BARRIER
+      face-player: true
+      # left and right as seen from the front. Every piece naming the same
+      # group joins: give an oak and a ruby counter 'group: counters' and they
+      # make one run. Without 'group', a counter joins counters of its own kind.
+      connect:
+        left: furniture/ruby_counter_left      # the run's left end
+        middle: furniture/ruby_counter_middle
+        right: furniture/ruby_counter_right    # the run's right end
+      # A barrier is clicked as its whole block; 'hitbox: model' would fit
+      # boxes to the model, and a list gives them by hand, in blocks, facing
+      # south:
+      # hitbox:
+      #   - {width: 1.0, height: 1.0, offset: [0, 0, 0]}
+
+  ruby_goblet:
+    type: custom_furniture
+    display-name: "<red>Ruby Goblet"
+    lore:
+      - "<gray>Too small to trip over."
+    resource:
+      model: furniture/ruby_goblet
+    furniture:
+      support: LIGHT
+      light: 0
+      face-player: true

@@ -13,6 +13,7 @@ import com.arkcronist.content.core.furniture.BedLayout;
 import com.arkcronist.content.core.furniture.ChestPairing;
 import com.arkcronist.content.core.furniture.DisplayTransform;
 import com.arkcronist.content.core.furniture.Footprint;
+import com.arkcronist.content.core.furniture.Hitboxes;
 import com.arkcronist.content.core.storage.BlockKey;
 import com.arkcronist.content.core.storage.ChestPair;
 import com.arkcronist.content.core.storage.ChestPairStore;
@@ -21,6 +22,7 @@ import com.arkcronist.content.core.storage.FurniturePiece;
 import com.arkcronist.content.core.storage.FurnitureTransformStore;
 import com.arkcronist.content.core.storage.PlacedContent;
 import com.arkcronist.content.core.storage.PlacedContentStore;
+import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -34,6 +36,7 @@ import org.bukkit.block.data.type.Bed;
 import org.bukkit.block.data.type.Chest;
 import org.bukkit.block.data.type.Light;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Interaction;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -41,13 +44,16 @@ import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.util.BlockIterator;
+import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Transformation;
+import org.bukkit.util.Vector;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -96,6 +102,19 @@ import java.util.logging.Level;
  *       database row - one per support block.</li>
  * </ul>
  *
+ * <h2>Hitboxes (5.3)</h2>
+ * <p>A piece can also be clicked and punched by boxes that follow its model - interaction entities
+ * around it, each naming its root - instead of by its whole blocks: a cup on a light block is hit
+ * where the cup is, not anywhere in its block. They are never saved: spawned with the piece, or as
+ * its root loads, and taken away with it, or as it unloads. Bedrock players, who see the piece as
+ * blocks, can still click those blocks.</p>
+ *
+ * <h2>Runs (5.3)</h2>
+ * <p>A piece with a {@link Placement.Connect connect:} look is drawn as the left end, the middle or
+ * the right end of the run it is in - pieces of its group beside it, facing the same way - and as
+ * itself alone. Which, is worked out again when it or a neighbour is placed, broken or loaded; a
+ * neighbour not loaded yet leaves it drawn as it was.</p>
+ *
  * <p>Main thread only. Entities cannot be spawned or removed from any other thread - Paper refuses
  * an asynchronous entity add outright - so the displays are created on the server thread in the same
  * tick as their block, and only the database write leaves it.</p>
@@ -128,6 +147,16 @@ public final class FurnitureService {
     private final NamespacedKey rootTag;
     /** On the root of a double chest: drawn by the double's model, standing on two chests. */
     private final NamespacedKey doubleTag;
+    /** 5.3: on a hitbox: the UUID of the root it is clicked for. */
+    private final NamespacedKey hitboxTag;
+    /** 5.3: on a root: its hitboxes' UUIDs. */
+    private final NamespacedKey hitboxesTag;
+    /** 5.3: on the root of a piece of a run: how it is drawn, left, middle or right; none alone. */
+    private final NamespacedKey connectTag;
+    /** 5.3: the boxes the pieces of each furniture are clicked by, by id; one not here is clicked by its blocks. */
+    private Map<String, List<Placement.Hitbox.Box>> hitboxes = Map.of();
+    /** 5.3: players who click pieces by their blocks whatever boxes they have: Bedrock's, who see blocks. */
+    private Predicate<Player> clicksBlocks = player -> false;
     /** Double chests, by either half; null until storage is up. */
     private @Nullable ChestPairStore pairs;
     /** Ticks between the click and a double chest's lid starting to move. */
@@ -166,6 +195,9 @@ public final class FurnitureService {
         this.boneTag = com.arkcronist.content.bukkit.Keys.of("furniture_bone");
         this.rootTag = com.arkcronist.content.bukkit.Keys.of("furniture_root");
         this.doubleTag = com.arkcronist.content.bukkit.Keys.of("furniture_double");
+        this.hitboxTag = com.arkcronist.content.bukkit.Keys.of("furniture_hitbox");
+        this.hitboxesTag = com.arkcronist.content.bukkit.Keys.of("furniture_hitboxes");
+        this.connectTag = com.arkcronist.content.bukkit.Keys.of("furniture_connect");
     }
 
     /**
@@ -197,6 +229,33 @@ public final class FurnitureService {
      */
     public void onRootAppeared(Consumer<ItemDisplay> listener) {
         this.rootAppeared = this.rootAppeared.andThen(listener);
+    }
+
+    /**
+     * 5.3: the boxes the pieces of each furniture are clicked by, from the build just made; every
+     * loaded piece is fitted with its boxes again. Main thread.
+     */
+    public void useHitboxes(Map<String, List<Placement.Hitbox.Box>> hitboxes) {
+        this.hitboxes = Map.copyOf(hitboxes);
+        for (World world : plugin.getServer().getWorlds()) {
+            for (ItemDisplay display : world.getEntitiesByClass(ItemDisplay.class)) {
+                if (!isPieceRoot(display) || !display.isValid()) {
+                    continue;
+                }
+                String id = furnitureId(display);
+                Optional<CustomItem> item = id == null ? Optional.empty() : registry.get(id);
+                if (item.isPresent() && item.get().placement() instanceof Placement.Furniture furniture) {
+                    fitHitboxes(display, item.get().id(), furniture);
+                } else {
+                    removeHitboxes(display);
+                }
+            }
+        }
+    }
+
+    /** 5.3: players who click by blocks whatever boxes a piece has - Bedrock's, who see it drawn as blocks. */
+    public void clicksBlocks(Predicate<Player> who) {
+        this.clicksBlocks = who;
     }
 
     /** Crops live in light blocks too: a ray looking for furniture stops at one, instead of reaching past it. */
@@ -292,6 +351,9 @@ public final class FurnitureService {
             attachModelEngine(root, furniture);
         }
         lightAbove(anchor, furniture, furniture.light());
+        if (furniture.connect() != null) {
+            reconnect(anchor);
+        }
         return true;
     }
 
@@ -463,6 +525,7 @@ public final class FurnitureService {
         if (animated != null) {
             spawnBones(root, item, furniture);
         }
+        fitHitboxes(root, item.id(), furniture);
         rootAppeared.accept(root);
         return root;
     }
@@ -752,6 +815,7 @@ public final class FurnitureService {
         if (root != null && doubled(root)) {
             animations.stop(root.getUniqueId());
             bones(root).forEach(Entity::remove);
+            removeHitboxes(root);
             root.remove();
         }
         if (pairs != null) {
@@ -831,6 +895,7 @@ public final class FurnitureService {
         if (root != null) {
             animations.stop(root.getUniqueId());
             bones(root).forEach(Entity::remove);
+            removeHitboxes(root);
             root.remove();
         }
     }
@@ -899,6 +964,15 @@ public final class FurnitureService {
             return;
         }
         rootAppeared.accept(root);
+        // 5.3: never saved - fitted again each time it loads, to its boxes as they are now.
+        fitHitboxes(root, item.get().id(), furniture);
+        if (furniture.connect() != null) {
+            reconnect(anchor(root));
+        } else if (data.has(connectTag)) {
+            // No longer joins its neighbours: drawn as itself.
+            data.remove(connectTag);
+            root.setItemStack(items.create(item.get(), 1));
+        }
         Placement.Animated animated = animatedOf(root, furniture);
         boolean wasAnimated = data.has(bonesTag);
         if (wasAnimated != (animated != null)) {
@@ -1050,6 +1124,9 @@ public final class FurnitureService {
         if (isOrphan(entity)) {
             return true;
         }
+        if (isHitbox(entity)) {
+            return hitboxRoot(entity) == null;
+        }
         String root = entity.getPersistentDataContainer().get(rootTag, PersistentDataType.STRING);
         if (root == null) {
             return false;
@@ -1120,6 +1197,9 @@ public final class FurnitureService {
         }
         Block first = layout.parts().get(0);
         redraw(first.getWorld(), first.getX(), first.getY(), first.getZ());
+        if (furniture.connect() != null) {
+            reconnect(first);
+        }
         return root;
     }
 
@@ -1137,6 +1217,7 @@ public final class FurnitureService {
             }
             animations.stop(root.getUniqueId());
             bones(root).forEach(Entity::remove);
+            removeHitboxes(root);
             ModelEngineBridge modelEngine = hooks.modelEngine();
             if (modelEngine != null) {
                 try {
@@ -1161,11 +1242,12 @@ public final class FurnitureService {
         }
     }
 
-    /** Removes a left-over display, and the bones of one that is a root. */
+    /** Removes a left-over display, and the bones and hitboxes of one that is a root. */
     public void removeLeftOver(Entity entity) {
         if (entity.getPersistentDataContainer().has(bonesTag)) {
             bones(entity).forEach(Entity::remove);
         }
+        removeHitboxes(entity);
         animations.stop(entity.getUniqueId());
         entity.remove();
     }
@@ -1182,6 +1264,7 @@ public final class FurnitureService {
         List<Block> parts = parts(anchor, root);
         boolean doubled = doubled(root);
         bones(root).forEach(Entity::remove);
+        removeHitboxes(root);
         root.remove();
         ItemDisplay replacement = spawn(at, item, furniture, anchor, parts, doubled);
         parts.forEach(part -> link(part, replacement.getUniqueId()));
@@ -1275,6 +1358,11 @@ public final class FurnitureService {
             root = findRoot(block);
         }
         List<Block> parts = parts(block, root);
+        // 5.3: the pieces of its run on either side, drawn again once it is gone.
+        List<Block> beside = root instanceof ItemDisplay display && !doubled(display)
+                && registry.get(id).map(CustomItem::placement).filter(Placement.Furniture.class::isInstance)
+                .map(spec -> ((Placement.Furniture) spec).connect() != null).orElse(false)
+                ? beside(anchor(display), display.getLocation().getYaw()) : List.of();
         if (root != null) {
             if (root instanceof ItemDisplay display) {
                 rootGoing.accept(display);
@@ -1283,6 +1371,7 @@ public final class FurnitureService {
             for (Entity bone : bones(root)) {
                 bone.remove();
             }
+            removeHitboxes(root);
             ModelEngineBridge modelEngine = hooks.modelEngine();
             if (modelEngine != null) {
                 try {
@@ -1319,6 +1408,7 @@ public final class FurnitureService {
         }
         // The rows of all its blocks go in one database task and one transaction.
         store.removeAll(block.getWorld().getUID(), positions);
+        beside.forEach(this::connectAt);
         if (dropItem) {
             registry.get(id).ifPresent(item -> block.getWorld().dropItemNaturally(centre(block), items.create(item, 1)));
         }
@@ -1354,6 +1444,7 @@ public final class FurnitureService {
                 }
                 animations.stop(entity.getUniqueId());
                 bones(entity).forEach(Entity::remove);
+                removeHitboxes(entity);
                 entity.remove();
             }
         }
@@ -1407,17 +1498,50 @@ public final class FurnitureService {
      * solid.</p>
      */
     public Optional<Block> target(Player player) {
+        Optional<Block> byBlocks = Optional.empty();
         BlockIterator ray = new BlockIterator(player, REACH);
         while (ray.hasNext()) {
             Block block = ray.next();
-            if (identify(block).isPresent()) {
-                return Optional.of(block);
+            if (identify(block).isPresent() && !byHitboxes(player, block)) {
+                byBlocks = Optional.of(block);
+                break;
             }
             if (!block.isPassable() || obstacle.test(block)) {
-                return Optional.empty();
+                break;
             }
         }
-        return Optional.empty();
+        // 5.3: a piece clicked by its boxes is looked at where they are, when nothing nearer is.
+        RayTraceResult box = hitboxLookedAt(player);
+        Optional<Block> boxed = box == null ? Optional.empty() : hitboxPart(box.getHitEntity(), player);
+        if (boxed.isEmpty()) {
+            return byBlocks;
+        }
+        Location eye = player.getEyeLocation();
+        double toBox = box.getHitPosition().distanceSquared(eye.toVector());
+        return byBlocks.filter(block -> eye.distanceSquared(centre(block)) < toBox).or(() -> boxed);
+    }
+
+    /**
+     * 5.3: whether a click at {@code block} is the piece's boxes' to take, not its block's: a light
+     * block's piece that has boxes, for a player who sees them. Its box was not where the click went.
+     */
+    private boolean byHitboxes(Player player, Block block) {
+        return block.getType() == Material.LIGHT && !clicksBlocks.test(player)
+                && identify(block).map(hitboxes::containsKey).orElse(false);
+    }
+
+    /** 5.3: the first of this plugin's hitboxes along the player's look, with no solid block in front of it. */
+    private @Nullable RayTraceResult hitboxLookedAt(Player player) {
+        Location eye = player.getEyeLocation();
+        RayTraceResult box = player.getWorld().rayTraceEntities(eye, eye.getDirection(), REACH, this::isHitbox);
+        if (box == null || box.getHitEntity() == null) {
+            return null;
+        }
+        double toBox = box.getHitPosition().distance(eye.toVector());
+        RayTraceResult wall = player.getWorld().rayTraceBlocks(eye, eye.getDirection(), toBox,
+                FluidCollisionMode.NEVER, true);
+        // A barrier the box stands in is the piece's own.
+        return wall == null || wall.getHitBlock() == null || identify(wall.getHitBlock()).isPresent() ? box : null;
     }
 
     /**
@@ -1439,6 +1563,10 @@ public final class FurnitureService {
                 return Optional.empty();
             }
             if (identify(block).isPresent()) {
+                if (byHitboxes(player, block)) {
+                    // 5.3: had the click been for it, it would have landed on one of its boxes.
+                    continue;
+                }
                 return block.getType() == Material.LIGHT && eye.distanceSquared(centre(block)) < behind
                         ? Optional.of(block) : Optional.empty();
             }
@@ -1470,6 +1598,198 @@ public final class FurnitureService {
         String root = data.get(rootTag, PersistentDataType.STRING);
         UUID linked = linkedDisplay(block);
         return linked == null || !(root != null ? root.equals(linked.toString()) : entity.getUniqueId().equals(linked));
+    }
+
+    // ---------------------------------------------------------------- hitboxes (5.3)
+
+    /** Whether this is one of the boxes a piece is clicked by. */
+    public boolean isHitbox(Entity entity) {
+        return entity instanceof Interaction && entity.getPersistentDataContainer().has(hitboxTag);
+    }
+
+    /** The root a hitbox is clicked for, if it is loaded and still a piece's root. */
+    private @Nullable ItemDisplay hitboxRoot(Entity hitbox) {
+        String raw = hitbox.getPersistentDataContainer().get(hitboxTag, PersistentDataType.STRING);
+        try {
+            Entity root = raw == null ? null : plugin.getServer().getEntity(UUID.fromString(raw));
+            return root instanceof ItemDisplay display && display.isValid() && isPieceRoot(display) ? display : null;
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
+    }
+
+    /**
+     * The block of the piece a click on one of its boxes is for: of the blocks it stands on, the
+     * one nearest where the player's look meets the box - a tall piece's lever, a bench's seat.
+     * Empty for anything else; a box whose piece is gone is taken away.
+     */
+    public Optional<Block> hitboxPart(@Nullable Entity hitbox, Player player) {
+        if (hitbox == null || !isHitbox(hitbox)) {
+            return Optional.empty();
+        }
+        ItemDisplay root = hitboxRoot(hitbox);
+        if (root == null) {
+            hitbox.remove();
+            return Optional.empty();
+        }
+        List<Block> parts = pieceParts(root);
+        if (parts.size() == 1) {
+            return Optional.of(parts.get(0));
+        }
+        Location eye = player.getEyeLocation();
+        RayTraceResult hit = hitbox.getBoundingBox().rayTrace(eye.toVector(), eye.getDirection(), REACH + 2);
+        Vector point = hit != null ? hit.getHitPosition() : hitbox.getBoundingBox().getCenter();
+        return parts.stream().min(Comparator.comparingDouble(part -> centre(part).toVector().distanceSquared(point)));
+    }
+
+    /**
+     * Gives a piece the boxes its furniture is clicked by now, in place of any it had: one
+     * interaction entity per box, turned with the piece, not saved. None for a double chest, nor for
+     * furniture that has none.
+     */
+    private void fitHitboxes(ItemDisplay root, String id, Placement.Furniture furniture) {
+        removeHitboxes(root);
+        List<Placement.Hitbox.Box> boxes = doubled(root) ? List.of() : hitboxes.getOrDefault(id, List.of());
+        if (boxes.isEmpty()) {
+            return;
+        }
+        Block anchor = anchor(root);
+        float yaw = root.getLocation().getYaw();
+        String rootId = root.getUniqueId().toString();
+        List<String> spawned = new ArrayList<>(boxes.size());
+        for (Placement.Hitbox.Box box : boxes) {
+            double[] at = Hitboxes.turned(box.offset(), furniture.footprint(), yaw);
+            Location where = new Location(root.getWorld(), anchor.getX() + 0.5 + at[0], anchor.getY() + at[1],
+                    anchor.getZ() + 0.5 + at[2]);
+            Interaction hitbox = root.getWorld().spawn(where, Interaction.class, entity -> {
+                entity.setInteractionWidth((float) box.width());
+                entity.setInteractionHeight((float) box.height());
+                // The arm swings and the hit sounds, as at any block.
+                entity.setResponsive(true);
+                entity.setPersistent(false);
+                PersistentDataContainer data = entity.getPersistentDataContainer();
+                data.set(furnitureTag, PersistentDataType.STRING, id);
+                data.set(anchorTag, PersistentDataType.LONG, BlockKey.pack(anchor.getX(), anchor.getY(), anchor.getZ()));
+                data.set(hitboxTag, PersistentDataType.STRING, rootId);
+            });
+            spawned.add(hitbox.getUniqueId().toString());
+        }
+        root.getPersistentDataContainer().set(hitboxesTag, PersistentDataType.STRING, String.join(",", spawned));
+    }
+
+    /** Takes away a root's hitboxes: those it lists, and any other near it naming it. */
+    private void removeHitboxes(Entity root) {
+        PersistentDataContainer data = root.getPersistentDataContainer();
+        String listed = data.get(hitboxesTag, PersistentDataType.STRING);
+        if (listed != null && !listed.isEmpty()) {
+            for (String raw : listed.split(",")) {
+                try {
+                    Entity hitbox = plugin.getServer().getEntity(UUID.fromString(raw));
+                    if (hitbox != null && isHitbox(hitbox)) {
+                        hitbox.remove();
+                    }
+                } catch (IllegalArgumentException ignored) {
+                    // Not a UUID: nothing to remove.
+                }
+            }
+        }
+        data.remove(hitboxesTag);
+        String id = root.getUniqueId().toString();
+        for (Entity hitbox : root.getWorld().getNearbyEntities(root.getLocation(), 4, 4, 4, entity -> isHitbox(entity)
+                && id.equals(entity.getPersistentDataContainer().get(hitboxTag, PersistentDataType.STRING)))) {
+            hitbox.remove();
+        }
+    }
+
+    /** A root unloading with its chunk: its hitboxes, which are never saved, go with it. */
+    public void unloading(Entity entity) {
+        if (isPieceRoot(entity)) {
+            removeHitboxes(entity);
+        }
+    }
+
+    // ---------------------------------------------------------------- runs (5.3)
+
+    /** Draws the piece standing on {@code block}, and the pieces on either side of it, as their runs are now. */
+    private void reconnect(Block block) {
+        Entity root = root(block);
+        if (!(root instanceof ItemDisplay display)) {
+            return;
+        }
+        connectAt(block);
+        beside(block, display.getLocation().getYaw()).forEach(this::connectAt);
+    }
+
+    /** The blocks to the left and the right of {@code block}, as seen from the front of a piece turned to {@code yaw}. */
+    private static List<Block> beside(Block block, float yaw) {
+        int[] right = Footprint.right(yaw);
+        return List.of(block.getRelative(-right[0], 0, -right[1]), block.getRelative(right[0], 0, right[1]));
+    }
+
+    /**
+     * Draws the piece of a run standing on {@code block} as the end or the middle it is now, or as
+     * itself alone; left as it is while a neighbour cannot be told yet.
+     */
+    private void connectAt(Block block) {
+        if (!block.getWorld().isChunkLoaded(block.getX() >> 4, block.getZ() >> 4)
+                || !(root(block) instanceof ItemDisplay root) || !root.isValid() || doubled(root)
+                || !anchor(root).equals(block)) {
+            return;
+        }
+        Optional<CustomItem> item = item(block);
+        if (item.isEmpty() || !(item.get().placement() instanceof Placement.Furniture furniture)
+                || furniture.connect() == null || furniture.animated() != null) {
+            return;
+        }
+        float yaw = root.getLocation().getYaw();
+        List<Block> sides = beside(block, yaw);
+        Boolean left = joins(sides.get(0), yaw, furniture.connect().group());
+        Boolean right = joins(sides.get(1), yaw, furniture.connect().group());
+        if (left == null || right == null) {
+            return;
+        }
+        Placement.Connect.Variant variant = Placement.Connect.Variant.of(left, right);
+        PersistentDataContainer data = root.getPersistentDataContainer();
+        String now = data.get(connectTag, PersistentDataType.STRING);
+        String wanted = variant == Placement.Connect.Variant.SINGLE ? null : variant.key();
+        if (java.util.Objects.equals(now, wanted)) {
+            return;
+        }
+        if (wanted == null) {
+            data.remove(connectTag);
+            root.setItemStack(items.create(item.get(), 1));
+        } else {
+            data.set(connectTag, PersistentDataType.STRING, wanted);
+            root.setItemStack(connectItem(item.get(), variant));
+        }
+    }
+
+    /**
+     * Whether a piece of {@code group} stands on {@code next}, turned to {@code yaw} as well; null
+     * when that cannot be told yet - its chunk, or its displays, not loaded.
+     */
+    private @Nullable Boolean joins(Block next, float yaw, String group) {
+        if (!next.getWorld().isChunkLoaded(next.getX() >> 4, next.getZ() >> 4)) {
+            return null;
+        }
+        Optional<Placement.Furniture> spec = definition(next);
+        if (spec.isEmpty() || spec.get().connect() == null || !spec.get().connect().group().equals(group)) {
+            return false;
+        }
+        Entity other = root(next);
+        if (other == null || !other.isValid()) {
+            return next.getChunk().isEntitiesLoaded() ? false : null;
+        }
+        return anchor(other).equals(next) && !doubled(other)
+                && Math.floorMod(Math.round(other.getLocation().getYaw() - yaw), 360) == 0;
+    }
+
+    /** A variant of a run's look: an item drawn by {@code <namespace>:<id>/connect_<variant>}. */
+    private static ItemStack connectItem(CustomItem item, Placement.Connect.Variant variant) {
+        ResourceLocation key = Placement.Connect.itemModel(item.definition().itemModel(), variant);
+        ItemStack stack = ItemStack.of(Material.PAPER);
+        stack.editMeta(meta -> meta.setItemModel(new NamespacedKey(key.namespace(), key.path())));
+        return stack;
     }
 
     // ---------------------------------------------------------------- animation
