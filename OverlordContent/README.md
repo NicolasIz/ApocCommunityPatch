@@ -26,8 +26,9 @@ añade **bloques con forma** (losas, escaleras, bloques transparentes, puertas y
 **muebles que se unen en fila**, y se clican donde está su modelo. La 5.4 hace que cada bloque se pique
 con **su herramienta y su dureza**, añade **retoños que crecen en árboles** propios (también en los chunks
 nuevos), **ítems con eventos y mecánicas** (rayos, golpes que curan, picar 3x3, autofundir…), una
-**API para otros plugins** y **muebles con estados** (un farol que se enciende con un clic). El mismo
-concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer.
+**API para otros plugins** y **muebles con estados** (un farol que se enciende con un clic). La 5.5 trae **trece árboles propios**,
+dibujados bloque a bloque, cada uno con su forma, sus hojas y un tronco que se tumba como los de
+vanilla. El mismo concepto que ItemsAdder u Oraxen, reducido a una base limpia sobre la que crecer.
 
 ```
 /customgive <jugador> <item> [cantidad]    entrega un ítem (acepta @a, @p...; autocompleta ids)
@@ -84,6 +85,75 @@ el cliente real de Minecraft en 1.21.4, 1.21.11 y 26.3; ver «3.6.0» y «4.0.0�
 no.
 
 ---
+
+## 5.5.0 — Trece árboles propios: su forma, sus hojas y troncos que se tumban
+
+- **Trece árboles nuevos**, en `contents/woodland/`: sauce llorón, baobab, palmera, arce rojo, pino
+  escarchado, glicinia, árbol de brasas (`emberwood`: su tronco brilla), árbol nube (`cloudpuff`),
+  árbol espiral (`spiralwood`), árbol parasol (`sunshade`), seta gigante (`toadstool`), árbol retorcido
+  (`gnarlwood`) y flor de luna (`moonbloom`: sus hojas brillan de noche). Cada uno trae su retoño, su
+  tronco, sus tablones y sus hojas, con texturas propias, y tres formas dibujadas a mano: al crecer
+  elige una y la gira y la refleja al azar, así que no salen dos iguales. Sube poco a poco, en unos
+  segundos, del suelo hacia arriba. También aparecen solos en los chunks nuevos, cada uno en sus biomas
+  (la palmera en la playa, el pino escarchado en la nieve…). Y cinco adornos que cuelgan de ellos:
+  frondas de sauce, racimos de glicinia, cocos, laminillas de seta y musgo. Los tablones de cualquiera
+  de los trece hacen palos, mesa de trabajo, cofre y cuencos.
+- **Árboles dibujados** (`tree: blueprints:`): el árbol se dibuja en el YAML capa a capa, un carácter
+  por bloque, como un plano. Sección 4, «Árboles dibujados».
+- **Troncos que se tumban** (`block: axis: true`): se ponen de lado según la cara en la que se
+  colocan, como los de vanilla; los árboles dibujados los usan para sus ramas. Sección 4, «Troncos que
+  se tumban».
+- **Hojas propias** (`block: shape: leaves`): se ve a través de ellas, se pican rápido (más con
+  tijeras o azada) y las de un árbol se caen solas cuando se tala, soltando lo que digas (retoños,
+  palos…). Las que pone un jugador no se caen nunca, y con tijeras o toque de seda se recogen enteras.
+  Sección 4, «Hojas propias».
+- **Con Geyser**: los troncos tumbados, las hojas y los adornos en cruz llegan a los jugadores de
+  Bedrock como bloques propios, como en Java.
+- **Arreglo**: un bloque propio ya no cambia de aspecto cuando se pone otro a su lado. Antes, piedra
+  puesta debajo de un tronco o de un bloque de rubí podía convertirlo en otro bloque propio: vanilla
+  recalcula el instrumento del note block y Paper no lo avisa. Venía de antes de la 5.5.
+
+**Al actualizar:** los ejemplos nuevos (103 ficheros, en `contents/woodland/`) llegan solos al
+arrancar; nada de lo que ya tenías cambia. Si no quieres los árboles, borra la carpeta: no vuelve.
+
+**A tener en cuenta:** las hojas propias se dibujan con estados de hojas de vanilla que el juego no
+usa en la naturaleza: hojas «persistentes» (las que pone un jugador) a distancia 1 a 6 de un tronco.
+Cada tipo de hoja de vanilla da para tres bloques de hojas propias, 30 en total; los 18 de `woodland`
+usan seis: azalea florida, azalea, jungla, acacia, roble pálido y roble oscuro (nunca las de mangle,
+ni las que un pack fusionado ya dibuja). Desde entonces, las hojas de vanilla de esos tipos que pone
+un jugador se guardan a distancia 7, y se ven igual que siempre; las que había en chunks de antes se
+arreglan una vez, al cargarse el chunk. Lo que queda:
+- el cliente deja caer de las hojas propias las partículas de las hojas de vanilla que son (desde la
+  1.21.5, hojitas verdes de vez en cuando; las de roble pálido, más claras), y ningún pack lo cambia.
+  Por eso las de cerezo, cuyos pétalos rosas caen diez veces más, se usan las últimas: solo a partir
+  de la hoja propia número 28;
+- unas hojas de vanilla de esos tipos *persistentes y a distancia 1 a 6* pegadas después —una
+  schematic de otro servidor, un `/setblock`— se verían como hojas propias;
+- en un servidor con muchos muebles para Bedrock, los 52 estados de note block nuevos (troncos de pie
+  y tumbados, y tablones) se toman de los que Bedrock usaba para dibujar muebles, como explica la 5.4;
+  el registro lo dice.
+
+### Lo comprobado para la 5.5.0
+
+- 663 pruebas automáticas.
+- **Con bots en Paper 1.21.8 y en 1.21.4**, 47 comprobaciones en cada uno: los trece árboles crecen de
+  su retoño con harina de hueso y suben poco a poco; un tronco se tumba según la cara en la que se
+  pone (de este a oeste y de norte a sur) y queda de pie encima de otro bloque, y roto suelta su ítem;
+  las hojas que pone un jugador quedan como suyas; las azaleas de vanilla puestas junto a un tronco se
+  guardan a distancia 7; un tronco o tierra puestos al lado no cambian las hojas propias, ni piedra
+  debajo de un tronco propio y arena encima lo cambian; las tijeras recogen la hoja entera; con una
+  rama en pie las hojas se quedan, sin madera se caen todas salvo la que puso el jugador, sin soltar
+  nada de las hojas de vanilla; las hojas de vanilla de chunks de antes se guardan (las de roble, que
+  no se usan, no se tocan); los chunks nuevos traen árboles propios; y el registro, sin errores.
+- **Cliente real 26.3** contra Paper 26.3: los trece árboles plantados y abonados como un jugador, cada
+  uno con su forma; de noche brillan el tronco del árbol de brasas y las hojas de la flor de luna; los
+  iconos en el inventario; en fila, cada tronco de pie y tumbado, sus tablones y sus hojas.
+- **Bedrock, con Geyser 2.8.4 en Paper 1.21.8**: Geyser acepta los 1222 bloques (los 18 de hojas
+  incluidos, sin avisos) y un cliente de Bedrock de prueba —un bot que habla el protocolo, sin
+  pantalla— recibe las hojas de palmera, crecidas o puestas, como un mismo bloque propio, distinto de
+  las hojas de roble pálido de vanilla; el musgo y las hojas de baobab, cada uno como el suyo. Las
+  hojas puestas con `/setblock` siguen como se pusieron.
+- **No comprobado**: nada de esto en una pantalla de Bedrock.
 
 ## 5.4.0 — Herramientas y dureza, árboles, ítems con mecánicas, API y muebles con estados
 
@@ -1267,6 +1337,106 @@ crop:
 - `generation:` usa los hilos de generación de Paper, como las menas de la 5.0: un árbol entra entero o
   no entra, y los chunks ya generados no cambian.
 
+
+### Árboles dibujados (`blueprints:`) — 5.5
+
+Con `blueprints:` el árbol no sale de una forma de serie (`shape:`): se dibuja.
+
+```yaml
+crop:
+  stages: [crop/palm_sapling_0, crop/palm_sapling_1]
+  soil: [SAND]
+  tree:
+    log: palm_log
+    leaves: palm_leaves
+    growth-seconds: 2.5       # lo que tarda en subir: 0 a 30 (2 si no se dice)
+    blueprints:
+      - weight: 3             # se elige el triple que uno de peso 1
+        rotate: true          # girado un cuarto de vuelta al azar (por defecto)
+        mirror: true          # y reflejado al azar (por defecto)
+        origin: [2, 2]        # columna y fila del retoño en la capa de abajo; si no, su tronco más centrado
+        legend:
+          "#": log            # el tronco del árbol, de pie
+          "-": log-x          # tumbado de este a oeste
+          "|": log-z          # tumbado de norte a sur
+          "@": leaves         # las hojas del árbol
+          "%": { block: leaves, chance: 0.6 }   # solo a veces
+          "o": palm_coconuts  # cualquier bloque: de este pack, de otro (namespace:id) o de vanilla
+          "~": minecraft:vine[north=true]
+        layers:               # de abajo arriba
+          - |
+            .....
+            ..#..
+            .....
+          - [".@@@.", "@@#@@", ".@@@."]   # las filas también valen como lista
+```
+
+- En cada capa, una fila va de oeste a este y las filas, de norte a sur; `.` y los espacios son aire.
+- Varios dibujos por árbol: cada retoño elige uno según su `weight` y lo gira y refleja, así que de
+  tres dibujos salen hasta 24 árboles distintos. Un bloque de vanilla con dirección (una enredadera)
+  gira con el árbol.
+- Medidas: hasta 14 bloques a cada lado del retoño y 32 de alto. Un dibujo que no se puede leer se
+  deja fuera y el registro dice por qué; los demás siguen.
+- El árbol sube en `growth-seconds`: primero la madera, del suelo hacia arriba, y después lo demás,
+  del tronco hacia fuera; cada bloque se pone solo si su sitio sigue libre. Si el chunk se descarga a
+  medias, lo que falta se pone de golpe.
+- Lo demás, como con las formas de la 5.4: el tronco necesita sitio (no atraviesa nada, salvo hierba y
+  hojas), se lanza el `StructureGrowEvent` para las protecciones y vale con `generation:`.
+
+### Troncos que se tumban (`axis: true`) — 5.5
+
+```yaml
+palm_log:
+  type: custom_block
+  resource:
+    parent: block/cube_column
+    textures:
+      side: block/palm_log        # la corteza
+      end: block/palm_log_top     # los anillos
+  block:
+    axis: true
+    tool: axe
+    hardness: 2
+```
+
+- Solo para bloques normales (note block). Se tumba según la cara en la que se pone, como los troncos
+  de vanilla: contra una pared queda de lado; encima de un bloque, de pie. Si el bloque que se toca se
+  reemplaza (hierba alta), decide la mirada del jugador.
+- Cada forma de ponerlo es su propio estado de note block (`id`, `id#x`, `id#z` en
+  `note_block_states.json`): un tronco que se tumba gasta tres. Roto, suelta siempre su mismo ítem.
+- En Bedrock, el tronco tumbado enseña los anillos en los extremos y la corteza alrededor, pero la
+  veta de la corteza va de través: Bedrock dibuja cada cara de un bloque entero sin girarla.
+
+### Hojas propias (`shape: leaves`) — 5.5
+
+```yaml
+palm_leaves:
+  type: custom_block
+  resource:
+    texture: block/palm_leaves    # con huecos transparentes: se ve a través
+  block:
+    shape: leaves
+    drops:                        # sin tijeras ni toque de seda
+      - {item: woodland:palm_sapling, chance: 0.05}
+      - {item: STICK, amount: 1-2, chance: 0.02}
+    decay: true                   # por defecto: las de un árbol se caen al talarlo
+```
+
+- Se dibujan con estados de hojas de vanilla que el juego no usa (ver «A tener en cuenta» en la 5.5.0):
+  cada bloque de hojas propias guarda dos, uno para las que crecen en un árbol y otro para las que pone
+  un jugador. Se asignan una vez y se guardan en `data/leaves_states.json`, como los note blocks.
+- **Caerse.** Las de un árbol se caen cuando ya no hay madera cerca —troncos de vanilla o propios—
+  tras romperse, quemarse o explotar un tronco u hoja de al lado: en medio segundo a cinco, soltando
+  sus `drops`. «Cerca» es lo que el dibujo del árbol pide, 6 bloques como mínimo. Las que pone un
+  jugador no se caen nunca; con `decay: false`, tampoco las de los árboles.
+- **Recogerlas.** Con tijeras o toque de seda se recoge la hoja entera; sin ellas, sus `drops`.
+- Un bloque de vanilla al lado, o un tronco que se pone o se rompe, no cambia las hojas propias: el
+  plugin deshace el cálculo de distancia de vanilla en el mismo tick.
+- Caben 30 bloques de hojas propias; a partir del 31 el registro lo dice y esos se quedan sin poner.
+- El modelo puede ser cualquiera: los adornos colgantes de `woodland` son hojas con un modelo en
+  cruz, y las hojas de flor de luna, un cubo con una capa que brilla (`light_emission`).
+
+### Emojis de chat
 
 ```yaml
 emojis:                         # en cualquier archivo de contenido
